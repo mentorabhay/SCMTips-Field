@@ -1,0 +1,29 @@
+{
+  "name": "@scmtips-field/field-console",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@scmtips-field/ui-tokens": "workspace:*",
+    "@scmtips-field/field-contract": "workspace:*",
+    "next": "^15.0.3",
+    "react": "^19.0.0-rc",
+    "react-dom": "^19.0.0-rc",
+    "lucide-react": "^0.454.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3"
+  }
+}

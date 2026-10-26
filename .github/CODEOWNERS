@@ -1,0 +1,15 @@
+# SCMTIPS Field — CODEOWNERS
+# Role aliases mapping code areas to responsible engineering roles
+
+*                               @field-core-team
+services/field-api/             @field-backend-lead
+services/field-worker/          @field-backend-lead
+services/erp-sim/               @erp-integration-lead
+connectors/sap/                 @erp-integration-lead
+apps/field-console/             @field-frontend-lead
+packages/ui-tokens/             @field-design-system
+packages/field-contract/        @field-api-architect
+packages/core-contract/         @field-integration-lead
+tools/checks/                   @field-security-architect
+docs/security/                  @field-security-architect
+docs/privacy/                   @field-privacy-officer

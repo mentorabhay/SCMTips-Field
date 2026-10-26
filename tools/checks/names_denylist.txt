@@ -1,0 +1,12 @@
+# SCMTIPS Names Denylist
+# Real company names, proprietary marks, or real personal identities forbidden in codebase/seed data
+SapAg
+Siemens
+Oracle
+Cisco
+Microsoft
+Apple
+Amazon
+LeftRight
+leftright
+Leftright

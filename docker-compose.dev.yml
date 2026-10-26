@@ -1,0 +1,109 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: scmtips-field-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_MULTIPLE_DATABASES: field,erpsim
+    ports:
+      - "5450:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./tools/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: scmtips-field-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686" # Web UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  fake-core:
+    build:
+      context: .
+      dockerfile: tools/fake-core/Dockerfile
+    container_name: scmtips-field-fake-core
+    environment:
+      - PORT=8001
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  erp-sim:
+    build:
+      context: .
+      dockerfile: services/erp-sim/Dockerfile
+    container_name: scmtips-field-erp-sim
+    environment:
+      - DATABASE_URL=postgresql://erpsim_app:devpassword@postgres:5432/erpsim
+      - PORT=8002
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/_sim/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  field-api:
+    build:
+      context: .
+      dockerfile: services/field-api/Dockerfile
+    container_name: scmtips-field-api
+    environment:
+      - FIELD_ENV=development
+      - FIELD_PORT=8000
+      - FIELD_DATABASE_URL=postgresql://field_app:devpassword@postgres:5432/field
+      - FIELD_CORE_JWKS_URL=http://fake-core:8001/.well-known/jwks.json
+      - FIELD_ERP_SIM_URL=http://erp-sim:8002
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fake-core:
+        condition: service_healthy
+      erp-sim:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  field-worker:
+    build:
+      context: .
+      dockerfile: services/field-worker/Dockerfile
+    container_name: scmtips-field-worker
+    environment:
+      - FIELD_DATABASE_URL=postgresql://field_worker:devpassword@postgres:5432/field
+      - FIELD_ERP_SIM_URL=http://erp-sim:8002
+    depends_on:
+      field-api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

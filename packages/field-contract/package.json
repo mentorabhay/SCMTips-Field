@@ -1,0 +1,10 @@
+{
+  "name": "@scmtips-field/field-contract",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

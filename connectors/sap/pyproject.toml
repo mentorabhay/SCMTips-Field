@@ -1,0 +1,17 @@
+[project]
+name = "field-sap-connector"
+version = "0.1.0"
+description = "SCMTIPS ERP Connector Port and SAP / erp-sim Adapters"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "pydantic>=2.9.0",
+    "httpx>=0.27.2",
+    "structlog>=24.4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/field_sap"]
