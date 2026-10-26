@@ -1,0 +1,159 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SCMTIPS Core Platform API (P13 Reference)",
+    "version": "13.0.0",
+    "description": "SCMTIPS Core platform API contract pinned for Phase 1 add-on integration."
+  },
+  "paths": {
+    "/.well-known/jwks.json": {
+      "get": {
+        "summary": "Core JWKS public keys",
+        "operationId": "getJwks",
+        "responses": {
+          "200": {
+            "description": "JWKS key set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JwksResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/token": {
+      "post": {
+        "summary": "Core SSO session token issue",
+        "operationId": "issueSessionToken",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JWT session token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{id}/status": {
+      "get": {
+        "summary": "Device binding and revocation status (CS-01 Seam)",
+        "operationId": "getDeviceStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{id}/revoke": {
+      "post": {
+        "summary": "Revoke device token (CS-04 Seam)",
+        "operationId": "revokeDevice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revocation acknowledged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericAck"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "JwksResponse": {
+        "type": "object",
+        "required": ["keys"],
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": { "type": "object" }
+          }
+        }
+      },
+      "TokenRequest": {
+        "type": "object",
+        "required": ["principal_id", "tenant_id"],
+        "properties": {
+          "principal_id": { "type": "string" },
+          "tenant_id": { "type": "string" },
+          "device_id": { "type": "string" }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "required": ["access_token", "token_type", "expires_in"],
+        "properties": {
+          "access_token": { "type": "string" },
+          "token_type": { "type": "string" },
+          "expires_in": { "type": "integer" }
+        }
+      },
+      "DeviceStatusResponse": {
+        "type": "object",
+        "required": ["device_id", "tenant_id", "status"],
+        "properties": {
+          "device_id": { "type": "string" },
+          "tenant_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "revoked", "suspended"] },
+          "fingerprint": { "type": "string" },
+          "last_seen_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "GenericAck": {
+        "type": "object",
+        "required": ["success", "message"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}

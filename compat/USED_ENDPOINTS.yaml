@@ -1,0 +1,52 @@
+# SCMTIPS Field Add-on - Core Contract Endpoints Inventory (Task T1.031 / CS-01..09)
+version: "1.0"
+spec_reference: "core-p13"
+endpoints:
+  - path: "/.well-known/jwks.json"
+    method: "GET"
+    purpose: "Public key verification for core SSO session tokens"
+    exists_in_p13: true
+    seam: null
+    contract_owner: "core-auth"
+
+  - path: "/api/v1/auth/token"
+    method: "POST"
+    purpose: "User authentication session token issue"
+    exists_in_p13: true
+    seam: null
+    contract_owner: "core-auth"
+
+  - path: "/api/v1/devices/{id}/status"
+    method: "GET"
+    purpose: "Poll device authorization, binding fingerprint, and revocation state"
+    exists_in_p13: false
+    seam: "CS-01"
+    contract_owner: "field-team (interim fake-core, switched in Phase 5)"
+
+  - path: "/api/v1/devices/{id}/revoke"
+    method: "POST"
+    purpose: "Revoke compromised or lost device binding"
+    exists_in_p13: false
+    seam: "CS-04"
+    contract_owner: "field-team (interim fake-core, switched in Phase 5)"
+
+  - path: "/api/v1/tenants/{id}/features"
+    method: "GET"
+    purpose: "Check if field add-on and glasses features are enabled for tenant"
+    exists_in_p13: false
+    seam: "CS-03"
+    contract_owner: "core-flags (interim env allowlist)"
+
+  - path: "/api/v1/approvals"
+    method: "POST"
+    purpose: "Request manager approval for high-variance discrepancy or posting"
+    exists_in_p13: false
+    seam: "CS-06"
+    contract_owner: "core-approvals (interim field local approval)"
+
+  - path: "/api/v1/supply/sync"
+    method: "POST"
+    purpose: "Inbound supply receipts push to core supply ledger"
+    exists_in_p13: false
+    seam: "CS-07"
+    contract_owner: "core-supply (interim CSV export / guided load)"

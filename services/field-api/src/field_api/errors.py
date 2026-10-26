@@ -71,6 +71,13 @@ ERR_AUTH_FORBIDDEN = FieldError(
     detail="Principal does not possess required permissions or site scope.",
 )
 
+ERR_DEVICE_REVOKED = FieldError(
+    code="FIELD-AUTH-403-DEVICE-REVOKED",
+    status=403,
+    title="Device Revoked",
+    detail="The requested device registration has been revoked by core or supervisor.",
+)
+
 ERR_NOT_FOUND = FieldError(
     code="FIELD-CORE-404-NOT-FOUND",
     status=404,

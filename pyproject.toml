@@ -89,5 +89,6 @@ markers = [
     "property: Property-based tests (Hypothesis)",
     "integration: Integration tests",
     "contract: Contract verification tests",
+    "compat: Core contract compatibility tests",
 ]
 asyncio_mode = "auto"
