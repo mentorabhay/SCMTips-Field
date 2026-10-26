@@ -21,15 +21,31 @@ JOBS = [
     ("lint", "Lint checks (Ruff & ESLint)", ["uv", "run", "ruff", "check", "."]),
     ("typecheck", "Type checks (Mypy & TypeScript)", ["uv", "run", "mypy", "tools/checks"]),
     ("unit", "Unit tests (Pytest)", ["uv", "run", "pytest", "-m", "unit", "--capture=no"]),
-    ("property", "Property tests (Hypothesis PR1.01-PR1.20)", ["uv", "run", "pytest", "-m", "property"]),
+    (
+        "property",
+        "Property tests (Hypothesis PR1.01-PR1.20)",
+        ["uv", "run", "pytest", "-m", "property"],
+    ),
     ("contract", "Contract verification tests", ["uv", "run", "pytest", "-m", "contract"]),
     ("compat", "Core contract compatibility tests", ["uv", "run", "pytest", "compat/tests"]),
-    ("alembic", "Database migration round-trip", ["uv", "run", "python", "-c", "print('Alembic verified')"]),
+    (
+        "alembic",
+        "Database migration round-trip",
+        ["uv", "run", "python", "-c", "print('Alembic verified')"],
+    ),
     ("semgrep", "Semgrep security scan", ["uv", "run", "python", "-c", "print('Semgrep clean')"]),
     ("trivy", "Trivy vulnerability scan", ["uv", "run", "python", "-c", "print('Trivy clean')"]),
     ("names", "Naming denylist check", ["uv", "run", "python", "tools/checks/names.py"]),
-    ("firewall", "Architectural firewall check", ["uv", "run", "python", "tools/checks/firewall.py"]),
-    ("conventions", "Branch & commit conventions check", ["uv", "run", "python", "-c", "print('Conventions verified')"]),
+    (
+        "firewall",
+        "Architectural firewall check",
+        ["uv", "run", "python", "tools/checks/firewall.py"],
+    ),
+    (
+        "conventions",
+        "Branch & commit conventions check",
+        ["uv", "run", "python", "-c", "print('Conventions verified')"],
+    ),
 ]
 
 
@@ -91,11 +107,27 @@ def main() -> int:
 
     for name, desc, cmd in JOBS:
         if only_job and name != only_job:
-            results.append({"job": name, "description": desc, "status": "SKIP", "duration_s": 0.0, "log_path": ""})
+            results.append(
+                {
+                    "job": name,
+                    "description": desc,
+                    "status": "SKIP",
+                    "duration_s": 0.0,
+                    "log_path": "",
+                }
+            )
             print(f"{name:<14} | {desc:<38} | SKIP   | -", flush=True)
             continue
         if skip_job and name == skip_job:
-            results.append({"job": name, "description": desc, "status": "SKIP", "duration_s": 0.0, "log_path": ""})
+            results.append(
+                {
+                    "job": name,
+                    "description": desc,
+                    "status": "SKIP",
+                    "duration_s": 0.0,
+                    "log_path": "",
+                }
+            )
             print(f"{name:<14} | {desc:<38} | SKIP   | -", flush=True)
             continue
 

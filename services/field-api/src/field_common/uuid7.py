@@ -46,12 +46,7 @@ def uuid7() -> uuid.UUID:
     rand_b_int = int.from_bytes(rand_b_bytes, "big")
     var_and_rand = (0x2 << 62) | (rand_b_int & 0x3FFFFFFFFFFFFFFF)
 
-    raw_int = (
-        (time_high << 96)
-        | (time_mid << 80)
-        | (ver_and_counter << 64)
-        | var_and_rand
-    )
+    raw_int = (time_high << 96) | (time_mid << 80) | (ver_and_counter << 64) | var_and_rand
 
     return uuid.UUID(int=raw_int)
 

@@ -33,7 +33,9 @@ def test_pr1_11_uuid7_monotonic_and_format(count: int) -> None:
     # 3. Monotonic strictly increasing 128-bit integer values
     ints = [u.int for u in generated]
     for i in range(len(ints) - 1):
-        assert ints[i] < ints[i + 1], f"UUIDv7 sequence must be strictly monotonic: {ints[i]} >= {ints[i+1]}"
+        assert ints[i] < ints[i + 1], (
+            f"UUIDv7 sequence must be strictly monotonic: {ints[i]} >= {ints[i + 1]}"
+        )
 
     # 4. Timestamp within 10 seconds of system clock
     first_ts = ints[0] >> 80

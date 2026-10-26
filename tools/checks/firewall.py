@@ -64,25 +64,17 @@ def check_python_file(path: Path) -> list[str]:
     # Check 1: Forbidden Core imports
     for pat in FORBIDDEN_IMPORT_PATTERNS:
         if re.search(pat, content):
-            violations.append(
-                f"{path}: Forbidden direct import of Core codebase ('{pat}')"
-            )
+            violations.append(f"{path}: Forbidden direct import of Core codebase ('{pat}')")
 
     # Check 2: Contributor model IDs
     for pat in FORBIDDEN_MODEL_PATTERNS:
         if re.search(pat, content):
-            violations.append(
-                f"{path}: Model ID ending in '-contributor' is strictly forbidden"
-            )
+            violations.append(f"{path}: Model ID ending in '-contributor' is strictly forbidden")
 
     # Check 3: Cross-service isolation
     posix_path = path.as_posix()
-    if "field-api" in posix_path and re.search(
-        r"\bfrom\s+erp_sim\b|\bimport\s+erp_sim\b", content
-    ):
-        violations.append(
-            f"{path}: Cross-service boundary breach: field-api cannot import erp_sim"
-        )
+    if "field-api" in posix_path and re.search(r"\bfrom\s+erp_sim\b|\bimport\s+erp_sim\b", content):
+        violations.append(f"{path}: Cross-service boundary breach: field-api cannot import erp_sim")
     if "connectors" in posix_path and re.search(
         r"\bfrom\s+(field_api|field_worker)\b|\bimport\s+(field_api|field_worker)\b",
         content,
@@ -93,9 +85,7 @@ def check_python_file(path: Path) -> list[str]:
     if "erp-sim" in posix_path and re.search(
         r"\bfrom\s+field_api\b|\bimport\s+field_api\b", content
     ):
-        violations.append(
-            f"{path}: Simulation boundary breach: erp_sim cannot import field_api"
-        )
+        violations.append(f"{path}: Simulation boundary breach: erp_sim cannot import field_api")
 
     return violations
 
@@ -116,9 +106,7 @@ def main() -> int:
             print(f"  - {v}")
         return 1
 
-    print(
-        "[PASS] Architectural firewall check passed. Zero boundary breaches detected."
-    )
+    print("[PASS] Architectural firewall check passed. Zero boundary breaches detected.")
     return 0
 
 

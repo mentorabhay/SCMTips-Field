@@ -27,11 +27,7 @@ def load_denylist() -> list[str]:
     if not DENYLIST_FILE.exists():
         return []
     with open(DENYLIST_FILE, encoding="utf-8") as f:
-        return [
-            line.strip()
-            for line in f
-            if line.strip() and not line.strip().startswith("#")
-        ]
+        return [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
 
 
 def check_file(file_path: Path, denylist: list[str]) -> list[str]:
