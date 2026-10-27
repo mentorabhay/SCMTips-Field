@@ -1,0 +1,37 @@
+appId: com.scmtips.field.app
+---
+# Maestro Flow: Tower Audit End-to-End Walkthrough (Task T4.030 / FR4.014, FR4.017)
+# Validates sector/level navigation, nameplate capture, missing items, and check-out.
+
+- launchApp:
+    clearState: false
+
+# 1. Verify Check-in and Navigate to Tower Audit Task
+- assertVisible: "Tower Audit"
+- tapOn: "Tower Audit"
+- assertVisible: "Sector A"
+
+# 2. Select Sector and Level
+- tapOn: "Sector A"
+- assertVisible: "Level 1"
+- tapOn: "Level 1"
+
+# 3. Simulate Nameplate OCR Capture
+- tapOn: "Scan Nameplate"
+- assertVisible: "Reading Nameplate..."
+- assertVisible: "Serial Captured"
+
+# 4. Verify Lens Sector Checklist Update
+- assertVisible: "1 of 6"
+
+# 5. Mark Missing Equipment Flow
+- tapOn: "Mark Missing"
+- assertVisible: "Select Reason"
+- tapOn: "not_found"
+- tapOn: "Confirm Missing"
+- assertVisible: "Marked as Missing"
+
+# 6. Check Out
+- tapOn: "Finish Sector"
+- tapOn: "Check Out"
+- assertVisible: "Visit Completed"
