@@ -78,6 +78,13 @@ ERR_DEVICE_REVOKED = FieldError(
     detail="The requested device registration has been revoked by core or supervisor.",
 )
 
+ERR_FLAG_DISABLED = FieldError(
+    code="FIELD-FLAG-403-DISABLED",
+    status=403,
+    title="Feature Flag Disabled",
+    detail="The requested feature is not enabled for this tenant.",
+)
+
 ERR_NOT_FOUND = FieldError(
     code="FIELD-CORE-404-NOT-FOUND",
     status=404,

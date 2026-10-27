@@ -1,0 +1,37 @@
+{
+  "color": {
+    "light": {
+      "bg": { "value": "#FFFFFF" },
+      "surface": { "value": "#F8FAFC" },
+      "surfaceHover": { "value": "#F1F5F9" },
+      "text": { "value": "#0F172A" },
+      "textMuted": { "value": "#475569" },
+      "border": { "value": "#E2E8F0" },
+      "primary": { "value": "#0369A1" },
+      "primaryText": { "value": "#FFFFFF" },
+      "success": { "value": "#15803D" },
+      "warning": { "value": "#B45309" },
+      "danger": { "value": "#B91C1C" }
+    },
+    "dark": {
+      "bg": { "value": "#0B0F19" },
+      "surface": { "value": "#111827" },
+      "surfaceHover": { "value": "#1F2937" },
+      "text": { "value": "#F9FAFB" },
+      "textMuted": { "value": "#9CA3AF" },
+      "border": { "value": "#374151" },
+      "primary": { "value": "#38BDF8" },
+      "primaryText": { "value": "#0F172A" },
+      "success": { "value": "#22C55E" },
+      "warning": { "value": "#F59E0B" },
+      "danger": { "value": "#EF4444" }
+    },
+    "lens": {
+      "bg": { "value": "#000000" },
+      "text": { "value": "#00FF66" },
+      "textDim": { "value": "#009933" },
+      "accent": { "value": "#00FFCC" },
+      "alert": { "value": "#FF3333" }
+    }
+  }
+}
