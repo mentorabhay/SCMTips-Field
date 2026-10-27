@@ -139,6 +139,18 @@ def process_next_tower_job(
             cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
+            # Check if queue is held due to conflict (TC4.152 / PR4.12)
+            cur.execute(
+                """
+                SELECT conflict_reason FROM field.queue_hold
+                WHERE tenant_id = %s AND queue_key = %s AND is_held = true;
+                """,
+                (tenant_id, queue_key),
+            )
+            hold_row = cur.fetchone()
+            if hold_row:
+                return {"status": "held", "queue_key": queue_key, "reason": hold_row[0]}
+
             # 1. Claim next pending job with earliest seq
             cur.execute(
                 """
