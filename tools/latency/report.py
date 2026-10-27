@@ -4,13 +4,11 @@ Joins device spans (from Android LatencyTracker) and server spans (from field-ap
 and generates docs/LATENCY_BASELINE.md comparing measured p50/p95 against BRIEF targets.
 """
 
-from dataclasses import dataclass
-import json
 import os
-from pathlib import Path
 import platform
-import statistics
 import sys
+from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)

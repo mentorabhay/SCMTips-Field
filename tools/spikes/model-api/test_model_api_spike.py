@@ -1,15 +1,15 @@
 """Unit tests for Meta Model API Spike Harness (Task T1.062 / TC1.151)."""
 
-import json
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import pytest
 
 SPIKE_DIR = Path(__file__).resolve().parent
 if str(SPIKE_DIR) not in sys.path:
     sys.path.insert(0, str(SPIKE_DIR))
 
-from harness import ModelApiHarness, run_and_save_all_spikes
+from harness import ModelApiHarness, run_and_save_all_spikes  # noqa: E402
 
 
 @pytest.mark.unit

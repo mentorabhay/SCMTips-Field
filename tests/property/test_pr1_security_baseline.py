@@ -1,14 +1,16 @@
 """Property tests verifying Security & Privacy Baseline (TC1.165 / TC1.170)."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.checks.deps import check_licenses, check_lockfiles
+from tools.checks.deps import check_licenses, check_lockfiles  # noqa: E402
+
 THREAT_MODEL_PATH = ROOT / "docs" / "security" / "THREAT_MODEL.md"
 DATA_CLASS_PATH = ROOT / "docs" / "security" / "DATA_CLASSIFICATION.md"
 DPIA_PATH = ROOT / "docs" / "privacy" / "DPIA_STARTER.md"
@@ -21,7 +23,14 @@ def test_security_documentation_and_stride_coverage():
     """TC1.170: Threat model, classification and DPIA completeness."""
     assert THREAT_MODEL_PATH.exists()
     threat_text = THREAT_MODEL_PATH.read_text(encoding="utf-8")
-    for category in ["Spoofing", "Tampering", "Repudiation", "Information Disclosure", "Denial of Service", "Elevation of Privilege"]:
+    for category in [
+        "Spoofing",
+        "Tampering",
+        "Repudiation",
+        "Information Disclosure",
+        "Denial of Service",
+        "Elevation of Privilege",
+    ]:
         assert category in threat_text, f"Missing STRIDE category: {category}"
 
     assert DATA_CLASS_PATH.exists()

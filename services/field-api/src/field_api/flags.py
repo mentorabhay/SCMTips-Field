@@ -40,9 +40,12 @@ def is_flag_enabled(tenant_id: str, flag_key: str) -> bool:
             overrides = json.loads(overrides_raw)
             if isinstance(overrides, dict):
                 # Tenant-specific override
-                if tenant_id in overrides and isinstance(overrides[tenant_id], dict):
-                    if flag_key in overrides[tenant_id]:
-                        return bool(overrides[tenant_id][flag_key])
+                if (
+                    tenant_id in overrides
+                    and isinstance(overrides[tenant_id], dict)
+                    and flag_key in overrides[tenant_id]
+                ):
+                    return bool(overrides[tenant_id][flag_key])
                 # Global override
                 if flag_key in overrides:
                     return bool(overrides[flag_key])
@@ -53,10 +56,11 @@ def is_flag_enabled(tenant_id: str, flag_key: str) -> bool:
     allowlist_raw = os.getenv("FIELD_TENANT_ALLOWLIST", "").strip()
     if allowlist_raw:
         allowed = [t.strip() for t in allowlist_raw.split(",") if t.strip()]
-        if "*" in allowed or tenant_id in allowed:
-            # Addon and console are enabled for allowlisted tenants
-            if flag_key in (FLAG_ADDON_ENABLED, FLAG_CONSOLE_ENABLED):
-                return True
+        if ("*" in allowed or tenant_id in allowed) and flag_key in (
+            FLAG_ADDON_ENABLED,
+            FLAG_CONSOLE_ENABLED,
+        ):
+            return True
 
     # 3. Default off
     return False

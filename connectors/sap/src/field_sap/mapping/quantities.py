@@ -6,7 +6,7 @@ Enforces:
    000010, 000020, 000030, etc.
 """
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 
 def format_erp_quantity(val: Decimal | float | int | str) -> str:

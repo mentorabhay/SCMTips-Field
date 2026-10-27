@@ -1,14 +1,15 @@
 """Property tests verifying Server Latency Harness and Baseline Report (TC1.157 / TC1.158)."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.latency.report import generate_baseline_data
+from tools.latency.report import generate_baseline_data  # noqa: E402
 
 DOC_PATH = ROOT / "docs" / "LATENCY_BASELINE.md"
 K6_PATH = ROOT / "tools" / "latency" / "k6" / "probe.js"

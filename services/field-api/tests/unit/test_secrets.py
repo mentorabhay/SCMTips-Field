@@ -1,6 +1,7 @@
 """Unit tests for secrets loading and scrubber (Task T1.071 / TC1.160)."""
 
 from pathlib import Path
+
 import pytest
 from field_api.secrets import load_secret, scrub_secrets, scrub_string
 

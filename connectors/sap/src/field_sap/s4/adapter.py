@@ -6,13 +6,10 @@ Config schema for base URL, client, auth method documented.
 """
 
 from dataclasses import dataclass
-from typing import Any
+
 import structlog
 
 from field_sap.ports.erp_port import (
-    ErpError,
-    ErpErrorKind,
-    ErpPort,
     ErpPostingRequest,
     ErpResult,
     MaterialPage,
@@ -69,10 +66,14 @@ class S4ODataAdapter:
         raise NotImplementedError("S4 adapter: create_physical_inventory_doc not implemented in F0")
 
     async def enter_physical_inventory_count(self, req: ErpPostingRequest) -> ErpResult:
-        raise NotImplementedError("S4 adapter: enter_physical_inventory_count not implemented in F0")
+        raise NotImplementedError(
+            "S4 adapter: enter_physical_inventory_count not implemented in F0"
+        )
 
     async def post_physical_inventory_differences(self, req: ErpPostingRequest) -> ErpResult:
-        raise NotImplementedError("S4 adapter: post_physical_inventory_differences not implemented in F0")
+        raise NotImplementedError(
+            "S4 adapter: post_physical_inventory_differences not implemented in F0"
+        )
 
     async def post_transfer_posting(self, req: ErpPostingRequest) -> ErpResult:
         raise NotImplementedError("S4 adapter: post_transfer_posting not implemented in F0")

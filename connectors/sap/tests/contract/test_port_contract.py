@@ -5,6 +5,7 @@ and verifies S4ODataAdapter interface conformity.
 """
 
 import uuid
+
 import pytest
 from erp_sim.app import app as erpsim_app
 from erp_sim.seed import reset_database
@@ -49,6 +50,7 @@ def test_s4_adapter_protocol_and_not_implemented():
 
     with pytest.raises(NotImplementedError) as exc:
         import asyncio
+
         asyncio.run(s4.post_inbound_goods_receipt(req))
     assert "S4 adapter: post_inbound_goods_receipt not implemented in F0" in str(exc.value)
 
@@ -81,7 +83,10 @@ async def test_sim_adapter_goods_receipt_and_cancellation_contract(sim_adapter):
         site_id="WH1",
         plant="1010",
         posting_date="2026-10-27",
-        header_data={"MaterialDocument": res.document_number, "MaterialDocumentYear": res.fiscal_year},
+        header_data={
+            "MaterialDocument": res.document_number,
+            "MaterialDocumentYear": res.fiscal_year,
+        },
         items=(),
     )
     cancel_res = await sim_adapter.cancel_material_document(cancel_req)
@@ -94,7 +99,10 @@ async def test_sim_adapter_goods_receipt_and_cancellation_contract(sim_adapter):
         site_id="WH1",
         plant="1010",
         posting_date="2026-10-27",
-        header_data={"MaterialDocument": res.document_number, "MaterialDocumentYear": res.fiscal_year},
+        header_data={
+            "MaterialDocument": res.document_number,
+            "MaterialDocumentYear": res.fiscal_year,
+        },
         items=(),
     )
     with pytest.raises(ErpError) as exc_info:

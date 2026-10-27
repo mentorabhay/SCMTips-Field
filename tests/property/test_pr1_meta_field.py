@@ -1,6 +1,7 @@
 """Property test verifying docs/META_FIELD.md structure and D1.04 decision (TC1.169)."""
 
 from pathlib import Path
+
 import pytest
 
 DOC_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "META_FIELD.md"

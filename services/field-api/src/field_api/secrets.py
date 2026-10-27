@@ -5,8 +5,8 @@ are loaded securely and scrubbed from outbound payloads and error logs (TC1.160)
 """
 
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import Any
 
 # Sensitive dictionary keys to scrub

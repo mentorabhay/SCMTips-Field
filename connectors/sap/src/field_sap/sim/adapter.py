@@ -6,16 +6,16 @@ maps ZSIM codes and HTTP status to ErpError;
 on timeout calls find_by_idempotency_key before reporting failure.
 """
 
-from datetime import UTC, datetime
 import os
+from datetime import UTC, datetime
 from typing import Any
+
 import httpx
 import structlog
 
 from field_sap.ports.erp_port import (
     ErpError,
     ErpErrorKind,
-    ErpPort,
     ErpPostingRequest,
     ErpResult,
     MaterialItem,
@@ -43,7 +43,9 @@ class SimAdapter:
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._app is not None:
-            return httpx.AsyncClient(transport=httpx.ASGITransport(app=self._app), base_url="http://testserver")
+            return httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=self._app), base_url="http://testserver"
+            )
         return httpx.AsyncClient(base_url=self.base_url, timeout=10.0)
 
     async def _ensure_csrf(self, client: httpx.AsyncClient) -> str:
@@ -69,7 +71,11 @@ class SimAdapter:
             if "error" in data:
                 err_code = data["error"].get("code", f"HTTP_{status_code}")
                 msg_val = data["error"].get("message", {})
-                err_msg = msg_val.get("value", str(data["error"])) if isinstance(msg_val, dict) else str(msg_val)
+                err_msg = (
+                    msg_val.get("value", str(data["error"]))
+                    if isinstance(msg_val, dict)
+                    else str(msg_val)
+                )
         except Exception:
             pass
 
@@ -77,13 +83,21 @@ class SimAdapter:
         if "ZSIM/LOCKED" in err_code or status_code == 423:
             return ErpError(kind=ErpErrorKind.LOCK, message=err_msg, code=err_code, retryable=True)
         if "ZSIM/TIMEOUT" in err_code or status_code == 504:
-            return ErpError(kind=ErpErrorKind.TIMEOUT, message=err_msg, code=err_code, retryable=True)
+            return ErpError(
+                kind=ErpErrorKind.TIMEOUT, message=err_msg, code=err_code, retryable=True
+            )
         if status_code >= 500:
-            return ErpError(kind=ErpErrorKind.TRANSIENT, message=err_msg, code=err_code, retryable=True)
+            return ErpError(
+                kind=ErpErrorKind.TRANSIENT, message=err_msg, code=err_code, retryable=True
+            )
         if "ZSIM/IDEM-CONFLICT" in err_code or status_code == 422:
-            return ErpError(kind=ErpErrorKind.CONFLICT, message=err_msg, code=err_code, retryable=False)
+            return ErpError(
+                kind=ErpErrorKind.CONFLICT, message=err_msg, code=err_code, retryable=False
+            )
         if "ZSIM/NOT-FOUND" in err_code or status_code == 404:
-            return ErpError(kind=ErpErrorKind.NOT_FOUND, message=err_msg, code=err_code, retryable=False)
+            return ErpError(
+                kind=ErpErrorKind.NOT_FOUND, message=err_msg, code=err_code, retryable=False
+            )
         if status_code == 401 or status_code == 403:
             return ErpError(kind=ErpErrorKind.AUTH, message=err_msg, code=err_code, retryable=False)
 
@@ -103,7 +117,7 @@ class SimAdapter:
     ) -> MaterialPage:
         """List materials for plant from erp-sim."""
         async with self._get_client() as client:
-            resp = await client.get(
+            await client.get(
                 f"/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/A_InbDeliveryHeader?$top={limit}",
                 headers={"sap-client": self.sap_client},
             )
@@ -211,7 +225,9 @@ class SimAdapter:
     async def post_outbound_goods_issue(self, req: ErpPostingRequest) -> ErpResult:
         """Post Goods Issue (601)."""
         deliv = req.header_data["DeliveryDocument"]
-        url = f"/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/PostGoodsIssue?DeliveryDocument={deliv}"
+        url = (
+            f"/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/PostGoodsIssue?DeliveryDocument={deliv}"
+        )
         headers = {"sap-client": self.sap_client, "Idempotency-Key": req.idempotency_key}
         async with self._get_client() as client:
             resp = await client.post(url, headers=headers)
@@ -230,7 +246,9 @@ class SimAdapter:
         """Create PI Document."""
         url = "/sap/opu/odata/sap/API_PHYSICAL_INVENTORY_DOC_SRV/A_PhysInventoryDocHeader"
         async with self._get_client() as client:
-            resp = await client.post(url, json=req.header_data, headers={"sap-client": self.sap_client})
+            resp = await client.post(
+                url, json=req.header_data, headers={"sap-client": self.sap_client}
+            )
             if resp.status_code != 200 and resp.status_code != 201:
                 raise self._parse_error(resp)
             data = resp.json().get("d", {})
@@ -249,7 +267,9 @@ class SimAdapter:
         line_no = req.header_data.get("LineNo", 1)
         url = f"/sap/opu/odata/sap/API_PHYSICAL_INVENTORY_DOC_SRV/A_PhysInventoryDocItem(PhysicalInventoryDocument='{pi_doc}',FiscalYear='{fiscal_year}',PhysicalInventoryDocumentItem='{line_no}')"
         async with self._get_client() as client:
-            resp = await client.patch(url, json=req.header_data, headers={"sap-client": self.sap_client})
+            resp = await client.patch(
+                url, json=req.header_data, headers={"sap-client": self.sap_client}
+            )
             if resp.status_code != 200:
                 raise self._parse_error(resp)
             return ErpResult(
@@ -283,7 +303,9 @@ class SimAdapter:
         """Transfer posting (321)."""
         url = "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader"
         async with self._get_client() as client:
-            resp = await client.post(url, json=req.header_data, headers={"sap-client": self.sap_client})
+            resp = await client.post(
+                url, json=req.header_data, headers={"sap-client": self.sap_client}
+            )
             if resp.status_code != 200 and resp.status_code != 201:
                 raise self._parse_error(resp)
             data = resp.json().get("d", {})

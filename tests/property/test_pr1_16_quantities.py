@@ -1,9 +1,11 @@
 """Property Test PR1.16: Decimal Quantities (3 decimals) and Item Number Steps (000010)."""
 
 from decimal import Decimal
-from hypothesis import given, strategies as st
+
 import pytest
 from field_sap.mapping.quantities import format_erp_item_no, format_erp_quantity, parse_erp_item_no
+from hypothesis import given
+from hypothesis import strategies as st
 
 
 @pytest.mark.property

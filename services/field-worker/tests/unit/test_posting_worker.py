@@ -1,10 +1,10 @@
 """Unit tests for PostingQueueWorker (Task T1.061 / FR1.008)."""
 
-from datetime import UTC, datetime
 import uuid
-import pytest
-import psycopg
+from datetime import UTC, datetime
 
+import psycopg
+import pytest
 from field_sap.ports.erp_port import ErpError, ErpErrorKind, ErpPostingRequest, ErpResult
 from field_worker.posting import DATABASE_URL, PostingQueueWorker, enqueue_posting_job
 
@@ -23,7 +23,11 @@ class MockWorkerErpPort:
     async def post_inbound_goods_receipt(self, req: ErpPostingRequest) -> ErpResult:
         self.call_count += 1
         if self.fail_kind:
-            raise ErpError(kind=self.fail_kind, message="Simulated failure", retryable=(self.fail_kind != ErpErrorKind.BUSINESS))
+            raise ErpError(
+                kind=self.fail_kind,
+                message="Simulated failure",
+                retryable=(self.fail_kind != ErpErrorKind.BUSINESS),
+            )
         return ErpResult(
             idempotency_key=req.idempotency_key,
             document_number="4900999999",
@@ -71,7 +75,7 @@ async def test_posting_worker_successful_claim_and_outbox():
         header_data={"DeliveryDocument": "180000001"},
         items=[],
     )
-    j2 = enqueue_posting_job(
+    _j2 = enqueue_posting_job(
         tenant_id=tenant_id,
         queue_key=queue_key,
         doc_family="GoodsReceipt",
