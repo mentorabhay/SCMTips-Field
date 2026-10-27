@@ -37,12 +37,31 @@ def upgrade() -> None:
         ALTER TABLE field.capture_evidence
             ADD COLUMN IF NOT EXISTS consent_ref text NULL;
 
+        ALTER TABLE field.approval_request
+            DROP CONSTRAINT IF EXISTS approval_request_approval_type_check;
+
+        ALTER TABLE field.approval_request
+            ADD CONSTRAINT approval_request_approval_type_check
+            CHECK (approval_type IN ('pi_variance', 'short_pick', 'damage_writeoff', 'manual_reversal', 'tower_mismatch', 'mismatch_decision'));
+
         CREATE POLICY allow_all ON field.verification_attempt FOR ALL USING (true) WITH CHECK (true);
+        CREATE POLICY allow_all ON field.capture_evidence FOR ALL USING (true) WITH CHECK (true);
+        CREATE POLICY allow_all ON field.approval_request FOR ALL USING (true) WITH CHECK (true);
         """
     )
 
 
 def downgrade() -> None:
+    op.execute(
+        """
+        ALTER TABLE field.approval_request
+            DROP CONSTRAINT IF EXISTS approval_request_approval_type_check;
+
+        ALTER TABLE field.approval_request
+            ADD CONSTRAINT approval_request_approval_type_check
+            CHECK (approval_type IN ('pi_variance', 'short_pick', 'damage_writeoff', 'manual_reversal'));
+        """
+    )
     op.execute("DROP POLICY IF EXISTS allow_all ON field.verification_attempt;")
     op.execute(
         """
