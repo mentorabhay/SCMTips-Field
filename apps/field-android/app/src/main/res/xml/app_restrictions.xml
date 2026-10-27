@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<restrictions xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <restriction
+        android:key="field_api_base_url"
+        android:title="Field API Base URL"
+        android:restrictionType="string"
+        android:defaultValue="http://10.0.2.2:8000" />
+
+    <restriction
+        android:key="tenant_hint"
+        android:title="Tenant Hint"
+        android:restrictionType="string"
+        android:defaultValue="" />
+
+    <restriction
+        android:key="site_id"
+        android:title="Default Site ID"
+        android:restrictionType="string"
+        android:defaultValue="" />
+
+    <restriction
+        android:key="allowed_glasses_models"
+        android:title="Allowed Glasses Models"
+        android:restrictionType="string"
+        android:defaultValue="Ray-Ban Display,Ray-Ban Meta" />
+
+    <restriction
+        android:key="force_audio_only"
+        android:title="Force Audio-Only Mode"
+        android:restrictionType="bool"
+        android:defaultValue="false" />
+
+    <restriction
+        android:key="phone_camera_mode_allowed"
+        android:title="Allow Phone Camera Mode"
+        android:restrictionType="bool"
+        android:defaultValue="true" />
+
+    <restriction
+        android:key="max_outbox_items"
+        android:title="Max Outbox Queue Depth"
+        android:restrictionType="integer"
+        android:defaultValue="500" />
+
+    <restriction
+        android:key="log_level"
+        android:title="Log Level"
+        android:restrictionType="string"
+        android:defaultValue="INFO" />
+
+</restrictions>

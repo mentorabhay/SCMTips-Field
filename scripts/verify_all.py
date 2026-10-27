@@ -46,6 +46,11 @@ JOBS = [
         "Branch & commit conventions check",
         ["uv", "run", "python", "-c", "print('Conventions verified')"],
     ),
+    (
+        "field-android",
+        "Android build & multi-module verification",
+        ["uv", "run", "python", "scripts/jobs/android.py"],
+    ),
 ]
 
 
