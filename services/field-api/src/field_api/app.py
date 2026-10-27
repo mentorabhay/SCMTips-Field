@@ -19,14 +19,18 @@ from field_api.middleware.auth import AuthMiddleware
 from field_api.middleware.idempotency import IdempotencyMiddleware
 from field_api.middleware.request_id import RequestIdMiddleware
 from field_api.routes.auth import router as auth_router
+from field_api.routes.captures import router as captures_router
+from field_api.routes.consents import router as consents_router
 from field_api.routes.devices import router as devices_router
 from field_api.routes.diagnostics import router as diagnostics_router
 from field_api.routes.health import router as health_router
+from field_api.routes.live import router as live_router
 from field_api.routes.locations import router as locations_router
 from field_api.routes.materials import router as materials_router
 from field_api.routes.me import router as me_router
 from field_api.routes.sites import router as sites_router
 from field_api.routes.status import router as status_router
+from field_api.routes.voice import router as voice_router
 
 logger = structlog.get_logger(__name__)
 
@@ -123,6 +127,10 @@ def create_app() -> FastAPI:
     app.include_router(locations_router)
     app.include_router(materials_router)
     app.include_router(devices_router)
+    app.include_router(consents_router)
+    app.include_router(captures_router)
+    app.include_router(voice_router)
+    app.include_router(live_router)
     app.include_router(diagnostics_router)
     app.include_router(status_router)
 

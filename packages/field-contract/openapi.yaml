@@ -1,0 +1,2012 @@
+openapi: 3.1.0
+info:
+  title: SCMTIPS Field API
+  description: "Field truth captured in one look \u2014 verified ERP material posting"
+  version: 0.1.0
+paths:
+  /v1/health:
+    get:
+      tags:
+      - Health
+      summary: Get Health
+      description: 'Liveness probe: returns 200 without dependencies.'
+      operationId: get_health_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /v1/ready:
+    get:
+      tags:
+      - Health
+      summary: Get Readiness
+      description: 'Readiness probe: checks database, migration head, and erp-sim
+        link.'
+      operationId: get_readiness_v1_ready_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+  /v1/auth/exchange:
+    post:
+      tags:
+      - Auth
+      summary: Exchange Token
+      description: Exchange a core-issued device/session token for a field access
+        token.
+      operationId: exchange_token_v1_auth_exchange_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExchangeRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/me:
+    get:
+      tags:
+      - Identity
+      summary: Get Me
+      description: Return identity, permissions, site scopes, and flags for current
+        principal.
+      operationId: get_me_v1_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+  /v1/sites:
+    get:
+      tags:
+      - Sites
+      summary: List Sites
+      description: List physical sites in tenant scope with cursor pagination.
+      operationId: list_sites_v1_sites_get
+      parameters:
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Opaque keyset cursor from prior response
+          title: Cursor
+        description: Opaque keyset cursor from prior response
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          description: Page size limit (1..200)
+          default: 50
+          title: Limit
+        description: Page size limit (1..200)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Sites
+      summary: Create Site
+      description: Create a new physical site.
+      operationId: create_site_v1_sites_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiteCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/sites/{site_id}:
+    patch:
+      tags:
+      - Sites
+      summary: Update Site
+      description: Update physical site metadata (requires If-Match tag).
+      operationId: update_site_v1_sites__site_id__patch
+      parameters:
+      - name: site_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Site Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiteUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/locations:
+    get:
+      tags:
+      - Locations
+      summary: List Locations
+      description: List locations with filtering and cursor pagination.
+      operationId: list_locations_v1_locations_get
+      parameters:
+      - name: site_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Id
+      - name: parent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parent Id
+      - name: kind
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Kind
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Opaque keyset cursor from prior response
+          title: Cursor
+        description: Opaque keyset cursor from prior response
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          description: Page size limit (1..200)
+          default: 50
+          title: Limit
+        description: Page size limit (1..200)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Locations
+      summary: Create Location
+      description: Create a new hierarchical location.
+      operationId: create_location_v1_locations_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/locations/{loc_id}:
+    patch:
+      tags:
+      - Locations
+      summary: Update Location
+      description: Move or rename a location (validates cycles & depth, requires If-Match).
+      operationId: update_location_v1_locations__loc_id__patch
+      parameters:
+      - name: loc_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Loc Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/materials:
+    get:
+      tags:
+      - Materials
+      summary: Search Materials
+      description: Search cached materials by plant, number or description with cursor
+        pagination.
+      operationId: search_materials_v1_materials_get
+      parameters:
+      - name: plant
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Plant filter e.g. 1010
+          title: Plant
+        description: Plant filter e.g. 1010
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Search term for material no or description
+          title: Q
+        description: Search term for material no or description
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Opaque keyset cursor from prior response
+          title: Cursor
+        description: Opaque keyset cursor from prior response
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          description: Page size limit (1..200)
+          default: 50
+          title: Limit
+        description: Page size limit (1..200)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/devices:
+    post:
+      tags:
+      - Devices
+      summary: Register Device
+      description: Register a new device binding (phone or glasses with paired_with)
+        (T2.047 / TC2.103).
+      operationId: register_device_v1_devices_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegister'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Devices
+      summary: List Devices
+      description: List registered devices for tenant with filter support and staleness
+        detection (T2.047, T2.061).
+      operationId: list_devices_v1_devices_get
+      parameters:
+      - name: kind
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Kind
+      - name: model
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model
+      - name: site_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Id
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - name: stale_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Stale Only
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceRecord'
+                title: Response List Devices V1 Devices Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/devices/{device_id}:
+    get:
+      tags:
+      - Devices
+      summary: Get Device
+      description: Get device details by ID.
+      operationId: get_device_v1_devices__device_id__get
+      parameters:
+      - name: device_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Device Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/devices/{device_id}/heartbeat:
+    post:
+      tags:
+      - Devices
+      summary: Record Heartbeat
+      description: Accept heartbeat updates every 60s (battery, thermal, queue depth)
+        (T2.047 / FR2.054, TC2.163).
+      operationId: record_heartbeat_v1_devices__device_id__heartbeat_post
+      parameters:
+      - name: device_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Device Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceHeartbeat'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/devices/{device_id}/config:
+    get:
+      tags:
+      - Devices
+      summary: Get Device Config
+      description: Return effective device configuration with ETag (T2.047 / FR2.054,
+        TC2.163).
+      operationId: get_device_config_v1_devices__device_id__config_get
+      parameters:
+      - name: device_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Device Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceConfigResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/devices/{device_id}/revoke:
+    post:
+      tags:
+      - Devices
+      summary: Revoke Device
+      description: Revoke a device binding (requires If-Match tag). Emits device.revoked
+        tick (T2.047 / TC2.102).
+      operationId: revoke_device_v1_devices__device_id__revoke_post
+      parameters:
+      - name: device_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Device Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/consents:
+    post:
+      tags:
+      - Consents
+      summary: Record Consent
+      description: Record or update site privacy and bystander consent (T2.048 / TC2.154).
+      operationId: record_consent_v1_consents_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentRecord'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/captures/uploads:
+    post:
+      tags:
+      - Captures
+      summary: Create Presigned Upload
+      description: Create presigned upload slot with 300 s expiry (T2.049 / FR2.046,
+        TC2.140).
+      operationId: create_presigned_upload_v1_captures_uploads_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresignUploadRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignUploadResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/captures:
+    post:
+      tags:
+      - Captures
+      summary: Ingest Capture
+      description: Ingest capture via multipart or JSON with crop_upload_id (T2.049
+        - T2.051 / FR2.046, FR2.048, FR2.049).
+      operationId: ingest_capture_v1_captures_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_ingest_capture_v1_captures_post'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/captures/{capture_id}:
+    get:
+      tags:
+      - Captures
+      summary: Get Capture
+      description: Retrieve capture details by ID (T2.063 / FR2.068).
+      operationId: get_capture_v1_captures__capture_id__get
+      parameters:
+      - name: capture_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Capture Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/voice-events:
+    post:
+      tags:
+      - Voice and Posting
+      summary: Record Voice Event
+      description: Record recognized voice utterance without persisting audio (T2.052
+        / FR2.038).
+      operationId: record_voice_event_v1_voice_events_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoiceEventRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceEventResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/count-records:
+    post:
+      tags:
+      - Voice and Posting
+      summary: Record Count
+      description: Record counted or read quantity linked to task line / capture (T2.052
+        / FR2.050, TC2.162).
+      operationId: record_count_v1_count_records_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CountRecordRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountRecordResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/tasks/{task_id}/post-requests:
+    post:
+      tags:
+      - Voice and Posting
+      summary: Submit Post Request
+      description: Submit confirmed posting request to ERP, strictly validating confirm
+        turn (T2.052 / FR2.055, TC2.133, PR2.11).
+      operationId: submit_post_request_v1_tasks__task_id__post_requests_post
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostRequestIn'
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostRequestResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/devices/{device_id}/events:
+    get:
+      tags:
+      - Live
+      summary: Sse Live Channel
+      description: SSE fallback live channel (T2.053 / TC2.145).
+      operationId: sse_live_channel_v1_devices__device_id__events_get
+      parameters:
+      - name: device_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Device Id
+      - name: last_event_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Event Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/diagnostics/probe:
+    post:
+      tags:
+      - Diagnostics
+      summary: Latency Probe
+      description: Execute end-to-end latency measurement probe through full middleware
+        stack.
+      operationId: latency_probe_v1_diagnostics_probe_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProbeRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProbeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/system/status:
+    get:
+      tags:
+      - System
+      summary: Get System Status
+      description: Return system readiness, component health, and core compatibility
+        matrix.
+      operationId: get_system_status_v1_system_status_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatusResponse'
+components:
+  schemas:
+    Body_ingest_capture_v1_captures_post:
+      properties:
+        metadata:
+          type: string
+          title: Metadata
+        crop:
+          type: string
+          contentMediaType: application/octet-stream
+          title: Crop
+      type: object
+      title: Body_ingest_capture_v1_captures_post
+    CaptureResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        task_id:
+          type: string
+          title: Task Id
+        device_id:
+          type: string
+          title: Device Id
+        code_type:
+          type: string
+          title: Code Type
+        code_value:
+          type: string
+          title: Code Value
+        task_line_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Task Line Id
+        on_task:
+          type: boolean
+          title: On Task
+        status:
+          type: string
+          title: Status
+        readability:
+          type: number
+          title: Readability
+        rank_score:
+          type: number
+          title: Rank Score
+        evidence_s3_uri:
+          type: string
+          title: Evidence S3 Uri
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - id
+      - tenant_id
+      - task_id
+      - device_id
+      - code_type
+      - code_value
+      - on_task
+      - status
+      - readability
+      - rank_score
+      - evidence_s3_uri
+      - created_at
+      title: CaptureResponse
+    CompatItem:
+      properties:
+        component:
+          type: string
+          title: Component
+        current_version:
+          type: string
+          title: Current Version
+        target_contract:
+          type: string
+          title: Target Contract
+        status:
+          type: string
+          title: Status
+      type: object
+      required:
+      - component
+      - current_version
+      - target_contract
+      - status
+      title: CompatItem
+    ConsentRecord:
+      properties:
+        id:
+          type: string
+          title: Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        site_id:
+          type: string
+          title: Site Id
+        user_id:
+          type: string
+          title: User Id
+        device_id:
+          type: string
+          title: Device Id
+        consent_version:
+          type: string
+          title: Consent Version
+        consent_type:
+          type: string
+          title: Consent Type
+        granted:
+          type: boolean
+          title: Granted
+        granted_at:
+          type: string
+          title: Granted At
+        withdrawn_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Withdrawn At
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - id
+      - tenant_id
+      - site_id
+      - user_id
+      - device_id
+      - consent_version
+      - consent_type
+      - granted
+      - granted_at
+      - created_at
+      title: ConsentRecord
+    ConsentRequest:
+      properties:
+        site_id:
+          type: string
+          title: Site Id
+        user_id:
+          type: string
+          title: User Id
+        device_id:
+          type: string
+          title: Device Id
+        consent_version:
+          type: string
+          title: Consent Version
+          default: v1
+        consent_type:
+          type: string
+          title: Consent Type
+          default: site_and_bystander_privacy
+        granted:
+          type: boolean
+          title: Granted
+          default: true
+      type: object
+      required:
+      - site_id
+      - user_id
+      - device_id
+      title: ConsentRequest
+    CountRecordRequest:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+        task_line_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Task Line Id
+        capture_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Capture Id
+        voice_event_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Voice Event Id
+        quantity:
+          type: number
+          title: Quantity
+        unit:
+          type: string
+          title: Unit
+          default: EA
+        is_reversal:
+          type: boolean
+          title: Is Reversal
+          default: false
+      type: object
+      required:
+      - task_id
+      - quantity
+      title: CountRecordRequest
+    CountRecordResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        task_id:
+          type: string
+          title: Task Id
+        task_line_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Task Line Id
+        quantity:
+          type: number
+          title: Quantity
+        unit:
+          type: string
+          title: Unit
+        is_reversal:
+          type: boolean
+          title: Is Reversal
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - id
+      - tenant_id
+      - task_id
+      - quantity
+      - unit
+      - is_reversal
+      - created_at
+      title: CountRecordResponse
+    DeviceConfigResponse:
+      properties:
+        device_id:
+          type: string
+          title: Device Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        site_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Id
+        config_version:
+          type: integer
+          title: Config Version
+        settings:
+          additionalProperties:
+            type: string
+          type: object
+          title: Settings
+      type: object
+      required:
+      - device_id
+      - tenant_id
+      - config_version
+      - settings
+      title: DeviceConfigResponse
+    DeviceHeartbeat:
+      properties:
+        battery_pct:
+          anyOf:
+          - type: integer
+            maximum: 100.0
+            minimum: 0.0
+          - type: 'null'
+          title: Battery Pct
+        thermal_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Thermal Status
+        queue_depth:
+          type: integer
+          title: Queue Depth
+          default: 0
+        glasses_state:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Glasses State
+        app_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: App Version
+        firmware_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Firmware Version
+      type: object
+      title: DeviceHeartbeat
+    DeviceRecord:
+      properties:
+        id:
+          type: string
+          title: Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        kind:
+          type: string
+          title: Kind
+        serial_no:
+          type: string
+          title: Serial No
+        model:
+          type: string
+          title: Model
+        status:
+          type: string
+          title: Status
+        paired_with:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Paired With
+        site_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Id
+        battery_pct:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Battery Pct
+        thermal_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Thermal Status
+        queue_depth:
+          type: integer
+          title: Queue Depth
+          default: 0
+        glasses_state:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Glasses State
+        last_seen_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Seen At
+        revoked_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Revoked At
+        config_version:
+          type: integer
+          title: Config Version
+          default: 1
+        version:
+          type: integer
+          title: Version
+          default: 1
+        is_stale:
+          type: boolean
+          title: Is Stale
+          default: false
+        created_at:
+          type: string
+          title: Created At
+        updated_at:
+          type: string
+          title: Updated At
+      type: object
+      required:
+      - id
+      - tenant_id
+      - kind
+      - serial_no
+      - model
+      - status
+      - created_at
+      - updated_at
+      title: DeviceRecord
+    DeviceRegister:
+      properties:
+        kind:
+          type: string
+          title: Kind
+          description: phone or glasses
+        serial_no:
+          type: string
+          title: Serial No
+        model:
+          type: string
+          title: Model
+        os_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Os Version
+        app_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: App Version
+        paired_with:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Paired With
+        site_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Id
+      type: object
+      required:
+      - kind
+      - serial_no
+      - model
+      title: DeviceRegister
+    ExchangeRequest:
+      properties:
+        device_token:
+          type: string
+          title: Device Token
+          description: Core P10 device token or SSO session token
+        device_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Device Id
+          description: Client device UUID / hardware identifier
+        client_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Client Id
+      type: object
+      required:
+      - device_token
+      title: ExchangeRequest
+    ExchangeResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+          default: Bearer
+        expires_in:
+          type: integer
+          title: Expires In
+        roles:
+          items:
+            type: string
+          type: array
+          title: Roles
+        permissions:
+          items:
+            type: string
+          type: array
+          title: Permissions
+        tenant_id:
+          type: string
+          title: Tenant Id
+        site_ids:
+          items:
+            type: string
+          type: array
+          title: Site Ids
+        device_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Device Id
+      type: object
+      required:
+      - access_token
+      - expires_in
+      - roles
+      - permissions
+      - tenant_id
+      - site_ids
+      title: ExchangeResponse
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+        service:
+          type: string
+          title: Service
+          default: field-api
+        version:
+          type: string
+          title: Version
+          default: 0.1.0
+      type: object
+      required:
+      - status
+      title: HealthResponse
+    LocationCreate:
+      properties:
+        site_id:
+          type: string
+          title: Site Id
+        parent_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parent Id
+        kind:
+          type: string
+          title: Kind
+          description: zone, aisle, rack, level, position, tower, sector
+        code:
+          type: string
+          pattern: ^[A-Z0-9-]{1,24}$
+          title: Code
+        erp_ref:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Erp Ref
+        erp_ref_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Erp Ref Type
+      type: object
+      required:
+      - site_id
+      - kind
+      - code
+      title: LocationCreate
+    LocationRecord:
+      properties:
+        id:
+          type: string
+          title: Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        site_id:
+          type: string
+          title: Site Id
+        parent_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parent Id
+        kind:
+          type: string
+          title: Kind
+        code:
+          type: string
+          title: Code
+        path:
+          type: string
+          title: Path
+        depth:
+          type: integer
+          title: Depth
+        erp_ref:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Erp Ref
+        erp_ref_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Erp Ref Type
+        status:
+          type: string
+          title: Status
+        version:
+          type: integer
+          title: Version
+        created_at:
+          type: string
+          title: Created At
+        updated_at:
+          type: string
+          title: Updated At
+      type: object
+      required:
+      - id
+      - tenant_id
+      - site_id
+      - parent_id
+      - kind
+      - code
+      - path
+      - depth
+      - erp_ref
+      - erp_ref_type
+      - status
+      - version
+      - created_at
+      - updated_at
+      title: LocationRecord
+    LocationUpdate:
+      properties:
+        code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
+        parent_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parent Id
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      type: object
+      title: LocationUpdate
+    MeResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        roles:
+          items:
+            type: string
+          type: array
+          title: Roles
+        permissions:
+          items:
+            type: string
+          type: array
+          title: Permissions
+        site_ids:
+          items:
+            type: string
+          type: array
+          title: Site Ids
+        device_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Device Id
+        flags:
+          additionalProperties:
+            type: boolean
+          type: object
+          title: Flags
+      type: object
+      required:
+      - id
+      - tenant_id
+      - roles
+      - permissions
+      - site_ids
+      - device_id
+      - flags
+      title: MeResponse
+    PaginatedResponse:
+      properties:
+        items:
+          items: {}
+          type: array
+          title: Items
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
+        total_in_page:
+          type: integer
+          title: Total In Page
+      type: object
+      required:
+      - items
+      - total_in_page
+      title: PaginatedResponse
+    PostRequestIn:
+      properties:
+        device_id:
+          type: string
+          title: Device Id
+        staged_payload:
+          additionalProperties: true
+          type: object
+          title: Staged Payload
+        post_voice_event_id:
+          type: string
+          title: Post Voice Event Id
+        confirm_voice_event_id:
+          type: string
+          title: Confirm Voice Event Id
+        is_reversal:
+          type: boolean
+          title: Is Reversal
+          default: false
+      type: object
+      required:
+      - device_id
+      - staged_payload
+      - post_voice_event_id
+      - confirm_voice_event_id
+      title: PostRequestIn
+    PostRequestResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        task_id:
+          type: string
+          title: Task Id
+        status:
+          type: string
+          title: Status
+        is_reversal:
+          type: boolean
+          title: Is Reversal
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - id
+      - tenant_id
+      - task_id
+      - status
+      - is_reversal
+      - created_at
+      title: PostRequestResponse
+    PresignUploadRequest:
+      properties:
+        device_id:
+          type: string
+          title: Device Id
+        file_size_bytes:
+          type: integer
+          maximum: 10485760.0
+          exclusiveMinimum: 0.0
+          title: File Size Bytes
+        sha256_hash:
+          type: string
+          title: Sha256 Hash
+      type: object
+      required:
+      - device_id
+      - file_size_bytes
+      - sha256_hash
+      title: PresignUploadRequest
+    PresignUploadResponse:
+      properties:
+        crop_upload_id:
+          type: string
+          title: Crop Upload Id
+        upload_url:
+          type: string
+          title: Upload Url
+        s3_key:
+          type: string
+          title: S3 Key
+        expires_at:
+          type: string
+          title: Expires At
+        expires_in_seconds:
+          type: integer
+          title: Expires In Seconds
+          default: 300
+      type: object
+      required:
+      - crop_upload_id
+      - upload_url
+      - s3_key
+      - expires_at
+      title: PresignUploadResponse
+    ProbeRequest:
+      properties:
+        client_sent_ms:
+          type: number
+          title: Client Sent Ms
+          description: Client epoch timestamp in ms
+        device_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Device Id
+        is_probe:
+          type: boolean
+          title: Is Probe
+          default: true
+      type: object
+      required:
+      - client_sent_ms
+      title: ProbeRequest
+    ProbeResponse:
+      properties:
+        probe_id:
+          type: string
+          title: Probe Id
+        client_sent_ms:
+          type: number
+          title: Client Sent Ms
+        server_received_ms:
+          type: number
+          title: Server Received Ms
+        server_duration_ms:
+          type: number
+          title: Server Duration Ms
+        status:
+          type: string
+          title: Status
+          default: ok
+      type: object
+      required:
+      - probe_id
+      - client_sent_ms
+      - server_received_ms
+      - server_duration_ms
+      title: ProbeResponse
+    ReadinessCheck:
+      properties:
+        name:
+          type: string
+          title: Name
+        status:
+          type: string
+          title: Status
+        duration_ms:
+          type: number
+          title: Duration Ms
+        message:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Message
+      type: object
+      required:
+      - name
+      - status
+      - duration_ms
+      title: ReadinessCheck
+    ReadinessResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+        checks:
+          items:
+            $ref: '#/components/schemas/ReadinessCheck'
+          type: array
+          title: Checks
+      type: object
+      required:
+      - status
+      - checks
+      title: ReadinessResponse
+    ServiceHealth:
+      properties:
+        name:
+          type: string
+          title: Name
+        status:
+          type: string
+          title: Status
+        latency_ms:
+          type: number
+          title: Latency Ms
+      type: object
+      required:
+      - name
+      - status
+      - latency_ms
+      title: ServiceHealth
+    SiteCreate:
+      properties:
+        code:
+          type: string
+          pattern: ^[A-Z0-9-]{2,32}$
+          title: Code
+          example: SAMPLE-WH-01
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Name
+        kind:
+          type: string
+          title: Kind
+          description: warehouse, tower, plant, yard, other
+        erp_plant:
+          anyOf:
+          - type: string
+            maxLength: 4
+            minLength: 4
+          - type: 'null'
+          title: Erp Plant
+          example: '1010'
+        erp_storage_locations:
+          items:
+            type: string
+          type: array
+          title: Erp Storage Locations
+        timezone:
+          type: string
+          title: Timezone
+          default: UTC
+        lat:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Lat
+        lon:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Lon
+      type: object
+      required:
+      - code
+      - name
+      - kind
+      title: SiteCreate
+    SiteRecord:
+      properties:
+        id:
+          type: string
+          title: Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        code:
+          type: string
+          title: Code
+        name:
+          type: string
+          title: Name
+        kind:
+          type: string
+          title: Kind
+        erp_plant:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Erp Plant
+        erp_storage_locations:
+          items:
+            type: string
+          type: array
+          title: Erp Storage Locations
+        timezone:
+          type: string
+          title: Timezone
+        lat:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Lat
+        lon:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Lon
+        status:
+          type: string
+          title: Status
+        version:
+          type: integer
+          title: Version
+        created_at:
+          type: string
+          title: Created At
+        updated_at:
+          type: string
+          title: Updated At
+      type: object
+      required:
+      - id
+      - tenant_id
+      - code
+      - name
+      - kind
+      - erp_plant
+      - erp_storage_locations
+      - timezone
+      - lat
+      - lon
+      - status
+      - version
+      - created_at
+      - updated_at
+      title: SiteRecord
+    SiteUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        erp_storage_locations:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Erp Storage Locations
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      type: object
+      title: SiteUpdate
+    SystemStatusResponse:
+      properties:
+        overall_status:
+          type: string
+          title: Overall Status
+        services:
+          items:
+            $ref: '#/components/schemas/ServiceHealth'
+          type: array
+          title: Services
+        compatibility:
+          items:
+            $ref: '#/components/schemas/CompatItem'
+          type: array
+          title: Compatibility
+      type: object
+      required:
+      - overall_status
+      - services
+      - compatibility
+      title: SystemStatusResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VoiceEventRequest:
+      properties:
+        device_id:
+          type: string
+          title: Device Id
+        task_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Task Id
+        capture_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Capture Id
+        transcript:
+          type: string
+          title: Transcript
+        confidence:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence
+        intent:
+          type: string
+          title: Intent
+        is_accepted:
+          type: boolean
+          title: Is Accepted
+          default: true
+        locale:
+          type: string
+          title: Locale
+          default: en-US
+        client_timestamp:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Client Timestamp
+      type: object
+      required:
+      - device_id
+      - transcript
+      - confidence
+      - intent
+      title: VoiceEventRequest
+    VoiceEventResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        tenant_id:
+          type: string
+          title: Tenant Id
+        device_id:
+          type: string
+          title: Device Id
+        intent:
+          type: string
+          title: Intent
+        is_accepted:
+          type: boolean
+          title: Is Accepted
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - id
+      - tenant_id
+      - device_id
+      - intent
+      - is_accepted
+      - created_at
+      title: VoiceEventResponse

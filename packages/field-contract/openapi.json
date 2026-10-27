@@ -56,7 +56,7 @@
           "Auth"
         ],
         "summary": "Exchange Token",
-        "description": "Exchange a core-issued device token for a field access token.",
+        "description": "Exchange a core-issued device/session token for a field access token.",
         "operationId": "exchange_token_v1_auth_exchange_post",
         "requestBody": {
           "content": {
@@ -588,17 +588,17 @@
           "Devices"
         ],
         "summary": "Register Device",
-        "description": "Register a new device binding.",
+        "description": "Register a new device binding (phone or glasses with paired_with) (T2.047 / TC2.103).",
         "operationId": "register_device_v1_devices_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DeviceRegister"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -622,6 +622,255 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "List Devices",
+        "description": "List registered devices for tenant with filter support and staleness detection (T2.047, T2.061).",
+        "operationId": "list_devices_v1_devices_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model"
+            }
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "stale_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Stale Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceRecord"
+                  },
+                  "title": "Response List Devices V1 Devices Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/{device_id}": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Get Device",
+        "description": "Get device details by ID.",
+        "operationId": "get_device_v1_devices__device_id__get",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/{device_id}/heartbeat": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Record Heartbeat",
+        "description": "Accept heartbeat updates every 60s (battery, thermal, queue depth) (T2.047 / FR2.054, TC2.163).",
+        "operationId": "record_heartbeat_v1_devices__device_id__heartbeat_post",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceHeartbeat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/{device_id}/config": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Get Device Config",
+        "description": "Return effective device configuration with ETag (T2.047 / FR2.054, TC2.163).",
+        "operationId": "get_device_config_v1_devices__device_id__config_get",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/devices/{device_id}/revoke": {
@@ -630,7 +879,7 @@
           "Devices"
         ],
         "summary": "Revoke Device",
-        "description": "Revoke a device binding (requires If-Match tag).",
+        "description": "Revoke a device binding (requires If-Match tag). Emits device.revoked tick (T2.047 / TC2.102).",
         "operationId": "revoke_device_v1_devices__device_id__revoke_post",
         "parameters": [
           {
@@ -651,6 +900,377 @@
                 "schema": {
                   "$ref": "#/components/schemas/DeviceRecord"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consents": {
+      "post": {
+        "tags": [
+          "Consents"
+        ],
+        "summary": "Record Consent",
+        "description": "Record or update site privacy and bystander consent (T2.048 / TC2.154).",
+        "operationId": "record_consent_v1_consents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/captures/uploads": {
+      "post": {
+        "tags": [
+          "Captures"
+        ],
+        "summary": "Create Presigned Upload",
+        "description": "Create presigned upload slot with 300 s expiry (T2.049 / FR2.046, TC2.140).",
+        "operationId": "create_presigned_upload_v1_captures_uploads_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresignUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/captures": {
+      "post": {
+        "tags": [
+          "Captures"
+        ],
+        "summary": "Ingest Capture",
+        "description": "Ingest capture via multipart or JSON with crop_upload_id (T2.049 - T2.051 / FR2.046, FR2.048, FR2.049).",
+        "operationId": "ingest_capture_v1_captures_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_ingest_capture_v1_captures_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/captures/{capture_id}": {
+      "get": {
+        "tags": [
+          "Captures"
+        ],
+        "summary": "Get Capture",
+        "description": "Retrieve capture details by ID (T2.063 / FR2.068).",
+        "operationId": "get_capture_v1_captures__capture_id__get",
+        "parameters": [
+          {
+            "name": "capture_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Capture Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/voice-events": {
+      "post": {
+        "tags": [
+          "Voice and Posting"
+        ],
+        "summary": "Record Voice Event",
+        "description": "Record recognized voice utterance without persisting audio (T2.052 / FR2.038).",
+        "operationId": "record_voice_event_v1_voice_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceEventResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/count-records": {
+      "post": {
+        "tags": [
+          "Voice and Posting"
+        ],
+        "summary": "Record Count",
+        "description": "Record counted or read quantity linked to task line / capture (T2.052 / FR2.050, TC2.162).",
+        "operationId": "record_count_v1_count_records_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountRecordResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}/post-requests": {
+      "post": {
+        "tags": [
+          "Voice and Posting"
+        ],
+        "summary": "Submit Post Request",
+        "description": "Submit confirmed posting request to ERP, strictly validating confirm turn (T2.052 / FR2.055, TC2.133, PR2.11).",
+        "operationId": "submit_post_request_v1_tasks__task_id__post_requests_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostRequestIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/{device_id}/events": {
+      "get": {
+        "tags": [
+          "Live"
+        ],
+        "summary": "Sse Live Channel",
+        "description": "SSE fallback live channel (T2.053 / TC2.145).",
+        "operationId": "sse_live_channel_v1_devices__device_id__events_get",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          },
+          {
+            "name": "last_event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -734,6 +1354,100 @@
   },
   "components": {
     "schemas": {
+      "Body_ingest_capture_v1_captures_post": {
+        "properties": {
+          "metadata": {
+            "type": "string",
+            "title": "Metadata"
+          },
+          "crop": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Crop"
+          }
+        },
+        "type": "object",
+        "title": "Body_ingest_capture_v1_captures_post"
+      },
+      "CaptureResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "code_type": {
+            "type": "string",
+            "title": "Code Type"
+          },
+          "code_value": {
+            "type": "string",
+            "title": "Code Value"
+          },
+          "task_line_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Line Id"
+          },
+          "on_task": {
+            "type": "boolean",
+            "title": "On Task"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "readability": {
+            "type": "number",
+            "title": "Readability"
+          },
+          "rank_score": {
+            "type": "number",
+            "title": "Rank Score"
+          },
+          "evidence_s3_uri": {
+            "type": "string",
+            "title": "Evidence S3 Uri"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "task_id",
+          "device_id",
+          "code_type",
+          "code_value",
+          "on_task",
+          "status",
+          "readability",
+          "rank_score",
+          "evidence_s3_uri",
+          "created_at"
+        ],
+        "title": "CaptureResponse"
+      },
       "CompatItem": {
         "properties": {
           "component": {
@@ -762,6 +1476,338 @@
         ],
         "title": "CompatItem"
       },
+      "ConsentRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "consent_version": {
+            "type": "string",
+            "title": "Consent Version"
+          },
+          "consent_type": {
+            "type": "string",
+            "title": "Consent Type"
+          },
+          "granted": {
+            "type": "boolean",
+            "title": "Granted"
+          },
+          "granted_at": {
+            "type": "string",
+            "title": "Granted At"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "site_id",
+          "user_id",
+          "device_id",
+          "consent_version",
+          "consent_type",
+          "granted",
+          "granted_at",
+          "created_at"
+        ],
+        "title": "ConsentRecord"
+      },
+      "ConsentRequest": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "consent_version": {
+            "type": "string",
+            "title": "Consent Version",
+            "default": "v1"
+          },
+          "consent_type": {
+            "type": "string",
+            "title": "Consent Type",
+            "default": "site_and_bystander_privacy"
+          },
+          "granted": {
+            "type": "boolean",
+            "title": "Granted",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id",
+          "user_id",
+          "device_id"
+        ],
+        "title": "ConsentRequest"
+      },
+      "CountRecordRequest": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "task_line_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Line Id"
+          },
+          "capture_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture Id"
+          },
+          "voice_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Event Id"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "default": "EA"
+          },
+          "is_reversal": {
+            "type": "boolean",
+            "title": "Is Reversal",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "quantity"
+        ],
+        "title": "CountRecordRequest"
+      },
+      "CountRecordResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "task_line_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Line Id"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "is_reversal": {
+            "type": "boolean",
+            "title": "Is Reversal"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "task_id",
+          "quantity",
+          "unit",
+          "is_reversal",
+          "created_at"
+        ],
+        "title": "CountRecordResponse"
+      },
+      "DeviceConfigResponse": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "site_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Id"
+          },
+          "config_version": {
+            "type": "integer",
+            "title": "Config Version"
+          },
+          "settings": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Settings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "tenant_id",
+          "config_version",
+          "settings"
+        ],
+        "title": "DeviceConfigResponse"
+      },
+      "DeviceHeartbeat": {
+        "properties": {
+          "battery_pct": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Battery Pct"
+          },
+          "thermal_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thermal Status"
+          },
+          "queue_depth": {
+            "type": "integer",
+            "title": "Queue Depth",
+            "default": 0
+          },
+          "glasses_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glasses State"
+          },
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "firmware_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firmware Version"
+          }
+        },
+        "type": "object",
+        "title": "DeviceHeartbeat"
+      },
       "DeviceRecord": {
         "properties": {
           "id": {
@@ -788,9 +1834,102 @@
             "type": "string",
             "title": "Status"
           },
+          "paired_with": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paired With"
+          },
+          "site_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Id"
+          },
+          "battery_pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Battery Pct"
+          },
+          "thermal_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thermal Status"
+          },
+          "queue_depth": {
+            "type": "integer",
+            "title": "Queue Depth",
+            "default": 0
+          },
+          "glasses_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glasses State"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "config_version": {
+            "type": "integer",
+            "title": "Config Version",
+            "default": 1
+          },
           "version": {
             "type": "integer",
-            "title": "Version"
+            "title": "Version",
+            "default": 1
+          },
+          "is_stale": {
+            "type": "boolean",
+            "title": "Is Stale",
+            "default": false
           },
           "created_at": {
             "type": "string",
@@ -809,7 +1948,6 @@
           "serial_no",
           "model",
           "status",
-          "version",
           "created_at",
           "updated_at"
         ],
@@ -851,6 +1989,28 @@
               }
             ],
             "title": "App Version"
+          },
+          "paired_with": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paired With"
+          },
+          "site_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Id"
           }
         },
         "type": "object",
@@ -866,7 +2026,19 @@
           "device_token": {
             "type": "string",
             "title": "Device Token",
-            "description": "Core P10 device token"
+            "description": "Core P10 device token or SSO session token"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id",
+            "description": "Client device UUID / hardware identifier"
           },
           "client_id": {
             "anyOf": [
@@ -899,8 +2071,7 @@
           },
           "expires_in": {
             "type": "integer",
-            "title": "Expires In",
-            "default": 3600
+            "title": "Expires In"
           },
           "roles": {
             "items": {
@@ -926,11 +2097,23 @@
             },
             "type": "array",
             "title": "Site Ids"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
           }
         },
         "type": "object",
         "required": [
           "access_token",
+          "expires_in",
           "roles",
           "permissions",
           "tenant_id",
@@ -1261,6 +2444,136 @@
           "total_in_page"
         ],
         "title": "PaginatedResponse"
+      },
+      "PostRequestIn": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "staged_payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Staged Payload"
+          },
+          "post_voice_event_id": {
+            "type": "string",
+            "title": "Post Voice Event Id"
+          },
+          "confirm_voice_event_id": {
+            "type": "string",
+            "title": "Confirm Voice Event Id"
+          },
+          "is_reversal": {
+            "type": "boolean",
+            "title": "Is Reversal",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "staged_payload",
+          "post_voice_event_id",
+          "confirm_voice_event_id"
+        ],
+        "title": "PostRequestIn"
+      },
+      "PostRequestResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "is_reversal": {
+            "type": "boolean",
+            "title": "Is Reversal"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "task_id",
+          "status",
+          "is_reversal",
+          "created_at"
+        ],
+        "title": "PostRequestResponse"
+      },
+      "PresignUploadRequest": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "file_size_bytes": {
+            "type": "integer",
+            "maximum": 10485760.0,
+            "exclusiveMinimum": 0.0,
+            "title": "File Size Bytes"
+          },
+          "sha256_hash": {
+            "type": "string",
+            "title": "Sha256 Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "file_size_bytes",
+          "sha256_hash"
+        ],
+        "title": "PresignUploadRequest"
+      },
+      "PresignUploadResponse": {
+        "properties": {
+          "crop_upload_id": {
+            "type": "string",
+            "title": "Crop Upload Id"
+          },
+          "upload_url": {
+            "type": "string",
+            "title": "Upload Url"
+          },
+          "s3_key": {
+            "type": "string",
+            "title": "S3 Key"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          },
+          "expires_in_seconds": {
+            "type": "integer",
+            "title": "Expires In Seconds",
+            "default": 300
+          }
+        },
+        "type": "object",
+        "required": [
+          "crop_upload_id",
+          "upload_url",
+          "s3_key",
+          "expires_at"
+        ],
+        "title": "PresignUploadResponse"
       },
       "ProbeRequest": {
         "properties": {
@@ -1691,6 +3004,117 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VoiceEventRequest": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "capture_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture Id"
+          },
+          "transcript": {
+            "type": "string",
+            "title": "Transcript"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
+          "is_accepted": {
+            "type": "boolean",
+            "title": "Is Accepted",
+            "default": true
+          },
+          "locale": {
+            "type": "string",
+            "title": "Locale",
+            "default": "en-US"
+          },
+          "client_timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "transcript",
+          "confidence",
+          "intent"
+        ],
+        "title": "VoiceEventRequest"
+      },
+      "VoiceEventResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
+          "is_accepted": {
+            "type": "boolean",
+            "title": "Is Accepted"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "device_id",
+          "intent",
+          "is_accepted",
+          "created_at"
+        ],
+        "title": "VoiceEventResponse"
       }
     }
   }
