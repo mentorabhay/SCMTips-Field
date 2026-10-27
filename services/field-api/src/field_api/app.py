@@ -32,6 +32,9 @@ from field_api.routes.me import router as me_router
 from field_api.routes.sites import router as sites_router
 from field_api.routes.status import router as status_router
 from field_api.routes.voice import router as voice_router
+from field_api.sites.tree import router as site_tree_router
+from field_api.visits.api import router as visits_router
+from field_api.visits.override import router as visits_override_router
 from field_api.warehouse.receiving.routes import router as warehouse_router
 
 logger = structlog.get_logger(__name__)
@@ -137,6 +140,9 @@ def create_app() -> FastAPI:
     app.include_router(status_router)
     app.include_router(posting_router)
     app.include_router(warehouse_router)
+    app.include_router(site_tree_router)
+    app.include_router(visits_router)
+    app.include_router(visits_override_router)
 
     return app
 

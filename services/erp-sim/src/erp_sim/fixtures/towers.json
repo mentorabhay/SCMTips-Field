@@ -1,0 +1,1969 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "SAMPLE tower fixtures for Phase 4 (IN01-TWR-0042, IN01-TWR-0057, IN01-TWR-0103)",
+    "total_sites": 3,
+    "total_functional_locations": 156,
+    "total_equipment": 48,
+    "deliberate_mismatches_count": 3
+  },
+  "sites": [
+    {
+      "code": "IN01-TWR-0042",
+      "name": "SAMPLE Tower Site 0042 - North Ridge",
+      "plant": "1010",
+      "lat": 12.9716,
+      "lon": 77.5946,
+      "radius_m": 150
+    },
+    {
+      "code": "IN01-TWR-0057",
+      "name": "SAMPLE Tower Site 0057 - South Valley",
+      "plant": "1010",
+      "lat": 12.9352,
+      "lon": 77.6245,
+      "radius_m": 150
+    },
+    {
+      "code": "IN01-TWR-0103",
+      "name": "SAMPLE Tower Site 0103 - West Hills",
+      "plant": "1010",
+      "lat": 12.985,
+      "lon": 77.535,
+      "radius_m": 150
+    }
+  ],
+  "functional_locations": [
+    {
+      "FunctionalLocation": "IN01-TWR-0042",
+      "SuperiorFunctionalLocation": "",
+      "FunctionalLocationName": "SAMPLE Tower Site 0042 - North Ridge",
+      "MaintenancePlant": "1010",
+      "Kind": "tower_site",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-SH",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042",
+      "FunctionalLocationName": "Equipment Shelter - IN01-TWR-0042",
+      "MaintenancePlant": "1010",
+      "Kind": "shelter",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-SH-R01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-SH",
+      "FunctionalLocationName": "Rack R01",
+      "MaintenancePlant": "1010",
+      "Kind": "rack",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-SH-R01-S01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-SH-R01",
+      "FunctionalLocationName": "Rack R01 Slot S01",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-SH-R01-S02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-SH-R01",
+      "FunctionalLocationName": "Rack R01 Slot S02",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-SH-R02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-SH",
+      "FunctionalLocationName": "Rack R02",
+      "MaintenancePlant": "1010",
+      "Kind": "rack",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-SH-R02-S01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-SH-R02",
+      "FunctionalLocationName": "Rack R02 Slot S01",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-SH-R02-S02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-SH-R02",
+      "FunctionalLocationName": "Rack R02 Slot S02",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042",
+      "FunctionalLocationName": "Tower T01 - IN01-TWR-0042",
+      "MaintenancePlant": "1010",
+      "Kind": "tower",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SA",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01",
+      "FunctionalLocationName": "Sector A",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "A",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SA-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SA",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SA-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SA",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SA-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SA-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SA-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SA",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SA-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SA-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SA-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SA",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SB",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01",
+      "FunctionalLocationName": "Sector B",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "B",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SB-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SB",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SB-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SB",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SB-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SB-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SB-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SB",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SB-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SB-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SB-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SB",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SC",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01",
+      "FunctionalLocationName": "Sector C",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "C",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SC-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SC",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SC-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SC",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SC-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SC-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SC-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SC",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SC-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SC-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T01-SC-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T01-SC",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042",
+      "FunctionalLocationName": "Tower T02 - IN01-TWR-0042",
+      "MaintenancePlant": "1010",
+      "Kind": "tower",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SA",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02",
+      "FunctionalLocationName": "Sector A",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "A",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SA-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SA",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SA-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SA",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SA-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SA-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SA-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SA",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SA-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SA-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SA-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SA",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SB",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02",
+      "FunctionalLocationName": "Sector B",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "B",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SB-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SB",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SB-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SB",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SB-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SB-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SB-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SB",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SB-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SB-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SB-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SB",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SC",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02",
+      "FunctionalLocationName": "Sector C",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "C",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SC-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SC",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SC-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SC",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SC-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SC-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SC-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SC",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SC-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SC-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0042-T02-SC-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0042-T02-SC",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057",
+      "SuperiorFunctionalLocation": "",
+      "FunctionalLocationName": "SAMPLE Tower Site 0057 - South Valley",
+      "MaintenancePlant": "1010",
+      "Kind": "tower_site",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-SH",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057",
+      "FunctionalLocationName": "Equipment Shelter - IN01-TWR-0057",
+      "MaintenancePlant": "1010",
+      "Kind": "shelter",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-SH-R01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-SH",
+      "FunctionalLocationName": "Rack R01",
+      "MaintenancePlant": "1010",
+      "Kind": "rack",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-SH-R01-S01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-SH-R01",
+      "FunctionalLocationName": "Rack R01 Slot S01",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-SH-R01-S02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-SH-R01",
+      "FunctionalLocationName": "Rack R01 Slot S02",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-SH-R02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-SH",
+      "FunctionalLocationName": "Rack R02",
+      "MaintenancePlant": "1010",
+      "Kind": "rack",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-SH-R02-S01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-SH-R02",
+      "FunctionalLocationName": "Rack R02 Slot S01",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-SH-R02-S02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-SH-R02",
+      "FunctionalLocationName": "Rack R02 Slot S02",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057",
+      "FunctionalLocationName": "Tower T01 - IN01-TWR-0057",
+      "MaintenancePlant": "1010",
+      "Kind": "tower",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SA",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01",
+      "FunctionalLocationName": "Sector A",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "A",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SA-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SA",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SA-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SA",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SA-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SA-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SA-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SA",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SA-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SA-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SA-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SA",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SB",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01",
+      "FunctionalLocationName": "Sector B",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "B",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SB-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SB",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SB-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SB",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SB-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SB-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SB-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SB",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SB-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SB-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SB-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SB",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SC",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01",
+      "FunctionalLocationName": "Sector C",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "C",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SC-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SC",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SC-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SC",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SC-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SC-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SC-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SC",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SC-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SC-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T01-SC-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T01-SC",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057",
+      "FunctionalLocationName": "Tower T02 - IN01-TWR-0057",
+      "MaintenancePlant": "1010",
+      "Kind": "tower",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SA",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02",
+      "FunctionalLocationName": "Sector A",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "A",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SA-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SA",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SA-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SA",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SA-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SA-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SA-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SA",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SA-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SA-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SA-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SA",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SB",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02",
+      "FunctionalLocationName": "Sector B",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "B",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SB-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SB",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SB-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SB",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SB-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SB-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SB-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SB",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SB-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SB-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SB-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SB",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SC",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02",
+      "FunctionalLocationName": "Sector C",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "C",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SC-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SC",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SC-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SC",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SC-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SC-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SC-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SC",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SC-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SC-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0057-T02-SC-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0057-T02-SC",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103",
+      "SuperiorFunctionalLocation": "",
+      "FunctionalLocationName": "SAMPLE Tower Site 0103 - West Hills",
+      "MaintenancePlant": "1010",
+      "Kind": "tower_site",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-SH",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103",
+      "FunctionalLocationName": "Equipment Shelter - IN01-TWR-0103",
+      "MaintenancePlant": "1010",
+      "Kind": "shelter",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-SH-R01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-SH",
+      "FunctionalLocationName": "Rack R01",
+      "MaintenancePlant": "1010",
+      "Kind": "rack",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-SH-R01-S01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-SH-R01",
+      "FunctionalLocationName": "Rack R01 Slot S01",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-SH-R01-S02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-SH-R01",
+      "FunctionalLocationName": "Rack R01 Slot S02",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-SH-R02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-SH",
+      "FunctionalLocationName": "Rack R02",
+      "MaintenancePlant": "1010",
+      "Kind": "rack",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-SH-R02-S01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-SH-R02",
+      "FunctionalLocationName": "Rack R02 Slot S01",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-SH-R02-S02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-SH-R02",
+      "FunctionalLocationName": "Rack R02 Slot S02",
+      "MaintenancePlant": "1010",
+      "Kind": "rack_slot",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103",
+      "FunctionalLocationName": "Tower T01 - IN01-TWR-0103",
+      "MaintenancePlant": "1010",
+      "Kind": "tower",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SA",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01",
+      "FunctionalLocationName": "Sector A",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "A",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SA-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SA",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SA-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SA",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SA-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SA-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SA-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SA",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SA-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SA-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SA-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SA",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SB",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01",
+      "FunctionalLocationName": "Sector B",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "B",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SB-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SB",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SB-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SB",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SB-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SB-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SB-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SB",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SB-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SB-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SB-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SB",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SC",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01",
+      "FunctionalLocationName": "Sector C",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "C",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SC-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SC",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SC-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SC",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SC-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SC-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SC-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SC",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SC-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SC-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T01-SC-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T01-SC",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103",
+      "FunctionalLocationName": "Tower T02 - IN01-TWR-0103",
+      "MaintenancePlant": "1010",
+      "Kind": "tower",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SA",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02",
+      "FunctionalLocationName": "Sector A",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "A",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SA-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SA",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SA-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SA",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SA-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SA-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SA-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SA",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SA-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SA-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "A",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SA-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SA",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "A",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SB",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02",
+      "FunctionalLocationName": "Sector B",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "B",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SB-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SB",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SB-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SB",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SB-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SB-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SB-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SB",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SB-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SB-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "B",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SB-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SB",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "B",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SC",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02",
+      "FunctionalLocationName": "Sector C",
+      "MaintenancePlant": "1010",
+      "Kind": "sector",
+      "SectorCode": "C",
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SC-L01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SC",
+      "FunctionalLocationName": "Level 01 (10.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 10.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SC-L02",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SC",
+      "FunctionalLocationName": "Level 02 (20.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SC-L02-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SC-L02",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 20.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SC-L03",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SC",
+      "FunctionalLocationName": "Level 03 (30.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SC-L03-P01",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SC-L03",
+      "FunctionalLocationName": "Position P01",
+      "MaintenancePlant": "1010",
+      "Kind": "position",
+      "SectorCode": "C",
+      "HeightM": 30.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    },
+    {
+      "FunctionalLocation": "IN01-TWR-0103-T02-SC-L04",
+      "SuperiorFunctionalLocation": "IN01-TWR-0103-T02-SC",
+      "FunctionalLocationName": "Level 04 (40.0m)",
+      "MaintenancePlant": "1010",
+      "Kind": "level",
+      "SectorCode": "C",
+      "HeightM": 40.0,
+      "LastChangeDateTime": "2026-10-01T08:00:00Z"
+    }
+  ],
+  "equipment": [
+    {
+      "Equipment": "10001001",
+      "SerialNumber": "BBU-SN-1001",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0042-SH-R01-S01",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001002",
+      "SerialNumber": "BBU-SN-1002",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0042-SH-R01-S02",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001003",
+      "SerialNumber": "BBU-SN-1003",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0042-SH-R02-S01",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001004",
+      "SerialNumber": "BBU-SN-1004",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0042-SH-R02-S02",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001005",
+      "SerialNumber": "RRU-SN-1005",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T01-SA-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001006",
+      "SerialNumber": "RRU-SN-1006",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T01-SA-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": {
+        "type": "misplaced",
+        "expected_fl": "IN01-TWR-0042-T01-SA-L03-P01",
+        "actual_physical_fl": "IN01-TWR-0042-T01-SC-L03-P01",
+        "description": "Equipment registered at Sector A Level 3 but physically mounted on Sector C"
+      }
+    },
+    {
+      "Equipment": "10004567",
+      "SerialNumber": "RRU-SN-7781-2201",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T01-SB-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": {
+        "type": "serial_mismatch",
+        "expected_serial": "RRU-SN-7781-2201",
+        "actual_physical_serial": "RRU-SN-7781-9999",
+        "description": "ERP record has serial RRU-SN-7781-2201 but physical nameplate shows RRU-SN-7781-9999"
+      }
+    },
+    {
+      "Equipment": "10001008",
+      "SerialNumber": "RRU-SN-1008",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T01-SB-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001009",
+      "SerialNumber": "RRU-SN-1009",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T01-SC-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001010",
+      "SerialNumber": "RRU-SN-1010",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T01-SC-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001011",
+      "SerialNumber": "RRU-SN-1011",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T02-SA-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001012",
+      "SerialNumber": "RRU-SN-1012",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T02-SA-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": {
+        "type": "misplaced",
+        "expected_fl": "IN01-TWR-0042-T02-SA-L03-P01",
+        "actual_physical_fl": "IN01-TWR-0042-T01-SC-L03-P01",
+        "description": "Equipment registered at Sector A Level 3 but physically mounted on Sector C"
+      }
+    },
+    {
+      "Equipment": "10004567",
+      "SerialNumber": "RRU-SN-7781-2201",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T02-SB-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001014",
+      "SerialNumber": "RRU-SN-1014",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T02-SB-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001015",
+      "SerialNumber": "RRU-SN-1015",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T02-SC-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001016",
+      "SerialNumber": "RRU-SN-1016",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0042-T02-SC-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001017",
+      "SerialNumber": "BBU-SN-1017",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0057-SH-R01-S01",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001018",
+      "SerialNumber": "BBU-SN-1018",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0057-SH-R01-S02",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001019",
+      "SerialNumber": "BBU-SN-1019",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0057-SH-R02-S01",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001020",
+      "SerialNumber": "BBU-SN-1020",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0057-SH-R02-S02",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001021",
+      "SerialNumber": "RRU-SN-1021",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T01-SA-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001022",
+      "SerialNumber": "RRU-SN-1022",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T01-SA-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001023",
+      "SerialNumber": "RRU-SN-1023",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T01-SB-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001024",
+      "SerialNumber": "RRU-SN-1024",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T01-SB-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001025",
+      "SerialNumber": "RRU-SN-1025",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T01-SC-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001026",
+      "SerialNumber": "RRU-SN-1026",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T01-SC-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001027",
+      "SerialNumber": "RRU-SN-1027",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T02-SA-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001028",
+      "SerialNumber": "RRU-SN-1028",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T02-SA-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001029",
+      "SerialNumber": "RRU-SN-1029",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T02-SB-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001030",
+      "SerialNumber": "RRU-SN-1030",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T02-SB-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001031",
+      "SerialNumber": "RRU-SN-1031",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T02-SC-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001032",
+      "SerialNumber": "RRU-SN-1032",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0057-T02-SC-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001033",
+      "SerialNumber": "BBU-SN-1033",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0103-SH-R01-S01",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001034",
+      "SerialNumber": "BBU-SN-1034",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0103-SH-R01-S02",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001035",
+      "SerialNumber": "BBU-SN-1035",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0103-SH-R02-S01",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001036",
+      "SerialNumber": "BBU-SN-1036",
+      "Material": "MAT-BBU-02",
+      "ManufacturerPartNmbr": "HW-BBU-5900",
+      "FunctionalLocation": "IN01-TWR-0103-SH-R02-S02",
+      "EquipInstallationDate": "2026-01-15",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001037",
+      "SerialNumber": "RRU-SN-1037",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T01-SA-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001038",
+      "SerialNumber": "RRU-SN-1038",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T01-SA-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001039",
+      "SerialNumber": "RRU-SN-1039",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T01-SB-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001040",
+      "SerialNumber": "RRU-SN-1040",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T01-SB-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001041",
+      "SerialNumber": "RRU-SN-1041",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T01-SC-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001042",
+      "SerialNumber": "RRU-SN-1042",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T01-SC-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001043",
+      "SerialNumber": "RRU-SN-1043",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T02-SA-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001044",
+      "SerialNumber": "RRU-SN-1044",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T02-SA-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001045",
+      "SerialNumber": "RRU-SN-1045",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T02-SB-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001046",
+      "SerialNumber": "RRU-SN-1046",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T02-SB-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001047",
+      "SerialNumber": "RRU-SN-1047",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T02-SC-L02-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    },
+    {
+      "Equipment": "10001048",
+      "SerialNumber": "RRU-SN-1048",
+      "Material": "MAT-RRU-01",
+      "ManufacturerPartNmbr": "ERIC-RRU-4415",
+      "FunctionalLocation": "IN01-TWR-0103-T02-SC-L03-P01",
+      "EquipInstallationDate": "2026-02-10",
+      "DeliberateMismatch": null
+    }
+  ]
+}

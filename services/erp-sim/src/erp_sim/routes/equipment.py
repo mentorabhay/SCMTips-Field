@@ -5,15 +5,93 @@ install at functional location with date-time, dismantle;
 install history kept in equipment_install; installing installed equipment fails ZSIM/EQ-INSTALLED.
 """
 
-from typing import Any
+import json
+from pathlib import Path
+from typing import Any, Optional
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from erp_sim.db import get_conn
 from erp_sim.numbering import allocate_number
 
 router = APIRouter(prefix="/sap/opu/odata/sap/API_EQUIPMENT", tags=["Equipment"])
+
+FIXTURE_PATH = Path(__file__).resolve().parent.parent / "fixtures" / "towers.json"
+
+
+def load_equipment_fixtures() -> list[dict[str, Any]]:
+    if not FIXTURE_PATH.exists():
+        alt_path = Path("services/erp-sim/src/erp_sim/fixtures/towers.json")
+        if alt_path.exists():
+            with open(alt_path, encoding="utf-8") as f:
+                return json.load(f).get("equipment", [])
+        return []
+    with open(FIXTURE_PATH, encoding="utf-8") as f:
+        return json.load(f).get("equipment", [])
+
+
+@router.get("/Equipment")
+@router.get("/A_Equipment")
+async def list_equipment(
+    filter_expr: Optional[str] = Query(None, alias="$filter"),
+    top: Optional[int] = Query(1000, alias="$top"),
+    skip: Optional[int] = Query(0, alias="$skip"),
+    sap_client: str = Header("100", alias="sap-client"),
+) -> dict[str, Any]:
+    """OData v2 endpoint to list installed equipment with details."""
+    fixtures = load_equipment_fixtures()
+
+    # Also include any dynamically created equipment in DB
+    results = list(fixtures)
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT equipment_no, material_no, serial_no, func_loc, created_at FROM erpsim.equipment WHERE client = %s;",
+                    (sap_client,),
+                )
+                db_rows = cur.fetchall()
+                existing_nos = {r["Equipment"] for r in results}
+                for r in db_rows:
+                    if r[0] not in existing_nos:
+                        results.append({
+                            "Equipment": r[0],
+                            "Material": r[1],
+                            "SerialNumber": r[2],
+                            "ManufacturerPartNmbr": "OEM-PART-GENERIC",
+                            "FunctionalLocation": r[3],
+                            "EquipInstallationDate": str(r[4].date()) if r[4] else "2026-01-01",
+                        })
+    except Exception:
+        pass
+
+    # Filter
+    if filter_expr:
+        filter_expr = filter_expr.strip()
+        if "FunctionalLocation eq" in filter_expr:
+            import re
+            m = re.search(r"FunctionalLocation eq '([^']+)'", filter_expr)
+            if m:
+                fl = m.group(1)
+                results = [e for e in results if e.get("FunctionalLocation") == fl]
+        elif "startswith(FunctionalLocation" in filter_expr:
+            import re
+            m = re.search(r"startswith\(FunctionalLocation,\s*'([^']+)'\)", filter_expr)
+            if m:
+                fl_pre = m.group(1)
+                results = [e for e in results if (e.get("FunctionalLocation") or "").startswith(fl_pre)]
+
+    skip_val = skip or 0
+    top_val = top or 1000
+    paged = results[skip_val : skip_val + top_val]
+
+    return {
+        "d": {
+            "results": paged,
+            "__count": len(results),
+        }
+    }
 
 
 class EquipmentCreate(BaseModel):
