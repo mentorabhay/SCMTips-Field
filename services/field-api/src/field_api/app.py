@@ -32,6 +32,7 @@ from field_api.routes.me import router as me_router
 from field_api.routes.sites import router as sites_router
 from field_api.routes.status import router as status_router
 from field_api.routes.voice import router as voice_router
+from field_api.warehouse.receiving.routes import router as warehouse_router
 
 logger = structlog.get_logger(__name__)
 
@@ -135,6 +136,7 @@ def create_app() -> FastAPI:
     app.include_router(diagnostics_router)
     app.include_router(status_router)
     app.include_router(posting_router)
+    app.include_router(warehouse_router)
 
     return app
 

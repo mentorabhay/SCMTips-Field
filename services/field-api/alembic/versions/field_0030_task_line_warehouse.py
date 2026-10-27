@@ -16,6 +16,12 @@ depends_on = None
 def upgrade() -> None:
     op.execute(
         """
+        ALTER TABLE field.task
+            ADD COLUMN IF NOT EXISTS ref_doc_no text NULL,
+            ADD COLUMN IF NOT EXISTS last_change_at timestamptz NULL;
+        CREATE INDEX IF NOT EXISTS idx_task_tenant_ref_doc
+            ON field.task (tenant_id, ref_doc_no);
+
         ALTER TABLE field.task_line
             ADD COLUMN IF NOT EXISTS storage_bin text NULL,
             ADD COLUMN IF NOT EXISTS target_bin text NULL,
@@ -23,6 +29,10 @@ def upgrade() -> None:
             ADD COLUMN IF NOT EXISTS sscc text NULL,
             ADD COLUMN IF NOT EXISTS picked_qty numeric(12,3) NOT NULL DEFAULT 0,
             ADD COLUMN IF NOT EXISTS received_qty numeric(12,3) NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS counted_qty numeric(12,3) NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS over_tolerance_pct numeric(5,2) NOT NULL DEFAULT 0.0,
+            ADD COLUMN IF NOT EXISTS under_tolerance_pct numeric(5,2) NOT NULL DEFAULT 0.0,
+            ADD COLUMN IF NOT EXISTS reason_code text NULL,
             ADD COLUMN IF NOT EXISTS movement_type text NULL;
 
         CREATE INDEX IF NOT EXISTS idx_task_line_bin

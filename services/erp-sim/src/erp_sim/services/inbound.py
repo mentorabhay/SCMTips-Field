@@ -34,6 +34,77 @@ def generate_item_etag(delivery_document: str, item_no: str, actual_qty: Any) ->
     return f'W/"{delivery_document}-{item_no}-{str(actual_qty)}"'
 
 
+@router.get("/A_InbDeliveryHeader")
+async def list_inbound_deliveries(
+    filter_query: str | None = Query(None, alias="$filter"),
+    expand: str | None = Query(None, alias="$expand"),
+    sap_client: str = Header("100", alias="sap-client"),
+) -> dict[str, Any]:
+    with get_conn() as conn, conn.cursor() as cur:
+        await evaluate_faults(cur, sap_client, "API_INBOUND_DELIVERY_SRV", "Query", "*")
+
+        query = """
+            SELECT delivery_document, plant, storage_location, status, header_data, last_change_date_time
+            FROM erpsim.inbound_delivery
+            WHERE client = %s
+        """
+        params: list[Any] = [sap_client]
+
+        if filter_query:
+            import re
+            m_plant = re.search(r"(?:ReceivingPlant|plant)\s+eq\s+'([^']+)'", filter_query, re.IGNORECASE)
+            if m_plant:
+                query += " AND plant = %s"
+                params.append(m_plant.group(1))
+            m_sloc = re.search(r"(?:StorageLocation|storage_location)\s+eq\s+'([^']+)'", filter_query, re.IGNORECASE)
+            if m_sloc:
+                query += " AND storage_location = %s"
+                params.append(m_sloc.group(1))
+
+        query += " ORDER BY delivery_document ASC;"
+        cur.execute(query, tuple(params))
+        results = []
+        for hdr in cur.fetchall():
+            doc_no = hdr[0]
+            d_data: dict[str, Any] = {
+                "DeliveryDocument": doc_no,
+                "ReceivingPlant": hdr[1],
+                "StorageLocation": hdr[2],
+                "OverallGoodsMovementStatus": "C" if hdr[3] in ("posted", "completed", "C") else "A",
+                "OverallGoodsReceiptStatus": "C" if hdr[3] in ("posted", "completed", "C") else "A",
+                "HeaderData": hdr[4],
+                "LastChangeDateTime": hdr[5].isoformat() if hdr[5] else None,
+            }
+            if expand and "to_DeliveryDocumentItem" in expand:
+                cur.execute(
+                    """
+                    SELECT item_no, material_no, delivery_qty, actual_qty, uom, status
+                    FROM erpsim.inbound_delivery_item
+                    WHERE client = %s AND delivery_document = %s
+                    ORDER BY item_no ASC;
+                    """,
+                    (sap_client, doc_no),
+                )
+                items = []
+                for row in cur.fetchall():
+                    items.append({
+                        "__metadata": {
+                            "etag": generate_item_etag(doc_no, row[0], row[3]),
+                        },
+                        "DeliveryDocument": doc_no,
+                        "DeliveryDocumentItem": row[0],
+                        "Material": row[1],
+                        "ActualDeliveryQuantity": str(row[2]),
+                        "ActualGoodsMovementQty": str(row[3]),
+                        "DeliveryQuantityUnit": row[4],
+                        "ItemStatus": row[5],
+                    })
+                d_data["to_DeliveryDocumentItem"] = {"results": items}
+            results.append(d_data)
+
+    return {"d": {"results": results}}
+
+
 @router.get("/A_InbDeliveryHeader('{delivery_document}')")
 async def get_inbound_delivery(
     delivery_document: str,
