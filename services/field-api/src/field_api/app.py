@@ -44,6 +44,7 @@ from field_api.graph.api import router as graph_router
 from field_api.models.api import router as models_router
 from field_api.audits.reports import router as audit_reports_router
 from field_api.sitepack.api import router as sitepack_router
+from field_api.installed_base.api import router as installed_base_router
 
 logger = structlog.get_logger(__name__)
 
@@ -189,6 +190,7 @@ def create_app() -> FastAPI:
     app.include_router(models_router)
     app.include_router(audit_reports_router)
     app.include_router(sitepack_router)
+    app.include_router(installed_base_router)
 
     return app
 

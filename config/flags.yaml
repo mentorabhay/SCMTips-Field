@@ -1,0 +1,88 @@
+# SCMTIPS Field Phase 4 Feature Flags & Rollout Configuration
+# Task T4.074 / Requirement FR4.045 / Dynamic P13a Flag Registry
+
+schema_version: "1.0"
+environment: "production"
+
+flags:
+  FIELD_F3_TOWER_AUDIT:
+    description: "Telecom tower audit workflow, nameplate OCR scanning, and mismatch reconciliation"
+    enabled: true
+    rollout_percentage: 100
+    allowlist_tenants:
+      - "*"
+    rules:
+      min_client_version: "4.0.0"
+    killswitch:
+      enabled: false
+      fallback_behavior: "disable_audit_creation_retain_read_only"
+
+  FIELD_F3_EQUIP_POSTING:
+    description: "Per-tower FIFO equipment posting queue with exponential backoff and replay conflict detection"
+    enabled: true
+    rollout_percentage: 100
+    allowlist_tenants:
+      - "*"
+    rules:
+      require_stepup_for_reversals: true
+      max_attempts: 8
+    killswitch:
+      enabled: false
+      fallback_behavior: "queue_holds_pending_jobs_without_dropping"
+
+  FIELD_F3_CLIMB_SAFE:
+    description: "Climb-Safe ascent velocity guard (>0.8 m/s), geofence locking, and lone-worker emergency monitor"
+    enabled: true
+    rollout_percentage: 100
+    # Mandatory safety policy: ALWAYS TRUE whenever Phase 4 (F3) is enabled (FR4.045)
+    immutable: true
+    rules:
+      max_ascent_speed_mps: 0.8
+      lone_worker_checkin_interval_sec: 900 # 15 minutes
+      escalation_l1_sec: 300 # +5 minutes (1200s total)
+      escalation_l2_sec: 600 # +10 minutes (1500s total)
+      escalation_l3_sec: 1200 # +20 minutes (2100s total)
+    killswitch:
+      enabled: false
+      fallback_behavior: "local_device_fallback_audio_beeps"
+
+  FIELD_F3_MODELS:
+    description: "Asset 3D glTF model store, exploded view linear offsets, balloon registry, and BOM checklist"
+    enabled: true
+    rollout_percentage: 100
+    allowlist_tenants:
+      - "*"
+    rules:
+      max_model_size_mb: 25
+      max_triangles: 300000
+      max_sitepack_size_mb: 60
+    killswitch:
+      enabled: false
+      fallback_behavior: "fallback_to_2d_schematic_and_bom_table"
+
+rollout_waves:
+  wave_1_canary:
+    percentage: 5
+    description: "Internal pilot tower sites and engineering testbeds"
+    target_sites:
+      - "SITE-PILOT-01"
+      - "SITE-PILOT-02"
+    status: "completed"
+
+  wave_2_early_access:
+    percentage: 30
+    description: "Regional field operating centers (Metro North & Metro South)"
+    status: "completed"
+
+  wave_3_general_availability:
+    percentage: 100
+    description: "Global production deployment across all sites"
+    status: "active"
+
+rollback_runbook:
+  procedure:
+    step_1: "Set environment variable FIELD_FLAG_OVERRIDE_<FLAG_NAME>=false on API and worker clusters."
+    step_2: "Publish flag revocation signal to Redis pub/sub channel 'scmtips:flags:invalidate'."
+    step_3: "API nodes refresh local in-memory flag cache within 5 seconds without container restart."
+    step_4: "Worker drains active in-flight jobs; holds new posting queue dispatches safely in PostgreSQL."
+    step_5: "Verify zero data loss in field.posting_job and field.outbox tables."

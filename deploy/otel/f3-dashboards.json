@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "title": "SCMTIPS Field Phase 4 - Tower Assets, Equipment Posting & Climb-Safe Observability",
+  "dashboard": {
+    "uid": "field-phase-4-observability",
+    "title": "SCMTIPS Field Phase 4 - Mission Control",
+    "tags": ["scmtips", "field", "phase4", "tower", "climb-safe", "equipment"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "panels": [
+      {
+        "id": 1,
+        "title": "Per-Tower Equipment Posting Throughput (PR4.12 / FR4.036)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "sum by (queue_key, operation) (rate(field_posting_jobs_total{status=\"completed\"}[5m]))",
+            "legendFormat": "{{queue_key}} [{{operation}}]"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Per-Tower Queue Hold & Replay Conflict Count (FR4.060 / TC4.152)",
+        "type": "stat",
+        "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "expr": "sum(field_queue_hold_count{is_held=\"true\"})",
+            "legendFormat": "Held Tower Queues"
+          }
+        ],
+        "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 1 },
+            { "color": "red", "value": 3 }
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "title": "Posting Backoff & Attempt Exhaustions (S2 Cases) (TC4.131)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+        "targets": [
+          {
+            "expr": "sum by (queue_key) (increase(field_posting_failures_total[5m]))",
+            "legendFormat": "{{queue_key}} Failures"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Climb-Safe Ascent Speed Violations (>0.8 m/s) (FR4.041 / PR4.04)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "expr": "sum by (site_id, technician_id) (increase(field_climb_speed_violations_total[5m]))",
+            "legendFormat": "Tech: {{technician_id}} (Site: {{site_id}})"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Lone-Worker Check-in Escalations (L1/L2/L3) (FR4.044 / PR4.05)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "targets": [
+          {
+            "expr": "sum by (level) (increase(field_lone_worker_escalations_total[5m]))",
+            "legendFormat": "Escalation Level {{level}}"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Site Pack Manifest Downloads & 304 Delta Hit Rate (FR4.058 / TC4.150)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+        "targets": [
+          {
+            "expr": "sum by (status_code) (rate(field_sitepack_requests_total[5m]))",
+            "legendFormat": "HTTP {{status_code}}"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Installed Base Changed Webhooks P13f (FR4.066 / TC4.158)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+        "targets": [
+          {
+            "expr": "sum by (change_type) (rate(field_installed_base_changed_total[5m]))",
+            "legendFormat": "{{change_type}}"
+          }
+        ]
+      }
+    ]
+  },
+  "alerts": [
+    {
+      "name": "TowerPostingAttemptsExhausted",
+      "expr": "increase(field_posting_failures_total[5m]) > 0",
+      "for": "1m",
+      "labels": {
+        "severity": "S2",
+        "workstream": "WS4.4",
+        "component": "posting_worker"
+      },
+      "annotations": {
+        "summary": "Tower posting job exhausted 8 retry attempts on queue {{ $labels.queue_key }}",
+        "description": "Posting job has entered failed state and S2 exception case is opened."
+      }
+    },
+    {
+      "name": "TowerQueueHeldReplayConflict",
+      "expr": "field_queue_hold_count > 0",
+      "for": "0m",
+      "labels": {
+        "severity": "S2",
+        "workstream": "WS4.8",
+        "component": "sync_worker"
+      },
+      "annotations": {
+        "summary": "Tower queue {{ $labels.queue_key }} held due to replay conflict (TC4.152)",
+        "description": "Supervisor intervention required to review conflict in exception cases."
+      }
+    },
+    {
+      "name": "ClimbSpeedSafetyViolation",
+      "expr": "increase(field_climb_speed_violations_total[1m]) > 0",
+      "for": "0m",
+      "labels": {
+        "severity": "S1",
+        "workstream": "WS4.5",
+        "component": "climb_safe"
+      },
+      "annotations": {
+        "summary": "Technician ascent speed exceeded 0.8 m/s safety threshold",
+        "description": "Audio and visual warnings dispatched to mobile device / smart glasses."
+      }
+    },
+    {
+      "name": "LoneWorkerL3EmergencyEscalation",
+      "expr": "increase(field_lone_worker_escalations_total{level=\"3\"}[1m]) > 0",
+      "for": "0m",
+      "labels": {
+        "severity": "S1",
+        "workstream": "WS4.5",
+        "component": "safety_monitor"
+      },
+      "annotations": {
+        "summary": "Lone worker L3 Emergency: missing check-in > 20 minutes (FR4.044)",
+        "description": "Emergency dispatch SMS, push notification, and supervisor callout triggered."
+      }
+    }
+  ]
+}

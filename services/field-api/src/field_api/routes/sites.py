@@ -11,6 +11,7 @@ from field_api.auth.jwt import Principal
 from field_api.common import InProcessStore
 from field_api.deps import require_permission, require_principal
 from field_api.errors import ERR_NOT_FOUND
+from field_api.db import get_conn
 from field_api.http.etag import generate_etag, verify_if_match
 from field_api.http.pagination import PaginatedResponse, encode_cursor, get_page_params
 
@@ -130,6 +131,53 @@ async def create_site(
     SITES_STORE.insert(principal.tenant_id, site_id, record)
     response.headers["ETag"] = generate_etag(site_id, 1)
     return SiteRecord.model_validate(record)
+
+
+@router.get("/{site_id}", response_model=SiteRecord)
+async def get_site(
+    site_id: str,
+    principal: Principal = Depends(require_principal),
+) -> SiteRecord:
+    """Retrieve details for a single site."""
+    if "*" not in principal.site_ids and site_id not in principal.site_ids:
+        raise ERR_NOT_FOUND
+
+    site = SITES_STORE.get(principal.tenant_id, site_id)
+    if not site:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT set_config('app.tenant_id', %s, true);", (principal.tenant_id,))
+                cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (principal.tenant_id,))
+                cur.execute("SELECT set_config('app.site_ids', '*', true);")
+                cur.execute(
+                    """
+                    SELECT id, code, name, kind, status, lat, lon, created_at, updated_at
+                    FROM field.site
+                    WHERE tenant_id = %s AND (id::text = %s OR code = %s);
+                    """,
+                    (principal.tenant_id, site_id, site_id),
+                )
+                row = cur.fetchone()
+                if row:
+                    site = {
+                        "id": str(row[0]),
+                        "tenant_id": principal.tenant_id,
+                        "code": row[1],
+                        "name": row[2],
+                        "kind": row[3],
+                        "status": row[4],
+                        "lat": float(row[5]) if row[5] is not None else 0.0,
+                        "lon": float(row[6]) if row[6] is not None else 0.0,
+                        "erp_plant": "1010",
+                        "erp_storage_locations": [],
+                        "timezone": "UTC",
+                        "version": 1,
+                        "created_at": row[7].isoformat() if row[7] else datetime.now(UTC).isoformat(),
+                        "updated_at": row[8].isoformat() if row[8] else datetime.now(UTC).isoformat(),
+                    }
+    if not site:
+        raise ERR_NOT_FOUND
+    return SiteRecord.model_validate(site)
 
 
 @router.patch("/{site_id}", response_model=SiteRecord)

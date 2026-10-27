@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from typing import Any, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from field_api.db import get_conn
@@ -106,11 +106,23 @@ def build_site_tree(tenant_id: str, site_id: str) -> tuple[dict[str, Any], str]:
 async def get_site_tree_endpoint(
     site_id: str,
     response: Response,
-    tenant_id: str = Header("e8eb2a80-d529-4bdd-b669-d21fe847cb74", alias="tenant_id"),
+    request: Request,
+    tenant_id: Optional[str] = Header(None, alias="tenant_id"),
     if_none_match: Optional[str] = Header(None, alias="if-none-match"),
 ) -> dict[str, Any]:
     """GET /v1/sites/{id}/tree returning nested hierarchy with height order and ETag."""
-    tree_data, etag = build_site_tree(tenant_id, site_id)
+    auth_header = request.headers.get("Authorization")
+    resolved_tenant = tenant_id
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            from field_api.auth.jwt import verify_token
+            principal = verify_token(auth_header.split(" ", 1)[1])
+            resolved_tenant = principal.tenant_id
+        except Exception:
+            pass
+
+    t_id = resolved_tenant or "e8eb2a80-d529-4bdd-b669-d21fe847cb74"
+    tree_data, etag = build_site_tree(t_id, site_id)
     response.headers["ETag"] = etag
 
     if if_none_match and if_none_match == etag:
