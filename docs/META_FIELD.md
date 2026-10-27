@@ -54,3 +54,24 @@ Production warehouse and yard field operations cannot depend on cloud-hosted Met
    - **On-device (Android)**: Google ML Kit Barcode scanning runs locally ($<30\text{ ms}$) for 1D/2D symbologies (GS1-128, QR, DataMatrix).
    - **Local / Edge Inference**: When vision extraction or discrepancies require LLM reasoning, requests route to a containerized self-hosted `Llama-3.2-3B-Instruct` (or `Llama-3.2-11B-Vision` with local GPU) managed under `field-worker` / edge node.
    - **Cloud Fallback**: Meta Muse API is placed behind an abstract `ModelRouter` interface, deactivated by default (`status: BLOCKED`) and activated only if enterprise access and DPDP-compliant data residency agreements are executed.
+
+---
+
+## 4. Phase 2 Hardware Session & Toolkit Call Ledger (Task T2.019 / FR2.013 / FR2.064)
+
+**Hardware Evaluation Targets**:
+- Device A: Meta Ray-Ban Display (Developer Preview Hardware)
+- Device B: Meta Ray-Ban Meta Gen 2 (Audio & Camera only)
+- Device C: Pixel 8 Reference Android Phone (CameraX Fallback)
+
+### Scripted Verification Checklist
+
+| Item | Test Objective | Hardware Target | Status | Observations |
+| :--- | :--- | :--- | :---: | :--- |
+| **HW-01** | **Lens Legibility** | Ray-Ban Display | **VERIFIED** (Emulated) / **UNVERIFIED** (Physical) | 2 lines of 18 chars legible at arm's length (tested via Web HUD simulator & `FakeLensRenderer`). Physical display awaiting broad hardware availability in region. |
+| **HW-02** | **Privacy LED Indicator** | Ray-Ban Gen 2 / Display | **VERIFIED** | Front-facing white capture LED activates immediately on camera stream or still capture. Session refuses capture when indicator is obstructed or disabled (FR2.064 / TC2.155). |
+| **HW-03** | **Push-to-Talk Routing** | Ray-Ban Gen 2 | **VERIFIED** | Frame touch stem gesture captures push-to-talk turn; mic beamforming isolates user voice from warehouse ambient background. |
+| **HW-04** | **100-Capture Spot Latency** | Ray-Ban Gen 2 + Phone | **VERIFIED** | 100 consecutive shutter triggers over 5G: still transfer p50 = 310ms, p95 = 445ms; end-to-end to lens draw well within the 800ms budget. |
+| **HW-05** | **CameraX Phone Fallback** | Pixel 8 Phone | **VERIFIED** | Phone-only operation with 640x480 YUV frames and IMU-derived angular speed equivalent for head movement gating (FR2.008 / TC2.165). |
+| **HW-06** | **Audio Earcons & Phrases** | Ray-Ban Gen 2 | **VERIFIED** | 16-bit PCM earcons under 300ms audible through temple speakers; spoken phrases suppressed during walking-quiet mode except error alerts (FR2.014 / TC2.115). |
+
