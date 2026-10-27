@@ -18,6 +18,7 @@ from field_api.logging import configure_logging
 from field_api.middleware.auth import AuthMiddleware
 from field_api.middleware.idempotency import IdempotencyMiddleware
 from field_api.middleware.request_id import RequestIdMiddleware
+from field_api.posting.routes import router as posting_router
 from field_api.routes.auth import router as auth_router
 from field_api.routes.captures import router as captures_router
 from field_api.routes.consents import router as consents_router
@@ -133,6 +134,7 @@ def create_app() -> FastAPI:
     app.include_router(live_router)
     app.include_router(diagnostics_router)
     app.include_router(status_router)
+    app.include_router(posting_router)
 
     return app
 

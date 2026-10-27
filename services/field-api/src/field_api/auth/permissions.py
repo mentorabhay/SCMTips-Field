@@ -27,6 +27,8 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "field.device.revoke",
         "field.task.manage",
         "field.site.read",
+        "field.queue.manage",
+        "field.queue.read",
     ],
     "inventory.controller": [
         "field.stock.read",
@@ -42,6 +44,8 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "field.export.execute",
         "field.sync.trigger",
         "field.erp.post",
+        "field.queue.manage",
+        "field.queue.read",
     ],
     "field.viewer": [
         "field.site.read",

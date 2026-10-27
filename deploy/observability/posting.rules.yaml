@@ -1,0 +1,35 @@
+groups:
+  - name: scmtips_posting_rules
+    rules:
+      - record: job:field_posting_latency_seconds:p95
+        expr: histogram_quantile(0.95, sum(rate(field_posting_latency_seconds_bucket[5m])) by (le, doc_family))
+
+      - record: job:field_posting_success_rate:1h
+        expr: |
+          sum(rate(field_posting_attempts_total{status="completed"}[1h]))
+          /
+          sum(rate(field_posting_attempts_total[1h]))
+
+      - alert: PostingQueueBlocked
+        expr: field_queue_blocked_seconds > 300
+        for: 1m
+        labels:
+          severity: warning
+          service: field-worker
+          workstream: WS3.2
+        annotations:
+          summary: "Posting queue blocked for > 300 seconds"
+          description: "Queue {{ $labels.queue_key }} in tenant {{ $labels.tenant_id }} has been blocked by a failed or running predecessor for more than 300s."
+          runbook_url: "https://docs.scmtips.internal/runbooks/posting-queue-blocked"
+
+      - alert: PostingSuccessRateLow
+        expr: (sum(rate(field_posting_attempts_total{status="completed"}[1h])) / sum(rate(field_posting_attempts_total[1h]))) < 0.995
+        for: 5m
+        labels:
+          severity: critical
+          service: field-worker
+          workstream: WS3.2
+        annotations:
+          summary: "ERP posting success rate below 99.5% over 1h"
+          description: "The proportion of successfully posted ERP jobs within 5 minutes has dropped below 99.5% over the preceding 1 hour."
+          runbook_url: "https://docs.scmtips.internal/runbooks/posting-success-rate-low"

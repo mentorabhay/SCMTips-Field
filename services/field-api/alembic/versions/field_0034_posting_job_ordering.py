@@ -23,10 +23,30 @@ def upgrade() -> None:
             ADD COLUMN IF NOT EXISTS locked_until timestamptz NULL,
             ADD COLUMN IF NOT EXISTS max_attempts integer NOT NULL DEFAULT 8;
 
+        ALTER TABLE field.posting_job DROP CONSTRAINT IF EXISTS posting_job_status_check;
+        ALTER TABLE field.posting_job ADD CONSTRAINT posting_job_status_check
+            CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled'));
+
         CREATE INDEX IF NOT EXISTS idx_posting_job_queue_seq
             ON field.posting_job (tenant_id, queue_key, seq);
         CREATE INDEX IF NOT EXISTS idx_posting_job_ref_doc
             ON field.posting_job (tenant_id, ref_doc_no);
+
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_policies
+                WHERE schemaname = 'field' AND tablename = 'posting_job' AND policyname = 'allow_all'
+            ) THEN
+                CREATE POLICY allow_all ON field.posting_job FOR ALL USING (true) WITH CHECK (true);
+            END IF;
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_policies
+                WHERE schemaname = 'field' AND tablename = 'outbox' AND policyname = 'allow_all'
+            ) THEN
+                CREATE POLICY allow_all ON field.outbox FOR ALL USING (true) WITH CHECK (true);
+            END IF;
+        END $$;
         """
     )
 
@@ -36,6 +56,10 @@ def downgrade() -> None:
         """
         DROP INDEX IF EXISTS field.idx_posting_job_ref_doc;
         DROP INDEX IF EXISTS field.idx_posting_job_queue_seq;
+
+        ALTER TABLE field.posting_job DROP CONSTRAINT IF EXISTS posting_job_status_check;
+        ALTER TABLE field.posting_job ADD CONSTRAINT posting_job_status_check
+            CHECK (status IN ('pending', 'running', 'completed', 'failed'));
 
         ALTER TABLE field.posting_job
             DROP COLUMN IF EXISTS max_attempts,
