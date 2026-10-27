@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import UTC, datetime
 from typing import Any, Optional
 import structlog
 
@@ -39,9 +40,12 @@ def append_serial_event(
     details: Optional[dict[str, Any]] = None,
     created_by: Optional[str] = None,
     idempotency_key: Optional[str] = None,
+    source_plant: Optional[str] = None,
+    source_storage_location: Optional[str] = None,
+    occurred_at: Optional[datetime] = None,
     cur: Optional[Any] = None,
 ) -> dict[str, Any]:
-    """Append a serial event with monotonic per-serial sequence (FR4.033 / PR4.02)."""
+    """Append a serial event with monotonic per-serial sequence (FR4.033 / PR4.02 / T4.029)."""
     def _execute_append(c: Any) -> dict[str, Any]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
@@ -87,15 +91,18 @@ def append_serial_event(
         to_loc = location_id if op_type in ('install', 'issue', 'move') else None
         from_loc = location_id if op_type in ('dismantle', 'return') else None
         idem_key = idempotency_key or f"se-{uuid.uuid4()}"
+        ts_occurred = occurred_at or datetime.now(UTC)
 
         c.execute(
             """
             INSERT INTO field.serial_event (
                 tenant_id, equipment_id, serial_no, seq, type,
-                to_location_id, from_location_id, occurred_at, recorded_at, idempotency_key
+                to_location_id, from_location_id, source_plant, source_storage_location,
+                occurred_at, recorded_at, idempotency_key
             ) VALUES (
                 %s, %s, %s, %s, %s,
-                %s, %s, NOW(), NOW(), %s
+                %s, %s, %s, %s,
+                %s, NOW(), %s
             )
             RETURNING id, seq, recorded_at;
             """,
@@ -107,6 +114,9 @@ def append_serial_event(
                 op_type,
                 to_loc,
                 from_loc,
+                source_plant,
+                source_storage_location,
+                ts_occurred,
                 idem_key,
             ),
         )
@@ -117,6 +127,8 @@ def append_serial_event(
             "seq": row[1],
             "event_type": event_type,
             "location_id": str(location_id) if location_id else None,
+            "source_plant": source_plant,
+            "source_storage_location": source_storage_location,
             "created_at": row[2].isoformat() if hasattr(row[2], "isoformat") else str(row[2]),
         }
 

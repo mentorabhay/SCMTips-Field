@@ -24,7 +24,7 @@ logger = structlog.get_logger(__name__)
 
 def record_equipment_event(
     tenant_id: str,
-    event_type: str,  # 'install', 'dismantle', 'replace', 'move'
+    event_type: str,  # 'install', 'dismantle', 'replace', 'move', 'issue'
     serial_no: str,
     site_id: str,
     location_id: Optional[str] = None,
@@ -35,6 +35,9 @@ def record_equipment_event(
     evidence_crop_ref: Optional[str] = None,
     notes: Optional[str] = None,
     idempotency_key: Optional[str] = None,
+    source_plant: Optional[str] = None,
+    source_storage_location: Optional[str] = None,
+    occurred_at: Optional[datetime] = None,
 ) -> dict[str, Any]:
     """Execute equipment lifecycle event with single-location invariant and staging flow."""
     now = datetime.now(UTC)
@@ -96,6 +99,9 @@ def record_equipment_event(
                     equipment_id=eq_id,
                     details={"material": mat_name, "fl_code": fl_code, "notes": notes, "crop_ref": evidence_crop_ref},
                     created_by=created_by,
+                    source_plant=source_plant,
+                    source_storage_location=source_storage_location,
+                    occurred_at=occurred_at,
                     cur=cur,
                 )
 
@@ -357,6 +363,76 @@ def record_equipment_event(
                     "serial_no": serial_no,
                     "location_id": location_id,
                     "fl_code": fl_code,
+                    "status": "completed",
+                    "doc_number": doc_no,
+                    "timestamp": now.isoformat(),
+                }
+
+            elif event_type == "issue":
+                # Issue equipment from store/warehouse (T4.029 / TC4.132 / FR4.037)
+                mat_name = material or "GENERIC-EQUIPMENT"
+                cur.execute(
+                    """
+                    INSERT INTO field.equipment (
+                        tenant_id, serial_no, material, current_location_id, status, updated_at
+                    ) VALUES (
+                        %s, %s, %s, %s, 'issued', NOW()
+                    )
+                    ON CONFLICT (tenant_id, material, serial_no)
+                    DO UPDATE SET
+                        status = 'issued',
+                        updated_at = NOW()
+                    RETURNING id;
+                    """,
+                    (tenant_id, serial_no, mat_name, location_id),
+                )
+                eq_id = str(cur.fetchone()[0])
+
+                append_serial_event(
+                    tenant_id=tenant_id,
+                    serial_no=serial_no,
+                    event_type="issue",
+                    location_id=location_id,
+                    equipment_id=eq_id,
+                    details={"material": mat_name, "notes": notes, "source_plant": source_plant, "source_sloc": source_storage_location},
+                    created_by=created_by,
+                    source_plant=source_plant,
+                    source_storage_location=source_storage_location,
+                    occurred_at=occurred_at,
+                    cur=cur,
+                )
+
+                doc_no = f"DOC-ISS-{uuid.uuid4().hex[:8].upper()}"
+                cur.execute(
+                    """
+                    INSERT INTO field.erp_document (
+                        tenant_id, site_id, doc_type, doc_number, fiscal_year,
+                        movement_type, payload, status
+                    ) VALUES (
+                        %s, %s, 'EQ_ISSUE', %s, '2026',
+                        'ISSUE', %s, 'posted'
+                    );
+                    """,
+                    (
+                        tenant_id,
+                        site_id,
+                        doc_no,
+                        json.dumps({
+                            "event_id": event_id,
+                            "serial_no": serial_no,
+                            "source_plant": source_plant,
+                            "source_storage_location": source_storage_location,
+                            "idempotency_key": idempotency_key,
+                        }),
+                    ),
+                )
+
+                return {
+                    "event_id": event_id,
+                    "event_type": "issue",
+                    "serial_no": serial_no,
+                    "source_plant": source_plant,
+                    "source_storage_location": source_storage_location,
                     "status": "completed",
                     "doc_number": doc_no,
                     "timestamp": now.isoformat(),

@@ -39,6 +39,8 @@ from field_api.warehouse.receiving.routes import router as warehouse_router
 from field_api.audit.api import router as audit_router
 from field_api.equipment.api import router as equipment_router
 from field_api.safety.api import router as safety_router
+from field_api.trails.api import router as trails_router
+from field_api.graph.api import router as graph_router
 
 logger = structlog.get_logger(__name__)
 
@@ -122,13 +124,29 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(404)
     async def not_found_handler(request: Request, exc: Any) -> JSONResponse:
-        return problem_json_response(
+        code = ERR_NOT_FOUND.code
+        detail_msg = "The requested resource does not exist."
+        extra = None
+        if isinstance(exc, HTTPException):
+            if isinstance(exc.detail, dict):
+                code = exc.detail.get("error_code", code)
+                detail_msg = exc.detail.get("message", detail_msg)
+                extra = exc.detail
+            elif isinstance(exc.detail, str) and exc.detail not in ("Not Found", ""):
+                detail_msg = exc.detail
+        res = problem_json_response(
             status=404,
-            code=ERR_NOT_FOUND.code,
+            code=code,
             title="Not Found",
-            detail="The requested resource does not exist.",
+            detail=detail_msg,
             request=request,
         )
+        if extra is not None:
+            import json as _json
+            content = _json.loads(res.body.decode())
+            content["detail"] = extra
+            return JSONResponse(status_code=404, content=content, headers=dict(res.headers))
+        return res
 
     @app.exception_handler(Exception)
     async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -163,6 +181,8 @@ def create_app() -> FastAPI:
     app.include_router(audit_router)
     app.include_router(equipment_router)
     app.include_router(safety_router)
+    app.include_router(trails_router)
+    app.include_router(graph_router)
 
     return app
 

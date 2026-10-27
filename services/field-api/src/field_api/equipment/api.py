@@ -28,7 +28,7 @@ router = APIRouter(tags=["equipment", "equipment-events"])
 
 
 class EquipmentEventRequest(BaseModel):
-    event_type: str = Field(..., description="'install', 'dismantle', 'replace', or 'move'")
+    event_type: str = Field(..., description="'install', 'dismantle', 'replace', 'move', or 'issue'")
     serial_no: str
     site_id: str
     location_id: Optional[str] = None
@@ -37,6 +37,9 @@ class EquipmentEventRequest(BaseModel):
     task_id: Optional[str] = None
     evidence_crop_ref: Optional[str] = None
     notes: Optional[str] = None
+    source_plant: Optional[str] = None
+    source_storage_location: Optional[str] = None
+    occurred_at: Optional[str] = None
 
 
 class ReverseEventRequest(BaseModel):
@@ -49,8 +52,10 @@ def api_record_equipment_event(
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
-    """API4.08: Execute equipment lifecycle event (install, dismantle, replace, move)."""
+    """API4.08: Execute equipment lifecycle event (install, dismantle, replace, move, issue)."""
     try:
+        from datetime import datetime
+        dt_occurred = datetime.fromisoformat(body.occurred_at) if body.occurred_at else None
         return record_equipment_event(
             tenant_id=principal.tenant_id,
             event_type=body.event_type,
@@ -64,6 +69,9 @@ def api_record_equipment_event(
             evidence_crop_ref=body.evidence_crop_ref,
             notes=body.notes,
             idempotency_key=idempotency_key,
+            source_plant=body.source_plant,
+            source_storage_location=body.source_storage_location,
+            occurred_at=dt_occurred,
         )
     except SingleLocationViolationError as e:
         raise HTTPException(
