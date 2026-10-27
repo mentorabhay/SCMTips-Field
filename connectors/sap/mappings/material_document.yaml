@@ -1,0 +1,122 @@
+# Declarative SAP OData Mapping: Material Document
+# Service: API_MATERIAL_DOCUMENT_SRV (OData v2)
+# Verification Status: Every field marked VERIFIED or UNVERIFIED per FR3.042
+
+service:
+  name: API_MATERIAL_DOCUMENT_SRV
+  version: "2.0"
+  namespace: sap
+  base_path: /sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV
+
+entities:
+  A_MaterialDocumentHeader:
+    description: Material document header
+    key: [MaterialDocument, MaterialDocumentYear]
+    fields:
+      doc_number:
+        sap_property: MaterialDocument
+        type: Edm.String
+        max_length: 10
+        status: VERIFIED
+      fiscal_year:
+        sap_property: MaterialDocumentYear
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      document_date:
+        sap_property: DocumentDate
+        type: Edm.DateTime
+        status: VERIFIED
+      posting_date:
+        sap_property: PostingDate
+        type: Edm.DateTime
+        status: VERIFIED
+      movement_code:
+        sap_property: GoodsMovementCode
+        type: Edm.String
+        max_length: 2
+        status: VERIFIED
+
+  A_MaterialDocumentItem:
+    description: Material document item
+    key: [MaterialDocument, MaterialDocumentYear, MaterialDocumentItem]
+    fields:
+      doc_number:
+        sap_property: MaterialDocument
+        type: Edm.String
+        max_length: 10
+        status: VERIFIED
+      fiscal_year:
+        sap_property: MaterialDocumentYear
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      line_no:
+        sap_property: MaterialDocumentItem
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      material_no:
+        sap_property: Material
+        type: Edm.String
+        max_length: 40
+        status: VERIFIED
+      plant:
+        sap_property: Plant
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      storage_location:
+        sap_property: StorageLocation
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      movement_type:
+        sap_property: GoodsMovementType
+        type: Edm.String
+        max_length: 3
+        status: VERIFIED
+      quantity:
+        sap_property: QuantityInEntryUnit
+        type: Edm.Decimal
+        precision: 13
+        scale: 3
+        status: VERIFIED
+      uom:
+        sap_property: EntryUnit
+        type: Edm.String
+        max_length: 3
+        status: VERIFIED
+
+function_imports:
+  Cancel:
+    http_method: POST
+    parameters:
+      material_document:
+        sap_param: MaterialDocument
+        type: Edm.String
+        status: VERIFIED
+      material_document_year:
+        sap_param: MaterialDocumentYear
+        type: Edm.String
+        status: VERIFIED
+    return_type: A_MaterialDocumentHeader
+    status: VERIFIED
+
+  CancelItem:
+    http_method: POST
+    parameters:
+      material_document:
+        sap_param: MaterialDocument
+        type: Edm.String
+        status: VERIFIED
+      material_document_year:
+        sap_param: MaterialDocumentYear
+        type: Edm.String
+        status: VERIFIED
+      material_document_item:
+        sap_param: MaterialDocumentItem
+        type: Edm.String
+        status: VERIFIED
+    return_type: A_MaterialDocumentItem
+    status: VERIFIED

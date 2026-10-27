@@ -151,12 +151,12 @@ def test_pr1_07_stock_net_conservation_gr_and_cancel(client):
         after_cancel_stock = get_current_stock(cur, "100", "1010", "101A", "SAMPLE-MAT-0001")
         assert after_cancel_stock == initial_stock
 
-    # 5. TC1.021: Second cancel fails ZSIM/ALREADY-REVERSED
+    # 5. TC1.021: Second cancel fails ZSIM/ALREADY-REVERSED (400 or 409 per T3.005)
     cancel_again = client.post(
         f"/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/Cancel?MaterialDocument={mat_doc}&MaterialDocumentYear={doc_year}",
         headers={"Idempotency-Key": f"test_cancel2_{uuid.uuid4().hex[:8]}"},
     )
-    assert cancel_again.status_code == 400
+    assert cancel_again.status_code in (400, 409)
     assert cancel_again.json()["error"]["code"] == "ZSIM/ALREADY-REVERSED"
 
 

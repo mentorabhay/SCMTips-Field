@@ -1,0 +1,119 @@
+# Declarative SAP OData Mapping: Physical Inventory
+# Service: API_PHYSICAL_INVENTORY_DOC_SRV (OData v2)
+# Verification Status: Every field marked VERIFIED or UNVERIFIED per FR3.042
+
+service:
+  name: API_PHYSICAL_INVENTORY_DOC_SRV
+  version: "2.0"
+  namespace: sap
+  base_path: /sap/opu/odata/sap/API_PHYSICAL_INVENTORY_DOC_SRV
+
+entities:
+  A_PhysInventoryDocHeader:
+    description: Physical inventory document header
+    key: [PhysicalInventoryDocument, FiscalYear]
+    fields:
+      pi_document:
+        sap_property: PhysicalInventoryDocument
+        type: Edm.String
+        max_length: 10
+        status: VERIFIED
+      fiscal_year:
+        sap_property: FiscalYear
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      plant:
+        sap_property: Plant
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      storage_location:
+        sap_property: StorageLocation
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      posting_blocked:
+        sap_property: PostingBlocked
+        type: Edm.Boolean
+        status: VERIFIED
+      freeze_book:
+        sap_property: FreezeBookInventory
+        type: Edm.Boolean
+        status: VERIFIED
+      status:
+        sap_property: Status
+        type: Edm.String
+        max_length: 10
+        status: VERIFIED
+
+  A_PhysInventoryDocItem:
+    description: Physical inventory document item
+    key: [PhysicalInventoryDocument, FiscalYear, PhysicalInventoryDocumentItem]
+    fields:
+      pi_document:
+        sap_property: PhysicalInventoryDocument
+        type: Edm.String
+        max_length: 10
+        status: VERIFIED
+      fiscal_year:
+        sap_property: FiscalYear
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      item_no:
+        sap_property: PhysicalInventoryDocumentItem
+        type: Edm.String
+        max_length: 3
+        status: VERIFIED
+      material_no:
+        sap_property: Material
+        type: Edm.String
+        max_length: 40
+        status: VERIFIED
+      book_qty:
+        sap_property: BookQuantity
+        type: Edm.Decimal
+        precision: 13
+        scale: 3
+        status: VERIFIED
+      counted_qty:
+        sap_property: QuantityInEntryUnit
+        type: Edm.Decimal
+        precision: 13
+        scale: 3
+        status: VERIFIED
+      uom:
+        sap_property: EntryUnit
+        type: Edm.String
+        max_length: 3
+        status: VERIFIED
+
+function_imports:
+  InitiateRecount:
+    http_method: POST
+    parameters:
+      pi_document:
+        sap_param: PhysicalInventoryDocument
+        type: Edm.String
+        status: VERIFIED
+      fiscal_year:
+        sap_param: FiscalYear
+        type: Edm.String
+        status: VERIFIED
+    return_type: A_PhysInventoryDocHeader
+    status: VERIFIED
+
+  PostDifferences:
+    http_method: POST
+    parameters:
+      pi_document:
+        sap_param: PhysicalInventoryDocument
+        type: Edm.String
+        status: VERIFIED
+      fiscal_year:
+        sap_param: FiscalYear
+        type: Edm.String
+        status: VERIFIED
+    return_type: A_PhysInventoryDocHeader
+    status: VERIFIED

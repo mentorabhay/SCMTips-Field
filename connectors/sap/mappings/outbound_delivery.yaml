@@ -1,0 +1,134 @@
+# Declarative SAP OData Mapping: Outbound Delivery
+# Service: API_OUTBOUND_DELIVERY_SRV (OData v2)
+# Verification Status: Every field marked VERIFIED or UNVERIFIED per FR3.042
+
+service:
+  name: API_OUTBOUND_DELIVERY_SRV
+  version: "2.0"
+  namespace: sap
+  base_path: /sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV
+
+entities:
+  A_OutbDeliveryHeader:
+    description: Outbound delivery document header
+    key: [DeliveryDocument]
+    fields:
+      delivery_document:
+        sap_property: DeliveryDocument
+        type: Edm.String
+        max_length: 10
+        status: VERIFIED
+      shipping_plant:
+        sap_property: ShippingPlant
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      storage_location:
+        sap_property: StorageLocation
+        type: Edm.String
+        max_length: 4
+        status: VERIFIED
+      goods_issue_status:
+        sap_property: OverallGoodsIssueStatus
+        type: Edm.String
+        max_length: 1
+        status: VERIFIED
+
+  A_OutbDeliveryItem:
+    description: Outbound delivery line item
+    key: [DeliveryDocument, DeliveryDocumentItem]
+    fields:
+      delivery_document:
+        sap_property: DeliveryDocument
+        type: Edm.String
+        max_length: 10
+        status: VERIFIED
+      item_no:
+        sap_property: DeliveryDocumentItem
+        type: Edm.String
+        max_length: 6
+        status: VERIFIED
+      material_no:
+        sap_property: Material
+        type: Edm.String
+        max_length: 40
+        status: VERIFIED
+      delivery_qty:
+        sap_property: ActualDeliveryQuantity
+        type: Edm.Decimal
+        precision: 13
+        scale: 3
+        status: VERIFIED
+      picked_qty:
+        sap_property: PickedQuantity
+        type: Edm.Decimal
+        precision: 13
+        scale: 3
+        status: VERIFIED
+      uom:
+        sap_property: DeliveryQuantityUnit
+        type: Edm.String
+        max_length: 3
+        status: VERIFIED
+      storage_bin:
+        sap_property: StorageBin
+        type: Edm.String
+        max_length: 10
+        status: UNVERIFIED
+
+function_imports:
+  PickOneItem:
+    http_method: POST
+    parameters:
+      delivery_document:
+        sap_param: DeliveryDocument
+        type: Edm.String
+        status: VERIFIED
+      item_no:
+        sap_param: DeliveryDocumentItem
+        type: Edm.String
+        status: VERIFIED
+      picked_qty:
+        sap_param: PickedQuantity
+        type: Edm.Decimal
+        status: VERIFIED
+    return_type: A_OutbDeliveryItem
+    status: VERIFIED
+
+  ConfirmPickingOneItem:
+    http_method: POST
+    parameters:
+      delivery_document:
+        sap_param: DeliveryDocument
+        type: Edm.String
+        status: VERIFIED
+      item_no:
+        sap_param: DeliveryDocumentItem
+        type: Edm.String
+        status: VERIFIED
+    return_type: A_OutbDeliveryItem
+    status: VERIFIED
+
+  PostGoodsIssue:
+    http_method: POST
+    parameters:
+      delivery_document:
+        sap_param: DeliveryDocument
+        type: Edm.String
+        status: VERIFIED
+      allow_partial:
+        sap_param: AllowPartial
+        type: Edm.Boolean
+        status: VERIFIED
+    return_type: A_OutbDeliveryHeader
+    status: VERIFIED
+
+  ReverseGoodsIssue:
+    http_method: POST
+    parameters:
+      delivery_document:
+        sap_param: DeliveryDocument
+        type: Edm.String
+        status: VERIFIED
+    return_type: A_OutbDeliveryHeader
+    status: VERIFIED

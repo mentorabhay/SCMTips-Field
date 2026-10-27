@@ -19,15 +19,16 @@ from fastapi.responses import JSONResponse
 
 from erp_sim.admin_ui import router as ui_router
 from erp_sim.dedupe import IdempotencyConflictError
+from erp_sim.faults.warehouse import evaluate_warehouse_fault_header
 from erp_sim.locks import LockContentionError
 from erp_sim.routes.equipment import router as equipment_router
 from erp_sim.routes.fault_admin import router as faults_router
-from erp_sim.routes.inbound_delivery import router as ibd_router
 from erp_sim.routes.maintenance import router as maint_router
-from erp_sim.routes.material_document import router as matdoc_router
-from erp_sim.routes.outbound_delivery import router as obd_router
-from erp_sim.routes.physical_inventory import router as pi_router
 from erp_sim.seed import reset_database
+from erp_sim.services.inbound import router as ibd_router
+from erp_sim.services.matdoc import router as matdoc_router
+from erp_sim.services.outbound import router as obd_router
+from erp_sim.services.physinv import router as pi_router
 
 logger = structlog.get_logger(__name__)
 
@@ -38,9 +39,12 @@ app = FastAPI(
 )
 
 
-# 1. CSRF Token Emulation Middleware
+# 1. CSRF Token & Warehouse Faults Middleware
 @app.middleware("http")
 async def csrf_token_middleware(request: Request, call_next: Any) -> Response:
+    fault_resp = await evaluate_warehouse_fault_header(request)
+    if fault_resp is not None:
+        return fault_resp
     is_csrf_fetch = request.headers.get("x-csrf-token", "").lower() == "fetch"
     response: Response = await call_next(request)
     if is_csrf_fetch:
