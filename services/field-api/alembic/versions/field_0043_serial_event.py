@@ -90,7 +90,7 @@ def upgrade() -> None:
         CREATE OR REPLACE FUNCTION field.forbid_serial_event_modification()
         RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
-            RAISE EXCEPTION 'field.serial_event is append-only: updates and deletes are forbidden';
+            RAISE EXCEPTION 'field.serial_event is append-only: updates and deletes are forbidden [FIELD-EVT-403-IMMUTABLE]';
         END;
         $$;
 

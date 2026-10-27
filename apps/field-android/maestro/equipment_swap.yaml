@@ -1,0 +1,17 @@
+appId: com.scmtips.field
+---
+# Equipment Swap / Staged Replacement Flow (SCR4.06 / Task T4.038)
+- launchApp
+- assertVisible: "Tower Audit"
+- tapOn: "Location IN01-TWR-0042-T01-A-L01"
+- tapOn: "Equipment RRU-OLD-001"
+- tapOn: "Replace / Swap Equipment"
+- assertVisible: "Pinned Model BOM Checklist"
+- tapOn: "Material RRU-5G-MID"
+- inputText: "RRU-NEW-889"
+- tapOn: "Stage Swap"
+- assertVisible: "Staged: RRU-OLD-001 -> RRU-NEW-889"
+- tapOn: "Post to SAP"
+- assertVisible: "Posting Complete - Confirm Hardware Mount"
+- tapOn: "Confirm Installation"
+- assertVisible: "Confirmed"

@@ -37,6 +37,7 @@ from field_api.visits.api import router as visits_router
 from field_api.visits.override import router as visits_override_router
 from field_api.warehouse.receiving.routes import router as warehouse_router
 from field_api.audit.api import router as audit_router
+from field_api.equipment.api import router as equipment_router
 
 logger = structlog.get_logger(__name__)
 
@@ -159,6 +160,7 @@ def create_app() -> FastAPI:
     app.include_router(visits_router)
     app.include_router(visits_override_router)
     app.include_router(audit_router)
+    app.include_router(equipment_router)
 
     return app
 

@@ -101,7 +101,80 @@ class EquipmentCreate(BaseModel):
 
 
 class InstallRequest(BaseModel):
-    FunctionalLocation: str
+    FunctionalLocation: Optional[str] = None
+    Equipment: Optional[str] = None
+    LongText: Optional[str] = None
+
+
+class DismantleRequest(BaseModel):
+    Equipment: Optional[str] = None
+    FunctionalLocation: Optional[str] = None
+    LongText: Optional[str] = None
+
+
+@router.get("/Equipment('{equipment}')/TimeSegments")
+@router.get("/Equipment/{equipment}/time-segments")
+@router.get("/A_Equipment('{equipment}')/TimeSegments")
+async def get_equipment_time_segments(
+    equipment: str,
+    sap_client: str = Header("100", alias="sap-client"),
+) -> dict[str, Any]:
+    """Retrieve historical equipment installation time segments (T4.020 / FR4.030)."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT func_loc, action, timestamp, change_doc
+                FROM erpsim.equipment_install
+                WHERE client = %s AND equipment_no = %s
+                ORDER BY timestamp ASC;
+                """,
+                (sap_client, equipment),
+            )
+            rows = cur.fetchall()
+
+            segments: list[dict[str, Any]] = []
+            curr_segment: Optional[dict[str, Any]] = None
+
+            for r in rows:
+                func_loc, action, ts, change_doc = r[0], r[1], r[2], r[3]
+                ts_iso = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
+
+                if action == "install":
+                    if curr_segment:
+                        curr_segment["valid_to"] = ts_iso
+                        segments.append(curr_segment)
+                    curr_segment = {
+                        "Equipment": equipment,
+                        "FunctionalLocation": func_loc,
+                        "valid_from": ts_iso,
+                        "valid_to": "9999-12-31T23:59:59Z",
+                        "status": "installed",
+                        "change_doc": change_doc,
+                    }
+                elif action == "dismantle":
+                    if curr_segment:
+                        curr_segment["valid_to"] = ts_iso
+                        segments.append(curr_segment)
+                        curr_segment = None
+                    segments.append({
+                        "Equipment": equipment,
+                        "FunctionalLocation": func_loc,
+                        "valid_from": ts_iso,
+                        "valid_to": ts_iso,
+                        "status": "dismantled",
+                        "change_doc": change_doc,
+                    })
+
+            if curr_segment:
+                segments.append(curr_segment)
+
+            return {
+                "d": {
+                    "results": segments,
+                    "__count": len(segments),
+                }
+            }
 
 
 @router.post("/A_Equipment")
@@ -146,17 +219,70 @@ async def create_equipment(
             }
 
 
+@router.post("/Install")
 @router.post("/Install?Equipment={equipment}")
+@router.post("/Equipment('{equipment}')/Install")
+@router.post("/A_Equipment('{equipment}')/Install")
 async def install_equipment(
-    equipment: str,
-    body: InstallRequest,
+    equipment: Optional[str] = None,
+    Equipment: Optional[str] = Query(None),
+    body: Optional[InstallRequest] = None,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    sim_fault_profile: Optional[str] = Header(None, alias="X-Sim-Fault-Profile"),
     sap_client: str = Header("100", alias="sap-client"),
 ) -> dict[str, Any]:
+    """Install equipment at functional location with change document, dedupe, and fault checks (T4.020)."""
+    eq_target = equipment or Equipment or (body.Equipment if body else None)
+    if not eq_target:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": {"code": "ZSIM/PARAM-MISSING", "message": {"lang": "en", "value": "Equipment parameter required"}}},
+        )
+    fl_target = body.FunctionalLocation if body else None
+    if not fl_target:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": {"code": "ZSIM/PARAM-MISSING", "message": {"lang": "en", "value": "FunctionalLocation parameter required"}}},
+        )
+
+    # Extract idempotency key from header or long text
+    idem_key = idempotency_key
+    if not idem_key and body and body.LongText:
+        import re
+        m = re.search(r"\[IDEM:([^\]]+)\]", body.LongText)
+        if m:
+            idem_key = m.group(1)
+
+    req_data = {"action": "install", "equipment": eq_target, "func_loc": fl_target}
+    from erp_sim.dedupe import check_dedupe, compute_request_hash, record_dedupe
+    req_hash = compute_request_hash(req_data)
+
     with get_conn() as conn:
         with conn.cursor() as cur:
+            # Fault injection check
+            from erp_sim.faults import evaluate_faults
+            from erp_sim.faults.warehouse import evaluate_warehouse_fault_header
+            if sim_fault_profile:
+                evaluate_warehouse_fault_header(sim_fault_profile, "API_EQUIPMENT", "Install")
+            await evaluate_faults(cur, sap_client, "API_EQUIPMENT", "Install", eq_target)
+
+            # Dedupe check
+            if idem_key:
+                is_dup, doc_no, _ = check_dedupe(cur, sap_client, idem_key, req_hash)
+                if is_dup:
+                    return {
+                        "d": {
+                            "Equipment": eq_target,
+                            "FunctionalLocation": fl_target,
+                            "Status": "installed",
+                            "ChangeDocument": doc_no,
+                        },
+                        "sap-message": "ZSIM/DUP",
+                    }
+
             cur.execute(
-                "SELECT func_loc, status FROM erpsim.equipment WHERE client = %s AND equipment_no = %s;",
-                (sap_client, equipment),
+                "SELECT func_loc, status FROM erpsim.equipment WHERE client = %s AND equipment_no = %s FOR UPDATE;",
+                (sap_client, eq_target),
             )
             row = cur.fetchone()
             if not row:
@@ -165,7 +291,7 @@ async def install_equipment(
                     detail={
                         "error": {
                             "code": "ZSIM/NOT-FOUND",
-                            "message": {"lang": "en", "value": f"Equipment {equipment} not found"},
+                            "message": {"lang": "en", "value": f"Equipment {eq_target} not found"},
                         }
                     },
                 )
@@ -177,40 +303,95 @@ async def install_equipment(
                             "code": "ZSIM/EQ-INSTALLED",
                             "message": {
                                 "lang": "en",
-                                "value": f"Equipment {equipment} already installed at {row[0]}",
+                                "value": f"Equipment {eq_target} already installed at {row[0]}",
                             },
                         }
                     },
                 )
 
+            change_doc = str(allocate_number(cur, sap_client, "CHANGE_DOC"))
+
             cur.execute(
                 "UPDATE erpsim.equipment SET func_loc = %s, status = 'installed' WHERE client = %s AND equipment_no = %s;",
-                (body.FunctionalLocation, sap_client, equipment),
+                (fl_target, sap_client, eq_target),
             )
             cur.execute(
-                "INSERT INTO erpsim.equipment_install (client, equipment_no, func_loc, action) VALUES (%s, %s, %s, 'install');",
-                (sap_client, equipment, body.FunctionalLocation),
+                """
+                INSERT INTO erpsim.equipment_install (client, equipment_no, func_loc, action, change_doc)
+                VALUES (%s, %s, %s, 'install', %s);
+                """,
+                (sap_client, eq_target, fl_target, change_doc),
             )
+
+            if idem_key:
+                record_dedupe(cur, sap_client, idem_key, req_hash, change_doc, "2026")
+
             conn.commit()
+
     return {
         "d": {
-            "Equipment": equipment,
-            "FunctionalLocation": body.FunctionalLocation,
+            "Equipment": eq_target,
+            "FunctionalLocation": fl_target,
             "Status": "installed",
+            "ChangeDocument": change_doc,
         }
     }
 
 
+@router.post("/Dismantle")
 @router.post("/Dismantle?Equipment={equipment}")
+@router.post("/Equipment('{equipment}')/Dismantle")
+@router.post("/A_Equipment('{equipment}')/Dismantle")
 async def dismantle_equipment(
-    equipment: str,
+    equipment: Optional[str] = None,
+    Equipment: Optional[str] = Query(None),
+    body: Optional[DismantleRequest] = None,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    sim_fault_profile: Optional[str] = Header(None, alias="X-Sim-Fault-Profile"),
     sap_client: str = Header("100", alias="sap-client"),
 ) -> dict[str, Any]:
+    """Dismantle equipment from functional location with change document and dedupe (T4.020)."""
+    eq_target = equipment or Equipment or (body.Equipment if body else None)
+    if not eq_target:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": {"code": "ZSIM/PARAM-MISSING", "message": {"lang": "en", "value": "Equipment parameter required"}}},
+        )
+
+    idem_key = idempotency_key
+    if not idem_key and body and body.LongText:
+        import re
+        m = re.search(r"\[IDEM:([^\]]+)\]", body.LongText)
+        if m:
+            idem_key = m.group(1)
+
+    req_data = {"action": "dismantle", "equipment": eq_target}
+    from erp_sim.dedupe import check_dedupe, compute_request_hash, record_dedupe
+    req_hash = compute_request_hash(req_data)
+
     with get_conn() as conn:
         with conn.cursor() as cur:
+            from erp_sim.faults import evaluate_faults
+            from erp_sim.faults.warehouse import evaluate_warehouse_fault_header
+            if sim_fault_profile:
+                evaluate_warehouse_fault_header(sim_fault_profile, "API_EQUIPMENT", "Dismantle")
+            await evaluate_faults(cur, sap_client, "API_EQUIPMENT", "Dismantle", eq_target)
+
+            if idem_key:
+                is_dup, doc_no, _ = check_dedupe(cur, sap_client, idem_key, req_hash)
+                if is_dup:
+                    return {
+                        "d": {
+                            "Equipment": eq_target,
+                            "Status": "available",
+                            "ChangeDocument": doc_no,
+                        },
+                        "sap-message": "ZSIM/DUP",
+                    }
+
             cur.execute(
-                "SELECT func_loc FROM erpsim.equipment WHERE client = %s AND equipment_no = %s;",
-                (sap_client, equipment),
+                "SELECT func_loc, status FROM erpsim.equipment WHERE client = %s AND equipment_no = %s FOR UPDATE;",
+                (sap_client, eq_target),
             )
             row = cur.fetchone()
             if not row or not row[0]:
@@ -221,20 +402,37 @@ async def dismantle_equipment(
                             "code": "ZSIM/NOT-INSTALLED",
                             "message": {
                                 "lang": "en",
-                                "value": f"Equipment {equipment} is not installed",
+                                "value": f"Equipment {eq_target} is not installed",
                             },
                         }
                     },
                 )
 
             old_loc = row[0]
+            change_doc = str(allocate_number(cur, sap_client, "CHANGE_DOC"))
+
             cur.execute(
                 "UPDATE erpsim.equipment SET func_loc = NULL, status = 'available' WHERE client = %s AND equipment_no = %s;",
-                (sap_client, equipment),
+                (sap_client, eq_target),
             )
             cur.execute(
-                "INSERT INTO erpsim.equipment_install (client, equipment_no, func_loc, action) VALUES (%s, %s, %s, 'dismantle');",
-                (sap_client, equipment, old_loc),
+                """
+                INSERT INTO erpsim.equipment_install (client, equipment_no, func_loc, action, change_doc)
+                VALUES (%s, %s, %s, 'dismantle', %s);
+                """,
+                (sap_client, eq_target, old_loc, change_doc),
             )
+
+            if idem_key:
+                record_dedupe(cur, sap_client, idem_key, req_hash, change_doc, "2026")
+
             conn.commit()
-    return {"d": {"Equipment": equipment, "Status": "available"}}
+
+    return {
+        "d": {
+            "Equipment": eq_target,
+            "FunctionalLocation": old_loc,
+            "Status": "available",
+            "ChangeDocument": change_doc,
+        }
+    }
