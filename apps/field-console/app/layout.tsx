@@ -10,6 +10,8 @@ import {
   Zap,
   Activity,
   Glasses,
+  Smartphone,
+  Scan,
   LogOut,
   Building2,
   User,
@@ -87,6 +89,20 @@ export default function RootLayout({
               >
                 <Activity className="w-4 h-4 text-teal-400" />
                 <span>System Status (SCR1.05)</span>
+              </Link>
+              <Link
+                href="/devices"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <Smartphone className="w-4 h-4 text-sky-400" />
+                <span>Devices (SCR2.01)</span>
+              </Link>
+              <Link
+                href="/captures/cap-sample-001"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <Scan className="w-4 h-4 text-purple-400" />
+                <span>Captures (SCR2.02)</span>
               </Link>
               <Link
                 href="/hud"
