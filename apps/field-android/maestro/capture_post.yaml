@@ -1,0 +1,35 @@
+# Maestro E2E Flow: Capture, Voice Count, Confirm Turn and Posted Tick (Task T2.069 / FR2.052, FR2.055)
+appId: com.scmtips.field.app
+---
+- launchApp
+- assertVisible: "SCMTIPS Field"
+
+# 1. Start Capture Session
+- tapOn: "Start Session"
+- assertVisible: "Session Active"
+
+# 2. Mock Device Kit Look at SAMPLE carton
+- tapOn: "Trigger Look (SAMPLE Carton)"
+- assertVisible: "CAPTURED"
+- assertVisible: "001234567890123456"
+
+# 3. Spoken voice quantity: "count 12"
+- tapOn: "Push-to-Talk"
+- inputText: "count twelve"
+- tapOn: "Release PTT"
+- assertVisible: "Count: 12 EA"
+
+# 4. Spoken post command
+- tapOn: "Push-to-Talk"
+- inputText: "post"
+- tapOn: "Release PTT"
+- assertVisible: "Say confirm within 10s"
+
+# 5. Spoken confirm turn within 10s
+- tapOn: "Push-to-Talk"
+- inputText: "confirm"
+- tapOn: "Release PTT"
+
+# 6. Verify ERP posted tick delivered from live hub
+- assertVisible: "POSTED"
+- assertVisible: "DOC-2026-0001"

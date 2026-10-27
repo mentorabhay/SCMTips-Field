@@ -1,0 +1,110 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": 102,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Field Capture End-to-End Latency (BRIEF Budget: 400ms p95 on 5G)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prom-field" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisCenteredZero": false, "drawStyle": "line", "lineInterpolation": "smooth" },
+          "unit": "ms"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "p95 Target Threshold" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 2,
+      "title": "field_lens_tick_ms (p50 / p90 / p95 / p99)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(field_lens_tick_ms_bucket[5m])) by (le))",
+          "legendFormat": "p50 Latency"
+        },
+        {
+          "expr": "histogram_quantile(0.90, sum(rate(field_lens_tick_ms_bucket[5m])) by (le))",
+          "legendFormat": "p90 Latency"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(field_lens_tick_ms_bucket[5m])) by (le))",
+          "legendFormat": "p95 Latency"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(field_lens_tick_ms_bucket[5m])) by (le))",
+          "legendFormat": "p99 Latency"
+        },
+        {
+          "expr": "400",
+          "legendFormat": "p95 Target Threshold (400ms)"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 3,
+      "title": "Capture Pipeline Segment Breakdown",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prom-field" },
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "color": { "mode": "palette-classic" } }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "id": 4,
+      "title": "Per-Segment Latency Waterfall (p95)",
+      "type": "barchart",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(field_segment_shutter_to_still_rx_ms_bucket[5m])) by (le))",
+          "legendFormat": "1. Shutter -> Still RX"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(field_segment_still_to_decode_ms_bucket[5m])) by (le))",
+          "legendFormat": "2. Barcode/OCR Decode"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(field_segment_decode_to_rank_ms_bucket[5m])) by (le))",
+          "legendFormat": "3. 6-Factor Ranker"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(field_segment_rank_to_commit_ms_bucket[5m])) by (le))",
+          "legendFormat": "4. Fsync & Room Commit"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(field_segment_commit_to_lens_draw_ms_bucket[5m])) by (le))",
+          "legendFormat": "5. HUD Lens Drawn"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(field_segment_network_ingest_ms_bucket[5m])) by (le))",
+          "legendFormat": "6. Cloud Ingest (5G)"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["scmtips-field", "phase2", "latency", "hud"],
+  "title": "F1 Capture Engine - Latency & Timing Dashboard",
+  "uid": "f1-capture-latency",
+  "version": 1
+}
