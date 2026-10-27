@@ -31,7 +31,7 @@ JOBS = [
     (
         "alembic",
         "Database migration round-trip",
-        ["uv", "run", "python", "-c", "print('Alembic verified')"],
+        ["uv", "run", "python", "scripts/jobs/alembic.py"],
     ),
     ("semgrep", "Semgrep security scan", ["uv", "run", "python", "-c", "print('Semgrep clean')"]),
     ("trivy", "Trivy vulnerability scan", ["uv", "run", "python", "-c", "print('Trivy clean')"]),
