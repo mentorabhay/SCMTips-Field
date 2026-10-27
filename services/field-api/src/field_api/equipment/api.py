@@ -40,6 +40,8 @@ class EquipmentEventRequest(BaseModel):
     source_plant: Optional[str] = None
     source_storage_location: Optional[str] = None
     occurred_at: Optional[str] = None
+    model_version_id: Optional[str] = None
+    model_version: Optional[str] = None
 
 
 class ReverseEventRequest(BaseModel):
@@ -72,6 +74,8 @@ def api_record_equipment_event(
             source_plant=body.source_plant,
             source_storage_location=body.source_storage_location,
             occurred_at=dt_occurred,
+            model_version_id=body.model_version_id,
+            model_version=body.model_version,
         )
     except SingleLocationViolationError as e:
         raise HTTPException(

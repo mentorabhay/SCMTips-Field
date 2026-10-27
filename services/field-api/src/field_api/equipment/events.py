@@ -38,6 +38,8 @@ def record_equipment_event(
     source_plant: Optional[str] = None,
     source_storage_location: Optional[str] = None,
     occurred_at: Optional[datetime] = None,
+    model_version_id: Optional[str] = None,
+    model_version: Optional[str] = None,
 ) -> dict[str, Any]:
     """Execute equipment lifecycle event with single-location invariant and staging flow."""
     now = datetime.now(UTC)
@@ -75,18 +77,22 @@ def record_equipment_event(
                 cur.execute(
                     """
                     INSERT INTO field.equipment (
-                        tenant_id, serial_no, material, current_location_id, status, updated_at
+                        tenant_id, serial_no, material, current_location_id, status,
+                        pinned_model_version_id, pinned_model_version, updated_at
                     ) VALUES (
-                        %s, %s, %s, %s, 'installed', NOW()
+                        %s, %s, %s, %s, 'installed',
+                        %s, %s, NOW()
                     )
                     ON CONFLICT (tenant_id, material, serial_no)
                     DO UPDATE SET
                         current_location_id = EXCLUDED.current_location_id,
                         status = 'installed',
+                        pinned_model_version_id = COALESCE(EXCLUDED.pinned_model_version_id, field.equipment.pinned_model_version_id),
+                        pinned_model_version = COALESCE(EXCLUDED.pinned_model_version, field.equipment.pinned_model_version),
                         updated_at = NOW()
                     RETURNING id;
                     """,
-                    (tenant_id, serial_no, mat_name, location_id),
+                    (tenant_id, serial_no, mat_name, location_id, model_version_id, model_version),
                 )
                 eq_id = str(cur.fetchone()[0])
 

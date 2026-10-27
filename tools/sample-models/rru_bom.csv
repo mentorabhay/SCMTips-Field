@@ -1,0 +1,5 @@
+part_no,description,qty,is_serialised,parent_part_no,node_path,node_names,explode_vector_x,explode_vector_y,explode_vector_z
+RRU-HSG-01,RRU Aluminium Housing,1,false,,housing,rru_housing,0.0,0.0,0.0
+PSU-48V-2K,Power Supply Unit 48V,1,true,,housing/psu,psu,0.0,0.12,0.0
+FAN-BLWR-01,Blower Fan Module,1,true,,housing/fan,fan,0.0,-0.15,0.0
+RF-CONN-716,7/16 DIN RF Connector,2,false,,housing/rf,connector_a|connector_b,0.1,0.0,0.0
