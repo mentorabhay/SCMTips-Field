@@ -114,3 +114,44 @@ object FieldApiClientFactory {
             .build()
     }
 }
+
+/**
+ * Client wrapper for network interactions.
+ */
+class FieldApiClient(
+    val baseUrl: String = "https://api.field.scmtips.internal",
+    val httpClient: OkHttpClient = FieldApiClientFactory.createHttpClient()
+) {
+    suspend fun postCaptureSync(
+        idempotencyKey: String,
+        metadataJson: String,
+        cropBytes: ByteArray?
+    ): Pair<Int, String?> {
+        val requestBody = okhttp3.MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart(
+                "metadata",
+                null,
+                metadataJson.toByteArray().let { okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), it) }
+            )
+
+        if (cropBytes != null) {
+            val imagePart = okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), cropBytes)
+            requestBody.addFormDataPart("crop", "$idempotencyKey.jpg", imagePart)
+        }
+
+        val request = okhttp3.Request.Builder()
+            .url("$baseUrl/v1/captures")
+            .header("Idempotency-Key", idempotencyKey)
+            .post(requestBody.build())
+            .build()
+
+        return try {
+            httpClient.newCall(request).execute().use { response ->
+                Pair(response.code(), response.body()?.string())
+            }
+        } catch (e: Exception) {
+            Pair(0, e.message)
+        }
+    }
+}
