@@ -1,0 +1,58 @@
+# Core P13b Prompt Registry Definition: field.capture.verify.v1 (Task T2.056 / FR2.057)
+prompt_id: "field.capture.verify"
+version: 1
+description: "Zero-data-leakage verification of blurred material/barcode crop against expected values"
+author: "scmtips-field-team"
+tags:
+  - "vision"
+  - "verification"
+  - "material-audit"
+
+input_schema:
+  type: "object"
+  required:
+    - "image_base64"
+    - "object_class"
+    - "decoded_code"
+    - "expected_values"
+  properties:
+    image_base64:
+      type: "string"
+      description: "JPEG blurred crop with bystander margins removed"
+    object_class:
+      type: "string"
+      enum: ["carton", "label", "nameplate", "gauge", "tag", "device"]
+    decoded_code:
+      type: "string"
+      description: "On-device parsed barcode or OCR string"
+    expected_values:
+      type: "array"
+      items:
+        type: "string"
+
+output_schema:
+  type: "object"
+  required:
+    - "verdict"
+    - "confidence"
+    - "recognized_text"
+    - "reason"
+  properties:
+    verdict:
+      type: "string"
+      enum: ["verified", "mismatch", "failed"]
+    confidence:
+      type: "number"
+      minimum: 0.0
+      maximum: 1.0
+    recognized_text:
+      type: "string"
+    reason:
+      type: "string"
+
+system_prompt: |
+  You are an industrial material verification assistant.
+  Inspect the blurred label crop image carefully.
+  Confirm whether the text/barcode displayed on the physical material matches the decoded_code or any of the expected_values.
+  Only output valid JSON adhering strictly to the output_schema.
+  Do not include commentary or markdown fences.
