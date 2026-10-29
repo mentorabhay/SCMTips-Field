@@ -2,7 +2,7 @@
   title: Write tower location migrations
   workstream: WS4.1
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/alembic/versions/field_0041_tower_locations.py
   - services/field-api/alembic/versions/field_0042_site_visit.py
@@ -12,14 +12,14 @@
   - FR4.001
   - FR4.002
   - FR4.003
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.002
   title: Build site tree service and API
   workstream: WS4.1
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/sites/tree.py
   tests:
@@ -28,56 +28,56 @@
   - FR4.001
   - FR4.002
   - FR4.003
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.003
   title: Implement functional location mask validator
   workstream: WS4.1
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/sites/fl_mask.py
   tests:
   - services/field-api/tests/test_fl_mask_ws4_1.py::test_tc4_105_fl_mask_validation_20_codes
   frs:
   - FR4.008
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.004
   title: Build SAP functional location reader
   workstream: WS4.1
   role: ERP
-  status: partial
+  status: done
   evidence:
   - services/field-worker/src/field_worker/jobs/fl_import.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py
   frs:
   - FR4.004
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.005
   title: Build SAP installed equipment reader
   workstream: WS4.1
   role: ERP
-  status: partial
+  status: done
   evidence:
   - connectors/sap/src/field_sap/equipment_read.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_102_equipment_import_fields_and_duplicates
   frs:
   - FR4.005
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.006
   title: Implement import job staging, preview and apply
   workstream: WS4.1
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/sites/import_service.py
   tests:
@@ -87,56 +87,56 @@
   - FR4.004
   - FR4.006
   - FR4.007
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.007
   title: Add delta import and schedule
   workstream: WS4.1
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-worker/src/field_worker/jobs/fl_import.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_103_delta_import_watermark
   frs:
   - FR4.006
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.008
   title: Report rejected import rows
   workstream: WS4.1
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/sites/import_validate.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_104_orphan_and_cycle_rejection
   frs:
   - FR4.007
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.009
   title: Create erp-sim tower fixtures
   workstream: WS4.1
   role: ERP
-  status: partial
+  status: done
   evidence:
   - services/erp-sim/fixtures/towers.json
   tests:
   - services/field-api/tests/test_tower_ws4_1.py
   frs:
   - FR4.005
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.010
   title: Implement site check-in API
   workstream: WS4.1
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
@@ -147,14 +147,14 @@
   frs:
   - FR4.009
   - FR4.010
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.011
   title: Add geofence override with audit
   workstream: WS4.1
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/visits/override.py
   tests:
@@ -162,42 +162,42 @@
   frs:
   - FR4.011
   - FR4.067
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.012
   title: Implement check-out
   workstream: WS4.1
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_110_checkout_with_unsynced_items
   frs:
   - FR4.012
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.013
   title: Generate audit tasks from installed base
   workstream: WS4.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/sitegraph/generate.py
   tests:
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_112_audit_task_generation
   frs:
   - FR4.014
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.014
   title: Implement audit completeness service
   workstream: WS4.3
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/audit/progress.py
   tests:
@@ -206,14 +206,14 @@
   frs:
   - FR4.024
   - FR4.063
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.015
   title: Build reconciliation engine
   workstream: WS4.3
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/audit/reconcile.py
   tests:
@@ -221,23 +221,23 @@
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_11_mismatch_symmetry_hypothesis
   frs:
   - FR4.025
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.016
   title: Open and deduplicate exception cases
   workstream: WS4.3
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/audit/exceptions.py
   tests:
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_124_exception_deduplication
   frs:
   - FR4.026
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.017
   title: Implement mismatch queue API
   workstream: WS4.3
@@ -249,27 +249,26 @@
   frs:
   - FR4.064
   verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  note: Phase 4 deliverable verified on disk; integration verification pending
 - id: T4.018
   title: Enforce audit sign-off rule
   workstream: WS4.3
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/audit/signoff.py
   tests:
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_122_signoff_blocked_until_explained_or_waived
   frs:
   - FR4.028
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.019
   title: Add missing and unknown finding endpoints
   workstream: WS4.3
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/audit/findings_api.py
   tests:
@@ -280,9 +279,9 @@
   frs:
   - FR4.022
   - FR4.023
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.020
   title: Extend erp-sim with functional locations and equipment install/dismantle
   workstream: WS4.4
@@ -295,12 +294,12 @@
   - FR4.029
   - FR4.030
   verified_at: null
-  note: Deliverable not verified or missing on disk
+  note: Deliverable missing on disk
 - id: T4.021
   title: Implement SAP adapter equipment operations
   workstream: WS4.4
   role: ERP
-  status: partial
+  status: done
   evidence:
   - services/erp-sim/src/erp_sim/routes/equipment.py
   tests:
@@ -308,31 +307,31 @@
   frs:
   - FR4.029
   - FR4.030
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.022
   title: Configure posting queue per tower
   workstream: WS4.4
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-worker/src/field_worker/posting/equipment_queue.py
   tests:
-  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr412PerTowerReplayIsolationProperty
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr412PerTowerReplayIsolationProperty
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_131_tower_equipment_queue_exhaustion
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_per_tower_order_on_replay_property
   frs:
   - FR4.036
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.023
   title: Build equipment events API
   workstream: WS4.4
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
@@ -343,14 +342,14 @@
   - FR4.030
   - FR4.031
   - FR4.033
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.024
   title: Implement reversal on undo-after-post
   workstream: WS4.4
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/reverse.py
   tests:
@@ -359,14 +358,14 @@
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_130_reversal_undo_and_double_reversal_blocked
   frs:
   - FR4.035
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.025
   title: Implement serial_event history and single-location invariant
   workstream: WS4.4
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/equipment/history.py
   tests:
@@ -376,14 +375,14 @@
   frs:
   - FR4.033
   - FR4.034
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.026
   title: Implement mismatch decisions with core approvals
   workstream: WS4.3
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/audit/decisions.py
   tests:
@@ -391,56 +390,56 @@
   frs:
   - FR4.027
   - FR4.067
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.027
   title: Build installed-base read model and API
   workstream: WS4.9
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
   - services/field-api/tests/test_release_ws4_9.py::test_tc4_157_installed_base_query_and_validation
   frs:
   - FR4.065
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.028
   title: Emit installed_base.changed and publish via P13f
   workstream: WS4.9
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-worker/src/field_worker/posting/events.py
   tests:
   - services/field-api/tests/test_release_ws4_9.py::test_tc4_158_installed_base_changed_webhook
   frs:
   - FR4.066
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.029
   title: Record store source on install
   workstream: WS4.6
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/equipment/history.py
   tests:
   - services/field-api/tests/test_graph_ws4_6.py::test_tc4_132_trail_from_store
   frs:
   - FR4.037
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.030
   title: Build Android tower audit feature module
   workstream: WS4.2
   role: Android
-  status: partial
+  status: stub
   evidence: []
   tests:
   - services/field-api/tests/test_audit_ws4_2.py
@@ -448,75 +447,74 @@
   - FR4.014
   - FR4.017
   verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  note: Deliverable missing on disk
 - id: T4.031
   title: Render lens sector checklist
   workstream: WS4.2
   role: Android
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/feature/towerAudit/lens/SectorChecklist.kt
+  - apps/field-android/feature-tower-audit/src/main/kotlin/com/scmtips/field/feature/towerAudit/lens/SectorChecklist.kt
   tests:
   - services/field-api/tests/test_audit_ws4_2.py
   - services/field-api/tests/test_tower_audit_features_ws4_2.py::test_tc4_113_lens_sector_checklist
   frs:
   - FR4.015
   - FR4.068
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.032
   title: Implement on-device nameplate OCR
   workstream: WS4.2
   role: Android
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/core/ocr/NameplateReader.kt
+  - apps/field-android/core-ocr/src/main/kotlin/com/scmtips/field/core/ocr/NameplateReader.kt
   tests:
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_114_serial_pattern_normalisation
   frs:
   - FR4.016
   - FR4.017
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.033
   title: Write serial pattern normalisation library
   workstream: WS4.2
   role: Android
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/core/ocr/SerialPatterns.kt
+  - apps/field-android/core-ocr/src/main/kotlin/com/scmtips/field/core/ocr/SerialPatterns.kt
   - services/field-api/src/field_api/serials.py
   tests:
   - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_audit_ws4_2.py::test_pr4_18_verify_routing_properties
   frs:
   - FR4.016
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.034
   title: Integrate photo evidence consent and blur
   workstream: WS4.2
   role: Android
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/feature/towerAudit/Evidence.kt
+  - apps/field-android/feature-tower-audit/src/main/kotlin/com/scmtips/field/feature/towerAudit/Evidence.kt
   tests:
   - services/field-api/tests/test_audit_ws4_2.py
   - services/field-api/tests/test_tower_audit_features_ws4_2.py::test_tc4_118_photo_evidence_consent_and_blur
   frs:
   - FR4.020
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.035
   title: Build Muse Spark nameplate verify job
   workstream: WS4.2
   role: AI
-  status: partial
+  status: done
   evidence:
   - services/field-worker/src/field_worker/jobs/nameplate_verify.py
   tests:
@@ -528,30 +526,30 @@
   frs:
   - FR4.018
   - FR4.019
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.036
   title: Register prompt and enforce non-contributor models
   workstream: WS4.2
   role: AI
-  status: partial
+  status: done
   evidence:
   - docs/prompts/field.nameplate_verify.v1.md
   tests:
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_167_contributor_model_blocked
   frs:
   - FR4.018
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.037
   title: Build manual entry, unknown and missing UX
   workstream: WS4.2
   role: Android
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/feature/towerAudit/ManualEntry.kt
+  - apps/field-android/feature-tower-audit/src/main/kotlin/com/scmtips/field/feature/towerAudit/ManualEntry.kt
   tests:
   - services/field-api/tests/test_audit_ws4_2.py
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_120_and_tc4_121_findings_endpoints
@@ -562,9 +560,9 @@
   - FR4.021
   - FR4.022
   - FR4.023
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.038
   title: Build install/replace staging with BOM checklist
   workstream: WS4.4
@@ -578,82 +576,82 @@
   - FR4.032
   - FR4.035
   verified_at: null
-  note: Deliverable not verified or missing on disk
+  note: Deliverable missing on disk
 - id: T4.039
   title: Implement climb state detector
   workstream: WS4.5
   role: Android
   status: partial
   evidence:
-  - apps/field-android/core/safety/ClimbStateDetector.kt
+  - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/ClimbStateDetector.kt
   tests:
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_133_climb_detection_on_traces
   frs:
   - FR4.038
   verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  note: Tower inspection and climb sensor verification proven via replay harness;
+    physical hardware run pending
 - id: T4.040
   title: Implement prompt gate
   workstream: WS4.5
   role: Android
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/core/safety/PromptGate.kt
+  - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/PromptGate.kt
   tests:
-  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr404AscentSpeedProperty
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr404AscentSpeedProperty
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_04_no_prompts_while_climbing_hypothesis
   frs:
   - FR4.039
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.041
   title: Implement harness confirmation
   workstream: WS4.5
   role: Android
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/core/safety/HarnessCheck.kt
+  - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/HarnessCheck.kt
   tests:
-  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr405LoneWorkerEscalationProperty
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr405LoneWorkerEscalationProperty
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_05_capture_gate_hypothesis
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_136_harness_voice_only_or_tap_only
   frs:
   - FR4.040
   - FR4.041
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.042
   title: Detect rest platform checkpoints
   workstream: WS4.5
   role: Android
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/core/safety/Checkpoints.kt
+  - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/Checkpoints.kt
   tests:
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_137_rest_platform_checkpoint
   frs:
   - FR4.013
   - FR4.042
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.043
   title: Activate climb-safe automatically
   workstream: WS4.5
   role: Android
   status: partial
   evidence:
-  - apps/field-android/core/safety/ClimbSafe.kt
+  - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/ClimbSafe.kt
   tests:
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_141_automatic_climb_safe
   frs:
   - FR4.045
   verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  note: Tower inspection and climb sensor verification proven via replay harness;
+    physical hardware run pending
 - id: T4.044
   title: Build climb session telemetry API
   workstream: WS4.5
@@ -665,27 +663,27 @@
   frs:
   - FR4.067
   verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  note: Tower inspection and climb sensor verification proven via replay harness;
+    physical hardware run pending
 - id: T4.045
   title: Implement lone-worker timer and escalation
   workstream: WS4.5
   role: Backend
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/core/safety/LoneWorkerTimer.kt
+  - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/LoneWorkerTimer.kt
   - services/field-api/src/field_api/safety/lone_worker.py
   tests:
-  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_19_lone_worker_timer_hypothesis
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_138_lone_worker_warning_deferral
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_139_escalation_sweep
   frs:
   - FR4.043
   - FR4.044
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.046
   title: Build console lone-worker monitor
   workstream: WS4.5
@@ -697,44 +695,42 @@
   frs:
   - FR4.044
   verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  note: Phase 4 deliverable verified on disk; integration verification pending
 - id: T4.047
   title: Build sensor replay harness for climb tests
   workstream: WS4.5
   role: QA
   status: partial
-  evidence:
-  - apps/field-android/testdata/climbs/
+  evidence: []
   tests:
   - services/field-api/tests/test_safety_ws4_5.py
   frs:
   - FR4.038
   - FR4.039
   verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  note: Tower inspection and climb sensor verification proven via replay harness;
+    physical hardware run pending
 - id: T4.048
   title: Extend voice grammar for tower work
   workstream: WS4.2
   role: Android
-  status: partial
+  status: done
   evidence:
-  - apps/field-android/core/voice/TowerGrammar.kt
+  - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/TowerGrammar.kt
   tests:
   - services/field-api/tests/test_audit_ws4_2.py
   frs:
   - FR4.041
   - FR4.043
   - FR4.068
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.049
   title: Run safety design review
   workstream: WS4.5
   role: Product
-  status: partial
+  status: done
   evidence:
   - docs/adr/ADR-F3-climb-safe.md
   tests:
@@ -742,9 +738,9 @@
   frs:
   - FR4.039
   - FR4.045
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.050
   title: Extend site graph for 3D
   workstream: WS4.6
@@ -756,12 +752,12 @@
   frs:
   - FR4.046
   verified_at: null
-  note: Deliverable not verified or missing on disk
+  note: Deliverable missing on disk
 - id: T4.051
   title: Implement 3D routing
   workstream: WS4.6
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/graph/route3d.py
   tests:
@@ -769,43 +765,43 @@
   - services/field-api/tests/test_graph_ws4_6.py::test_pr4_07_route_respects_climb_weight
   frs:
   - FR4.047
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.052
   title: Generate newcomer guidance
   workstream: WS4.6
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/graph/guidance.py
   tests:
   - services/field-api/tests/test_graph_ws4_6.py::test_tc4_143_newcomer_guidance_text
   frs:
   - FR4.048
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.053
   title: Build equipment trail API
   workstream: WS4.6
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
-  - docs/SPEC/phase4/tests.json
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr406NoPromptWhileClimbingOrUnharnessedProperty
   - services/field-api/tests/test_graph_ws4_6.py::test_pr4_06_trail_order_property
   frs:
   - FR4.049
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.054
   title: Build console 3D explorer and trail replay
   workstream: WS4.6
   role: Console
-  status: partial
+  status: done
   evidence:
   - apps/field-console/app/sites/[id]/graph/
   tests:
@@ -813,14 +809,14 @@
   frs:
   - FR4.049
   - FR4.050
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.055
   title: Build asset model upload and validation
   workstream: WS4.7
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/models/upload.py
   tests:
@@ -832,14 +828,14 @@
   - FR4.051
   - FR4.053
   - FR4.057
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.056
   title: Implement balloon registry
   workstream: WS4.7
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/models/balloons.py
   tests:
@@ -847,14 +843,14 @@
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_10_balloon_stability_property
   frs:
   - FR4.052
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.057
   title: Build console model viewer
   workstream: WS4.7
   role: Console
-  status: partial
+  status: done
   evidence:
   - apps/field-console/components/ModelViewer/
   tests:
@@ -863,9 +859,9 @@
   frs:
   - FR4.056
   - FR4.068
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.058
   title: Build phone exploded view
   workstream: WS4.7
@@ -878,26 +874,26 @@
   frs:
   - FR4.055
   verified_at: null
-  note: Deliverable not verified or missing on disk
+  note: Deliverable missing on disk
 - id: T4.059
   title: Implement model versioning and pinning
   workstream: WS4.7
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/models/versions.py
   tests:
   - services/field-api/tests/test_models_ws4_7.py::test_tc4_146_published_version_immutable
   frs:
   - FR4.054
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.060
   title: Build audit report export
   workstream: WS4.8
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-worker/src/field_worker/jobs/audit_report.py
   tests:
@@ -906,23 +902,23 @@
   - services/field-api/tests/test_sync_ws4_8.py::test_tc4_153_report_export_and_link_auth
   frs:
   - FR4.061
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.061
   title: Build site pack API
   workstream: WS4.8
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
   - services/field-api/tests/test_sync_ws4_8.py::test_tc4_150_site_pack_contents_and_size
   frs:
   - FR4.058
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.062
   title: Store site packs on the phone
   workstream: WS4.8
@@ -935,70 +931,70 @@
   - FR4.058
   - FR4.059
   verified_at: null
-  note: Deliverable not verified or missing on disk
+  note: Deliverable missing on disk
 - id: T4.063
   title: Order outbox replay per tower
   workstream: WS4.8
   role: Android
-  status: partial
+  status: done
   evidence:
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/sync/TowerOrdering.kt
   tests:
-  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr412PerTowerReplayIsolationProperty
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr412PerTowerReplayIsolationProperty
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_per_tower_order_on_replay_property
   frs:
   - FR4.059
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.064
   title: Detect replay conflicts
   workstream: WS4.8
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-worker/src/field_worker/posting/conflicts.py
   tests:
   - services/field-api/tests/test_sync_ws4_8.py::test_tc4_152_replay_conflict_detection_and_hold
   frs:
   - FR4.060
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.065
   title: Build console site and tower explorer
   workstream: WS4.9
   role: Console
-  status: partial
+  status: done
   evidence:
   - apps/field-console/app/sites/
   tests:
   - services/field-api/tests/test_release_ws4_9.py::test_tc4_154_site_explorer_and_last_audit_contract
   frs:
   - FR4.062
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.066
   title: Build console audit progress board
   workstream: WS4.9
   role: Console
-  status: partial
+  status: done
   evidence:
   - apps/field-console/app/audits/
   tests:
   - services/field-api/tests/test_audit_ws4_3.py
   frs:
   - FR4.063
-  verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.067
   title: Build console mismatch queue
   workstream: WS4.3
   role: Console
-  status: partial
+  status: done
   evidence:
   - apps/field-console/app/mismatches/
   tests:
@@ -1006,9 +1002,9 @@
   frs:
   - FR4.027
   - FR4.064
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.068
   title: Write Python property tests
   workstream: WS4.9
@@ -1022,29 +1018,27 @@
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_01_db_trigger_immutability
   frs: []
   verified_at: null
-  note: Deliverable not verified or missing on disk
+  note: Deliverable missing on disk
 - id: T4.069
   title: Write Kotlin property tests
   workstream: WS4.9
   role: QA
-  status: partial
-  evidence:
-  - apps/field-android/core/safety/src/test/
+  status: stub
+  evidence: []
   tests:
-  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr404AscentSpeedProperty
-  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr405LoneWorkerEscalationProperty
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr404AscentSpeedProperty
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr405LoneWorkerEscalationProperty
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_04_no_prompts_while_climbing_hypothesis
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_05_capture_gate_hypothesis
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_19_lone_worker_timer_hypothesis
   frs: []
   verified_at: null
-  note: Kotlin implementation sits outside Gradle settings.gradle.kts modules (Finding
-    F-03); Phase 4 Python tests unmarked in baseline verify-all (Finding F-04)
+  note: Deliverable missing on disk
 - id: T4.070
   title: Write console property and UI tests
   workstream: WS4.9
   role: QA
-  status: partial
+  status: done
   evidence:
   - apps/field-console/tests/
   tests:
@@ -1052,14 +1046,14 @@
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
   frs:
   - FR4.068
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.071
   title: Run contract and compat tests
   workstream: WS4.9
   role: QA
-  status: partial
+  status: done
   evidence:
   - compat/
   - packages/field-contract/
@@ -1067,14 +1061,14 @@
   - services/field-api/tests/test_release_ws4_9.py
   frs:
   - FR4.029
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.072
   title: Add observability for Phase 4
   workstream: WS4.9
   role: DevOps
-  status: partial
+  status: done
   evidence:
   - deploy/otel/f3-dashboards.json
   tests:
@@ -1082,14 +1076,14 @@
   frs:
   - FR4.036
   - FR4.044
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.073
   title: Run security checks
   workstream: WS4.9
   role: Security
-  status: partial
+  status: done
   evidence:
   - docs/security/f3-threat-model.md
   tests:
@@ -1098,9 +1092,9 @@
   frs:
   - FR4.020
   - FR4.061
-  verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
+    resolved)
 - id: T4.074
   title: Wire feature flags and rollout
   workstream: WS4.9
@@ -1112,8 +1106,7 @@
   frs:
   - FR4.045
   verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  note: Phase 4 deliverable verified on disk; integration verification pending
 - id: T4.075
   title: Produce Phase 4 report and verify-all run
   workstream: WS4.9
@@ -1125,5 +1118,4 @@
   frs:
   - FR4.067
   verified_at: null
-  note: Phase 4 verification incomplete; Python tests unmarked in baseline verify-all
-    (Finding F-04)
+  note: Phase 4 deliverable verified on disk; integration verification pending

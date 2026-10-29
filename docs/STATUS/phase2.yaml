@@ -439,17 +439,16 @@
   title: Build the golden scene set and perception tests
   workstream: WS2.3
   role: QA
-  status: done
-  evidence:
-  - apps/field-android/testdata/scenes/
+  status: stub
+  evidence: []
   tests:
   - apps/field-android/tests/test_ws2_3.py::test_t2_031_golden_scene_perception
   frs:
   - FR2.016
   - FR2.019
   - FR2.022
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Deliverable missing on disk
 - id: T2.032
   title: Build the push-to-talk controller
   workstream: WS2.4
