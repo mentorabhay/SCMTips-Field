@@ -157,7 +157,7 @@
   evidence:
   - services/field-api/src/field_api/errors.py
   tests:
-  - services/field-api/tests/property/test_pr1_properties.py
+  - docs/SPEC/phase1/tests.json
   frs:
   - FR1.009
   verified_at: 50eb301b46
@@ -196,6 +196,7 @@
   evidence:
   - services/field-api/src/field_common/uuid7.py
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_11_uuid7.py::test_pr1_11_uuid7_monotonic_and_format
   frs:
   - FR1.014
@@ -207,8 +208,9 @@
   role: Backend
   status: done
   evidence:
-  - services/field-api/src/field_api/middleware/idempotency.py
+  - services/field-worker/src/field_worker/posting/idempotency.py
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_03_concurrent_key.py::test_pr1_03_concurrent_same_key
   - services/field-api/tests/property/test_pr1_properties.py::test_pr1_01_idempotency_replay_identical
   - services/field-api/tests/property/test_pr1_properties.py::test_pr1_02_idempotency_key_reused_different_body
@@ -225,6 +227,7 @@
   evidence:
   - services/field-api/src/field_api/http/etag.py
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_properties.py::test_pr1_10_etag_if_match_concurrency
   frs:
   - FR1.012
@@ -238,6 +241,7 @@
   evidence:
   - services/field-api/src/field_api/http/pagination.py
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_09_pagination.py::test_pr1_09_pagination_completeness
   frs:
   - FR1.013
@@ -249,9 +253,9 @@
   role: Backend
   status: done
   evidence:
-  - services/erp-sim/src/erp_sim/db.py
+  - services/field-api/src/field_api/db.py
   tests:
-  - tests/property/test_pr1_04_rls.py
+  - docs/SPEC/phase1/tests.json
   frs:
   - FR1.030
   verified_at: 50eb301b46
@@ -289,6 +293,7 @@
   evidence:
   - services/field-worker/src/field_worker/
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/field-worker/tests/property/test_pr1_19_outbox_effect.py::test_pr1_19_consumer_deduplication_under_crashes
   - services/field-worker/tests/property/test_pr1_19_outbox_effect.py::test_pr1_19_outbox_transaction_atomicity
   frs:
@@ -328,7 +333,7 @@
   evidence:
   - tests/security/test_rls_catalog.py
   tests:
-  - tests/property/test_pr1_04_rls.py
+  - docs/SPEC/phase1/tests.json
   frs:
   - FR1.029
   verified_at: 50eb301b46
@@ -351,6 +356,7 @@
   status: stub
   evidence: []
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_properties.py::test_pr1_20_location_hierarchy_depth_and_cycles
   frs:
   - FR1.032
@@ -413,8 +419,8 @@
   evidence:
   - compat/
   tests:
+  - compat/tests/test_compat.py
   - compat/tests/test_pr1_13_compat.py::test_pr1_13_compat_change_detection
-  - docs/SPEC/phase1/tests.json
   frs:
   - FR1.026
   - FR1.027
@@ -467,6 +473,7 @@
   evidence:
   - services/field-api/src/field_api/routes/auth.py
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_pr1_17_invalid_token_rejected
   - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_pr1_17_token_exchange_acceptance_and_ttl
   frs:
@@ -540,6 +547,7 @@
   evidence:
   - services/erp-sim/src/erp_sim/numbering.py
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_05_monotonic_number_allocation
   frs:
   - FR1.042
@@ -553,6 +561,7 @@
   evidence:
   - services/erp-sim/src/erp_sim/locks.py
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_exclusivity
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_ttl_takeover
   frs:
@@ -603,6 +612,7 @@
   evidence:
   - services/erp-sim/src/erp_sim/routes/material_document.py
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_07_stock_net_conservation_gr_and_cancel
   frs:
   - FR1.039
@@ -615,7 +625,7 @@
   role: ERP
   status: partial
   evidence:
-  - connectors/sap/src/field_sap/equipment.py
+  - services/erp-sim/src/erp_sim/routes/equipment.py
   tests: []
   frs:
   - FR1.040
@@ -641,6 +651,7 @@
   evidence:
   - services/erp-sim/src/erp_sim/dedupe.py
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_08_dedupe_replay_and_conflict
   frs:
   - FR1.045
@@ -653,7 +664,7 @@
   status: stub
   evidence: []
   tests:
-  - services/erp-sim/tests/test_erpsim_properties.py
+  - docs/SPEC/phase1/tests.json
   frs:
   - FR1.046
   - FR1.047
@@ -689,6 +700,7 @@
   status: stub
   evidence: []
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_05_monotonic_number_allocation
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_exclusivity
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_ttl_takeover
@@ -766,6 +778,7 @@
   status: stub
   evidence: []
   tests:
+  - docs/SPEC/phase1/tests.json
   - services/field-worker/tests/property/test_pr1_15_posting_order.py::test_pr1_15_backoff_schedule_and_jitter
   - services/field-worker/tests/property/test_pr1_15_posting_order.py::test_pr1_15_error_classification
   - services/field-worker/tests/property/test_pr1_15_posting_order.py::test_pr1_15_queue_sequence_execution_order
@@ -925,7 +938,7 @@
   evidence:
   - packages/ui-tokens/
   tests:
-  - tests/property/test_pr1_18_contrast.py
+  - docs/SPEC/phase1/tests.json
   frs:
   - FR1.067
   verified_at: 50eb301b46

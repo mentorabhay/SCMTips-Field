@@ -23,6 +23,5 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation(libs.meta.wearables.toolkit)
     implementation(libs.kotlinx.coroutines.android)
 }

@@ -8,20 +8,21 @@
 
 ---
 
-## 1. Meta Wearables Hardware & SDK Capability Matrix
+## 1. Meta Wearables Hardware & SDK Capability Matrix (Rule 2.4 / Finding F-07)
 
 | Capability | Call / API | Device | SDK / Firmware Version | Status | Evidence Path | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **BLE Pairing & Session** | `WearablesService.pairGlasses()` | Meta Ray-Ban Gen 2 | Wearables Toolkit v1.4.0 / FW 5.1.2 | **VERIFIED** | `tools/spikes/wearables-android/` | Paired successfully with developer harness; BT 5.3 connection stable. |
-| **12MP Still Photo Capture** | `WearablesService.captureStillPhoto()` | Meta Ray-Ban Gen 2 | Wearables Toolkit v1.4.0 / FW 5.1.2 | **VERIFIED** | `tools/spikes/wearables-android/` | 3024x4032 JPEG capture roundtrip to phone in ~480ms via Wi-Fi Direct. |
-| **1080p Video Stream** | `WearablesService.openVideoStream()` | Meta Ray-Ban Gen 2 | Wearables Toolkit v1.4.0 / FW 5.1.2 | **VERIFIED** | `tools/spikes/wearables-android/` | H.264 30fps stream verified via Mock Device Kit and hardware harness. |
-| **Spatial Mic Audio Routing** | `WearablesService.routeMicAudio()` | Meta Ray-Ban Gen 2 | Wearables Toolkit v1.4.0 / FW 5.1.2 | **VERIFIED** | `tools/spikes/wearables-android/` | 5-mic beamforming array captures 16kHz PCM audio cleanly under warehouse ambient noise. |
-| **Open-Ear Audio Earcons** | `WearablesService.playSpeakerPrompt()` | Meta Ray-Ban Gen 2 | Wearables Toolkit v1.4.0 / FW 5.1.2 | **VERIFIED** | `tools/spikes/wearables-android/` | Immediate audio playback (<50ms trigger latency) for earcons (success, conflict, alert). |
-| **HUD Monochromatic Text** | `LensRenderer.drawText()` | Meta Ray-Ban Display | Preview FW v0.9-alpha | **UNVERIFIED** | `tools/spikes/wearables-android/display/` | Ray-Ban Display hardware pending public regional rollout. Emulated via Web HUD. |
-| **HUD Monochromatic List** | `LensRenderer.drawList()` | Meta Ray-Ban Display | Preview FW v0.9-alpha | **UNVERIFIED** | `tools/spikes/wearables-android/display/` | 2-line x 18-char list renderer emulated in console shell. |
-| **HUD Vector Bitmap** | `LensRenderer.drawBitmap()` | Meta Ray-Ban Display | Preview FW v0.9-alpha | **UNVERIFIED** | `tools/spikes/wearables-android/display/` | 1-bit monochrome glyphs emulated in Web HUD. |
-| **HUD Action Button / Pill** | `LensRenderer.drawActionPill()` | Meta Ray-Ban Display | Preview FW v0.9-alpha | **UNVERIFIED** | `tools/spikes/wearables-android/display/` | Physical display hardware unavailable in dev lab; emulated in Web HUD. |
-| **Mock Device Kit Emulation** | `MockDeviceKit.isDisplaySimulated()` | Android Emulator | MDK v1.4.0-DEV | **VERIFIED** | `tools/spikes/wearables-android/mock/` | Camera/mic paths simulate cleanly; display drawing is NOT simulated by MDK. |
+| **Wearables Toolkit SDK** | Gradle dependency | Android Host | Unresolved Coordinate | **UNVERIFIED** | `tools/spikes/wearables-android/` | SDK coordinate `com.meta.wearables:toolkit-sdk` not publicly resolvable from standard Maven repositories (Finding F-07). Pure `GlassesSession` interface sits in `:core-wearables`; `MockWearablesKit` moved to `:core-wearables-testing`. |
+| **BLE Pairing & Session** | `GlassesSession.connect()` | Meta Ray-Ban Gen 2 | Mock / Interface | **UNVERIFIED** | `tools/spikes/wearables-android/` | Hardware pairing unverified on physical SDK. Simulated via `MockWearablesKit.connect()`. |
+| **12MP Still Photo Capture** | `StillCapture.capturePhoto()` | Meta Ray-Ban Gen 2 | Mock / Interface | **UNVERIFIED** | `tools/spikes/wearables-android/` | Hardware capture unverified on physical SDK. Simulated via `MockWearablesKit.stillCapture`; CameraX phone fallback is VERIFIED. |
+| **1080p Video Stream** | `PreviewStream.frames` | Meta Ray-Ban Gen 2 | Mock / Interface | **UNVERIFIED** | `tools/spikes/wearables-android/` | Hardware stream unverified on physical SDK. Simulated via `PreviewFrame` flow; CameraX phone fallback is VERIFIED. |
+| **Spatial Mic Audio Routing** | `AudioOut / ASR` | Meta Ray-Ban Gen 2 | Mock / Interface | **UNVERIFIED** | `tools/spikes/wearables-android/` | Hardware beamforming unverified on physical SDK. Mobile phone microphone input is VERIFIED. |
+| **Open-Ear Audio Earcons** | `AudioOut.playEarcon()` | Meta Ray-Ban Gen 2 | Mock / Interface | **UNVERIFIED** | `tools/spikes/wearables-android/` | Physical temple speakers unverified. Android TTS and MediaPlayer cues VERIFIED on phone. |
+| **HUD Monochromatic Text** | `LensRenderer.renderState()` | Meta Ray-Ban Display | Pure Kotlin Renderer | **UNVERIFIED** (Physical) / **VERIFIED** (JVM Engine) | `tools/spikes/wearables-android/display/` | Physical display hardware unreleased. Monochromatic 2-line x 18-char text formatting verified via `RayBanLensRenderer` and `FakeLensRenderer`. |
+| **HUD Monochromatic List** | `LensRenderer.renderState()` | Meta Ray-Ban Display | Pure Kotlin Renderer | **UNVERIFIED** (Physical) / **VERIFIED** (JVM Engine) | `tools/spikes/wearables-android/display/` | Physical display unreleased; state machine formatting verified in test doubles. |
+| **HUD Action Button / Pill** | `LensRenderer.renderState()` | Meta Ray-Ban Display | Pure Kotlin Renderer | **UNVERIFIED** (Physical) / **VERIFIED** (JVM Engine) | `tools/spikes/wearables-android/display/` | Physical display unreleased; pill truncation (<=18 chars) verified in test doubles. |
+| **Mock Device Kit Emulation** | `MockWearablesKit` | Android Host / CI | Internal Test Double | **VERIFIED** | `tools/spikes/wearables-android/mock/` | Full session simulation cleanly isolated in `:core-wearables-testing` (Rule 2.2). |
+
 
 ---
 
@@ -68,10 +69,11 @@ Production warehouse and yard field operations cannot depend on cloud-hosted Met
 
 | Item | Test Objective | Hardware Target | Status | Observations |
 | :--- | :--- | :--- | :---: | :--- |
-| **HW-01** | **Lens Legibility** | Ray-Ban Display | **VERIFIED** (Emulated) / **UNVERIFIED** (Physical) | 2 lines of 18 chars legible at arm's length (tested via Web HUD simulator & `FakeLensRenderer`). Physical display awaiting broad hardware availability in region. |
-| **HW-02** | **Privacy LED Indicator** | Ray-Ban Gen 2 / Display | **VERIFIED** | Front-facing white capture LED activates immediately on camera stream or still capture. Session refuses capture when indicator is obstructed or disabled (FR2.064 / TC2.155). |
-| **HW-03** | **Push-to-Talk Routing** | Ray-Ban Gen 2 | **VERIFIED** | Frame touch stem gesture captures push-to-talk turn; mic beamforming isolates user voice from warehouse ambient background. |
-| **HW-04** | **100-Capture Spot Latency** | Ray-Ban Gen 2 + Phone | **VERIFIED** | 100 consecutive shutter triggers over 5G: still transfer p50 = 310ms, p95 = 445ms; end-to-end to lens draw well within the 800ms budget. |
+| **HW-01** | **Lens Legibility** | Ray-Ban Display | **UNVERIFIED** (Physical) / **VERIFIED** (Emulated) | 2 lines of 18 chars legible at arm's length (tested via Web HUD simulator & `FakeLensRenderer`). Physical display awaiting broad hardware availability in region. |
+| **HW-02** | **Privacy LED Indicator** | Ray-Ban Gen 2 / Display | **UNVERIFIED** (Physical) / **VERIFIED** (Simulated) | Privacy LED interlock simulated via `GlassesSession` connection state. Physical LED interlock requires partner firmware release. |
+| **HW-03** | **Push-to-Talk Routing** | Ray-Ban Gen 2 | **UNVERIFIED** (Physical) / **VERIFIED** (Phone Fallback) | Touch stem PTT unverified on physical hardware. Phone on-screen PTT and headset button routing verified. |
+| **HW-04** | **100-Capture Spot Latency** | Ray-Ban Gen 2 + Phone | **UNVERIFIED** (Physical) / **VERIFIED** (Emulated) | 100 consecutive synthetic frames processed within 800ms budget in benchmark tests. Real hardware wireless latency unverified without physical device kit. |
 | **HW-05** | **CameraX Phone Fallback** | Pixel 8 Phone | **VERIFIED** | Phone-only operation with 640x480 YUV frames and IMU-derived angular speed equivalent for head movement gating (FR2.008 / TC2.165). |
-| **HW-06** | **Audio Earcons & Phrases** | Ray-Ban Gen 2 | **VERIFIED** | 16-bit PCM earcons under 300ms audible through temple speakers; spoken phrases suppressed during walking-quiet mode except error alerts (FR2.014 / TC2.115). |
+| **HW-06** | **Audio Earcons & Phrases** | Ray-Ban Gen 2 | **UNVERIFIED** (Physical) / **VERIFIED** (Phone Fallback) | 16-bit PCM earcons and TTS synthesized cleanly through Android phone audio output; temple speakers unverified without physical hardware. |
+
 

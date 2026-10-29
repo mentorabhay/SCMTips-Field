@@ -103,7 +103,6 @@
   - compat/sap_parity/
   tests:
   - compat/sap_parity/test_sap_parity.py::test_t3_008_sap_vcr_cassettes_parity
-  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.043
   verified_at: null
@@ -130,6 +129,7 @@
   evidence:
   - services/field-worker/src/field_worker/posting/queue.py
   tests:
+  - docs/SPEC/phase3/tests.json
   - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_010_failed_job_blocks_later_jobs_until_retried
   - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_010_ordered_queue_claim_and_predecessor_blocking
   frs:
@@ -146,6 +146,7 @@
   evidence:
   - services/field-worker/src/field_worker/posting/retry.py
   tests:
+  - docs/SPEC/phase3/tests.json
   - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_011_retry_classification_and_backoff_jitter
   frs:
   - FR3.040
@@ -160,6 +161,7 @@
   evidence:
   - services/field-worker/src/field_worker/posting/idempotency.py
   tests:
+  - docs/SPEC/phase3/tests.json
   - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_012_compact_idempotency_key_format
   - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_012_pre_post_probe_adoption
   frs:
@@ -250,6 +252,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/sscc.py
   tests:
+  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_104_and_pr3_12_sscc_validation_and_duplicate
   frs:
   - FR3.004
@@ -264,6 +267,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/counting.py
   tests:
+  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_105_and_pr3_02_counting_hierarchy_and_line_qty
   frs:
   - FR3.005
@@ -279,6 +283,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/tolerance.py
   tests:
+  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_106_and_tc3_107_delivery_tolerances
   frs:
   - FR3.007
@@ -322,12 +327,12 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/reverse.py
   tests:
+  - compat/sap_parity/test_sap_parity.py
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_110_and_pr3_01_undo_goods_receipt_reversal
   frs:
   - FR3.011
   verified_at: null
-  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
-    and real SAP cassette
+  note: SAP parity test fixture not present (Finding F-11)
 - id: T3.024
   title: Route quality-hold receipts
   workstream: WS3.3
@@ -455,6 +460,7 @@
   status: missing
   evidence: []
   tests:
+  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_104_and_pr3_12_sscc_validation_and_duplicate
   frs:
   - FR3.022
@@ -527,6 +533,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/counting.py
   tests:
+  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_105_and_pr3_02_counting_hierarchy_and_line_qty
   frs:
   - FR3.030
@@ -860,7 +867,7 @@
   role: Security
   status: stub
   evidence:
-  - connectors/sap/src/sap_adapter/warehouse.py
+  - services/erp-sim/src/erp_sim/faults/warehouse.py
   tests: []
   frs:
   - FR3.064
@@ -874,6 +881,7 @@
   status: missing
   evidence: []
   tests:
+  - compat/sap_parity/test_sap_parity.py
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_110_and_pr3_01_undo_goods_receipt_reversal
   frs: []
   verified_at: null

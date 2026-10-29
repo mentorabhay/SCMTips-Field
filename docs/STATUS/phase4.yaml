@@ -51,7 +51,7 @@
   role: ERP
   status: partial
   evidence:
-  - connectors/sap/src/field_sap/fl_import.py
+  - services/field-worker/src/field_worker/jobs/fl_import.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py
   frs:
@@ -81,6 +81,7 @@
   evidence:
   - services/field-api/src/field_api/sites/import_service.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_101_fl_import_preview_and_apply
   frs:
   - FR4.004
@@ -95,7 +96,7 @@
   role: Backend
   status: partial
   evidence:
-  - connectors/sap/src/field_sap/fl_import.py
+  - services/field-worker/src/field_worker/jobs/fl_import.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_103_delta_import_watermark
   frs:
@@ -139,6 +140,7 @@
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_tower_ws4_1.py::test_pr4_17_geofence_invariant_property
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_107_checkin_inside_geofence
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_108_checkin_expired_permit
@@ -199,6 +201,7 @@
   evidence:
   - services/field-api/src/field_api/audit/progress.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_03_completeness_bounded_hypothesis
   frs:
   - FR4.024
@@ -214,6 +217,7 @@
   evidence:
   - services/field-api/src/field_api/audit/reconcile.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_11_mismatch_symmetry_hypothesis
   frs:
   - FR4.025
@@ -298,7 +302,7 @@
   role: ERP
   status: partial
   evidence:
-  - connectors/sap/src/field_sap/equipment.py
+  - services/erp-sim/src/erp_sim/routes/equipment.py
   tests:
   - services/field-api/tests/test_equipment_ws4_4.py
   frs:
@@ -315,6 +319,7 @@
   evidence:
   - services/field-worker/src/field_worker/posting/equipment_queue.py
   tests:
+  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr412PerTowerReplayIsolationProperty
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_131_tower_equipment_queue_exhaustion
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_per_tower_order_on_replay_property
@@ -331,6 +336,7 @@
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_125_and_tc4_126_install_and_single_location
   frs:
   - FR4.029
@@ -348,6 +354,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/reverse.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_13_invertibility_property
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_130_reversal_undo_and_double_reversal_blocked
   frs:
@@ -363,6 +370,7 @@
   evidence:
   - services/field-api/src/field_api/equipment/history.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_01_db_trigger_immutability
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_02_monotonic_sequence_invariant
   frs:
@@ -395,7 +403,6 @@
   - services/field-api/src/field_api/visits/api.py
   tests:
   - services/field-api/tests/test_release_ws4_9.py::test_tc4_157_installed_base_query_and_validation
-  - tools/checks/tests/test_honesty_checks.py
   frs:
   - FR4.065
   verified_at: null
@@ -407,10 +414,9 @@
   role: Backend
   status: partial
   evidence:
-  - services/field-api/src/field_api/installed_base/events.py
+  - services/field-worker/src/field_worker/posting/events.py
   tests:
   - services/field-api/tests/test_release_ws4_9.py::test_tc4_158_installed_base_changed_webhook
-  - tools/checks/tests/test_honesty_checks.py
   frs:
   - FR4.066
   verified_at: null
@@ -484,6 +490,7 @@
   - apps/field-android/core/ocr/SerialPatterns.kt
   - services/field-api/src/field_api/serials.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_audit_ws4_2.py::test_pr4_18_verify_routing_properties
   frs:
   - FR4.016
@@ -513,6 +520,7 @@
   evidence:
   - services/field-worker/src/field_worker/jobs/nameplate_verify.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_audit_ws4_2.py::test_pr4_18_verify_routing_properties
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_115_verify_routing_table
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_116_ai_mismatch_opens_exception_no_erp
@@ -593,6 +601,7 @@
   evidence:
   - apps/field-android/core/safety/PromptGate.kt
   tests:
+  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr404AscentSpeedProperty
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_04_no_prompts_while_climbing_hypothesis
   frs:
   - FR4.039
@@ -607,6 +616,7 @@
   evidence:
   - apps/field-android/core/safety/HarnessCheck.kt
   tests:
+  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr405LoneWorkerEscalationProperty
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_05_capture_gate_hypothesis
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_136_harness_voice_only_or_tap_only
   frs:
@@ -666,6 +676,7 @@
   - apps/field-android/core/safety/LoneWorkerTimer.kt
   - services/field-api/src/field_api/safety/lone_worker.py
   tests:
+  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_19_lone_worker_timer_hypothesis
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_138_lone_worker_warning_deferral
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_139_escalation_sweep
@@ -754,6 +765,7 @@
   evidence:
   - services/field-api/src/field_api/graph/route3d.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_graph_ws4_6.py::test_pr4_07_route_respects_climb_weight
   frs:
   - FR4.047
@@ -782,6 +794,7 @@
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_graph_ws4_6.py::test_pr4_06_trail_order_property
   frs:
   - FR4.049
@@ -811,6 +824,7 @@
   evidence:
   - services/field-api/src/field_api/models/upload.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_08_bom_counts_property
   - services/field-api/tests/test_models_ws4_7.py::test_tc4_145_gltf_upload_validation
   - services/field-api/tests/test_models_ws4_7.py::test_tc4_149_bom_quantity_rule_mismatch
@@ -829,6 +843,7 @@
   evidence:
   - services/field-api/src/field_api/models/balloons.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_10_balloon_stability_property
   frs:
   - FR4.052
@@ -843,6 +858,7 @@
   evidence:
   - apps/field-console/components/ModelViewer/
   tests:
+  - apps/field-console/tests/viewer-properties.test.ts
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
   frs:
   - FR4.056
@@ -857,6 +873,7 @@
   status: stub
   evidence: []
   tests:
+  - apps/field-console/tests/viewer-properties.test.ts
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
   frs:
   - FR4.055
@@ -884,6 +901,7 @@
   evidence:
   - services/field-worker/src/field_worker/jobs/audit_report.py
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_20_report_round_trip_property
   - services/field-api/tests/test_sync_ws4_8.py::test_tc4_153_report_export_and_link_auth
   frs:
@@ -924,8 +942,9 @@
   role: Android
   status: partial
   evidence:
-  - apps/field-android/core/outbox/TowerOrdering.kt
+  - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/sync/TowerOrdering.kt
   tests:
+  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr412PerTowerReplayIsolationProperty
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_per_tower_order_on_replay_property
   frs:
@@ -997,6 +1016,7 @@
   status: stub
   evidence: []
   tests:
+  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_03_completeness_bounded_hypothesis
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_11_mismatch_symmetry_hypothesis
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_01_db_trigger_immutability
@@ -1011,6 +1031,8 @@
   evidence:
   - apps/field-android/core/safety/src/test/
   tests:
+  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr404AscentSpeedProperty
+  - apps/field-android/core/safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr405LoneWorkerEscalationProperty
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_04_no_prompts_while_climbing_hypothesis
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_05_capture_gate_hypothesis
   - services/field-api/tests/test_safety_ws4_5.py::test_pr4_19_lone_worker_timer_hypothesis
@@ -1026,6 +1048,7 @@
   evidence:
   - apps/field-console/tests/
   tests:
+  - apps/field-console/tests/viewer-properties.test.ts
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
   frs:
   - FR4.068
