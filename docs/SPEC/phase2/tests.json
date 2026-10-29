@@ -1,0 +1,583 @@
+{
+  "phase": 2,
+  "properties": [
+    {
+      "id": "PR2.01",
+      "phase": 2,
+      "name": "At most one record per look",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all frame sequences within one look, the pipeline emits at most one capture record. Generator Looks of 1-60 frames, 0-12 boxes per frame, random dwell, scores and capture commands; repeated capture commands biased high. Oracle Count records grouped by look_id is 0 or 1. Shrinking One look, two frames, a capture command on each frame. Case Given When Then Data TC2.001 a look with a clear winner held for 3 s auto-capture fires and the user also says capture one record exists for the look look L1, winner SSCC 003012345678901232 score 0.81 TC2.002 a look with two capture commands 400 ms apart both commands are processed second command yields lens Captured again without a new record look L2, commands at t=1.0 s and t=1.4 s TC2.003 a tie resolved by left the user then says capture no second record is created in that look look L3, scores 0.62/0.60"
+    },
+    {
+      "id": "PR2.02",
+      "phase": 2,
+      "name": "Eligibility floor",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all object sets, no object with coverage below 0.20 is ever selected. Generator Boxes with coverage sampled 0-1, 30% of samples in [0.15, 0.25]; random other components. Oracle Select outcome implies coverage of the selected box >= 0.20 (geometry recomputed independently with polygon clipping). Shrinking One box with coverage 0.199 and perfect other components. Case Given When Then Data TC2.004 a single box with coverage 0.19 and score components all 1.0 rank runs outcome is None view width 1000, R 135 px TC2.005 a box at coverage 0.20 exactly rank runs box is eligible coverage 0.200 TC2.006 two boxes, one at 0.10 coverage with high score, one at 0.60 with lower score rank runs the 0.60 box is selected or None, never the 0.10 box scores 0.95 vs 0.55"
+    },
+    {
+      "id": "PR2.03",
+      "phase": 2,
+      "name": "Tie rule",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all eligible sets where top > 0.35 and top - second < 0.05, the outcome is Tie and no record is made. Generator Score pairs with gaps in [0, 0.1] biased near 0.05; tops in [0.3, 1.0] biased near 0.35. Oracle Reference ranker in Python port computes the expected outcome; compare. Shrinking Two boxes with scores 0.36 and 0.31. Case Given When Then Data TC2.007 eligible scores 0.62 and 0.60 rank runs Tie; lens state tie; no record gap 0.02 TC2.008 eligible scores 0.62 and 0.57 rank runs Select first gap 0.05 is not a tie TC2.009 eligible scores 0.34 and 0.33 rank runs None (top at or below 0.35) D2.01"
+    },
+    {
+      "id": "PR2.04",
+      "phase": 2,
+      "name": "Duplicate never yields a second record",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all capture streams, a code already captured for a task never produces a second non-duplicate record on device or server. Generator Streams of 1-200 captures over 1-5 tasks with 30% repeated codes, retries and reorderings. Oracle Server table has at most one row per (tenant, task, code_type, code) with duplicate_of null and superseded_by null. Shrinking Two captures of the same SSCC on the same task. Case Given When Then Data TC2.010 SSCC captured on task T-SAMPLE-17 the same SSCC is looked at again score halves; if selected lens shows duplicate and no record score 0.84 becomes 0.42 TC2.011 two devices capture the same SSCC on the same task both POST /v1/captures one 201, one 409 FIELD-CAP-409-DUPLICATE with duplicate_of devices D1, D2 TC2.012 same SSCC on two different tasks both posted two records (duplicates are per task) T-SAMPLE-17, T-SAMPLE-18"
+    },
+    {
+      "id": "PR2.05",
+      "phase": 2,
+      "name": "Ranking order invariance",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all object lists and permutations, rank(list) equals rank(permutation). Generator Lists of 0-12 objects including equal scores; all permutations for n <= 6, 50 random for larger. Oracle Outcome (kind and selected stable key) identical across permutations. Shrinking Two objects with equal scores in swapped order. Case Given When Then Data TC2.013 objects A(0.70), B(0.50), C(0.40) list given as C, A, B Select A stable keys A,B,C TC2.014 objects A(0.60), B(0.60) list in both orders Tie in both orders with the same left/right assignment A left of B TC2.015 empty list rank runs None []"
+    },
+    {
+      "id": "PR2.06",
+      "phase": 2,
+      "name": "Score bounds and weights",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all component vectors in [0,1]^6, score is in [0,1] and equals the weighted sum (times 0.5 if duplicate). Generator Uniform components plus corners {0,1}^6. Oracle Independent BigDecimal computation with weights 0.30/0.25/0.20/0.10/0.10/0.05. Shrinking All components 1 with duplicate flag. Case Given When Then Data TC2.016 all components 1.0, not duplicate score computed 1.0 weights sum 1.00 TC2.017 all components 1.0, duplicate score computed 0.5 TC2.018 centre 0.9, match 1.0, read 0.8, cov 1.0, dwell 1.0, size 0.4 score computed 0.90 BR2.02 example"
+    },
+    {
+      "id": "PR2.07",
+      "phase": 2,
+      "name": "Outbox exactly-once delivery",
+      "engine": "Kotest",
+      "runs": "500 runs",
+      "statement": "For all capture sequences and fault schedules, every committed item is stored on the server exactly once. Generator 1-300 items; faults: drop request, drop response, duplicate response, delay up to 30 s, 5xx, app kill at random points, network toggles. Oracle Server rows keyed by idempotency key: set equals committed set; no key with two rows. Shrinking One item whose response is lost, then app killed before retry. Case Given When Then Data TC2.019 item K41 whose 201 response is lost worker retries server returns stored response; one row key 01934f6e-7a10-7c3e-9b2a-5d1e8f0a4c21 TC2.020 app killed after send and before ack app restarts and syncs one row; outbox item acked kill at state sending TC2.021 50 items with 20% duplicate responses sync completes 50 rows, 50 acked items seed 2026111201"
+    },
+    {
+      "id": "PR2.08",
+      "phase": 2,
+      "name": "Per-task order preserved",
+      "engine": "Kotest",
+      "runs": "500 runs",
+      "statement": "For all interleavings of captures across tasks and faults, the server receives each task&#x27;s items in increasing client_seq order. Generator 2-5 tasks, 1-100 items each, random interleaving, retry faults on random items. Oracle For each task, received_at order of rows matches client_seq order. Shrinking Task with seq 1 failing twice and seq 2 ready. Case Given When Then Data TC2.022 task A seq 1 gets 503 twice seq 2 is due seq 2 waits until seq 1 is acked backoff 2 s, 4 s TC2.023 task A seq 1 rejected 410 sync continues seq 2 sent after seq 1 reaches terminal state task closed TC2.024 tasks A and B interleaved sync runs A and B each in order; round-robin between tasks A1,B1,A2,B2"
+    },
+    {
+      "id": "PR2.09",
+      "phase": 2,
+      "name": "Below-floor voice is inert",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all utterances with confidence < 0.80, session state before and after is identical. Generator Intents from the full grammar with confidences uniform in [0, 1] biased at 0.79-0.81; random prior states including staged posts and ties. Oracle Deep equality of session state snapshots; only a voice_event with accepted false is added. Shrinking Utterance confirm at 0.799 while a post is staged. Case Given When Then Data TC2.025 count staged at 10 count twelve at 0.79 count stays 10; MSG2.10 confidence 0.79 TC2.026 post staged confirm at 0.799 nothing sent; stage still waiting confidence 0.799 TC2.027 tie shown left at 0.80 left chosen (floor is inclusive at 0.80) confidence 0.80"
+    },
+    {
+      "id": "PR2.10",
+      "phase": 2,
+      "name": "Number parser round trip",
+      "engine": "Kotest",
+      "runs": "10000 runs",
+      "statement": "For all n in 0-9999, parse(toWords(n)) = n and parse(toDigits(n)) = n. Generator Exhaustive 0-9999 plus random digit-by-digit strings of length 2-4 and optional &#x27;and&#x27;. Oracle Reference toWords implementation in test sources. Shrinking n = 1005 (one thousand and five). Case Given When Then Data TC2.028 words one thousand two hundred and five parse 1205 TC2.029 digit-by-digit one two five parse 125 TC2.030 words twelve hundred parse null (not in supported forms, nothing changes)"
+    },
+    {
+      "id": "PR2.11",
+      "phase": 2,
+      "name": "Confirm required to post",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all utterance sequences, a post request is sent only if an accepted post is followed by an accepted confirm within 10 s with no other accepted intent between. Generator Sequences of 1-20 utterances from the grammar with random confidences and gaps 0-15 s. Oracle Model checker over the confirm gate state machine; server oracle validates voice event ids, order, staged_hash and 10 s window. Shrinking post, then confirm at 10.1 s. Case Given When Then Data TC2.031 post at t=0, confirm at t=4 s sequence processed one post request sent both >= 0.80 TC2.032 post, next, confirm sequence processed no post request next clears the stage TC2.033 API call with confirm_voice_event_id older than post POST /v1/tasks/{id}/post-requests 422 FIELD-POST-422-NO-CONFIRM server oracle"
+    },
+    {
+      "id": "PR2.12",
+      "phase": 2,
+      "name": "SSCC check digit agrees with GS1",
+      "engine": "Hypothesis",
+      "runs": "2000 runs",
+      "statement": "For all 17-digit prefixes, the validator accepts exactly the one check digit computed by the GS1 mod-10 reference. Generator Uniform 17-digit prefixes plus all 10 candidate check digits; non-digit and wrong-length strings. Oracle Python reference implementation of GS1 General Specifications check digit; cross-checked with published examples. Shrinking Prefix of 17 zeros. Case Given When Then Data TC2.034 SSCC 003012345678901232 validate valid TC2.035 SSCC 003012345678901238 validate invalid; MSG2.08 TC2.036 17 or 19 digit strings validate invalid 00301234567890123"
+    },
+    {
+      "id": "PR2.13",
+      "phase": 2,
+      "name": "Face blur before upload",
+      "engine": "Kotest",
+      "runs": "500 runs",
+      "statement": "For all crops, no crop bytes reach the network layer unless produced by FaceBlurStage with every detected face pixelated. Generator SAMPLE crops with 0-4 synthetic faces at varying sizes; detector failure injected in 10%. Oracle Network interceptor records bytes; independent face detector on uploaded bytes finds no face above 0.3; withheld crops have no bytes sent. Shrinking Crop with one 24 px face at the edge. Case Given When Then Data TC2.037 crop with one bystander face prepared for upload face region pixelated; blur_applied true; faces_blurred 1 face 60x60 px TC2.038 face detector throws prepared for upload crop withheld; capture sent with crop_ref null evidence_withheld TC2.039 server receives crop with blur_applied false POST /v1/captures 422 FIELD-CAP-422-BLUR-MISSING"
+    },
+    {
+      "id": "PR2.14",
+      "phase": 2,
+      "name": "Readability monotone in head speed",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all base inputs, readability(w1) >= readability(w2) whenever w1 <= w2. Generator Pairs of head speeds in [0, 120] deg/s biased at 8 and 60; random decode, sharpness, pixel height. Oracle Pairwise comparison; plus value 0 at >= 60 deg/s. Shrinking w1 = 8.0, w2 = 8.0001. Case Given When Then Data TC2.040 base 0.9 at 5 deg/s readability 0.9 (still) TC2.041 base 0.9 at 34 deg/s readability 0.45 TC2.042 base 0.9 at 70 deg/s readability 0.0"
+    },
+    {
+      "id": "PR2.15",
+      "phase": 2,
+      "name": "Server idempotency",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all request bodies and keys, a repeated key with the same body returns the identical stored response and a different body returns 422. Generator Random capture bodies; replays with same body, mutated body (one field), and after 24 h expiry. Oracle Compare status and body bytes; count rows. Shrinking Same key with confidence 0.97 vs 0.96. Case Given When Then Data TC2.043 key K and body B stored POST again with K and B same status and body; Idempotent-Replay true TC2.044 key K and body B stored POST with K and B&#x27; 422 FIELD-IDEM-422-KEY-REUSE readability changed TC2.045 key expired after 24 h POST again treated as new; duplicate rule applies (409 if same code)"
+    },
+    {
+      "id": "PR2.16",
+      "phase": 2,
+      "name": "Model routing and allowlist",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all captures, verification is queued iff readability < 0.90 or not on task, and no call targets a model outside the allowlist or ending in -contributor. Generator Readability uniform [0,1] biased at 0.90; on_task boolean; random model configs including contributor names. Oracle Router decision table; HTTP mock asserts model names in requests. Shrinking readability 0.8999 on task. Case Given When Then Data TC2.046 readability 0.93 and on task route not_needed TC2.047 readability 0.95 and not on task route queued TC2.048 config muse-spark-1.3-contributor worker starts startup fails"
+    },
+    {
+      "id": "PR2.17",
+      "phase": 2,
+      "name": "Budget gate",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all budget states, no model call occurs when the budget is exhausted, and the capture ends failed with verify_reason unverified_budget. Generator Budget remaining in [0, 2x call cost] with exhaustion mid-batch; concurrent jobs 1-8. Oracle HTTP mock call count vs budget ledger; final status per capture. Shrinking Budget exactly one call left, two jobs concurrent. Case Given When Then Data TC2.049 budget 0 job runs 0 model calls; failed, unverified_budget TC2.050 budget for 1 call, 2 jobs both run 1 call; other job failed unverified_budget reservation via core P13b TC2.051 budget restored field.verify.retry job queued and runs"
+    },
+    {
+      "id": "PR2.18",
+      "phase": 2,
+      "name": "Outbox bound",
+      "engine": "Kotest",
+      "runs": "300 runs",
+      "statement": "For all capture bursts, outbox size never exceeds limits and no queued item is dropped to admit a new one. Generator Bursts of 0-3,000 captures with crop sizes 10-300 KB, network off. Oracle Count and bytes after each insert; set of queued items only grows until sync. Shrinking 2,000 items then one more. Case Given When Then Data TC2.052 1,999 items one capture accepted; 2,000 items TC2.053 2,000 items one capture refused with MSG2.13; queue unchanged TC2.054 1,800 items one capture accepted; MSG2.12 shown 90%"
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "TC2.001",
+      "phase": 2,
+      "action": "a look with a clear winner held for 3 s",
+      "setup": "auto-capture fires and the user also says capture",
+      "expected": "one record exists for the look",
+      "notes": "look L1, winner SSCC 003012345678901232 score 0.81"
+    },
+    {
+      "id": "TC2.002",
+      "phase": 2,
+      "action": "a look with two capture commands 400 ms apart",
+      "setup": "both commands are processed",
+      "expected": "second command yields lens Captured again without a new record",
+      "notes": "look L2, commands at t=1.0 s and t=1.4 s"
+    },
+    {
+      "id": "TC2.003",
+      "phase": 2,
+      "action": "a tie resolved by left",
+      "setup": "the user then says capture",
+      "expected": "no second record is created in that look",
+      "notes": "look L3, scores 0.62/0.60"
+    },
+    {
+      "id": "TC2.004",
+      "phase": 2,
+      "action": "a single box with coverage 0.19 and score components all 1.0",
+      "setup": "rank runs",
+      "expected": "outcome is None",
+      "notes": "view width 1000, R 135 px"
+    },
+    {
+      "id": "TC2.005",
+      "phase": 2,
+      "action": "a box at coverage 0.20 exactly",
+      "setup": "rank runs",
+      "expected": "box is eligible",
+      "notes": "coverage 0.200"
+    },
+    {
+      "id": "TC2.006",
+      "phase": 2,
+      "action": "two boxes, one at 0.10 coverage with high score, one at 0.60 with lower score",
+      "setup": "rank runs",
+      "expected": "the 0.60 box is selected or None, never the 0.10 box",
+      "notes": "scores 0.95 vs 0.55"
+    },
+    {
+      "id": "TC2.007",
+      "phase": 2,
+      "action": "eligible scores 0.62 and 0.60",
+      "setup": "rank runs",
+      "expected": "Tie; lens state tie; no record",
+      "notes": "gap 0.02"
+    },
+    {
+      "id": "TC2.008",
+      "phase": 2,
+      "action": "eligible scores 0.62 and 0.57",
+      "setup": "rank runs",
+      "expected": "Select first",
+      "notes": "gap 0.05 is not a tie"
+    },
+    {
+      "id": "TC2.009",
+      "phase": 2,
+      "action": "eligible scores 0.34 and 0.33",
+      "setup": "rank runs",
+      "expected": "None (top at or below 0.35)",
+      "notes": "D2.01"
+    },
+    {
+      "id": "TC2.010",
+      "phase": 2,
+      "action": "SSCC captured on task T-SAMPLE-17",
+      "setup": "the same SSCC is looked at again",
+      "expected": "score halves; if selected lens shows duplicate and no record",
+      "notes": "score 0.84 becomes 0.42"
+    },
+    {
+      "id": "TC2.011",
+      "phase": 2,
+      "action": "two devices capture the same SSCC on the same task",
+      "setup": "both POST /v1/captures",
+      "expected": "one 201, one 409 FIELD-CAP-409-DUPLICATE with duplicate_of",
+      "notes": "devices D1, D2"
+    },
+    {
+      "id": "TC2.012",
+      "phase": 2,
+      "action": "same SSCC on two different tasks",
+      "setup": "both posted",
+      "expected": "two records (duplicates are per task)",
+      "notes": "T-SAMPLE-17, T-SAMPLE-18"
+    },
+    {
+      "id": "TC2.013",
+      "phase": 2,
+      "action": "objects A(0.70), B(0.50), C(0.40)",
+      "setup": "list given as C, A, B",
+      "expected": "Select A",
+      "notes": "stable keys A,B,C"
+    },
+    {
+      "id": "TC2.014",
+      "phase": 2,
+      "action": "objects A(0.60), B(0.60)",
+      "setup": "list in both orders",
+      "expected": "Tie in both orders with the same left/right assignment",
+      "notes": "A left of B"
+    },
+    {
+      "id": "TC2.015",
+      "phase": 2,
+      "action": "empty list",
+      "setup": "rank runs",
+      "expected": "None",
+      "notes": "[]"
+    },
+    {
+      "id": "TC2.016",
+      "phase": 2,
+      "action": "all components 1.0, not duplicate",
+      "setup": "score computed",
+      "expected": "1.0",
+      "notes": "weights sum 1.00"
+    },
+    {
+      "id": "TC2.017",
+      "phase": 2,
+      "action": "all components 1.0, duplicate",
+      "setup": "score computed",
+      "expected": "0.5",
+      "notes": ""
+    },
+    {
+      "id": "TC2.018",
+      "phase": 2,
+      "action": "centre 0.9, match 1.0, read 0.8, cov 1.0, dwell 1.0, size 0.4",
+      "setup": "score computed",
+      "expected": "0.90",
+      "notes": "BR2.02 example"
+    },
+    {
+      "id": "TC2.019",
+      "phase": 2,
+      "action": "item K41 whose 201 response is lost",
+      "setup": "worker retries",
+      "expected": "server returns stored response; one row",
+      "notes": "key 01934f6e-7a10-7c3e-9b2a-5d1e8f0a4c21"
+    },
+    {
+      "id": "TC2.020",
+      "phase": 2,
+      "action": "app killed after send and before ack",
+      "setup": "app restarts and syncs",
+      "expected": "one row; outbox item acked",
+      "notes": "kill at state sending"
+    },
+    {
+      "id": "TC2.021",
+      "phase": 2,
+      "action": "50 items with 20% duplicate responses",
+      "setup": "sync completes",
+      "expected": "50 rows, 50 acked items",
+      "notes": "seed 2026111201"
+    },
+    {
+      "id": "TC2.022",
+      "phase": 2,
+      "action": "task A seq 1 gets 503 twice",
+      "setup": "seq 2 is due",
+      "expected": "seq 2 waits until seq 1 is acked",
+      "notes": "backoff 2 s, 4 s"
+    },
+    {
+      "id": "TC2.023",
+      "phase": 2,
+      "action": "task A seq 1 rejected 410",
+      "setup": "sync continues",
+      "expected": "seq 2 sent after seq 1 reaches terminal state",
+      "notes": "task closed"
+    },
+    {
+      "id": "TC2.024",
+      "phase": 2,
+      "action": "tasks A and B interleaved",
+      "setup": "sync runs",
+      "expected": "A and B each in order; round-robin between tasks",
+      "notes": "A1,B1,A2,B2"
+    },
+    {
+      "id": "TC2.025",
+      "phase": 2,
+      "action": "count staged at 10",
+      "setup": "count twelve at 0.79",
+      "expected": "count stays 10; MSG2.10",
+      "notes": "confidence 0.79"
+    },
+    {
+      "id": "TC2.026",
+      "phase": 2,
+      "action": "post staged",
+      "setup": "confirm at 0.799",
+      "expected": "nothing sent; stage still waiting",
+      "notes": "confidence 0.799"
+    },
+    {
+      "id": "TC2.027",
+      "phase": 2,
+      "action": "tie shown",
+      "setup": "left at 0.80",
+      "expected": "left chosen (floor is inclusive at 0.80)",
+      "notes": "confidence 0.80"
+    },
+    {
+      "id": "TC2.028",
+      "phase": 2,
+      "action": "words one thousand two hundred and five",
+      "setup": "parse",
+      "expected": "1205",
+      "notes": ""
+    },
+    {
+      "id": "TC2.029",
+      "phase": 2,
+      "action": "digit-by-digit one two five",
+      "setup": "parse",
+      "expected": "125",
+      "notes": ""
+    },
+    {
+      "id": "TC2.030",
+      "phase": 2,
+      "action": "words twelve hundred",
+      "setup": "parse",
+      "expected": "null (not in supported forms, nothing changes)",
+      "notes": ""
+    },
+    {
+      "id": "TC2.031",
+      "phase": 2,
+      "action": "post at t=0, confirm at t=4 s",
+      "setup": "sequence processed",
+      "expected": "one post request sent",
+      "notes": "both >= 0.80"
+    },
+    {
+      "id": "TC2.032",
+      "phase": 2,
+      "action": "post, next, confirm",
+      "setup": "sequence processed",
+      "expected": "no post request",
+      "notes": "next clears the stage"
+    },
+    {
+      "id": "TC2.033",
+      "phase": 2,
+      "action": "API call with confirm_voice_event_id older than post",
+      "setup": "POST /v1/tasks/{id}/post-requests",
+      "expected": "422 FIELD-POST-422-NO-CONFIRM",
+      "notes": "server oracle"
+    },
+    {
+      "id": "TC2.034",
+      "phase": 2,
+      "action": "SSCC 003012345678901232",
+      "setup": "validate",
+      "expected": "valid",
+      "notes": ""
+    },
+    {
+      "id": "TC2.035",
+      "phase": 2,
+      "action": "SSCC 003012345678901238",
+      "setup": "validate",
+      "expected": "invalid; MSG2.08",
+      "notes": ""
+    },
+    {
+      "id": "TC2.036",
+      "phase": 2,
+      "action": "17 or 19 digit strings",
+      "setup": "validate",
+      "expected": "invalid",
+      "notes": "00301234567890123"
+    },
+    {
+      "id": "TC2.037",
+      "phase": 2,
+      "action": "crop with one bystander face",
+      "setup": "prepared for upload",
+      "expected": "face region pixelated; blur_applied true; faces_blurred 1",
+      "notes": "face 60x60 px"
+    },
+    {
+      "id": "TC2.038",
+      "phase": 2,
+      "action": "face detector throws",
+      "setup": "prepared for upload",
+      "expected": "crop withheld; capture sent with crop_ref null",
+      "notes": "evidence_withheld"
+    },
+    {
+      "id": "TC2.039",
+      "phase": 2,
+      "action": "server receives crop with blur_applied false",
+      "setup": "POST /v1/captures",
+      "expected": "422 FIELD-CAP-422-BLUR-MISSING",
+      "notes": ""
+    },
+    {
+      "id": "TC2.040",
+      "phase": 2,
+      "action": "base 0.9 at 5 deg/s",
+      "setup": "readability",
+      "expected": "0.9 (still)",
+      "notes": ""
+    },
+    {
+      "id": "TC2.041",
+      "phase": 2,
+      "action": "base 0.9 at 34 deg/s",
+      "setup": "readability",
+      "expected": "0.45",
+      "notes": ""
+    },
+    {
+      "id": "TC2.042",
+      "phase": 2,
+      "action": "base 0.9 at 70 deg/s",
+      "setup": "readability",
+      "expected": "0.0",
+      "notes": ""
+    },
+    {
+      "id": "TC2.043",
+      "phase": 2,
+      "action": "key K and body B stored",
+      "setup": "POST again with K and B",
+      "expected": "same status and body; Idempotent-Replay true",
+      "notes": ""
+    },
+    {
+      "id": "TC2.044",
+      "phase": 2,
+      "action": "key K and body B stored",
+      "setup": "POST with K and B&#x27;",
+      "expected": "422 FIELD-IDEM-422-KEY-REUSE",
+      "notes": "readability changed"
+    },
+    {
+      "id": "TC2.045",
+      "phase": 2,
+      "action": "key expired after 24 h",
+      "setup": "POST again",
+      "expected": "treated as new; duplicate rule applies (409 if same code)",
+      "notes": ""
+    },
+    {
+      "id": "TC2.046",
+      "phase": 2,
+      "action": "readability 0.93 and on task",
+      "setup": "route",
+      "expected": "not_needed",
+      "notes": ""
+    },
+    {
+      "id": "TC2.047",
+      "phase": 2,
+      "action": "readability 0.95 and not on task",
+      "setup": "route",
+      "expected": "queued",
+      "notes": ""
+    },
+    {
+      "id": "TC2.048",
+      "phase": 2,
+      "action": "config muse-spark-1.3-contributor",
+      "setup": "worker starts",
+      "expected": "startup fails",
+      "notes": ""
+    },
+    {
+      "id": "TC2.049",
+      "phase": 2,
+      "action": "budget 0",
+      "setup": "job runs",
+      "expected": "0 model calls; failed, unverified_budget",
+      "notes": ""
+    },
+    {
+      "id": "TC2.050",
+      "phase": 2,
+      "action": "budget for 1 call, 2 jobs",
+      "setup": "both run",
+      "expected": "1 call; other job failed unverified_budget",
+      "notes": "reservation via core P13b"
+    },
+    {
+      "id": "TC2.051",
+      "phase": 2,
+      "action": "budget restored",
+      "setup": "field.verify.retry",
+      "expected": "job queued and runs",
+      "notes": ""
+    },
+    {
+      "id": "TC2.052",
+      "phase": 2,
+      "action": "1,999 items",
+      "setup": "one capture",
+      "expected": "accepted; 2,000 items",
+      "notes": ""
+    },
+    {
+      "id": "TC2.053",
+      "phase": 2,
+      "action": "2,000 items",
+      "setup": "one capture",
+      "expected": "refused with MSG2.13; queue unchanged",
+      "notes": ""
+    },
+    {
+      "id": "TC2.054",
+      "phase": 2,
+      "action": "1,800 items",
+      "setup": "one capture",
+      "expected": "accepted; MSG2.12 shown",
+      "notes": "90%"
+    }
+  ]
+}

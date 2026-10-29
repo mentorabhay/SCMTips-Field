@@ -1,0 +1,599 @@
+{
+  "phase": 3,
+  "properties": [
+    {
+      "id": "PR3.01",
+      "phase": 3,
+      "name": "GR then reversal nets to zero",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all sequences of GR 101 postings and full or partial 102 reversals on erp-sim, stock per (material, plant, storage location, stock type) after reversing every posted item equals stock before the first GR. Generator Random deliveries 1\u20138 items, qty 1\u201310,000, mixed stock types (unrestricted, quality, blocked), random partial CancelItem order, 10% interleaved unrelated movements. Oracle Sim stock ledger snapshot before vs after; unrelated movements subtracted. Shrinking One item, qty 1, reversed twice (second must 409). Case Given When Then Data TC3.001 Delivery 180000123 item 10 qty 24 posted 101 Cancel material document Stock delta 0; second cancel 409 MAT-1001, plant 1000, sloc 0001 TC3.002 Two items 12 and 36 CancelItem item 2 then item 1 Each step reduces by that item; final delta 0 4900000101/0001-0002 TC3.003 GR to quality stock 10 Reverse Quality stock back to prior value MAT-2001, stock type 2"
+    },
+    {
+      "id": "PR3.02",
+      "phase": 3,
+      "name": "Counted quantity rule",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all capture/voice sequences on a line, counted_qty = latest non-undone voice count if any, else sum of quantities of non-discarded captures. Generator Sequences of 0\u201360 events: capture(hu_qty 1\u201348), discard, wrong one, count n (0\u20139,999), undo; edge bias to undo after count and count zero. Oracle Reference model replaying events in a list. Shrinking Single &#x27;count 5&#x27; followed by &#x27;undo&#x27; with no captures \u2192 0. Case Given When Then Data TC3.004 3 captures of 12 say &#x27;count 30&#x27; counted 30 hu_qty 12 TC3.005 3 captures of 12 and &#x27;count 30&#x27; say &#x27;undo&#x27; counted 36 TC3.006 2 captures, 1 &#x27;wrong one&#x27; no voice counted = qty of remaining capture 12 TC3.007 PI count &#x27;count zero&#x27; confirm qty 0, is_zero true bin 03-05-02"
+    },
+    {
+      "id": "PR3.03",
+      "phase": 3,
+      "name": "Blind count never reveals book quantity",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all operator-facing responses, websocket frames, lens payloads and device cache rows produced before and after a count commit, no field contains book quantity, book value, difference or a value equal to the book quantity tagged as such. Generator Random PI documents 1\u201350 items with book qty 0\u2013100,000; random operator call sequences across API3.01, API3.11, live topics, error paths (409, 422). Oracle Schema check of projection type + scanner for keys book_qty, book_value, difference*, recount_reason and for numeric values equal to book qty in labelled fields. Shrinking One item, book 0, error response path. Case Given When Then Data TC3.008 Item book 100 GET /v1/tasks?type=count No book fields in body PID 100000012/2026 TC3.009 Count 90 committed Response of API3.11 Status only; no variance count_no 1 TC3.010 Recount assigned Live topic taskboard frame No quantity of first count operator B"
+    },
+    {
+      "id": "PR3.04",
+      "phase": 3,
+      "name": "Recount rule and different operator",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all count outcomes, recount is required iff the threshold rule holds, and every accepted count_no >= 2 is by a user not among earlier counters of the item. Generator Book 0\u201310,000, counts around thresholds (\u00b11 unit, \u00b10.01%), unit price 0\u201350,000, operator pools 1\u20135 with random assignment attempts. Oracle Reference implementation of BR3.09\u2013BR3.11; DB unique (pi_item_id, counter_user_id). Shrinking Book 50, count 49 (2.0% exactly \u2192 no recount), same operator tries recount. Case Given When Then Data TC3.011 Book 100 count 97 commit recount_required (3% > 2%) TC3.012 Book 100 count 98 commit accepted (2.0% not > 2.0%) TC3.013 Operator A counted A claims recount 409 FIELD-PI-409-RECOUNT-SAME-OPERATOR TC3.014 Count 90, recount 97 commit third_count_required"
+    },
+    {
+      "id": "PR3.05",
+      "phase": 3,
+      "name": "Difference posting above threshold needs approval",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all PI documents, PostDifferences is queued only if the absolute difference value <= threshold or an approved approval_request exists whose decider is not requester or counter and re-authenticated within 300 s. Generator Documents 1\u201350 items, values -100,000..100,000, random users with roles, random re-auth ages 0\u2013900 s. Oracle Check every queued pi_post_diff job against approval table. Shrinking Single item value exactly threshold+0.01 with approver = counter. Case Given When Then Data TC3.015 Value 72,000 INR request posting awaiting_approval band B2 threshold 50,000 TC3.016 Approver counted item 3 approve 403 FIELD-APR-403-SOD TC3.017 Value 50,000 exactly request posting queued without approval"
+    },
+    {
+      "id": "PR3.06",
+      "phase": 3,
+      "name": "Exactly one idempotency key per posted document",
+      "engine": "Hypothesis",
+      "runs": "300 runs",
+      "statement": "For all executions with retries, timeouts-after-commit and worker crashes, each posted erp_document has exactly one idempotency key and each key maps to at most one ERP document in the sim. Generator Random command streams with fault profile timeout_after_commit 0\u201330%, crash points between call and mark_posted. Oracle Join erp_document with sim dedupe table and sim document list. Shrinking One GR with timeout after commit and crash before mark. Case Given When Then Data TC3.018 GR job, timeout after commit retry probe adopts 4900000101; sim has one doc TC3.019 Same Idempotency-Key, same body POST /confirm twice same erp_document returned TC3.020 Same key, different body POST /confirm 422 FIELD-IDEM-422-BODY"
+    },
+    {
+      "id": "PR3.07",
+      "phase": 3,
+      "name": "Posting order equals confirm order",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all interleavings of confirms on one reference document and concurrent workers, the order of successful ERP calls equals seq order. Generator 2\u201320 confirms per delivery, 1\u20136 workers, random lock faults 0\u201340%, random worker pauses. Oracle Sim call log per delivery compared with seq list. Shrinking Two jobs, two workers, first job lock error once. Case Given When Then Data TC3.021 Jobs 41,42 for IBD:180000123 worker 2 polls while 41 retries 42 not started before 41 posted TC3.022 Offline outbox replays 3 confirms reconnect seq order kept TC3.023 Job 41 cancelled dependents 42 cancelled if dependent, else proceeds"
+    },
+    {
+      "id": "PR3.08",
+      "phase": 3,
+      "name": "Goods issue never exceeds picked quantity",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all pick/pack/GI request sequences, the GI quantity per item <= picked quantity, and packed <= picked at all times. Generator Lines 1\u201330, required 1\u2013500, picks/short picks/packs/reversals random; adversarial GI requests with qty +1. Oracle Server state and sim GI document compared with picked totals. Shrinking One line picked 1, GI request 2. Case Given When Then Data TC3.024 Picked 12 of 20 short post GI 601 qty 12 TC3.025 Picked 12 pack 13 409 FIELD-PACK-409-EXCEEDS-PICKED TC3.026 GI posted then reversed re-issue 602 then 601 qty <= picked"
+    },
+    {
+      "id": "PR3.09",
+      "phase": 3,
+      "name": "Dijkstra is shortest and uses existing edges",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all connected graphs <= 9 nodes, the route length equals the brute-force minimum over simple paths (climb \u00d73, road excluded) and every hop is an existing edge. Generator Random graphs 2\u20139 nodes, edge lengths 0.5\u201350 m, kinds walk/climb/road with 20%/10% bias, directed and bidirectional. Oracle Brute-force enumeration of simple paths. Shrinking Triangle where a climb edge is shorter in metres but longer in cost. Case Given When Then Data TC3.027 A\u2013B walk 10, A\u2013C climb 2, C\u2013B walk 2 route A\u2192B A,C,B cost 8 climb weight 3 TC3.028 Only road edge to bin pedestrian route 404 FIELD-GRAPH-404-NO-ROUTE TC3.029 Two equal paths route length equals minimum; path uses existing edges"
+    },
+    {
+      "id": "PR3.10",
+      "phase": 3,
+      "name": "Walking-quiet suppresses prompts",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all motion traces, no prompt is drawn or spoken while inside a forklift zone with 1 s average speed > threshold, and every queued prompt is released only after 1.5 s stationary. Generator Speed traces 0\u20133 m/s at 10 Hz, zone in/out toggles, prompts at random times. Oracle Prompt bus log vs trace. Shrinking Speed 0.51 m/s for exactly 1.0 s then prompt. Case Given When Then Data TC3.030 Zone F1, 1.2 m/s prompt due queued; &#x27;Walking. Prompts paused.&#x27; TC3.031 Outside zone, 1.2 m/s prompt due shown TC3.032 Stationary 1.4 s queued prompts not yet shown; shown at 1.5 s"
+    },
+    {
+      "id": "PR3.11",
+      "phase": 3,
+      "name": "Bin hierarchy is a tree",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all bin imports and editor operations, every location has at most one parent of the next higher kind and no cycle exists. Generator Random bin name sets 1\u20135,000 with pattern noise, random reparent operations including self and descendant targets. Oracle DFS cycle check and kind order check. Shrinking Reparent rack under its own level. Case Given When Then Data TC3.033 Bins 03-05-01..03 import aisle 03 > rack 03-05 > levels TC3.034 Move rack 03-05 under level 03-05-02 save 422 FIELD-GRAPH-422-CYCLE TC3.035 Bin &#x27;DOCK-A&#x27; import under zone, reported unparsed"
+    },
+    {
+      "id": "PR3.12",
+      "phase": 3,
+      "name": "SSCC uniqueness and validity per delivery",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all capture streams on a delivery, accepted SSCCs are unique among non-discarded HUs and all have valid check digits; generated SSCCs are valid and unique per tenant. Generator Random 18-digit strings, valid SSCCs with 10% repeats, random discard/recapture; generator serials 1\u201310^9. Oracle Unique index plus check-digit recomputation. Shrinking Same SSCC captured, discarded, recaptured. Case Given When Then Data TC3.036 SSCC 008901230000000014 capture twice second \u2192 MSG3.03 TC3.037 008901230000000015 capture rejected: check digit TC3.038 Captured then discarded capture again accepted"
+    },
+    {
+      "id": "PR3.13",
+      "phase": 3,
+      "name": "Bounded retries with backoff",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all failure sequences, attempt times follow 2/4/8/16/32/32/32 s (\u00b110%), attempts <= 8, validation errors fail at attempt 1, and erp.failed is emitted exactly once. Generator Error class sequences from {network, server, lock, validation, success} length 1\u201310. Oracle Simulated clock and event log. Shrinking Validation error on first attempt. Case Given When Then Data TC3.039 Always 423 run 8 attempts then failed TC3.040 Lock, lock, success run posted at ~6 s TC3.041 400 validation run failed after 1 attempt"
+    },
+    {
+      "id": "PR3.14",
+      "phase": 3,
+      "name": "Tolerance gate",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all lines, confirm never queues a posting with counted above expected \u00d7 (1 + tolerance) unless a supervisor decision exists, nor below expected without a reason. Generator Expected 1\u201310,000, tolerance 0\u201325% or unlimited, counted around boundaries. Oracle Reference gate function vs API outcome. Shrinking Expected 100, tol 10%, counted 111. Case Given When Then Data TC3.042 Expected 100, tol 10%, counted 110 post staged TC3.043 Counted 111 post 409 FIELD-RCV-409-OVER-TOLERANCE TC3.044 Counted 80 no reason post 422 FIELD-RCV-422-REASON"
+    },
+    {
+      "id": "PR3.15",
+      "phase": 3,
+      "name": "Sim parity",
+      "engine": "Hypothesis",
+      "runs": "200 runs",
+      "statement": "For all command scripts over the four services, normalised observable state (statuses, quantities, movement types, error classes) from erp-sim equals that recorded from SAP fixtures where fixtures exist. Generator Scripts from grammar: read, patch, post, cancel, pick, GI, reverse, PI create/count/post; 1\u201312 steps. Oracle Normalised diff ignoring document numbers and timestamps. Shrinking Single PostGoodsReceipt on a delivery already posted. Case Given When Then Data TC3.045 Recorded fixture GR + cancel replay on sim same statuses and movement types TC3.046 GI twice sim second returns same error class as fixture TC3.047 No fixture run skipped with UNVERIFIED"
+    },
+    {
+      "id": "PR3.16",
+      "phase": 3,
+      "name": "Freeze book inventory semantics",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all PI documents with freeze, difference = counted \u2212 snapshot regardless of movements after the snapshot, and the warning count equals the number of such movements. Generator Snapshot 0\u201310,000, 0\u201310 random movements after snapshot, counts random. Oracle Sim ledger and snapshot table. Shrinking One GR of 10 after snapshot, count equal to new book. Case Given When Then Data TC3.048 Snapshot 100, GR 10 later, count 110 post diff +10 (701), warning 1 TC3.049 No freeze, same case post diff 0 TC3.050 No movements post no warning"
+    },
+    {
+      "id": "PR3.17",
+      "phase": 3,
+      "name": "Fused position stays on the graph",
+      "engine": "Kotest",
+      "runs": "500 runs",
+      "statement": "For all fix sequences, a snapped position lies on an existing edge and within 2 m of the filter estimate; with a QR fix the estimate is within 0.5 m of the anchor after update. Generator Random walks on SAMPLE graph, noise per source sigma (QR 0.1, UWB 0.3, BLE 1.6), dropouts. Oracle Geometry check against edge segments. Shrinking Single QR fix far from the predicted position. Case Given When Then Data TC3.051 QR fix at anchor A3 update estimate within 0.5 m of A3 TC3.052 BLE-only walk aisle 03 snapped on aisle 03 edges TC3.053 Estimate 3 m from any edge snap null; &#x27;Position uncertain&#x27;"
+    },
+    {
+      "id": "PR3.18",
+      "phase": 3,
+      "name": "Export conserves quantities",
+      "engine": "Hypothesis",
+      "runs": "300 runs",
+      "statement": "For all sets of field postings and reversals, the CSV per (material, plant, date, kind) sums to the net posted quantities and reloading the same file adds nothing (stable row_key). Generator Random postings 0\u2013500 including reversals and late receipts across 1\u20137 days. Oracle Aggregation of erp_document vs parsed CSV; reload simulation with key set. Shrinking One GR and its reversal in the same day. Case Given When Then Data TC3.054 GR 24 and reversal 24 export net 0 rows sum TC3.055 Same file twice load simulation no new keys TC3.056 Late receipt 20 export row kind late_receipt with new expected date"
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "TC3.001",
+      "phase": 3,
+      "action": "Delivery 180000123 item 10 qty 24 posted 101",
+      "setup": "Cancel material document",
+      "expected": "Stock delta 0; second cancel 409",
+      "notes": "MAT-1001, plant 1000, sloc 0001"
+    },
+    {
+      "id": "TC3.002",
+      "phase": 3,
+      "action": "Two items 12 and 36",
+      "setup": "CancelItem item 2 then item 1",
+      "expected": "Each step reduces by that item; final delta 0",
+      "notes": "4900000101/0001-0002"
+    },
+    {
+      "id": "TC3.003",
+      "phase": 3,
+      "action": "GR to quality stock 10",
+      "setup": "Reverse",
+      "expected": "Quality stock back to prior value",
+      "notes": "MAT-2001, stock type 2"
+    },
+    {
+      "id": "TC3.004",
+      "phase": 3,
+      "action": "3 captures of 12",
+      "setup": "say &#x27;count 30&#x27;",
+      "expected": "counted 30",
+      "notes": "hu_qty 12"
+    },
+    {
+      "id": "TC3.005",
+      "phase": 3,
+      "action": "3 captures of 12 and &#x27;count 30&#x27;",
+      "setup": "say &#x27;undo&#x27;",
+      "expected": "counted 36",
+      "notes": ""
+    },
+    {
+      "id": "TC3.006",
+      "phase": 3,
+      "action": "2 captures, 1 &#x27;wrong one&#x27;",
+      "setup": "no voice",
+      "expected": "counted = qty of remaining capture",
+      "notes": "12"
+    },
+    {
+      "id": "TC3.007",
+      "phase": 3,
+      "action": "PI count &#x27;count zero&#x27;",
+      "setup": "confirm",
+      "expected": "qty 0, is_zero true",
+      "notes": "bin 03-05-02"
+    },
+    {
+      "id": "TC3.008",
+      "phase": 3,
+      "action": "Item book 100",
+      "setup": "GET /v1/tasks?type=count",
+      "expected": "No book fields in body",
+      "notes": "PID 100000012/2026"
+    },
+    {
+      "id": "TC3.009",
+      "phase": 3,
+      "action": "Count 90 committed",
+      "setup": "Response of API3.11",
+      "expected": "Status only; no variance",
+      "notes": "count_no 1"
+    },
+    {
+      "id": "TC3.010",
+      "phase": 3,
+      "action": "Recount assigned",
+      "setup": "Live topic taskboard frame",
+      "expected": "No quantity of first count",
+      "notes": "operator B"
+    },
+    {
+      "id": "TC3.011",
+      "phase": 3,
+      "action": "Book 100 count 97",
+      "setup": "commit",
+      "expected": "recount_required (3% > 2%)",
+      "notes": ""
+    },
+    {
+      "id": "TC3.012",
+      "phase": 3,
+      "action": "Book 100 count 98",
+      "setup": "commit",
+      "expected": "accepted (2.0% not > 2.0%)",
+      "notes": ""
+    },
+    {
+      "id": "TC3.013",
+      "phase": 3,
+      "action": "Operator A counted",
+      "setup": "A claims recount",
+      "expected": "409 FIELD-PI-409-RECOUNT-SAME-OPERATOR",
+      "notes": ""
+    },
+    {
+      "id": "TC3.014",
+      "phase": 3,
+      "action": "Count 90, recount 97",
+      "setup": "commit",
+      "expected": "third_count_required",
+      "notes": ""
+    },
+    {
+      "id": "TC3.015",
+      "phase": 3,
+      "action": "Value 72,000 INR",
+      "setup": "request posting",
+      "expected": "awaiting_approval band B2",
+      "notes": "threshold 50,000"
+    },
+    {
+      "id": "TC3.016",
+      "phase": 3,
+      "action": "Approver counted item 3",
+      "setup": "approve",
+      "expected": "403 FIELD-APR-403-SOD",
+      "notes": ""
+    },
+    {
+      "id": "TC3.017",
+      "phase": 3,
+      "action": "Value 50,000 exactly",
+      "setup": "request posting",
+      "expected": "queued without approval",
+      "notes": ""
+    },
+    {
+      "id": "TC3.018",
+      "phase": 3,
+      "action": "GR job, timeout after commit",
+      "setup": "retry",
+      "expected": "probe adopts 4900000101; sim has one doc",
+      "notes": ""
+    },
+    {
+      "id": "TC3.019",
+      "phase": 3,
+      "action": "Same Idempotency-Key, same body",
+      "setup": "POST /confirm twice",
+      "expected": "same erp_document returned",
+      "notes": ""
+    },
+    {
+      "id": "TC3.020",
+      "phase": 3,
+      "action": "Same key, different body",
+      "setup": "POST /confirm",
+      "expected": "422 FIELD-IDEM-422-BODY",
+      "notes": ""
+    },
+    {
+      "id": "TC3.021",
+      "phase": 3,
+      "action": "Jobs 41,42 for IBD:180000123",
+      "setup": "worker 2 polls while 41 retries",
+      "expected": "42 not started before 41 posted",
+      "notes": ""
+    },
+    {
+      "id": "TC3.022",
+      "phase": 3,
+      "action": "Offline outbox replays 3 confirms",
+      "setup": "reconnect",
+      "expected": "seq order kept",
+      "notes": ""
+    },
+    {
+      "id": "TC3.023",
+      "phase": 3,
+      "action": "Job 41 cancelled",
+      "setup": "dependents",
+      "expected": "42 cancelled if dependent, else proceeds",
+      "notes": ""
+    },
+    {
+      "id": "TC3.024",
+      "phase": 3,
+      "action": "Picked 12 of 20 short",
+      "setup": "post GI",
+      "expected": "601 qty 12",
+      "notes": ""
+    },
+    {
+      "id": "TC3.025",
+      "phase": 3,
+      "action": "Picked 12",
+      "setup": "pack 13",
+      "expected": "409 FIELD-PACK-409-EXCEEDS-PICKED",
+      "notes": ""
+    },
+    {
+      "id": "TC3.026",
+      "phase": 3,
+      "action": "GI posted then reversed",
+      "setup": "re-issue",
+      "expected": "602 then 601 qty <= picked",
+      "notes": ""
+    },
+    {
+      "id": "TC3.027",
+      "phase": 3,
+      "action": "A\u2013B walk 10, A\u2013C climb 2, C\u2013B walk 2",
+      "setup": "route A\u2192B",
+      "expected": "A,C,B cost 8",
+      "notes": "climb weight 3"
+    },
+    {
+      "id": "TC3.028",
+      "phase": 3,
+      "action": "Only road edge to bin",
+      "setup": "pedestrian route",
+      "expected": "404 FIELD-GRAPH-404-NO-ROUTE",
+      "notes": ""
+    },
+    {
+      "id": "TC3.029",
+      "phase": 3,
+      "action": "Two equal paths",
+      "setup": "route",
+      "expected": "length equals minimum; path uses existing edges",
+      "notes": ""
+    },
+    {
+      "id": "TC3.030",
+      "phase": 3,
+      "action": "Zone F1, 1.2 m/s",
+      "setup": "prompt due",
+      "expected": "queued; &#x27;Walking. Prompts paused.&#x27;",
+      "notes": ""
+    },
+    {
+      "id": "TC3.031",
+      "phase": 3,
+      "action": "Outside zone, 1.2 m/s",
+      "setup": "prompt due",
+      "expected": "shown",
+      "notes": ""
+    },
+    {
+      "id": "TC3.032",
+      "phase": 3,
+      "action": "Stationary 1.4 s",
+      "setup": "queued prompts",
+      "expected": "not yet shown; shown at 1.5 s",
+      "notes": ""
+    },
+    {
+      "id": "TC3.033",
+      "phase": 3,
+      "action": "Bins 03-05-01..03",
+      "setup": "import",
+      "expected": "aisle 03 > rack 03-05 > levels",
+      "notes": ""
+    },
+    {
+      "id": "TC3.034",
+      "phase": 3,
+      "action": "Move rack 03-05 under level 03-05-02",
+      "setup": "save",
+      "expected": "422 FIELD-GRAPH-422-CYCLE",
+      "notes": ""
+    },
+    {
+      "id": "TC3.035",
+      "phase": 3,
+      "action": "Bin &#x27;DOCK-A&#x27;",
+      "setup": "import",
+      "expected": "under zone, reported unparsed",
+      "notes": ""
+    },
+    {
+      "id": "TC3.036",
+      "phase": 3,
+      "action": "SSCC 008901230000000014",
+      "setup": "capture twice",
+      "expected": "second \u2192 MSG3.03",
+      "notes": ""
+    },
+    {
+      "id": "TC3.037",
+      "phase": 3,
+      "action": "008901230000000015",
+      "setup": "capture",
+      "expected": "rejected: check digit",
+      "notes": ""
+    },
+    {
+      "id": "TC3.038",
+      "phase": 3,
+      "action": "Captured then discarded",
+      "setup": "capture again",
+      "expected": "accepted",
+      "notes": ""
+    },
+    {
+      "id": "TC3.039",
+      "phase": 3,
+      "action": "Always 423",
+      "setup": "run",
+      "expected": "8 attempts then failed",
+      "notes": ""
+    },
+    {
+      "id": "TC3.040",
+      "phase": 3,
+      "action": "Lock, lock, success",
+      "setup": "run",
+      "expected": "posted at ~6 s",
+      "notes": ""
+    },
+    {
+      "id": "TC3.041",
+      "phase": 3,
+      "action": "400 validation",
+      "setup": "run",
+      "expected": "failed after 1 attempt",
+      "notes": ""
+    },
+    {
+      "id": "TC3.042",
+      "phase": 3,
+      "action": "Expected 100, tol 10%, counted 110",
+      "setup": "post",
+      "expected": "staged",
+      "notes": ""
+    },
+    {
+      "id": "TC3.043",
+      "phase": 3,
+      "action": "Counted 111",
+      "setup": "post",
+      "expected": "409 FIELD-RCV-409-OVER-TOLERANCE",
+      "notes": ""
+    },
+    {
+      "id": "TC3.044",
+      "phase": 3,
+      "action": "Counted 80 no reason",
+      "setup": "post",
+      "expected": "422 FIELD-RCV-422-REASON",
+      "notes": ""
+    },
+    {
+      "id": "TC3.045",
+      "phase": 3,
+      "action": "Recorded fixture GR + cancel",
+      "setup": "replay on sim",
+      "expected": "same statuses and movement types",
+      "notes": ""
+    },
+    {
+      "id": "TC3.046",
+      "phase": 3,
+      "action": "GI twice",
+      "setup": "sim",
+      "expected": "second returns same error class as fixture",
+      "notes": ""
+    },
+    {
+      "id": "TC3.047",
+      "phase": 3,
+      "action": "No fixture",
+      "setup": "run",
+      "expected": "skipped with UNVERIFIED",
+      "notes": ""
+    },
+    {
+      "id": "TC3.048",
+      "phase": 3,
+      "action": "Snapshot 100, GR 10 later, count 110",
+      "setup": "post",
+      "expected": "diff +10 (701), warning 1",
+      "notes": ""
+    },
+    {
+      "id": "TC3.049",
+      "phase": 3,
+      "action": "No freeze, same case",
+      "setup": "post",
+      "expected": "diff 0",
+      "notes": ""
+    },
+    {
+      "id": "TC3.050",
+      "phase": 3,
+      "action": "No movements",
+      "setup": "post",
+      "expected": "no warning",
+      "notes": ""
+    },
+    {
+      "id": "TC3.051",
+      "phase": 3,
+      "action": "QR fix at anchor A3",
+      "setup": "update",
+      "expected": "estimate within 0.5 m of A3",
+      "notes": ""
+    },
+    {
+      "id": "TC3.052",
+      "phase": 3,
+      "action": "BLE-only",
+      "setup": "walk aisle 03",
+      "expected": "snapped on aisle 03 edges",
+      "notes": ""
+    },
+    {
+      "id": "TC3.053",
+      "phase": 3,
+      "action": "Estimate 3 m from any edge",
+      "setup": "snap",
+      "expected": "null; &#x27;Position uncertain&#x27;",
+      "notes": ""
+    },
+    {
+      "id": "TC3.054",
+      "phase": 3,
+      "action": "GR 24 and reversal 24",
+      "setup": "export",
+      "expected": "net 0 rows sum",
+      "notes": ""
+    },
+    {
+      "id": "TC3.055",
+      "phase": 3,
+      "action": "Same file twice",
+      "setup": "load simulation",
+      "expected": "no new keys",
+      "notes": ""
+    },
+    {
+      "id": "TC3.056",
+      "phase": 3,
+      "action": "Late receipt 20",
+      "setup": "export",
+      "expected": "row kind late_receipt with new expected date",
+      "notes": ""
+    }
+  ]
+}

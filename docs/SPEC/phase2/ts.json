@@ -1,0 +1,125 @@
+{
+  "phase": 2,
+  "apis": [
+    {
+      "id": "API2.01",
+      "phase": 2,
+      "method": "POST",
+      "path": "/v1/devices",
+      "summary": "\u2014 Register a phone or glasses; pair glasses with phone",
+      "details": "Permission field.device.pair Idempotent yes, Idempotency-Key required SLO p95 150 ms Errors 409 FIELD-DEV-409-ALREADY-PAIRED: phone has another active pairing and replace is false 403 FIELD-DEV-403-REVOKED: phone device revoked Request {\"kind\": \"glasses\", \"model\": \"meta-rayban-display\", \"display_capable\": true, \"firmware\": \"SAMPLE-1.0\", \"paired_with\": \"0193...phone\"} Response {\"id\": \"0193...gl\", \"status\": \"active\", \"pairing_id\": \"0193...pr\"}"
+    },
+    {
+      "id": "API2.02",
+      "phase": 2,
+      "method": "POST",
+      "path": "/v1/devices/{id}/heartbeat",
+      "summary": "\u2014 Report health every 60 s",
+      "details": "Permission device token (self) Idempotent yes, Idempotency-Key required SLO p95 80 ms Errors 403 FIELD-DEV-403-REVOKED: device revoked Request {\"battery_pct\": 64, \"thermal\": \"none\", \"queue_depth\": 3, \"app_version\": \"0.2.0\", \"glasses\": \"connected\"} Response {\"config_version\": 7}"
+    },
+    {
+      "id": "API2.03",
+      "phase": 2,
+      "method": "GET",
+      "path": "/v1/devices",
+      "summary": "\u2014 List devices for the registry",
+      "details": "Permission field.device.read Idempotent yes, Idempotency-Key required SLO p95 200 ms Errors 400 FIELD-REQ-400-LIMIT: limit above 200 Request ?site_id=&kind=&status=&stale=true&cursor=&limit=50 Response {\"items\": [{\"id\": \"0193...\", \"kind\": \"phone\", \"model\": \"SAMPLE-PHONE\", \"last_seen_at\": \"2026-11-12T09:14:03Z\", \"battery_pct\": 64, \"queue_depth\": 3, \"stale\": false}], \"next_cursor\": null}"
+    },
+    {
+      "id": "API2.04",
+      "phase": 2,
+      "method": "GET",
+      "path": "/v1/devices/{id}/config",
+      "summary": "\u2014 Effective server config for the device",
+      "details": "Permission device token (self) Idempotent yes, Idempotency-Key required SLO p95 60 ms Errors 304: unchanged Request ETag / If-None-Match Response {\"version\": 7, \"preview_fps\": 15, \"auto_capture\": true, \"walking_quiet\": false, \"phone_camera_mode_allowed\": true, \"voice_locale\": \"en\"}"
+    },
+    {
+      "id": "API2.05",
+      "phase": 2,
+      "method": "POST",
+      "path": "/v1/devices/{id}/revoke",
+      "summary": "\u2014 Revoke a device and its pairing",
+      "details": "Permission field.device.revoke + core step-up Idempotent yes, Idempotency-Key required SLO p95 300 ms Errors 428 FIELD-AUTH-428-STEP-UP: step-up missing 409 FIELD-DEV-409-ALREADY-REVOKED Request {\"reason\": \"lost\"} Response {\"id\": \"0193...\", \"status\": \"revoked\", \"revoked_at\": \"2026-11-12T10:00:00Z\"}"
+    },
+    {
+      "id": "API2.06",
+      "phase": 2,
+      "method": "POST",
+      "path": "/v1/consents",
+      "summary": "\u2014 Record consent per user, device and site",
+      "details": "Permission field.consent.record Idempotent yes, Idempotency-Key required SLO p95 100 ms Errors 422 FIELD-CON-422-VERSION: unknown consent version Request {\"device_id\": \"0193...\", \"site_id\": \"0193...site\", \"consent_version\": \"f1-2026-11\"} Response {\"id\": \"0193...cn\", \"granted_at\": \"2026-11-12T08:00:00Z\"}"
+    },
+    {
+      "id": "API2.07",
+      "phase": 2,
+      "method": "GET",
+      "path": "/v1/tasks/{id}/expectations",
+      "summary": "\u2014 Compact expectations for ranking task match",
+      "details": "Permission field.task.read Idempotent yes, Idempotency-Key required SLO p95 100 ms Errors 404 FIELD-TASK-404: not found or out of scope Request ETag Response {\"task_id\": \"0193...t\", \"lines\": [{\"task_line_id\": \"0193...l3\", \"codes\": [\"003012345678901232\"], \"gtin\": \"09506000134352\", \"object_class\": \"carton\", \"serial_pattern\": null}]}"
+    },
+    {
+      "id": "API2.08",
+      "phase": 2,
+      "method": "POST",
+      "path": "/v1/captures/uploads",
+      "summary": "\u2014 Create a presigned crop upload (crops above 256 KB or backfill)",
+      "details": "Permission field.capture.create Idempotent yes, Idempotency-Key required SLO p95 80 ms Errors 413 FIELD-CAP-413-CROP-TOO-LARGE: above 1 MB Request {\"sha256\": \"9f2c...\", \"bytes\": 402113, \"content_type\": \"image/jpeg\"} Response {\"upload_id\": \"0193...u\", \"put_url\": \"https://storage.example/...\", \"expires_at\": \"2026-11-12T09:19:03Z\"}"
+    },
+    {
+      "id": "API2.09",
+      "phase": 2,
+      "method": "POST",
+      "path": "/v1/captures",
+      "summary": "\u2014 Ingest a capture (multipart: part meta JSON + part crop JPEG, or JSON with crop_upload_id)",
+      "details": "Permission field.capture.create; Idempotency-Key required Idempotent yes, Idempotency-Key required SLO p95 120 ms (excluding crop transfer) Errors 409 FIELD-CAP-409-DUPLICATE: same task, code type and code exists; body has duplicate_of 422 FIELD-IDEM-422-KEY-REUSE: same key, different body 422 FIELD-CAP-422-BLUR-MISSING: crop without blur_applied 422 FIELD-CAP-422-INVALID-SSCC: check digit fails 410 FIELD-CAP-410-TASK-CLOSED 403 FIELD-CAP-403-NO-CONSENT 413 FIELD-CAP-413-CROP-TOO-LARGE: inline crop above 256 KB Request {\"idempotency_key\": \"01934f6e-7a10-7c3e-9b2a-5d1e8f0a4c21\", \"task_id\": \"0193...t\", \"client_seq\": 42, \"look_id\": \"0193...lk\", \"object_class\": \"carton\", \"code\": \"003012345678901232\", \"code_type\": \"sscc\", \"confidence\": 0.97, \"readability\": 0.93, \"rank_score\": 0.81, \"rank_detail\": {\"centre\": 0.9, \"task\": 1.0, \"read\": 0.93, \"cov\": 1.0, \"dwell\": 1.0, \"size\": 0.3, \"dup\": false}, \"blur_applied\": true, \"faces_blurred\": 0, \"timings\": {\"shutter\": 0, \"still_rx\": 231, \"decode_done\": 268, \"rank_done\": 272, \"committed\": 281, \"lens_drawn\": 318}, \"captured_at\": \"2026-11-12T09:14:03.120Z\"} Response {\"id\": \"0193...c\", \"task_line_id\": \"0193...l3\", \"on_task\": true, \"verify_status\": \"not_needed\", \"received_at\": \"2026-11-12T09:14:03.410Z\"}"
+    },
+    {
+      "id": "API2.10",
+      "phase": 2,
+      "method": "GET",
+      "path": "/v1/captures/{id}",
+      "summary": "\u2014 Capture detail for inspector",
+      "details": "Permission field.capture.read Idempotent yes, Idempotency-Key required SLO p95 150 ms Errors 404 FIELD-CAP-404: not found or out of scope Request Response {\"id\": \"0193...c\", \"code\": \"003012345678901232\", \"rank_detail\": {\"centre\": 0.9}, \"verify_status\": \"verified\", \"verify_model\": \"muse-spark-1.3\", \"timings\": {\"lens_drawn\": 318}, \"voice_events\": []}"
+    },
+    {
+      "id": "API2.11",
+      "phase": 2,
+      "method": "GET",
+      "path": "/v1/captures/{id}/crop",
+      "summary": "\u2014 Redirect to a 60 s signed crop URL; audited",
+      "details": "Permission field.evidence.read Idempotent yes, Idempotency-Key required SLO p95 100 ms Errors 410 FIELD-CAP-410-CROP-EXPIRED: deleted by retention 404 FIELD-CAP-404-CROP-WITHHELD Request Response {\"status\": 302, \"location\": \"https://storage.example/...sig\"}"
+    },
+    {
+      "id": "API2.12",
+      "phase": 2,
+      "method": "POST",
+      "path": "/v1/voice-events",
+      "summary": "\u2014 Record a recognised utterance",
+      "details": "Permission field.capture.create; Idempotency-Key required Idempotent yes, Idempotency-Key required SLO p95 100 ms Errors 422 FIELD-VOICE-422-ACCEPTED-BELOW-FLOOR: accepted true with confidence < 0.80 Request {\"idempotency_key\": \"0193...v\", \"task_id\": \"0193...t\", \"capture_id\": \"0193...c\", \"transcript\": \"count twelve\", \"confidence\": 0.91, \"intent\": \"count\", \"args\": {\"n\": 12}, \"accepted\": true, \"locale\": \"en\"} Response {\"id\": \"0193...ve\"}"
+    },
+    {
+      "id": "API2.13",
+      "phase": 2,
+      "method": "POST",
+      "path": "/v1/count-records",
+      "summary": "\u2014 Record count or reading",
+      "details": "Permission field.count.create; Idempotency-Key required Idempotent yes, Idempotency-Key required SLO p95 100 ms Errors 410 FIELD-CAP-410-TASK-CLOSED 422 FIELD-COUNT-422-RANGE: value outside 0-9999 for voice source Request {\"idempotency_key\": \"0193...k\", \"task_line_id\": \"0193...l3\", \"capture_id\": \"0193...c\", \"kind\": \"count\", \"value\": 12, \"unit\": \"EA\", \"voice_event_id\": \"0193...ve\"} Response {\"id\": \"0193...cr\"}"
+    },
+    {
+      "id": "API2.14",
+      "phase": 2,
+      "method": "POST",
+      "path": "/v1/tasks/{id}/post-requests",
+      "summary": "\u2014 Request posting after post and confirm",
+      "details": "Permission field.post.request + field.post.confirm; Idempotency-Key required Idempotent yes, Idempotency-Key required SLO p95 120 ms Errors 422 FIELD-POST-422-NO-CONFIRM: confirm missing, not accepted, not after post, other staged_hash or more than 10 s later 409 FIELD-POST-409-ALREADY-REQUESTED Request {\"idempotency_key\": \"0193...p\", \"operation\": \"post\", \"lines\": [\"0193...l3\"], \"staged_hash\": \"b41e...\", \"post_voice_event_id\": \"0193...v1\", \"confirm_voice_event_id\": \"0193...v2\"} Response {\"posting_request_id\": \"0193...pr\", \"status\": \"queued\", \"event\": \"posting.requested\"}"
+    },
+    {
+      "id": "API2.15",
+      "phase": 2,
+      "method": "WS",
+      "path": "/v1/devices/{id}/live",
+      "summary": "\u2014 Ticks and control messages; SSE fallback at GET /v1/devices/{id}/events with Last-Event-ID",
+      "details": "Permission device token (self) Idempotent yes, Idempotency-Key required SLO Tick fan-out p95 300 ms from event commit Errors 4401 close: token invalid or revoked 4409 close: second connection for device (older closed) Request ?last_event_id=0193...n41 Response {\"id\": \"0193...n42\", \"kind\": \"verified\", \"subject_id\": \"0193...c\", \"payload\": {\"verify_status\": \"verified\"}}"
+    }
+  ]
+}

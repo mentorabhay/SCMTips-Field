@@ -1,0 +1,149 @@
+{
+  "phase": 4,
+  "apis": [
+    {
+      "id": "API4.01",
+      "phase": 4,
+      "method": "POST",
+      "path": "/v1/sites/import",
+      "summary": "\u2014 Start a staged SAP functional location and equipment import; returns preview.",
+      "details": "Permission field.site.import Idempotent yes, Idempotency-Key required SLO p95 <= 2 s to preview start; job async Errors 409 FIELD-IMP-409-RUNNING: another job for this connection is running 422 FIELD-IMP-422-MASK: filter prefix invalid 502 FIELD-IMP-502-SAP: SAP unreachable Request {\"connection_id\": \"0192f0a1-...\", \"filter_prefix\": \"IN01-TWR-0042\", \"mode\": \"delta\"} Response {\"job_id\": \"0192f0b2-...\", \"status\": \"preview\", \"counts\": {\"new\": 31, \"changed\": 2, \"moved\": 0, \"removed\": 1, \"rejected\": 1}}"
+    },
+    {
+      "id": "API4.02",
+      "phase": 4,
+      "method": "GET",
+      "path": "/v1/sites/{id}/tree",
+      "summary": "\u2014 Location tree with installed equipment per position.",
+      "details": "Permission field.site.read Idempotent yes, Idempotency-Key required SLO p95 <= 150 ms Errors 404 FIELD-SITE-404: site not found or out of scope Request {} Response {\"site\": {\"erp_ref\": \"IN01-TWR-0042\", \"children\": [{\"kind\": \"tower\", \"code\": \"T01\", \"children\": [{\"kind\": \"sector\", \"code\": \"SA\", \"children\": [{\"kind\": \"level\", \"code\": \"L03\", \"height_m\": 40.0}]}]}]}}"
+    },
+    {
+      "id": "API4.03",
+      "phase": 4,
+      "method": "POST",
+      "path": "/v1/sites/{id}/visits",
+      "summary": "\u2014 Check in with geofence and permit.",
+      "details": "Permission field.visit.create Idempotent yes, Idempotency-Key required SLO p95 <= 120 ms Errors 403 FIELD-VIS-403-GEOFENCE: outside radius after accuracy 422 FIELD-VIS-422-ACCURACY: accuracy > 50 m 422 FIELD-VIS-422-PERMIT: permit missing or expired 409 FIELD-VIS-409-OPEN: open visit exists for this user Request {\"permit_ref\": \"PTW-2026-11-0412\", \"permit_valid_until\": \"2026-11-24T17:00:00Z\", \"lat\": 18.52043, \"lon\": 73.856743, \"accuracy_m\": 12.0, \"captured_at\": \"2026-11-24T09:02:11Z\", \"baro_hpa\": 948.21} Response {\"visit_id\": \"0192f1c3-...\", \"status\": \"checked_in\", \"timer_interval_min\": 20}"
+    },
+    {
+      "id": "API4.04",
+      "phase": 4,
+      "method": "PATCH",
+      "path": "/v1/visits/{id}",
+      "summary": "\u2014 Heartbeat, check-in, status change or check-out (If-Match).",
+      "details": "Permission field.visit.create Idempotent yes, Idempotency-Key required SLO p95 <= 100 ms Errors 412 FIELD-VIS-412-ETAG: stale version 409 FIELD-VIS-409-CLOSED: visit already checked out Request {\"action\": \"check_in\", \"occurred_at\": \"2026-11-24T09:21:40Z\"} Response {\"status\": \"on_structure\", \"next_due_at\": \"2026-11-24T09:41:40Z\"}"
+    },
+    {
+      "id": "API4.05",
+      "phase": 4,
+      "method": "GET",
+      "path": "/v1/sites/{id}/pack",
+      "summary": "\u2014 Offline site pack manifest with chunk URLs and snapshot version.",
+      "details": "Permission field.site.read Idempotent yes, Idempotency-Key required SLO p95 <= 300 ms manifest Errors 304: If-None-Match matches 404 FIELD-SITE-404 Request {} Response {\"snapshot_version\": \"erp-2026-11-23T22:00Z#418\", \"size_bytes\": 41877211, \"chunks\": [{\"name\": \"tree\", \"sha256\": \"9f2c...\", \"url\": \"signed\"}, {\"name\": \"models/RRU@1.3.0\", \"sha256\": \"a1d4...\", \"url\": \"signed\"}]}"
+    },
+    {
+      "id": "API4.06",
+      "phase": 4,
+      "method": "POST",
+      "path": "/v1/tasks/{id}/audit/reconcile",
+      "summary": "\u2014 Run reconciliation for a tower or whole task; returns findings summary.",
+      "details": "Permission field.task.read Idempotent yes, Idempotency-Key required SLO p95 <= 400 ms for 200 lines Errors 409 FIELD-AUD-409-SIGNED: task already signed off Request {\"tower_location_id\": \"0192f...\"} Response {\"matched\": 20, \"serial_mismatch\": 1, \"tower_only\": 1, \"erp_only\": 2, \"misplaced\": 0, \"completeness\": 0.833}"
+    },
+    {
+      "id": "API4.07",
+      "phase": 4,
+      "method": "GET",
+      "path": "/v1/audits/{task_id}/progress",
+      "summary": "\u2014 Completeness per site, tower, sector, level.",
+      "details": "Permission field.task.read Idempotent yes, Idempotency-Key required SLO p95 <= 120 ms Errors 404 FIELD-TASK-404 Request {} Response {\"site\": 0.917, \"towers\": [{\"code\": \"T01\", \"value\": 0.917, \"sectors\": [{\"code\": \"A\", \"value\": 1.0}, {\"code\": \"B\", \"value\": 0.75, \"empty_scope\": false}]}]}"
+    },
+    {
+      "id": "API4.08",
+      "phase": 4,
+      "method": "POST",
+      "path": "/v1/equipment-events",
+      "summary": "\u2014 Stage or confirm install, dismantle or replace at a position.",
+      "details": "Permission field.post.request (stage), field.post.confirm (confirm) Idempotent yes, Idempotency-Key required SLO p95 <= 120 ms (post async) Errors 409 FIELD-EQP-409-ALREADY-INSTALLED: serial installed elsewhere 422 FIELD-EQP-422-BOM-INCOMPLETE: serialised parts not captured 422 FIELD-IDEM-422-BODY: same key, different body 423 FIELD-SAFE-423-UNCONFIRMED: device reported harness unconfirmed Request {\"type\": \"replace\", \"position_location_id\": \"0192f...\", \"old_serial\": \"21A7K0093\", \"new_serial\": \"21B3M0411\", \"material\": \"RRU-4T-B3\", \"bom_captures\": [{\"balloon_no\": 3, \"serial\": \"PSU88213\"}], \"occurred_at\": \"2026-11-24T10:14:02Z\", \"confirm\": true} Response {\"events\": [{\"id\": \"0192f...\", \"type\": \"dismantle\", \"queue_key\": \"IN01-TWR-0042-T01\", \"seq\": 17, \"status\": \"queued\"}, {\"id\": \"0192f...\", \"type\": \"install\", \"seq\": 18, \"status\": \"queued\"}]}"
+    },
+    {
+      "id": "API4.09",
+      "phase": 4,
+      "method": "POST",
+      "path": "/v1/equipment-events/{id}/reverse",
+      "summary": "\u2014 Undo after post: compensating operation.",
+      "details": "Permission field.post.confirm Idempotent yes, Idempotency-Key required SLO p95 <= 120 ms Errors 409 FIELD-EQP-409-NOT-POSTED: use undo on staged event 409 FIELD-EQP-409-SUPERSEDED: later event on serial exists; reverse that first Request {\"reason\": \"wrong position\"} Response {\"reversal_event_id\": \"0192f...\", \"ref_doc_no\": \"EQ-INST-10000123\", \"status\": \"queued\"}"
+    },
+    {
+      "id": "API4.10",
+      "phase": 4,
+      "method": "GET",
+      "path": "/v1/equipment/{serial}/trail",
+      "summary": "\u2014 Ordered trail of locations for a serial.",
+      "details": "Permission field.site.read Idempotent yes, Idempotency-Key required SLO p95 <= 150 ms Errors 404 FIELD-EQP-404-SERIAL Request {} Response {\"serial\": \"21A7K0093\", \"points\": [{\"seq\": 1, \"type\": \"issue\", \"label\": \"Plant 1100 / SL 0001\", \"at\": \"2026-06-02T08:00:00Z\"}, {\"seq\": 2, \"type\": \"install\", \"label\": \"IN01-TWR-0042 T01 Sector A L3 P02\", \"at\": \"2026-06-05T11:20:00Z\"}]}"
+    },
+    {
+      "id": "API4.11",
+      "phase": 4,
+      "method": "GET",
+      "path": "/v1/sites/{id}/route?from=&amp;to=",
+      "summary": "\u2014 3D route with climb weighting and guidance.",
+      "details": "Permission field.site.read Idempotent yes, Idempotency-Key required SLO p95 <= 50 ms Errors 404 FIELD-GRAPH-404-NODE 422 FIELD-GRAPH-422-NO-ROUTE Request {} Response {\"cost\": 131.5, \"climb_m\": 40.0, \"walk_m\": 11.5, \"nodes\": [\"ground-gate\", \"ladder-foot-T01\", \"rp-L2\", \"rp-L3\"], \"guidance\": \"Climb 40 m to Level 3 platform. Clip in at every rest platform.\"}"
+    },
+    {
+      "id": "API4.12",
+      "phase": 4,
+      "method": "POST",
+      "path": "/v1/asset-models",
+      "summary": "\u2014 Upload a draft model version (multipart .glb + BOM CSV).",
+      "details": "Permission field.model.edit Idempotent yes, Idempotency-Key required SLO p95 <= 1 s accept; validation async <= 30 s Errors 413 FIELD-MOD-413-SIZE: > 25 MB 422 FIELD-MOD-422-INVALID: validation issues listed 409 FIELD-MOD-409-VERSION: version exists Request {\"equipment_class\": \"RRU\", \"version\": \"1.3.0\", \"glb\": \"(binary)\", \"bom_csv\": \"(text)\"} Response {\"id\": \"0192f...\", \"status\": \"validating\"}"
+    },
+    {
+      "id": "API4.13",
+      "phase": 4,
+      "method": "POST",
+      "path": "/v1/asset-models/{id}/publish",
+      "summary": "\u2014 Publish a validated version (step-up).",
+      "details": "Permission field.model.publish Idempotent yes, Idempotency-Key required SLO p95 <= 300 ms Errors 409 FIELD-MOD-409-NOT-VALID 401 FIELD-AUTH-401-STEPUP: step-up required Request {} Response {\"status\": \"published\", \"balloons_assigned\": 2, \"balloons_kept\": 14}"
+    },
+    {
+      "id": "API4.14",
+      "phase": 4,
+      "method": "GET",
+      "path": "/v1/asset-models/{id}/bom",
+      "summary": "\u2014 BOM with balloons, serialised flags, node mapping, explode vectors.",
+      "details": "Permission field.site.read Idempotent yes, Idempotency-Key required SLO p95 <= 100 ms Errors 404 FIELD-MOD-404 Request {} Response {\"items\": [{\"balloon_no\": 3, \"part_no\": \"PSU-48V-2K\", \"qty\": 1, \"serialised\": true, \"node_names\": [\"psu\"], \"explode_vector\": [0, 0.12, 0]}]}"
+    },
+    {
+      "id": "API4.15",
+      "phase": 4,
+      "method": "POST",
+      "path": "/v1/climb-sessions/{visit_id}/events",
+      "summary": "\u2014 Upload summarised safety events in device order.",
+      "details": "Permission field.visit.create Idempotent yes, Idempotency-Key required SLO p95 <= 100 ms Errors 409 FIELD-SAFE-409-SEQ-GAP: earlier device_seq missing (client resends) Request {\"events\": [{\"device_seq\": 41, \"type\": \"harness_confirmed\", \"altitude_m\": 40.2, \"occurred_at\": \"2026-11-24T09:58:12Z\"}]} Response {\"accepted\": 1, \"duplicates\": 0}"
+    },
+    {
+      "id": "API4.16",
+      "phase": 4,
+      "method": "GET",
+      "path": "/v1/mismatches",
+      "summary": "\u2014 Mismatch queue with filters; decision via POST /v1/mismatches/{id}/decision.",
+      "details": "Permission field.exception.decide Idempotent yes, Idempotency-Key required SLO p95 <= 200 ms Errors 403 FIELD-EXC-403-SOD: decider captured this serial 409 FIELD-EXC-409-RESOLVED Request {\"query\": \"?site_id=...&class=serial_mismatch&limit=50\", \"decision_body\": {\"decision\": \"update_erp\", \"note\": \"Plate photo clear\"}} Response {\"items\": [{\"id\": \"0192f...\", \"class\": \"serial_mismatch\", \"expected_serial\": \"21A7K0098\", \"found_serial\": \"21A7K0093\", \"verify_status\": \"verified\", \"crop_url\": \"signed\", \"age_h\": 5}], \"next_cursor\": \"...\"}"
+    },
+    {
+      "id": "API4.17",
+      "phase": 4,
+      "method": "POST",
+      "path": "/v1/audits/{task_id}/report",
+      "summary": "\u2014 Request PDF or CSV export.",
+      "details": "Permission field.report.export Idempotent yes, Idempotency-Key required SLO Generation <= 60 s for 500 findings Errors 409 FIELD-RPT-409-RUNNING Request {\"format\": \"csv\"} Response {\"report_id\": \"0192f...\", \"status\": \"queued\"}"
+    },
+    {
+      "id": "API4.18",
+      "phase": 4,
+      "method": "GET",
+      "path": "/v1/installed-base",
+      "summary": "\u2014 Installed base by serial or site for Phase 5.",
+      "details": "Permission field.installed_base.read Idempotent yes, Idempotency-Key required SLO p95 <= 80 ms Errors 400 FIELD-IB-400-FILTER: serial or site_id required Request {\"query\": \"?serial=21B3M0411\"} Response {\"items\": [{\"serial_no\": \"21B3M0411\", \"erp_equipment_no\": \"10004417\", \"site_erp_ref\": \"IN01-TWR-0042\", \"erp_ref\": \"IN01-TWR-0042-T01-SA-L03-P02\", \"since\": \"2026-11-24T10:14:02Z\"}]}"
+    }
+  ]
+}

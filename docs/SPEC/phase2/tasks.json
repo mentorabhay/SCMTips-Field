@@ -1,0 +1,1144 @@
+[
+  {
+    "id": "T2.001",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Scaffold the Android multi-module project",
+    "description": "Create apps/field-android with modules :app, :core-capture, :core-voice, :core-outbox, :core-wearables, :core-positioning-stub and :feature-tasks, a Gradle version catalog (libs.versions.toml) pinning Kotlin, Compose BOM, Room, WorkManager, CameraX, ML Kit, MediaPipe and the toolkit SDK. Add Hilt, detekt, ktlint and Kotest; wire ./gradlew check into scripts/verify-all.sh. minSdk 29, targetSdk 35.",
+    "depends_on": "",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/settings.gradle.kts, gradle/libs.versions.toml",
+    "done_when": "./gradlew check passes in verify-all and prints a PASS row for field-android FR2.001",
+    "frs": [
+      "FR2.001"
+    ]
+  },
+  {
+    "id": "T2.002",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Build the app shell and navigation",
+    "description": "Implement MainActivity, Compose navigation graph (sign-in, permissions, consent, pair, tasks, session, outbox, settings), theme from packages/ui-tokens and a startup sequence that opens the encrypted outbox before any network call. :core-positioning-stub exposes LocationProvider returning the manually chosen or QR-anchor location only.",
+    "depends_on": "depends on T2.001",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/app/src/main/kotlin/.../MainActivity.kt",
+    "done_when": "All screens reachable in Espresso navigation test; app starts in under 1.5 s cold on a mid-range phone FR2.006",
+    "frs": [
+      "FR2.006"
+    ]
+  },
+  {
+    "id": "T2.003",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Generate the Kotlin API client with interceptors",
+    "description": "Generate the Kotlin client from packages/field-contract/openapi.yaml and add OkHttp interceptors for X-Request-Id, W3C traceparent, Authorization and Idempotency-Key. Redact Authorization and multipart bodies from HTTP logging.",
+    "depends_on": "depends on T2.001",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-outbox/src/main/kotlin/.../api/",
+    "done_when": "Unit test proves headers are set and logs contain no token or body bytes FR2.045 FR2.066",
+    "frs": [
+      "FR2.045",
+      "FR2.066"
+    ]
+  },
+  {
+    "id": "T2.004",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Implement sign-in with a core device token",
+    "description": "Accept the core P10 device token from the enrolment QR or deep link scmtips-field://enrol, store it in DataStore encrypted with an Android Keystore AES-256-GCM key, and call POST /v1/auth/exchange (Phase 1) to obtain a field JWT kept in memory only. Re-exchange 60 s before expiry; the exact P10 hand-off is to confirm in Phase 1.",
+    "depends_on": "depends on T2.002, T2.003",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/app/.../auth/",
+    "done_when": "Sign-in completes with SAMPLE token; token never written in plain text (storage scan) FR2.001",
+    "frs": [
+      "FR2.001"
+    ]
+  },
+  {
+    "id": "T2.005",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Read MDM managed configuration and merge effective config",
+    "description": "Declare app_restrictions.xml keys (field_api_base_url, tenant_hint, site_id, allowed_glasses_models, force_audio_only, phone_camera_mode_allowed, max_outbox_items, log_level) and merge them with GET /v1/devices/{id}/config using precedence MDM > server > app default. Expose the merged config as a Flow.",
+    "depends_on": "depends on T2.004",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/app/.../config/EffectiveConfig.kt",
+    "done_when": "TC2.104 passes for every key and precedence pair FR2.004 FR2.054",
+    "frs": [
+      "FR2.004",
+      "FR2.054"
+    ]
+  },
+  {
+    "id": "T2.006",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Handle device revocation",
+    "description": "On exchange 401 FIELD-AUTH-401-REVOKED or a device.revoked live message, stop the session within 5 s, delete tokens, show MSG2.03 and block outbox sync. Keep unsent items encrypted for 72 h (D2.05), then purge them with an audit entry sent on next valid sign-in.",
+    "depends_on": "depends on T2.004",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/app/.../auth/RevocationHandler.kt",
+    "done_when": "TC2.102 passes; revocation honoured within 60 s of console action FR2.002",
+    "frs": [
+      "FR2.002"
+    ]
+  },
+  {
+    "id": "T2.007",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Run capture sessions in a foreground service",
+    "description": "Implement CaptureSessionService with foregroundServiceType connectedDevice|camera|microphone, started only from the visible session screen, with an ongoing notification showing task and queue depth and a Stop action. Release camera, mic and toolkit streams on stop.",
+    "depends_on": "depends on T2.002",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/app/.../session/CaptureSessionService.kt",
+    "done_when": "Session survives 30 min screen-off on Android 14 and 15 (TC2.105) FR2.005",
+    "frs": [
+      "FR2.005"
+    ]
+  },
+  {
+    "id": "T2.008",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Build permission flows",
+    "description": "Request CAMERA, RECORD_AUDIO, BLUETOOTH_CONNECT, BLUETOOTH_SCAN, POST_NOTIFICATIONS and foreground service permissions just in time with rationale screens (SCR2.02). Denied permanently shows MSG2.05 with a Settings link; the app runs in reduced mode where possible.",
+    "depends_on": "depends on T2.002",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/app/.../permissions/",
+    "done_when": "TC2.106 passes for each permission; TalkBack reads every control FR2.006",
+    "frs": [
+      "FR2.006"
+    ]
+  },
+  {
+    "id": "T2.009",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Implement the battery and thermal ladder",
+    "description": "Listen to PowerManager thermal status and battery level; apply the ladder in BR2.16 (fps 15 to 8, on-demand detection, session end) and show MSG2.14 or MSG2.15. Record each step as a session telemetry event.",
+    "depends_on": "depends on T2.007",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/app/.../session/PowerGovernor.kt",
+    "done_when": "TC2.107 and TC2.108 pass with injected thermal and battery states FR2.007",
+    "frs": [
+      "FR2.007"
+    ]
+  },
+  {
+    "id": "T2.010",
+    "phase": 2,
+    "workstream": "WS2.1",
+    "role": "Android",
+    "title": "Record consent and check the camera indicator",
+    "description": "Show SCR2.09 at first session per user, device and site, send POST /v1/consents and block session start until consent exists. Refuse to start capture if the toolkit reports that the capture indicator is unavailable (to confirm in Phase 1).",
+    "depends_on": "depends on T2.004",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/app/.../consent/",
+    "done_when": "TC2.154 and TC2.155 pass FR2.064",
+    "frs": [
+      "FR2.064"
+    ]
+  },
+  {
+    "id": "T2.011",
+    "phase": 2,
+    "workstream": "WS2.2",
+    "role": "Android",
+    "title": "Wrap the Wearables Device Access Toolkit",
+    "description": "Create :core-wearables with interfaces GlassesSession, PreviewStream (target 504x896 at 15 fps, to confirm), StillCapture, AudioOut, LensRenderer and ConnectionState, isolating toolkit types from other modules. Record every toolkit call used in docs/META_FIELD.md as VERIFIED or UNVERIFIED.",
+    "depends_on": "depends on T2.001",
+    "estimate_days": 1.5,
+    "deliverable": "apps/field-android/core-wearables/",
+    "done_when": "Preview frames and stills arrive in Mock Device Kit tests; META_FIELD.md updated FR2.009 FR2.010",
+    "frs": [
+      "FR2.009",
+      "FR2.010"
+    ]
+  },
+  {
+    "id": "T2.012",
+    "phase": 2,
+    "workstream": "WS2.2",
+    "role": "Android",
+    "title": "Build the phone and glasses pairing flow",
+    "description": "Implement SCR2.03: request toolkit device access (registration via the Meta AI companion app, to confirm), read model and display capability, then call POST /v1/devices for the glasses with paired_with set to the phone device. One active glasses pairing per phone.",
+    "depends_on": "depends on T2.011, T2.004",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/app/.../pairing/",
+    "done_when": "TC2.103 passes with Mock Device Kit; re-pair replaces old pairing FR2.003",
+    "frs": [
+      "FR2.003"
+    ]
+  },
+  {
+    "id": "T2.013",
+    "phase": 2,
+    "workstream": "WS2.2",
+    "role": "Android",
+    "title": "Handle disconnects and reconnects",
+    "description": "ConnectionMonitor reconnects with backoff 1, 2, 4, 8, 16, 30 s (cap 30 s) and resumes the preview without a new pairing. The look in progress at disconnect is discarded; captures already committed stay in the outbox.",
+    "depends_on": "depends on T2.011",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-wearables/.../ConnectionMonitor.kt",
+    "done_when": "TC2.116 passes: no duplicate or lost record across 20 disconnects FR2.015",
+    "frs": [
+      "FR2.015"
+    ]
+  },
+  {
+    "id": "T2.014",
+    "phase": 2,
+    "workstream": "WS2.2",
+    "role": "Android",
+    "title": "Implement the lens renderer for Ray-Ban Display",
+    "description": "Render the 7 lens states (ready, moving, tie, captured, duplicate, offline queued, error) as defined in SCR2.07 using toolkit display drawing (text and simple shapes), at most 2 lines of 18 characters. Provide FakeLensRenderer that records draw calls for tests because Mock Device Kit does not simulate display glasses.",
+    "depends_on": "depends on T2.011",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-wearables/.../lens/",
+    "done_when": "TC2.113 passes; draw call under 40 ms p95 on hardware FR2.013",
+    "frs": [
+      "FR2.013"
+    ]
+  },
+  {
+    "id": "T2.015",
+    "phase": 2,
+    "workstream": "WS2.2",
+    "role": "Android",
+    "title": "Implement the audio-only cue set",
+    "description": "For models without a display, map each lens state to an earcon and an optional short phrase per SCR2.08; phrases are suppressed in walking-quiet mode except errors. Earcons are bundled 16-bit PCM under 300 ms.",
+    "depends_on": "depends on T2.016",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-wearables/.../audio/AudioCues.kt",
+    "done_when": "TC2.115 passes FR2.014",
+    "frs": [
+      "FR2.014"
+    ]
+  },
+  {
+    "id": "T2.016",
+    "phase": 2,
+    "workstream": "WS2.2",
+    "role": "Android",
+    "title": "Add text-to-speech readback through the glasses",
+    "description": "Use Android TextToSpeech routed to the glasses audio output for readback (for example \"Count 12. Say confirm.\"), with queue flush on new push-to-talk. Speech rate and volume follow device settings.",
+    "depends_on": "depends on T2.011",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-wearables/.../audio/Readback.kt",
+    "done_when": "TC2.112 passes; readback starts within 300 ms of intent FR2.012",
+    "frs": [
+      "FR2.012"
+    ]
+  },
+  {
+    "id": "T2.017",
+    "phase": 2,
+    "workstream": "WS2.2",
+    "role": "QA",
+    "title": "Build the Mock Device Kit test harness",
+    "description": "Configure Mock Device Kit to replay SAMPLE preview sequences and stills from apps/field-android/testdata/scenes, inject disconnects and battery events, and run in verify-all on the build PC. Display paths use FakeLensRenderer.",
+    "depends_on": "depends on T2.011, T2.014",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-wearables/src/androidTest/",
+    "done_when": "TC2.117 passes in verify-all FR2.015",
+    "frs": [
+      "FR2.015"
+    ]
+  },
+  {
+    "id": "T2.018",
+    "phase": 2,
+    "workstream": "WS2.2",
+    "role": "Android",
+    "title": "Add phone camera mode with CameraX",
+    "description": "When no glasses are paired (and MDM allows), feed CameraX ImageAnalysis frames (640x480, YUV) and ImageCapture stills into the same pipeline, using the phone screen as lens surface. Phone IMU supplies head-speed equivalent.",
+    "depends_on": "depends on T2.011",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-capture/.../source/CameraXSource.kt",
+    "done_when": "TC2.165 passes FR2.008",
+    "frs": [
+      "FR2.008"
+    ]
+  },
+  {
+    "id": "T2.019",
+    "phase": 2,
+    "workstream": "WS2.2",
+    "role": "Owner",
+    "title": "Run the owner hardware session",
+    "description": "Owner runs the scripted session on Meta Ray-Ban Display and Ray-Ban Meta Gen 2 on 17 Nov: lens legibility, LED behaviour, push-to-talk routing, 100-capture latency spot check. Results go to docs/META_FIELD.md and docs/perf/F1-latency.md.",
+    "depends_on": "depends on T2.014, T2.015, T2.029",
+    "estimate_days": 0.5,
+    "deliverable": "docs/META_FIELD.md hardware section",
+    "done_when": "Checklist signed with VERIFIED or UNVERIFIED per item FR2.013 FR2.064",
+    "frs": [
+      "FR2.013",
+      "FR2.064"
+    ]
+  },
+  {
+    "id": "T2.020",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "AI",
+    "title": "Integrate the on-device detector",
+    "description": "Load an int8 TFLite model through MediaPipe Object Detector with classes carton, label, nameplate, gauge, tag, device; score threshold 0.50, max 10 results, run on every preview frame at the configured fps. Ship the SAMPLE model under apps/field-android/core-capture/src/main/assets/detector_v1.tflite with a model card.",
+    "depends_on": "depends on T2.011",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-capture/.../detect/",
+    "done_when": "TC2.118 golden set: mAP@0.5 at or above 0.70 SAMPLE; 38 ms p95 on reference phone FR2.016",
+    "frs": [
+      "FR2.016"
+    ]
+  },
+  {
+    "id": "T2.021",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "Android",
+    "title": "Estimate head speed and segment looks",
+    "description": "Compute angular speed from glasses IMU if VERIFIED, otherwise from optical flow between preview frames (D2.07). A look starts after 150 ms below 8 deg/s and ends when speed exceeds 25 deg/s or a record is made.",
+    "depends_on": "depends on T2.011",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-capture/.../motion/",
+    "done_when": "Unit tests on SAMPLE IMU traces; look boundaries match labels in 95% of cases FR2.021 FR2.029",
+    "frs": [
+      "FR2.021",
+      "FR2.029"
+    ]
+  },
+  {
+    "id": "T2.022",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "Android",
+    "title": "Decode barcodes and validate SSCC",
+    "description": "Use ML Kit barcode scanning for CODE_128 (GS1-128), DATA_MATRIX and QR_CODE on the still region; parse GS1 AIs 00, 01, 10, 17, 21 and validate SSCC (AI 00, 18 digits) with the GS1 mod-10 check digit. Invalid SSCC is rejected with MSG2.08.",
+    "depends_on": "depends on T2.020",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-capture/.../codes/",
+    "done_when": "PR2.12 and TC2.119, TC2.120 pass FR2.017 FR2.018",
+    "frs": [
+      "FR2.017",
+      "FR2.018"
+    ]
+  },
+  {
+    "id": "T2.023",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "Android",
+    "title": "Read serial text on the device",
+    "description": "Run ML Kit Text Recognition v2 on nameplate and tag boxes and select tokens matching the task_line serial_pattern (default ^[A-Z0-9-]{6,24}$). Characters O/0 and I/1 are normalised only when the pattern says digits.",
+    "depends_on": "depends on T2.020",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-capture/.../ocr/",
+    "done_when": "TC2.121 passes FR2.019",
+    "frs": [
+      "FR2.019"
+    ]
+  },
+  {
+    "id": "T2.024",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "Android",
+    "title": "Implement the capture-zone ranking engine",
+    "description": "Implement Ranker per the ranking algorithm in ts.json: eligibility at 20% coverage of a circle with radius 13.5% of view width, weighted score, duplicate factor 0.5, tie at 0.05 with top above 0.35, no record at or below 0.35 (D2.01). Pure Kotlin, no Android types, deterministic ordering.",
+    "depends_on": "depends on T2.020",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-capture/.../rank/Ranker.kt",
+    "done_when": "PR2.01 to PR2.06 pass with 1,000 runs each FR2.023 FR2.024 FR2.025 FR2.026 FR2.030",
+    "frs": [
+      "FR2.023",
+      "FR2.024",
+      "FR2.025",
+      "FR2.026",
+      "FR2.030"
+    ]
+  },
+  {
+    "id": "T2.025",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "Android",
+    "title": "Track objects and gaze dwell",
+    "description": "Assign track ids with an IoU tracker (IoU at or above 0.4) and accumulate dwell while a track centre stays inside the capture circle; dwell resets when the track leaves or the look ends. Dwell score is min(1, dwell_s / 0.8). Gaze is head-gaze (view centre), not eye tracking.",
+    "depends_on": "depends on T2.024",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-capture/.../rank/DwellTracker.kt",
+    "done_when": "TC2.125 passes FR2.027",
+    "frs": [
+      "FR2.027"
+    ]
+  },
+  {
+    "id": "T2.026",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "Android",
+    "title": "Compute task match from task expectations",
+    "description": "Fetch GET /v1/tasks/{id}/expectations at session start and cache it; compute task_match 1.0 exact code, 0.6 material or GTIN match, 0.3 class match, 0 otherwise. Refresh on task change or every 5 min while online.",
+    "depends_on": "depends on T2.024, T2.003",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-capture/.../rank/TaskMatcher.kt",
+    "done_when": "TC2.126 passes FR2.028",
+    "frs": [
+      "FR2.028"
+    ]
+  },
+  {
+    "id": "T2.027",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "Android",
+    "title": "Score readability with motion penalty",
+    "description": "Readability = base (0.5 decode confidence + 0.3 sharpness + 0.2 pixel height) times motion factor from head speed (1 at or below 8 deg/s, linear to 0 at 60 deg/s). Clamp to [0, 1].",
+    "depends_on": "depends on T2.021, T2.022",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-capture/.../quality/Readability.kt",
+    "done_when": "PR2.14 and TC2.122 pass FR2.020 FR2.021",
+    "frs": [
+      "FR2.020",
+      "FR2.021"
+    ]
+  },
+  {
+    "id": "T2.028",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "Security",
+    "title": "Blur bystander faces before upload",
+    "description": "Run ML Kit face detection (threshold 0.3) on each crop plus a 10% margin and pixelate each face box (16 px blocks) before encoding JPEG; only FaceBlurStage can construct UploadableCrop. Detector failure withholds the crop and records evidence_withheld.",
+    "depends_on": "depends on T2.022",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-capture/.../privacy/FaceBlurStage.kt",
+    "done_when": "PR2.13 and TC2.123 pass FR2.022",
+    "frs": [
+      "FR2.022"
+    ]
+  },
+  {
+    "id": "T2.029",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "Android",
+    "title": "Orchestrate the capture pipeline",
+    "description": "Wire look, still trigger, decode, rank, record build, outbox commit, lens tick and timing marks (shutter, still_rx, decode_done, rank_done, committed, lens_drawn). Auto-capture after full dwell when a clear winner exists, or on capture command or tap; one record per look.",
+    "depends_on": "depends on T2.024, T2.025, T2.026, T2.027, T2.040",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-capture/.../pipeline/CapturePipeline.kt",
+    "done_when": "TC2.166 passes; timing marks present on every capture FR2.029 FR2.063",
+    "frs": [
+      "FR2.029",
+      "FR2.063"
+    ]
+  },
+  {
+    "id": "T2.030",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "QA",
+    "title": "Write ranking property tests",
+    "description": "Kotest property tests PR2.01 to PR2.06 with generators for object lists (0 to 12 boxes, edge-biased coverage around 0.20 and score gaps around 0.05).",
+    "depends_on": "depends on T2.024",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-capture/src/test/.../RankerProperties.kt",
+    "done_when": "Each property runs 1,000 cases in verify-all FR2.023 FR2.026 FR2.030",
+    "frs": [
+      "FR2.023",
+      "FR2.026",
+      "FR2.030"
+    ]
+  },
+  {
+    "id": "T2.031",
+    "phase": 2,
+    "workstream": "WS2.3",
+    "role": "QA",
+    "title": "Build the golden scene set and perception tests",
+    "description": "Assemble 300 SAMPLE scenes (cartons with SSCC labels, nameplates, gauges, tags, bystanders) with labels for boxes, codes and faces under apps/field-android/testdata/scenes. Write JUnit tests for detector, decoder, OCR, readability and face blur on this set.",
+    "depends_on": "depends on T2.020",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/testdata/scenes/",
+    "done_when": "TC2.118 to TC2.124 run in verify-all FR2.016 FR2.019 FR2.022",
+    "frs": [
+      "FR2.016",
+      "FR2.019",
+      "FR2.022"
+    ]
+  },
+  {
+    "id": "T2.032",
+    "phase": 2,
+    "workstream": "WS2.4",
+    "role": "Android",
+    "title": "Build the push-to-talk controller",
+    "description": "Support on-screen hold button, volume-down long press and Bluetooth media button as push-to-talk. Audio is captured into a RAM ring buffer from the glasses mic if routing is VERIFIED, else the phone mic, and zeroed after recognition.",
+    "depends_on": "depends on T2.007",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-voice/.../ptt/",
+    "done_when": "TC2.111 and TC2.131 pass FR2.011 FR2.035",
+    "frs": [
+      "FR2.011",
+      "FR2.035"
+    ]
+  },
+  {
+    "id": "T2.033",
+    "phase": 2,
+    "workstream": "WS2.4",
+    "role": "Android",
+    "title": "Integrate the ASR adapter",
+    "description": "Implement AsrEngine with Android SpeechRecognizer (EXTRA_PREFER_OFFLINE, n-best 5) and a Vosk small-model fallback (D2.04). Return transcript, confidence and n-best only; no audio leaves memory.",
+    "depends_on": "depends on T2.032",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-voice/.../asr/",
+    "done_when": "Recogniser works offline in airplane mode on reference phone FR2.031 FR2.035",
+    "frs": [
+      "FR2.031",
+      "FR2.035"
+    ]
+  },
+  {
+    "id": "T2.034",
+    "phase": 2,
+    "workstream": "WS2.4",
+    "role": "Android",
+    "title": "Implement the grammar parser and confidence floor",
+    "description": "Parse n-best transcripts against the BRIEF grammar (capture, count n, reading n, undo, wrong one, mark damaged, condition good, left, right, post, confirm, cancel, next, repeat, what is this). Below 0.80 or out of grammar: no state change, MSG2.10.",
+    "depends_on": "depends on T2.033",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-voice/.../grammar/",
+    "done_when": "PR2.09, TC2.128 and TC2.129 pass FR2.031 FR2.032",
+    "frs": [
+      "FR2.031",
+      "FR2.032"
+    ]
+  },
+  {
+    "id": "T2.035",
+    "phase": 2,
+    "workstream": "WS2.4",
+    "role": "Android",
+    "title": "Implement the number parser and locale hooks",
+    "description": "Parse digits and English number words 0 to 9999 (\"twelve\", \"one thousand two hundred and five\", digit-by-digit \"one two five\"). Load grammar and number lexicon from res/raw/grammar_<locale>.json; hi-IN stub falls back to en.",
+    "depends_on": "depends on T2.034",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-voice/.../numbers/",
+    "done_when": "PR2.10 and TC2.132 pass FR2.034 FR2.036",
+    "frs": [
+      "FR2.034",
+      "FR2.036"
+    ]
+  },
+  {
+    "id": "T2.036",
+    "phase": 2,
+    "workstream": "WS2.4",
+    "role": "Android",
+    "title": "Implement the confirm gate and correction commands",
+    "description": "ConfirmGate: post stages a request and reads it back; only confirm within 10 s sends it; cancel, timeout or any other intent clears it. Undo before posting removes the staged line; undo after posting raises a reversal post request; wrong one supersedes the last capture.",
+    "depends_on": "depends on T2.034",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-voice/.../ConfirmGate.kt",
+    "done_when": "PR2.11, TC2.130, TC2.133 and TC2.134 pass FR2.033 FR2.037",
+    "frs": [
+      "FR2.033",
+      "FR2.037"
+    ]
+  },
+  {
+    "id": "T2.037",
+    "phase": 2,
+    "workstream": "WS2.4",
+    "role": "Android",
+    "title": "Record voice events",
+    "description": "Write every recognised utterance (accepted or not) as a voice_event outbox item with transcript, confidence, intent, accepted flag and locale, linked to the task and last capture.",
+    "depends_on": "depends on T2.034, T2.040",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-voice/.../VoiceEventRecorder.kt",
+    "done_when": "Voice events appear server-side in order (TC2.139) FR2.038",
+    "frs": [
+      "FR2.038"
+    ]
+  },
+  {
+    "id": "T2.038",
+    "phase": 2,
+    "workstream": "WS2.4",
+    "role": "QA",
+    "title": "Write voice property tests",
+    "description": "Kotest properties PR2.09 to PR2.11 with generators for utterance sequences, confidences around 0.80 and number words.",
+    "depends_on": "depends on T2.035, T2.036",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-voice/src/test/",
+    "done_when": "Each property runs 1,000 cases FR2.032 FR2.033 FR2.034",
+    "frs": [
+      "FR2.032",
+      "FR2.033",
+      "FR2.034"
+    ]
+  },
+  {
+    "id": "T2.039",
+    "phase": 2,
+    "workstream": "WS2.5",
+    "role": "Android",
+    "title": "Create the Room outbox with SQLCipher",
+    "description": "Define Room entities outbox_item and crop_file with SQLCipher (sqlcipher-android 4.x) using a passphrase wrapped by a Keystore key; crop files stored under noBackupFilesDir encrypted with AES-256-GCM (Tink). Disable Android auto backup for these paths.",
+    "depends_on": "depends on T2.001",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-outbox/.../db/",
+    "done_when": "TC2.135 passes FR2.043",
+    "frs": [
+      "FR2.043"
+    ]
+  },
+  {
+    "id": "T2.040",
+    "phase": 2,
+    "workstream": "WS2.5",
+    "role": "Android",
+    "title": "Commit captures atomically with UUIDv7 keys",
+    "description": "Generate a UUIDv7 idempotency key at shutter time and commit the capture row, crop reference and per-task seq in one Room transaction after the crop file is fsynced. On start, sweep orphan crop files older than 10 min.",
+    "depends_on": "depends on T2.039",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-outbox/.../OutboxWriter.kt",
+    "done_when": "TC2.136 passes over 200 forced kills FR2.039 FR2.044",
+    "frs": [
+      "FR2.039",
+      "FR2.044"
+    ]
+  },
+  {
+    "id": "T2.041",
+    "phase": 2,
+    "workstream": "WS2.5",
+    "role": "Android",
+    "title": "Build the ordered sync worker",
+    "description": "SyncWorker (WorkManager unique work, network constraint) sends items per task strictly by seq; item n+1 waits for a terminal result of item n; tasks are served round-robin. Retry backoff 2, 4, 8, 16, 32 s then WorkManager exponential with 30 s base.",
+    "depends_on": "depends on T2.040, T2.003",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-outbox/.../SyncWorker.kt",
+    "done_when": "PR2.07 and PR2.08 pass against the fault-injecting fake server FR2.040 FR2.045",
+    "frs": [
+      "FR2.040",
+      "FR2.045"
+    ]
+  },
+  {
+    "id": "T2.042",
+    "phase": 2,
+    "workstream": "WS2.5",
+    "role": "Android",
+    "title": "Apply conflict rules",
+    "description": "Map server results to outbox states per BR2.11: 2xx and 409 duplicate are acked, 422 key mismatch quarantined, 410 task closed rejected, 401/403 pause all and require sign-in, 413 recompress once. Each terminal state shows on SCR2.06.",
+    "depends_on": "depends on T2.041",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-outbox/.../ConflictPolicy.kt",
+    "done_when": "TC2.138 passes FR2.041",
+    "frs": [
+      "FR2.041"
+    ]
+  },
+  {
+    "id": "T2.043",
+    "phase": 2,
+    "workstream": "WS2.5",
+    "role": "Android",
+    "title": "Enforce queue limits and build the outbox screen",
+    "description": "Limit the outbox to 2,000 items or 200 MB; warn at 90% (MSG2.12) and refuse new captures at 100% (MSG2.13) without touching existing items. SCR2.06 lists items by task with state, attempts and last error.",
+    "depends_on": "depends on T2.041",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/feature-tasks/.../OutboxScreen.kt",
+    "done_when": "PR2.18 and TC2.137 pass FR2.042",
+    "frs": [
+      "FR2.042"
+    ]
+  },
+  {
+    "id": "T2.044",
+    "phase": 2,
+    "workstream": "WS2.5",
+    "role": "Android",
+    "title": "Build the live channel client",
+    "description": "Connect to WS /v1/devices/{id}/live with last_event_id, fall back to SSE after 2 failed upgrades, dedupe by event id, and map ticks to lens marks (received, verified, mismatch, posted, failed). Reconnect with backoff capped at 30 s.",
+    "depends_on": "depends on T2.003",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-outbox/.../live/LiveClient.kt",
+    "done_when": "TC2.144 and TC2.145 pass FR2.052",
+    "frs": [
+      "FR2.052"
+    ]
+  },
+  {
+    "id": "T2.045",
+    "phase": 2,
+    "workstream": "WS2.5",
+    "role": "QA",
+    "title": "Write outbox property tests with fault injection",
+    "description": "Fake server that drops, delays, duplicates and reorders responses; properties PR2.07, PR2.08 and PR2.18 with random kill points.",
+    "depends_on": "depends on T2.041, T2.043",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core-outbox/src/test/",
+    "done_when": "Each property 500 runs in verify-all FR2.039 FR2.040 FR2.042",
+    "frs": [
+      "FR2.039",
+      "FR2.040",
+      "FR2.042"
+    ]
+  },
+  {
+    "id": "T2.046",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Write migrations field_0020 to field_0028",
+    "description": "Add or extend tables device, device_pairing, consent_record, capture, capture_evidence, capture_upload, voice_event, count_record, idempotency_record, device_notification and verification_attempt with RLS policies and indexes per ts.json. Each migration has a downgrade.",
+    "depends_on": "",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/alembic/versions/",
+    "done_when": "Upgrade and downgrade pass on PostgreSQL 16; RLS forced on every new table FR2.053",
+    "frs": [
+      "FR2.053"
+    ]
+  },
+  {
+    "id": "T2.047",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Implement the device APIs",
+    "description": "POST /v1/devices, POST /v1/devices/{id}/heartbeat, GET /v1/devices, GET /v1/devices/{id}/config and POST /v1/devices/{id}/revoke (calls core revoke through core-contract where exposed, else records seam CS-01 interim). Revoke emits device.revoked.",
+    "depends_on": "depends on T2.046",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/devices/",
+    "done_when": "TC2.103, TC2.102 and TC2.163 pass FR2.003 FR2.054 FR2.002",
+    "frs": [
+      "FR2.002",
+      "FR2.003",
+      "FR2.054"
+    ]
+  },
+  {
+    "id": "T2.048",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Implement the consent API",
+    "description": "POST /v1/consents writes consent_record (user, device, site, consent_version) and mirrors an audit entry to core P13e; capture endpoints return 403 FIELD-CAP-403-NO-CONSENT without a valid consent.",
+    "depends_on": "depends on T2.046",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/consents/",
+    "done_when": "TC2.154 passes FR2.064",
+    "frs": [
+      "FR2.064"
+    ]
+  },
+  {
+    "id": "T2.049",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Implement capture ingest and crop storage",
+    "description": "POST /v1/captures accepts multipart (metadata JSON + JPEG up to 256 KB) or JSON with crop_upload_id from POST /v1/captures/uploads (presigned PUT, 300 s). Store crops at s3://field-crops/{tenant}/{site}/{yyyy}/{mm}/{dd}/{capture_id}.jpg with SSE-KMS; reject crops without blur_applied = true; emit capture.created.",
+    "depends_on": "depends on T2.046",
+    "estimate_days": 1.5,
+    "deliverable": "services/field-api/src/field_api/capture/",
+    "done_when": "TC2.139, TC2.140, TC2.143 and TC2.146 pass FR2.046 FR2.051 FR2.022",
+    "frs": [
+      "FR2.022",
+      "FR2.046",
+      "FR2.051"
+    ]
+  },
+  {
+    "id": "T2.050",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Add idempotency handling to POST routes",
+    "description": "Middleware stores (tenant, route, key) with SHA-256 of the canonical body and the response for 24 h; same key and body returns the stored response with Idempotent-Replay: true, different body returns 422 FIELD-IDEM-422-KEY-REUSE.",
+    "depends_on": "depends on T2.046",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/common/idempotency.py",
+    "done_when": "PR2.15 passes FR2.047",
+    "frs": [
+      "FR2.047"
+    ]
+  },
+  {
+    "id": "T2.051",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Detect duplicates and associate task lines",
+    "description": "On ingest, look up an existing capture for (tenant, task, code_type, code) not superseded; return 409 FIELD-CAP-409-DUPLICATE with duplicate_of. Re-match the code to task_line expectations server-side and set task_line_id and on_task.",
+    "depends_on": "depends on T2.049",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/capture/matching.py",
+    "done_when": "PR2.04, TC2.141 and TC2.142 pass FR2.048 FR2.049",
+    "frs": [
+      "FR2.048",
+      "FR2.049"
+    ]
+  },
+  {
+    "id": "T2.052",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Implement voice event, count record and post request APIs",
+    "description": "POST /v1/voice-events, POST /v1/count-records and POST /v1/tasks/{id}/post-requests. Post requests require a confirm voice event that follows a post voice event for the same staged payload within 10 s, then emit posting.requested.",
+    "depends_on": "depends on T2.049",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/voice/, counts/, posting_requests/",
+    "done_when": "TC2.162, TC2.133 and PR2.11 server oracle pass FR2.038 FR2.050 FR2.055",
+    "frs": [
+      "FR2.038",
+      "FR2.050",
+      "FR2.055"
+    ]
+  },
+  {
+    "id": "T2.053",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Build the live hub",
+    "description": "WS /v1/devices/{id}/live and SSE GET /v1/devices/{id}/events backed by field.device_notification (24 h) and Postgres LISTEN/NOTIFY fan-out; resume from last_event_id; heartbeat ping every 20 s (D2.02).",
+    "depends_on": "depends on T2.046",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/live/",
+    "done_when": "TC2.144 and TC2.145 pass FR2.052",
+    "frs": [
+      "FR2.052"
+    ]
+  },
+  {
+    "id": "T2.054",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Apply retention and legal hold to crops",
+    "description": "Nightly field-worker job pulls retention policy from core P13e (default 90 days), sets retention_until on capture_evidence, deletes expired objects not on legal hold and writes an audit entry per batch.",
+    "depends_on": "depends on T2.049",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-worker/src/field_worker/retention/",
+    "done_when": "TC2.143 passes FR2.051",
+    "frs": [
+      "FR2.051"
+    ]
+  },
+  {
+    "id": "T2.055",
+    "phase": 2,
+    "workstream": "WS2.6",
+    "role": "Backend",
+    "title": "Publish the contract and run RLS and contract tests",
+    "description": "Update packages/field-contract/openapi.yaml for all Phase 2 endpoints, regenerate Kotlin and TS clients, and run Schemathesis. Add RLS tests proving cross-tenant and out-of-scope site reads return 404.",
+    "depends_on": "depends on T2.047, T2.049, T2.052, T2.053",
+    "estimate_days": 0.5,
+    "deliverable": "packages/field-contract/openapi.yaml",
+    "done_when": "TC2.139 and TC2.160 pass FR2.053 FR2.046",
+    "frs": [
+      "FR2.046",
+      "FR2.053"
+    ]
+  },
+  {
+    "id": "T2.056",
+    "phase": 2,
+    "workstream": "WS2.7",
+    "role": "AI",
+    "title": "Register the verification prompt in core",
+    "description": "Write prompts/field.capture.verify.v1.yaml (system text, JSON output schema, image input) and register it in the core P13b prompt registry through core-contract; store prompt_id and version in config. No prompt text is sent outside the registry path.",
+    "depends_on": "",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-worker/prompts/field.capture.verify.v1.yaml",
+    "done_when": "TC2.147 passes FR2.057",
+    "frs": [
+      "FR2.057"
+    ]
+  },
+  {
+    "id": "T2.057",
+    "phase": 2,
+    "workstream": "WS2.7",
+    "role": "AI",
+    "title": "Build the model router",
+    "description": "Router decides verify when readability < 0.90 or on_task is false; selects muse-spark-1.3 (D2.06, non-contributor) or the Llama fallback by tenant residency setting. Startup fails if any configured model name ends in -contributor.",
+    "depends_on": "depends on T2.056",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-worker/src/field_worker/verify/router.py",
+    "done_when": "PR2.16 and TC2.148 pass FR2.056 FR2.059",
+    "frs": [
+      "FR2.056",
+      "FR2.059"
+    ]
+  },
+  {
+    "id": "T2.058",
+    "phase": 2,
+    "workstream": "WS2.7",
+    "role": "AI",
+    "title": "Implement the verification job",
+    "description": "Job (SKIP LOCKED queue) checks AI budget via core P13b, sends only the blurred crop and expected values, parses the JSON verdict, records the AI call outcome and writes verification_attempt. Emits capture.verified or capture.mismatch; mismatch never touches ERP state.",
+    "depends_on": "depends on T2.057, T2.049",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-worker/src/field_worker/verify/job.py",
+    "done_when": "TC2.150 and TC2.151 pass; p95 job time at or below 5 s FR2.058 FR2.061 FR2.062",
+    "frs": [
+      "FR2.058",
+      "FR2.061",
+      "FR2.062"
+    ]
+  },
+  {
+    "id": "T2.059",
+    "phase": 2,
+    "workstream": "WS2.7",
+    "role": "AI",
+    "title": "Add the Llama fallback and unverified path",
+    "description": "On Muse 429/5xx/timeout (8 s) or residency block, retry once on self-hosted Llama vision; if that fails or budget is exhausted, set verify_status failed with verify_reason unverified_<cause> and emit no mismatch.",
+    "depends_on": "depends on T2.058",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-worker/src/field_worker/verify/fallback.py",
+    "done_when": "TC2.149 passes FR2.060",
+    "frs": [
+      "FR2.060"
+    ]
+  },
+  {
+    "id": "T2.060",
+    "phase": 2,
+    "workstream": "WS2.7",
+    "role": "QA",
+    "title": "Write router and budget property tests",
+    "description": "Hypothesis properties PR2.16 and PR2.17 over generated captures (readability 0 to 1 biased at 0.90, on_task flags) and budget states.",
+    "depends_on": "depends on T2.057, T2.058",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-worker/tests/test_verify_properties.py",
+    "done_when": "500 runs each in verify-all FR2.056 FR2.058",
+    "frs": [
+      "FR2.056",
+      "FR2.058"
+    ]
+  },
+  {
+    "id": "T2.061",
+    "phase": 2,
+    "workstream": "WS2.8",
+    "role": "Console",
+    "title": "Build the device registry page",
+    "description": "apps/field-console/app/devices: table of devices (kind, model, app version, firmware, site, status, last seen, battery, queue depth) with filters and cursor paging over GET /v1/devices. Stale devices (no heartbeat 15 min) are flagged.",
+    "depends_on": "depends on T2.047",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/app/devices/page.tsx",
+    "done_when": "TC2.157 passes FR2.067",
+    "frs": [
+      "FR2.067"
+    ]
+  },
+  {
+    "id": "T2.062",
+    "phase": 2,
+    "workstream": "WS2.8",
+    "role": "Console",
+    "title": "Build the device detail page with revoke",
+    "description": "Device detail shows pairing, consent status, heartbeat history (24 h) and a Revoke action for field.admin with core step-up. Revoke confirms with the device name and shows MSG2.19.",
+    "depends_on": "depends on T2.061",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-console/app/devices/[id]/page.tsx",
+    "done_when": "TC2.157 revoke path passes FR2.067 FR2.002",
+    "frs": [
+      "FR2.002",
+      "FR2.067"
+    ]
+  },
+  {
+    "id": "T2.063",
+    "phase": 2,
+    "workstream": "WS2.8",
+    "role": "Console",
+    "title": "Build the capture inspector",
+    "description": "apps/field-console/app/captures/[id]: crop (signed URL, 60 s, only with field.evidence.read), code and type, rank score breakdown, readability, verify status with model and reason, timings waterfall, voice events and duplicate links.",
+    "depends_on": "depends on T2.049, T2.058",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/app/captures/[id]/page.tsx",
+    "done_when": "TC2.158 passes FR2.068",
+    "frs": [
+      "FR2.068"
+    ]
+  },
+  {
+    "id": "T2.064",
+    "phase": 2,
+    "workstream": "WS2.8",
+    "role": "QA",
+    "title": "Test console pages with Playwright and axe",
+    "description": "Playwright specs for registry filters, revoke and inspector; axe checks for WCAG 2.1 AA on both pages; screenshots added to tools/screenshot-book fixtures.",
+    "depends_on": "depends on T2.062, T2.063",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-console/e2e/devices.spec.ts, captures.spec.ts",
+    "done_when": "TC2.157, TC2.158 and TC2.159 pass FR2.067 FR2.068",
+    "frs": [
+      "FR2.067",
+      "FR2.068"
+    ]
+  },
+  {
+    "id": "T2.065",
+    "phase": 2,
+    "workstream": "WS2.9",
+    "role": "DevOps",
+    "title": "Instrument latency end to end",
+    "description": "Emit device timing marks with each capture and as OTLP spans (batched), propagate traceparent to field-api, worker and model calls; histogram field_lens_tick_ms and segment histograms. Grafana dashboard JSON in ops/dashboards/f1-capture.json.",
+    "depends_on": "depends on T2.029, T2.049",
+    "estimate_days": 1.0,
+    "deliverable": "ops/dashboards/f1-capture.json",
+    "done_when": "Dashboard shows per-segment p50/p95 from a SAMPLE run FR2.063",
+    "frs": [
+      "FR2.063"
+    ]
+  },
+  {
+    "id": "T2.066",
+    "phase": 2,
+    "workstream": "WS2.9",
+    "role": "QA",
+    "title": "Run the latency campaign",
+    "description": "Run 500 captures on 5G and 200 on 4G on the reference phone with glasses; record per-segment p50/p95 and compare with the BRIEF budget in docs/perf/F1-latency.md.",
+    "depends_on": "depends on T2.065, T2.019",
+    "estimate_days": 0.5,
+    "deliverable": "docs/perf/F1-latency.md",
+    "done_when": "Lens tick p95 at or below 400 ms on 5G (TC2.152) FR2.063",
+    "frs": [
+      "FR2.063"
+    ]
+  },
+  {
+    "id": "T2.067",
+    "phase": 2,
+    "workstream": "WS2.9",
+    "role": "QA",
+    "title": "Load test capture ingest",
+    "description": "k6 script posting SAMPLE captures (40 KB crops) at 50 rps for 10 min with 5% replays and 2% duplicates.",
+    "depends_on": "depends on T2.049, T2.050, T2.051",
+    "estimate_days": 0.5,
+    "deliverable": "tests/load/k6_capture_ingest.js",
+    "done_when": "p95 at or below 120 ms, 0 5xx (TC2.153) FR2.063",
+    "frs": [
+      "FR2.063"
+    ]
+  },
+  {
+    "id": "T2.068",
+    "phase": 2,
+    "workstream": "WS2.9",
+    "role": "QA",
+    "title": "Run the chaos campaign",
+    "description": "500 captures with random network drops, app kills, glasses disconnects and server restarts; reconcile device outbox against server rows.",
+    "depends_on": "depends on T2.045, T2.053",
+    "estimate_days": 0.5,
+    "deliverable": "docs/perf/F1-chaos.md",
+    "done_when": "Zero duplicates, zero losses, per-task order preserved FR2.040 FR2.039",
+    "frs": [
+      "FR2.039",
+      "FR2.040"
+    ]
+  },
+  {
+    "id": "T2.069",
+    "phase": 2,
+    "workstream": "WS2.9",
+    "role": "QA",
+    "title": "Run the end-to-end tick test",
+    "description": "Maestro flow on Mock Device Kit: look at SAMPLE carton, captured tick, count 12, post, confirm; fake Phase 3 consumer emits erp.posted against erp-sim document numbers; posted tick shown.",
+    "depends_on": "depends on T2.044, T2.052, T2.053",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/maestro/capture_post.yaml",
+    "done_when": "Flow passes in verify-all FR2.052 FR2.055",
+    "frs": [
+      "FR2.052",
+      "FR2.055"
+    ]
+  },
+  {
+    "id": "T2.070",
+    "phase": 2,
+    "workstream": "WS2.9",
+    "role": "Security",
+    "title": "Verify privacy controls",
+    "description": "Scripts: storage scan for crops without blur_applied, device file scan for audio files, log scan for tokens, crops and transcripts; EXIF absence check on stored crops.",
+    "depends_on": "depends on T2.049, T2.028",
+    "estimate_days": 0.5,
+    "deliverable": "scripts/privacy_scan.py",
+    "done_when": "TC2.131, TC2.161 and PR2.13 oracle pass with 0 findings FR2.022 FR2.035 FR2.066",
+    "frs": [
+      "FR2.022",
+      "FR2.035",
+      "FR2.066"
+    ]
+  },
+  {
+    "id": "T2.071",
+    "phase": 2,
+    "workstream": "WS2.9",
+    "role": "Android",
+    "title": "Add the walking-quiet hook and data minimisation",
+    "description": "QuietModePolicy suppresses lens prompts and TTS (except errors) while walking-quiet is active from config, zone flag (Phase 3 supplies zones) or speed above 1.2 m/s. Enforce crop cap 640x640, EXIF strip and no full-frame persistence.",
+    "depends_on": "depends on T2.029",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-android/core-capture/.../safety/QuietModePolicy.kt",
+    "done_when": "TC2.156 and TC2.110 pass FR2.065 FR2.066",
+    "frs": [
+      "FR2.065",
+      "FR2.066"
+    ]
+  },
+  {
+    "id": "T2.072",
+    "phase": 2,
+    "workstream": "WS2.9",
+    "role": "Security",
+    "title": "Complete the security review",
+    "description": "STRIDE review of Phase 2 surfaces, Semgrep rules banning -contributor model strings and plain-text token storage, Trivy scan of images and APK dependencies.",
+    "depends_on": "depends on T2.055, T2.059",
+    "estimate_days": 0.5,
+    "deliverable": "docs/security/F1-threat-model.md",
+    "done_when": "No high or critical findings open FR2.059 FR2.053",
+    "frs": [
+      "FR2.053",
+      "FR2.059"
+    ]
+  },
+  {
+    "id": "T2.073",
+    "phase": 2,
+    "workstream": "WS2.9",
+    "role": "Owner",
+    "title": "Release the phase",
+    "description": "Add feature flags per ts.json rollout, sign the release APK, run verify-all, write the Phase 2 report and push branch field/f1-capture-engine.",
+    "depends_on": "depends on T2.064, T2.066, T2.068, T2.069, T2.070, T2.072",
+    "estimate_days": 0.5,
+    "deliverable": "docs/reports/F1-report.md",
+    "done_when": "verify-all prints PASS for all Phase 2 rows; branch pushed FR2.001",
+    "frs": [
+      "FR2.001"
+    ]
+  }
+]

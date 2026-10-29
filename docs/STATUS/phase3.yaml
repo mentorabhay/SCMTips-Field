@@ -1,0 +1,911 @@
+- id: T3.001
+  title: Add erp-sim inbound delivery service
+  workstream: WS3.1
+  role: ERP
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/services/inbound.py
+  tests:
+  - compat/sap_parity/test_sap_parity.py::test_t3_001_inbound_goods_receipt_parity
+  frs:
+  - FR3.010
+  - FR3.043
+  verified_at: null
+  note: SAP parity test fixture not present (Finding F-11)
+- id: T3.002
+  title: Add Alembic migrations for Phase 3 tables
+  workstream: WS3.1
+  role: Backend
+  status: stub
+  evidence: []
+  tests: []
+  frs:
+  - FR3.065
+  verified_at: null
+  note: Deliverable missing on disk
+- id: T3.003
+  title: Add erp-sim outbound delivery service
+  workstream: WS3.1
+  role: ERP
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/services/outbound.py
+  tests:
+  - compat/sap_parity/test_sap_parity.py::test_t3_003_outbound_pick_issue_and_reverse_parity
+  frs:
+  - FR3.023
+  - FR3.024
+  - FR3.043
+  verified_at: null
+  note: SAP parity test fixture not present (Finding F-11)
+- id: T3.004
+  title: Add erp-sim physical inventory service
+  workstream: WS3.1
+  role: ERP
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/services/physinv.py
+  tests:
+  - compat/sap_parity/test_sap_parity.py::test_t3_004_physical_inventory_parity
+  frs:
+  - FR3.035
+  - FR3.037
+  - FR3.043
+  verified_at: null
+  note: SAP parity test fixture not present (Finding F-11)
+- id: T3.005
+  title: Add erp-sim material document service
+  workstream: WS3.1
+  role: ERP
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/services/matdoc.py
+  tests:
+  - compat/sap_parity/test_sap_parity.py::test_t3_005_material_document_cancel_and_409_reversal
+  - services/erp-sim/tests/test_erpsim_properties.py
+  frs:
+  - FR3.011
+  - FR3.015
+  verified_at: null
+  note: SAP parity test fixture not present (Finding F-11)
+- id: T3.006
+  title: Write declarative SAP mapping files
+  workstream: WS3.1
+  role: ERP
+  status: partial
+  evidence: []
+  tests:
+  - compat/sap_parity/test_sap_parity.py::test_t3_006_declarative_mapping_files
+  frs:
+  - FR3.042
+  verified_at: null
+  note: SAP parity test fixture not present (Finding F-11)
+- id: T3.007
+  title: Implement adapter warehouse calls
+  workstream: WS3.1
+  role: ERP
+  status: partial
+  evidence:
+  - connectors/sap/src/sap_adapter/warehouse.py
+  tests:
+  - compat/sap_parity/test_sap_parity.py::test_t3_007_adapter_error_classification_and_golden_payload
+  frs:
+  - FR3.041
+  - FR3.044
+  verified_at: null
+  note: SAP parity test fixture not present (Finding F-11)
+- id: T3.008
+  title: Build the parity contract suite
+  workstream: WS3.1
+  role: QA
+  status: partial
+  evidence:
+  - compat/sap_parity/
+  tests:
+  - compat/sap_parity/test_sap_parity.py::test_t3_008_sap_vcr_cassettes_parity
+  frs:
+  - FR3.043
+  verified_at: null
+  note: SAP parity test fixture not present (Finding F-11)
+- id: T3.009
+  title: Add sim fault injection profiles for warehouse
+  workstream: WS3.1
+  role: ERP
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/faults/warehouse.py
+  tests:
+  - compat/sap_parity/test_sap_parity.py::test_t3_009_warehouse_fault_injection_and_prod_rejection
+  frs:
+  - FR3.040
+  - FR3.043
+  verified_at: null
+  note: SAP parity test fixture not present (Finding F-11)
+- id: T3.010
+  title: Implement ordered posting queue claim
+  workstream: WS3.2
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/posting/queue.py
+  tests:
+  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_010_failed_job_blocks_later_jobs_until_retried
+  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_010_ordered_queue_claim_and_predecessor_blocking
+  frs:
+  - FR3.038
+  - FR3.039
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.011
+  title: Implement retry classification and backoff
+  workstream: WS3.2
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/posting/retry.py
+  tests:
+  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_011_retry_classification_and_backoff_jitter
+  frs:
+  - FR3.040
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.012
+  title: Implement idempotency and pre-post probe
+  workstream: WS3.2
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/posting/idempotency.py
+  tests:
+  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_012_compact_idempotency_key_format
+  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_012_pre_post_probe_adoption
+  frs:
+  - FR3.041
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.013
+  title: Expose posting queue APIs
+  workstream: WS3.2
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/posting/routes.py
+  tests:
+  - services/field-api/tests/test_posting_api_ws3_2.py::test_t3_013_cancel_posting_job_and_cascade_dependent_jobs
+  - services/field-api/tests/test_posting_api_ws3_2.py::test_t3_013_list_posting_queues
+  - services/field-api/tests/test_posting_api_ws3_2.py::test_t3_013_list_queue_jobs_order
+  - services/field-api/tests/test_posting_api_ws3_2.py::test_t3_013_retry_posting_job
+  frs:
+  - FR3.045
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.014
+  title: Emit posting events through the outbox
+  workstream: WS3.2
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/posting/events.py
+  tests:
+  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_014_outbox_events_emission
+  frs:
+  - FR3.038
+  - FR3.064
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.015
+  title: Add posting metrics and alerts
+  workstream: WS3.2
+  role: DevOps
+  status: partial
+  evidence:
+  - deploy/observability/posting.rules.yaml
+  tests:
+  - services/field-worker/tests/unit/test_posting_ws3_2.py
+  frs:
+  - FR3.040
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.016
+  title: Import inbound deliveries into receive tasks
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/warehouse/ibd_import.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.001
+  - FR3.003
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.017
+  title: Add CSV inbound delivery import with guided-load conventions
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/receiving/csv_import.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.002
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.018
+  title: Validate SSCC captures for receiving
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/receiving/sscc.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.004
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.019
+  title: Derive HU quantity and counted quantity
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/counting.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.005
+  - FR3.006
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.020
+  title: Apply over and under delivery rules
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/receiving/tolerance.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.007
+  - FR3.008
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.021
+  title: Handle damaged cartons
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/receiving/damage.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.009
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.022
+  title: Stage and post goods receipt
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/receiving/post.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.010
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.023
+  title: Implement undo after post as reversal
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/receiving/reverse.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.011
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.024
+  title: Route quality-hold receipts
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/receiving/quality.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.012
+  - FR3.015
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.025
+  title: Generate putaway tasks with bin proposal
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/putaway.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.013
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.026
+  title: Confirm putaway by bin scan
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/putaway.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.013
+  - FR3.014
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.027
+  title: Record dock-to-stock timestamps
+  workstream: WS3.3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/warehouse/metrics.py
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py
+  frs:
+  - FR3.016
+  verified_at: null
+  note: Phase 3 feature implemented in WS3.1-WS3.3; requires verified database connection
+    and real SAP cassette
+- id: T3.028
+  title: Add receive task APIs
+  workstream: WS3.3
+  role: Backend
+  status: stub
+  evidence: []
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_t3_028_warehouse_api_routes
+  frs:
+  - FR3.061
+  - FR3.065
+  verified_at: null
+  note: Deliverable missing on disk
+- id: T3.029
+  title: Import outbound deliveries into pick tasks
+  workstream: WS3.4
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.017
+  - FR3.026
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.030
+  title: Confirm picks by capture
+  workstream: WS3.4
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.018
+  - FR3.019
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.031
+  title: Handle short picks
+  workstream: WS3.4
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.020
+  - FR3.028
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.032
+  title: Post picking quantities
+  workstream: WS3.4
+  role: Backend
+  status: stub
+  evidence:
+  - services/field-api/src/field_api/warehouse/receiving/post.py
+  tests: []
+  frs:
+  - FR3.021
+  verified_at: null
+  note: Preliminary migration/stub exists but feature code has no feature commits
+    in git history (Finding F-09)
+- id: T3.033
+  title: Pack picked lines into outbound HUs
+  workstream: WS3.4
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.022
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.034
+  title: Post goods issue and reversal
+  workstream: WS3.4
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.023
+  - FR3.024
+  - FR3.025
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.035
+  title: Optimise pick path order
+  workstream: WS3.4
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.026
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.036
+  title: Create PI documents from planner requests
+  workstream: WS3.5
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.027
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.037
+  title: Implement cycle-count rules
+  workstream: WS3.5
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.028
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.038
+  title: Enforce blind count projection
+  workstream: WS3.5
+  role: Security
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.029
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.039
+  title: Implement count entry and commit
+  workstream: WS3.5
+  role: Backend
+  status: stub
+  evidence:
+  - services/field-api/src/field_api/warehouse/counting.py
+  tests: []
+  frs:
+  - FR3.030
+  verified_at: null
+  note: Preliminary migration/stub exists but feature code has no feature commits
+    in git history (Finding F-09)
+- id: T3.040
+  title: Evaluate variance and recount rules
+  workstream: WS3.5
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.031
+  - FR3.032
+  - FR3.033
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.041
+  title: Assign and claim recounts
+  workstream: WS3.5
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.032
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.042
+  title: Apply freeze book inventory semantics
+  workstream: WS3.5
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.035
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.043
+  title: Enforce posting block
+  workstream: WS3.5
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.036
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.044
+  title: Implement field-local approval interim
+  workstream: WS3.5
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.034
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.045
+  title: Post counts and differences
+  workstream: WS3.5
+  role: Backend
+  status: stub
+  evidence:
+  - services/field-api/src/field_api/warehouse/receiving/post.py
+  tests: []
+  frs:
+  - FR3.034
+  - FR3.037
+  verified_at: null
+  note: Preliminary migration/stub exists but feature code has no feature commits
+    in git history (Finding F-09)
+- id: T3.046
+  title: Import storage bins into the location tree
+  workstream: WS3.6
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.046
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.047
+  title: Generate the default site graph
+  workstream: WS3.6
+  role: Backend
+  status: stub
+  evidence:
+  - services/field-api/src/field_api/audit/generate.py
+  tests: []
+  frs:
+  - FR3.047
+  verified_at: null
+  note: Preliminary migration/stub exists but feature code has no feature commits
+    in git history (Finding F-09)
+- id: T3.048
+  title: Build the console graph editor
+  workstream: WS3.6
+  role: Console
+  status: stub
+  evidence:
+  - apps/field-console/app/sites/[id]/graph/
+  tests: []
+  frs:
+  - FR3.047
+  - FR3.048
+  verified_at: null
+  note: Preliminary migration/stub exists but feature code has no feature commits
+    in git history (Finding F-09)
+- id: T3.049
+  title: Register anchors
+  workstream: WS3.6
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.048
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.050
+  title: Implement positioning fusion on Android
+  workstream: WS3.6
+  role: Android
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.049
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.051
+  title: Implement route API and step builder
+  workstream: WS3.6
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.050
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.052
+  title: Implement walking-quiet mode
+  workstream: WS3.6
+  role: Android
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.052
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.053
+  title: Build 2D and 3D wayfinding views
+  workstream: WS3.6
+  role: Android
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.051
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.054
+  title: Record trails
+  workstream: WS3.6
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.053
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.055
+  title: Publish graph versions to devices
+  workstream: WS3.6
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.047
+  - FR3.062
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.056
+  title: Build the live task board
+  workstream: WS3.7
+  role: Console
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.054
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.057
+  title: Build the discrepancy queue
+  workstream: WS3.7
+  role: Console
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.055
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.058
+  title: Build the receiving dashboard
+  workstream: WS3.7
+  role: Console
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.056
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.059
+  title: Build the inventory accuracy KPI
+  workstream: WS3.7
+  role: Console
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.057
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.060
+  title: Build PI documents, approvals and posting queue pages
+  workstream: WS3.7
+  role: Console
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.034
+  - FR3.045
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.061
+  title: Export receipts, counts and variances for core guided load
+  workstream: WS3.8
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.058
+  - FR3.060
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.062
+  title: Detect late receipts
+  workstream: WS3.8
+  role: Backend
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.059
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.063
+  title: Implement lens screens for warehouse tasks
+  workstream: WS3.8
+  role: Android
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.061
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.064
+  title: Implement phone screens for warehouse tasks
+  workstream: WS3.8
+  role: Android
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.061
+  - FR3.062
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.065
+  title: Implement offline behaviour for warehouse tasks
+  workstream: WS3.8
+  role: Android
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.062
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.066
+  title: Add accessibility and gloves voice-only mode
+  workstream: WS3.8
+  role: Design
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.063
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.067
+  title: Write the warehouse audit trail
+  workstream: WS3.8
+  role: Security
+  status: stub
+  evidence:
+  - connectors/sap/src/sap_adapter/warehouse.py
+  tests: []
+  frs:
+  - FR3.064
+  verified_at: null
+  note: Preliminary migration/stub exists but feature code has no feature commits
+    in git history (Finding F-09)
+- id: T3.068
+  title: Write Phase 3 property tests
+  workstream: WS3.9
+  role: QA
+  status: missing
+  evidence: []
+  tests: []
+  frs: []
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.069
+  title: Run chaos and load tests on posting
+  workstream: WS3.9
+  role: QA
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.038
+  - FR3.040
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.070
+  title: Run security tests for warehouse APIs
+  workstream: WS3.9
+  role: Security
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.029
+  - FR3.065
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.071
+  title: Run device and usability sessions
+  workstream: WS3.9
+  role: QA
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.049
+  - FR3.051
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)
+- id: T3.072
+  title: Write the Phase 3 report and push
+  workstream: WS3.9
+  role: Owner
+  status: missing
+  evidence: []
+  tests: []
+  frs:
+  - FR3.042
+  verified_at: null
+  note: Deliverable missing; no feature commits exist in git history (Finding F-09)

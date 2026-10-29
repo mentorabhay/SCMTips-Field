@@ -1,0 +1,109 @@
+{
+  "phase": 3,
+  "apis": [
+    {
+      "id": "API3.01",
+      "phase": 3,
+      "method": "GET",
+      "path": "/v1/tasks?site_id=&amp;type=receive|putaway|pick|count&amp;status=&amp;cursor=&amp;limit=",
+      "summary": "\u2014 List tasks with operator projection (no book fields).",
+      "details": "Permission field.task.read Idempotent yes, Idempotency-Key required SLO p95 <= 150 ms Errors 403 FIELD-AUTH-403-SCOPE: site not in scope Request GET /v1/tasks?site_id=0192...&type=count&limit=50 Response {\"items\":[{\"id\":\"0192f...\",\"type\":\"count\",\"erp_ref\":\"100000012/2026\",\"lines\":[{\"id\":\"...\",\"bin\":\"03-05-02\",\"material\":\"MAT-1001\",\"uom\":\"EA\"}]}],\"next_cursor\":null}"
+    },
+    {
+      "id": "API3.02",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/inbound-deliveries/sync",
+      "summary": "\u2014 Trigger an immediate delivery poll for a site.",
+      "details": "Permission field.integration or field.supervisor Idempotent yes, Idempotency-Key required SLO p95 <= 100 ms (async) Errors 409 FIELD-IMP-409-RUNNING: a sync is already running Request {\"site_id\":\"0192...\",\"since\":\"2026-11-20T00:00:00Z\"} Response {\"job_id\":\"0192...\",\"status\":\"queued\"}"
+    },
+    {
+      "id": "API3.03",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/imports/inbound-deliveries",
+      "summary": "\u2014 Upload SAP delivery CSV; returns preview with match ladder results.",
+      "details": "Permission field.integration Idempotent yes, Idempotency-Key required SLO p95 <= 2 s for 1,000 rows Errors 422 FIELD-IMP-422-MAPPING: required column missing 422 FIELD-IDEM-422-BODY: same key different body Request multipart: file=deliveries.csv, mapping={...} Response {\"import_id\":\"...\",\"rows\":40,\"auto_accepted\":36,\"review\":4,\"errors\":0}"
+    },
+    {
+      "id": "API3.04",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/lines/{line_id}/counts",
+      "summary": "\u2014 Record voice count override (receive/pick).",
+      "details": "Permission field.capture.create Idempotent yes, Idempotency-Key required SLO p95 <= 120 ms Errors 422 FIELD-VOICE-422-CONFIDENCE: confidence < 0.80 409 FIELD-TASK-409-STATE: line already posted Request {\"qty\":30,\"uom\":\"EA\",\"voice_event_id\":\"...\",\"confidence\":0.91} Response {\"line_id\":\"...\",\"counted_qty\":30,\"source\":\"voice\",\"version\":7}"
+    },
+    {
+      "id": "API3.05",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/lines/{line_id}/flags",
+      "summary": "\u2014 Mark damaged, set short/under reason.",
+      "details": "Permission field.capture.create Idempotent yes, Idempotency-Key required SLO p95 <= 120 ms Errors 422 FIELD-RCV-422-EVIDENCE: photo required Request {\"flag\":\"damaged\",\"capture_id\":\"...\",\"evidence_id\":\"...\"} Response {\"line_id\":\"...\",\"damaged_qty\":12,\"status\":\"in_progress\"}"
+    },
+    {
+      "id": "API3.08",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/putaway/{task_id}/lines/{line_id}/confirm",
+      "summary": "\u2014 Confirm putaway by scanned bin.",
+      "details": "Permission field.post.confirm Idempotent yes, Idempotency-Key required SLO p95 <= 150 ms Errors 422 FIELD-PUT-422-REASON: different bin needs reason 409 FIELD-PUT-409-HOLD-ZONE Request {\"scanned_bin\":\"03-05-03\",\"reason\":\"proposed_bin_full\"} Response {\"hu_id\":\"...\",\"bin\":\"03-05-03\",\"status\":\"stored\"}"
+    },
+    {
+      "id": "API3.09",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/pick-tasks/{task_id}/hus",
+      "summary": "\u2014 Create/scan an outbound HU and pack quantities.",
+      "details": "Permission field.capture.create Idempotent yes, Idempotency-Key required SLO p95 <= 150 ms Errors 409 FIELD-PACK-409-EXCEEDS-PICKED 409 FIELD-RCV-409-SSCC-DUPLICATE Request {\"sscc\":null,\"generate\":true,\"lines\":[{\"line_id\":\"...\",\"qty\":12}]} Response {\"hu_id\":\"...\",\"sscc\":\"008901230000000205\",\"packed\":[{\"line_id\":\"...\",\"packed_qty\":12}]}"
+    },
+    {
+      "id": "API3.10",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/pi-documents",
+      "summary": "\u2014 Create PI document (planner request).",
+      "details": "Permission field.pi.create Idempotent yes, Idempotency-Key required SLO p95 <= 300 ms Errors 422 FIELD-PI-422-TOO-MANY-ITEMS: > FIELD_PI_MAX_ITEMS Request {\"site_id\":\"...\",\"plant\":\"1000\",\"storage_location\":\"0001\",\"bins\":[\"03-05-*\"],\"planned_count_date\":\"2026-11-27\",\"freeze\":true,\"posting_block\":true} Response {\"id\":\"...\",\"status\":\"draft\",\"items\":42,\"queue_key\":\"PID:pending\"}"
+    },
+    {
+      "id": "API3.13",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/posting-jobs/{id}/retry",
+      "summary": "\u2014 Retry now a failed or waiting job (also /cancel).",
+      "details": "Permission field.queue.manage Idempotent yes, Idempotency-Key required SLO p95 <= 100 ms Errors 409 FIELD-Q-409-NOT-HEAD: only the head job can be retried Request {\"reason\":\"SAP lock released\"} Response {\"id\":\"...\",\"state\":\"pending\",\"next_attempt_at\":\"2026-11-24T09:12:00Z\"}"
+    },
+    {
+      "id": "API3.15",
+      "phase": 3,
+      "method": "GET",
+      "path": "/v1/sites/{site_id}/routes?from_node=&amp;to_location=&amp;profile=pedestrian",
+      "summary": "\u2014 Route with steps and cues.",
+      "details": "Permission field.task.read Idempotent yes, Idempotency-Key required SLO p95 <= 80 ms Errors 404 FIELD-GRAPH-404-NO-ROUTE Request GET /v1/sites/.../routes?from_node=n1&to_location=03-05-02 Response {\"graph_version\":13,\"length_m\":38.5,\"steps\":[{\"text\":\"Walk 12 m along Aisle 03\",\"cue\":\"Look for yellow column C7\",\"node\":\"...\"}]}"
+    },
+    {
+      "id": "API3.16",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/trails",
+      "summary": "\u2014 Batch upload trail points.",
+      "details": "Permission field.capture.create Idempotent yes, Idempotency-Key required SLO p95 <= 120 ms Errors 409 FIELD-TRAIL-409-TASK-INACTIVE Request {\"task_id\":\"...\",\"points\":[{\"t\":\"2026-11-24T09:00:01Z\",\"x\":12.1,\"y\":4.0,\"floor\":0,\"acc\":0.4,\"src\":\"uwb\"}]} Response {\"accepted\":60}"
+    },
+    {
+      "id": "API3.17",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/exports/core-supply",
+      "summary": "\u2014 Create guided-load export for a site and date range (GET lists files).",
+      "details": "Permission field.export.run Idempotent yes, Idempotency-Key required SLO p95 <= 30 s for 100k rows Errors 409 FIELD-EXP-409-RUNNING Request {\"site_id\":\"...\",\"from\":\"2026-11-23\",\"to\":\"2026-11-23\"} Response {\"export_id\":\"...\",\"file\":\"field_supply_S001_20261123.csv\",\"rows\":214}"
+    },
+    {
+      "id": "API3.18",
+      "phase": 3,
+      "method": "WS",
+      "path": "/v1/live?topics=taskboard.{site_id},queue.{site_id},discrepancy.{site_id}",
+      "summary": "\u2014 Phase 2 live channel topics for warehouse.",
+      "details": "Permission field.task.read (+field.queue.manage for queue) Idempotent yes, Idempotency-Key required SLO update fan-out p95 <= 2 s Errors 4403 not permitted topic Request {\"op\":\"subscribe\",\"topics\":[\"taskboard.0192...\"]} Response {\"topic\":\"taskboard.0192...\",\"type\":\"task.updated\",\"data\":{\"task_id\":\"...\",\"progress\":\"3/12\"}}"
+    }
+  ]
+}

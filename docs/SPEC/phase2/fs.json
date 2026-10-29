@@ -1,0 +1,413 @@
+{
+  "phase": 2,
+  "functional_requirements": [
+    {
+      "id": "FR2.001",
+      "phase": 2,
+      "category": "Auth",
+      "description": "The system shall sign the app in with a core P10 device token exchanged at POST /v1/auth/exchange, store the device token encrypted with an Android Keystore key, keep the field JWT in memory only and re-exchange 60 s before expiry. Reuses core device identity (P10) and keeps secrets out of plain storage. Must TC2.101"
+    },
+    {
+      "id": "FR2.002",
+      "phase": 2,
+      "category": "Auth",
+      "description": "The system shall treat exchange 401 FIELD-AUTH-401-REVOKED or a device.revoked live message as revocation: stop the session within 5 s, delete tokens, block sync and keep unsent items encrypted for 72 h before purge. Lost devices must stop working quickly without silent data loss. Must TC2.102"
+    },
+    {
+      "id": "FR2.003",
+      "phase": 2,
+      "category": "Devices",
+      "description": "The system shall register a phone and pair at most one active glasses device with it through POST /v1/devices, recording model, display capability, firmware and app version. The registry and lens mode depend on the paired model. Must TC2.103"
+    },
+    {
+      "id": "FR2.004",
+      "phase": 2,
+      "category": "Devices",
+      "description": "The system shall read Android Enterprise managed configuration keys and merge them with server config using precedence MDM over server over app default. Fleet consistency per site. Should TC2.104"
+    },
+    {
+      "id": "FR2.005",
+      "phase": 2,
+      "category": "Session",
+      "description": "The system shall run each capture session in a foreground service of types connectedDevice, camera and microphone with an ongoing notification showing task and queue depth. Android 14+ stops background camera and mic otherwise. Must TC2.105"
+    },
+    {
+      "id": "FR2.006",
+      "phase": 2,
+      "category": "Session",
+      "description": "The system shall request camera, microphone, Bluetooth and notification permissions just in time with a rationale and shall show MSG2.05 when a required permission is permanently denied. Clear recovery from denied permissions. Must TC2.106 TC2.159"
+    },
+    {
+      "id": "FR2.007",
+      "phase": 2,
+      "category": "Session",
+      "description": "The system shall apply the battery and thermal ladder in BR2.16 and record each step as telemetry. Prevents shutdown and burns. Should TC2.107 TC2.108"
+    },
+    {
+      "id": "FR2.008",
+      "phase": 2,
+      "category": "Session",
+      "description": "The system shall offer phone camera mode using CameraX when no glasses are paired and MDM allows it, using the same perception, ranking and outbox pipeline. Work continues without glasses; aids testing. Should TC2.165"
+    },
+    {
+      "id": "FR2.009",
+      "phase": 2,
+      "category": "Glasses",
+      "description": "The system shall consume the toolkit low-resolution preview stream (target 15 fps, resolution to confirm in Phase 1) for detection and ranking only and never persist preview frames. Ranking needs continuous frames; minimisation forbids storing them. Must TC2.109"
+    },
+    {
+      "id": "FR2.010",
+      "phase": 2,
+      "category": "Glasses",
+      "description": "The system shall request a high-resolution still on capture trigger and cut a crop of the selected box plus 10% margin, at most 640x640 px and 256 KB JPEG. Decode accuracy needs the still; crops not full frames. Must TC2.110"
+    },
+    {
+      "id": "FR2.011",
+      "phase": 2,
+      "category": "Voice",
+      "description": "The system shall provide push-to-talk through an on-screen hold button, a volume-key long press and a Bluetooth media button, recording only while held. Wake-word is not available in the toolkit. Must TC2.111"
+    },
+    {
+      "id": "FR2.012",
+      "phase": 2,
+      "category": "Glasses",
+      "description": "The system shall read back staged values and prompts through the glasses speakers using text-to-speech and flush readback when push-to-talk starts. Hands-free confirmation. Must TC2.112"
+    },
+    {
+      "id": "FR2.013",
+      "phase": 2,
+      "category": "Lens",
+      "description": "The system shall render the lens states ready, moving, tie, captured, duplicate, offline queued and error on Meta Ray-Ban Display with the copy in SCR2.07. Glanceable feedback per look. Must TC2.113 TC2.114"
+    },
+    {
+      "id": "FR2.014",
+      "phase": 2,
+      "category": "Lens",
+      "description": "The system shall use the audio-only cue set in SCR2.08 on glasses without a display or when MDM sets force_audio_only. Most supported models have no display. Must TC2.115"
+    },
+    {
+      "id": "FR2.015",
+      "phase": 2,
+      "category": "Glasses",
+      "description": "The system shall reconnect to glasses with backoff 1, 2, 4, 8, 16, 30 s without re-pairing, discard the look in progress and keep committed captures; automated tests shall use Mock Device Kit plus a fake lens renderer. Bluetooth links drop in racking aisles. Must TC2.116 TC2.117"
+    },
+    {
+      "id": "FR2.016",
+      "phase": 2,
+      "category": "Perception",
+      "description": "The system shall detect carton, label, nameplate, gauge, tag and device objects on the phone with an int8 TFLite model through MediaPipe at score threshold 0.50. Hot path decisions stay on the device. Must TC2.118"
+    },
+    {
+      "id": "FR2.017",
+      "phase": 2,
+      "category": "Perception",
+      "description": "The system shall decode GS1-128, GS1 DataMatrix and QR codes with ML Kit and parse GS1 AIs 00, 01, 10, 17 and 21. SSCC, GTIN, batch, expiry and serial come from these codes. Must TC2.119 TC2.120"
+    },
+    {
+      "id": "FR2.018",
+      "phase": 2,
+      "category": "Perception",
+      "description": "The system shall validate every SSCC (18 digits) with the GS1 mod-10 check digit and reject invalid ones with MSG2.08. Avoids posting against a misread handling unit. Must PR2.12 TC2.119"
+    },
+    {
+      "id": "FR2.019",
+      "phase": 2,
+      "category": "Perception",
+      "description": "The system shall read serial text with on-device OCR on nameplate and tag boxes and accept only tokens matching the task_line serial pattern (default ^[A-Z0-9-]{6,24}$). Serial capture without typing. Must TC2.121"
+    },
+    {
+      "id": "FR2.020",
+      "phase": 2,
+      "category": "Perception",
+      "description": "The system shall compute a readability score in [0, 1] from decode confidence, sharpness and pixel height, multiplied by the motion factor. Drives ranking and verification routing. Must TC2.122 PR2.14"
+    },
+    {
+      "id": "FR2.021",
+      "phase": 2,
+      "category": "Perception",
+      "description": "The system shall estimate head angular speed from the glasses IMU when VERIFIED, else from preview optical flow, and the motion factor shall be 1 at or below 8 deg/s falling linearly to 0 at 60 deg/s. Head speed causes blur until still. Must PR2.14"
+    },
+    {
+      "id": "FR2.022",
+      "phase": 2,
+      "category": "Privacy",
+      "description": "The system shall pixelate every detected face in a crop before encoding for upload, withhold the crop when face detection fails, and field-api shall reject crops without blur_applied true. Bystanders must not leave the device identifiable. Must TC2.123 PR2.13"
+    },
+    {
+      "id": "FR2.023",
+      "phase": 2,
+      "category": "Ranking",
+      "description": "The system shall treat an object as eligible only if at least 20% of its box lies inside the capture circle of radius 13.5% of view width. Baseline rule. Must PR2.02 TC2.124"
+    },
+    {
+      "id": "FR2.024",
+      "phase": 2,
+      "category": "Ranking",
+      "description": "The system shall score eligible objects as 0.30 centre + 0.25 task match + 0.20 readability + 0.10 coverage + 0.10 dwell + 0.05 size and create no record when the top score is 0.35 or less. Baseline weights; weak looks are ignored (D2.01). Must PR2.06 TC2.124"
+    },
+    {
+      "id": "FR2.025",
+      "phase": 2,
+      "category": "Ranking",
+      "description": "The system shall multiply the score of an object whose code is already captured for the task by 0.5. Steers the user to new items. Must PR2.04"
+    },
+    {
+      "id": "FR2.026",
+      "phase": 2,
+      "category": "Ranking",
+      "description": "The system shall create no record when the top two eligible scores differ by less than 0.05 and the top exceeds 0.35, show the tie state and resolve on voice left or right. Never guess between near-equal candidates. Must PR2.03 TC2.127"
+    },
+    {
+      "id": "FR2.027",
+      "phase": 2,
+      "category": "Ranking",
+      "description": "The system shall accumulate gaze dwell (head-gaze) per tracked object while its centre is inside the capture circle, reaching full score at 0.8 s and resetting when it leaves. Intent signal without eye tracking. Must TC2.125"
+    },
+    {
+      "id": "FR2.028",
+      "phase": 2,
+      "category": "Ranking",
+      "description": "The system shall compute task match as 1.0 for exact expected code, 0.6 for material or GTIN match, 0.3 for class match and 0 otherwise from cached task expectations. Prefers items the task expects. Must TC2.126"
+    },
+    {
+      "id": "FR2.029",
+      "phase": 2,
+      "category": "Ranking",
+      "description": "The system shall create at most one capture record per look, triggered by full dwell on a clear winner, the capture command or a tap. One record per look is the baseline contract. Must PR2.01 TC2.166"
+    },
+    {
+      "id": "FR2.030",
+      "phase": 2,
+      "category": "Ranking",
+      "description": "The system shall produce the same ranking outcome for any order of the input object list. Determinism for tests and audits. Must PR2.05"
+    },
+    {
+      "id": "FR2.031",
+      "phase": 2,
+      "category": "Voice",
+      "description": "The system shall recognise the grammar capture, count n, reading n, undo, wrong one, mark damaged, condition good, left, right, post, confirm, cancel, next, repeat, what is this, and answer anything else with MSG2.10. Closed grammar improves accuracy. Must TC2.128 TC2.129"
+    },
+    {
+      "id": "FR2.032",
+      "phase": 2,
+      "category": "Voice",
+      "description": "The system shall make no state change for any utterance with confidence below 0.80. P10 speech confidence floor. Must PR2.09"
+    },
+    {
+      "id": "FR2.033",
+      "phase": 2,
+      "category": "Voice",
+      "description": "The system shall stage a post request on post, read it back, send it only on confirm within 10 s and clear it on cancel, timeout or any other intent. P10 mandatory confirm turn. Must PR2.11 TC2.130"
+    },
+    {
+      "id": "FR2.034",
+      "phase": 2,
+      "category": "Voice",
+      "description": "The system shall parse quantities and readings given as digits or English number words from 0 to 9999, including digit-by-digit strings. Spoken counts and readings. Must PR2.10"
+    },
+    {
+      "id": "FR2.035",
+      "phase": 2,
+      "category": "Privacy",
+      "description": "The system shall keep voice audio only in a RAM buffer that is zeroed after recognition and shall store and send transcript text and confidence only. No audio stored (P10, privacy baseline). Must TC2.131"
+    },
+    {
+      "id": "FR2.036",
+      "phase": 2,
+      "category": "Voice",
+      "description": "The system shall load grammar and number lexicons from per-locale resources with en as default and a hi-IN stub that falls back to en. Hindi support later without code change. Should TC2.132"
+    },
+    {
+      "id": "FR2.037",
+      "phase": 2,
+      "category": "Voice",
+      "description": "The system shall apply undo, wrong one, mark damaged and condition good per BR2.18 and never delete an ERP document. Corrections without breaking audit. Must TC2.133 TC2.134"
+    },
+    {
+      "id": "FR2.038",
+      "phase": 2,
+      "category": "Voice",
+      "description": "The system shall record every recognised utterance as a voice_event (transcript, confidence, intent, accepted, locale) and send it through POST /v1/voice-events. Audit of voice decisions. Must TC2.139"
+    },
+    {
+      "id": "FR2.039",
+      "phase": 2,
+      "category": "Outbox",
+      "description": "The system shall assign a UUIDv7 idempotency key to each capture at shutter time and reuse it on every retry. Exactly-once delivery. Must PR2.07"
+    },
+    {
+      "id": "FR2.040",
+      "phase": 2,
+      "category": "Outbox",
+      "description": "The system shall sync the outbox with WorkManager, sending items of each task strictly in capture sequence and serving tasks round-robin. Per-task order matters for counts and reversals. Must PR2.08 TC2.164"
+    },
+    {
+      "id": "FR2.041",
+      "phase": 2,
+      "category": "Outbox",
+      "description": "The system shall apply the conflict rules in BR2.11 to every server response. Predictable outcomes for retries and closed tasks. Must TC2.138"
+    },
+    {
+      "id": "FR2.042",
+      "phase": 2,
+      "category": "Outbox",
+      "description": "The system shall cap the outbox at 2,000 items or 200 MB, warn at 90% with MSG2.12 and refuse new captures at 100% with MSG2.13 without altering queued items. Bounded storage. Must PR2.18 TC2.137"
+    },
+    {
+      "id": "FR2.043",
+      "phase": 2,
+      "category": "Outbox",
+      "description": "The system shall encrypt the outbox database with SQLCipher and crop files with AES-256-GCM using keys held in Android Keystore, excluded from backup. Data at rest on a lost phone. Must TC2.135"
+    },
+    {
+      "id": "FR2.044",
+      "phase": 2,
+      "category": "Outbox",
+      "description": "The system shall commit a capture row and its crop reference in one transaction after the crop file is fsynced, so that a crash leaves either a complete item or none. Crash safety. Must TC2.136"
+    },
+    {
+      "id": "FR2.045",
+      "phase": 2,
+      "category": "Outbox",
+      "description": "The system shall send each item with Idempotency-Key, X-Request-Id and traceparent headers and retry transient failures with backoff 2, 4, 8, 16, 32 s then WorkManager exponential backoff. Sync protocol. Must PR2.07 TC2.164"
+    },
+    {
+      "id": "FR2.046",
+      "phase": 2,
+      "category": "Ingest",
+      "description": "The system shall accept captures at POST /v1/captures as multipart (up to 256 KB crop) or with a crop_upload_id from POST /v1/captures/uploads, and emit capture.created. Small crops inline; larger via presign (D2.03). Must TC2.139 TC2.140 TC2.146"
+    },
+    {
+      "id": "FR2.047",
+      "phase": 2,
+      "category": "Ingest",
+      "description": "The system shall return the stored response for a repeated Idempotency-Key with the same body and 422 FIELD-IDEM-422-KEY-REUSE for a different body, retaining keys 24 h. API convention. Must PR2.15"
+    },
+    {
+      "id": "FR2.048",
+      "phase": 2,
+      "category": "Ingest",
+      "description": "The system shall return 409 FIELD-CAP-409-DUPLICATE with duplicate_of when a non-superseded capture exists for the same tenant, task, code type and code. Duplicates never become second records. Must PR2.04 TC2.141"
+    },
+    {
+      "id": "FR2.049",
+      "phase": 2,
+      "category": "Ingest",
+      "description": "The system shall associate each capture with a task_line by server-side match on code, GTIN or serial and set on_task accordingly. Server is the source of truth for task association. Must TC2.142"
+    },
+    {
+      "id": "FR2.050",
+      "phase": 2,
+      "category": "Ingest",
+      "description": "The system shall accept count records (count n, reading n) at POST /v1/count-records linked to a capture or task line, with unit and source voice event. Quantities captured by voice. Must TC2.162"
+    },
+    {
+      "id": "FR2.051",
+      "phase": 2,
+      "category": "Ingest",
+      "description": "The system shall store crops in object storage with SSE-KMS under tenant/site/date paths, set retention_until from the core P13e policy (default 90 days) and never delete crops under legal hold. Retention and legal hold compliance. Must TC2.143"
+    },
+    {
+      "id": "FR2.052",
+      "phase": 2,
+      "category": "Live",
+      "description": "The system shall push received, verified, mismatch, posted and failed ticks to the device over WS /v1/devices/{id}/live with SSE fallback, resumable from last_event_id within 24 h. Ticks close the loop for the operator. Must TC2.144 TC2.145"
+    },
+    {
+      "id": "FR2.053",
+      "phase": 2,
+      "category": "Security",
+      "description": "The system shall enforce tenant RLS and site data scope on every Phase 2 table and endpoint, returning 404 for out-of-scope resources. Tenancy baseline. Must TC2.160"
+    },
+    {
+      "id": "FR2.054",
+      "phase": 2,
+      "category": "Devices",
+      "description": "The system shall accept heartbeats (battery, thermal, queue depth, app version, glasses state) every 60 s and serve effective device config at GET /v1/devices/{id}/config. Fleet visibility and central config. Must TC2.163"
+    },
+    {
+      "id": "FR2.055",
+      "phase": 2,
+      "category": "Posting",
+      "description": "The system shall accept POST /v1/tasks/{id}/post-requests only when it references an accepted confirm voice event that follows an accepted post voice event for the same staged payload within 10 s, then emit posting.requested. Server-side enforcement of the confirm turn. Must PR2.11 TC2.133"
+    },
+    {
+      "id": "FR2.056",
+      "phase": 2,
+      "category": "Verification",
+      "description": "The system shall queue verification only when readability is below 0.90 or on_task is false and set verify_status not_needed otherwise. Model routing rule. Must PR2.16"
+    },
+    {
+      "id": "FR2.057",
+      "phase": 2,
+      "category": "Verification",
+      "description": "The system shall call models only with the prompt field.capture.verify registered in the core P13b prompt registry and record an AI call outcome for each call. Every AI call goes through the registry. Must TC2.147"
+    },
+    {
+      "id": "FR2.058",
+      "phase": 2,
+      "category": "Verification",
+      "description": "The system shall check the tenant AI budget before each model call and, when exhausted, make no call and set verify_status failed with verify_reason unverified_budget. AI budget control. Must PR2.17"
+    },
+    {
+      "id": "FR2.059",
+      "phase": 2,
+      "category": "Verification",
+      "description": "The system shall refuse to start when any configured model name ends in -contributor and shall call only allowlisted non-contributor models. Customer data must not train vendor models. Must PR2.16 TC2.148"
+    },
+    {
+      "id": "FR2.060",
+      "phase": 2,
+      "category": "Verification",
+      "description": "The system shall fall back to self-hosted Llama vision on Muse error, timeout (8 s) or residency block, and otherwise set verify_status failed with an unverified reason. Honest result when no model is available. Must TC2.149"
+    },
+    {
+      "id": "FR2.061",
+      "phase": 2,
+      "category": "Verification",
+      "description": "The system shall emit capture.verified or capture.mismatch, flag mismatches for review in the console and never change ERP state from a verification result. Nothing AI posts to the ERP. Must TC2.150"
+    },
+    {
+      "id": "FR2.062",
+      "phase": 2,
+      "category": "Privacy",
+      "description": "The system shall send to models only the blurred crop, object class, decoded code and expected values, with no user, device or location identifiers. Data minimisation. Must TC2.151"
+    },
+    {
+      "id": "FR2.063",
+      "phase": 2,
+      "category": "Latency",
+      "description": "The system shall record timing marks shutter, still_rx, decode_done, rank_done, committed and lens_drawn per capture, export them as traces and metrics, and meet lens tick p95 at or below 400 ms on 5G. Latency budget proof. Must TC2.152 TC2.153"
+    },
+    {
+      "id": "FR2.064",
+      "phase": 2,
+      "category": "Privacy",
+      "description": "The system shall require consent per user, device and site (P10 rule) before a session starts and refuse capture when the toolkit reports the capture indicator unavailable. Consent and visible capture. Must TC2.154 TC2.155"
+    },
+    {
+      "id": "FR2.065",
+      "phase": 2,
+      "category": "Safety",
+      "description": "The system shall suppress lens prompts and speech, except errors, while walking-quiet mode is active from config, zone flag or speed above 1.2 m/s, and create no tie-dependent record. Walking-quiet safety rule. Must TC2.156"
+    },
+    {
+      "id": "FR2.066",
+      "phase": 2,
+      "category": "Privacy",
+      "description": "The system shall strip EXIF, store no full frames and log no tokens, crops or transcripts. Data minimisation and log hygiene. Must TC2.110 TC2.161"
+    },
+    {
+      "id": "FR2.067",
+      "phase": 2,
+      "category": "Console",
+      "description": "The system shall provide a device registry with filters, stale flag (no heartbeat 15 min), device detail and a revoke action for field.admin with core step-up. Fleet management. Must TC2.157 TC2.163 TC2.159"
+    },
+    {
+      "id": "FR2.068",
+      "phase": 2,
+      "category": "Console",
+      "description": "The system shall provide a capture inspector showing crop (with field.evidence.read), code, rank breakdown, readability, verify status with model and reason, timings and voice events. Explains each record. Must TC2.158 TC2.159"
+    }
+  ]
+}

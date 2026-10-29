@@ -1,0 +1,1189 @@
+[
+  {
+    "id": "T1.001",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "Owner",
+    "title": "Create the SCMTips-Field repo skeleton",
+    "description": "Create the private repo SCMTips-Field with the BRIEF directory layout, README, .editorconfig, .gitignore (excludes .env*, *.pem, reports/tmp) and docs/SPEC/ holding BRIEF.md and the Phase 1 spec. Add empty package markers so every path in the layout exists.",
+    "depends_on": "",
+    "estimate_days": 0.25,
+    "deliverable": "repo root",
+    "done_when": "Tree matches BRIEF section 3; no file from the SCMTips core repo is copied. FR1.001",
+    "frs": [
+      "FR1.001"
+    ]
+  },
+  {
+    "id": "T1.002",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "DevOps",
+    "title": "Set up the Python workspace with uv",
+    "description": "Create a uv workspace (pyproject.toml, uv.lock) with members services/field-api, services/field-worker, services/erp-sim, connectors/sap, compat, tools/fake-core. Pin Python 3.13, ruff, mypy --strict, pytest, hypothesis, schemathesis.",
+    "depends_on": "depends on T1.001",
+    "estimate_days": 0.5,
+    "deliverable": "pyproject.toml, uv.lock",
+    "done_when": "uv sync --frozen succeeds on a clean host; ruff and mypy run from the root. FR1.001",
+    "frs": [
+      "FR1.001"
+    ]
+  },
+  {
+    "id": "T1.003",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "DevOps",
+    "title": "Set up the TypeScript workspace with pnpm",
+    "description": "Create pnpm-workspace.yaml with apps/field-console and packages/ui-tokens, packages/field-contract, packages/core-contract; TypeScript strict, ESLint flat config, Vitest, fast-check, Playwright, axe-core.",
+    "depends_on": "depends on T1.001",
+    "estimate_days": 0.5,
+    "deliverable": "package.json, pnpm-lock.yaml",
+    "done_when": "pnpm install --frozen-lockfile succeeds; tsc --noEmit passes on empty packages. FR1.001",
+    "frs": [
+      "FR1.001"
+    ]
+  },
+  {
+    "id": "T1.004",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "DevOps",
+    "title": "Write docker-compose.dev.yml for the local stack",
+    "description": "Compose postgres:16 (databases field and erpsim, roles field_migrator, field_app, field_worker, erpsim_app), otel-collector, jaeger, erp-sim, field-api, field-worker and tools/fake-core. Health checks gate start order.",
+    "depends_on": "depends on T1.002",
+    "estimate_days": 0.5,
+    "deliverable": "docker-compose.dev.yml",
+    "done_when": "docker compose up brings all services healthy within 90 s. FR1.007",
+    "frs": [
+      "FR1.007"
+    ]
+  },
+  {
+    "id": "T1.005",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "DevOps",
+    "title": "Build the verify-all runner",
+    "description": "Write scripts/verify-all.sh that runs each job in isolation, captures exit code, duration and log path, prints a fixed-width PASS/FAIL/SKIP table and writes reports/verify-all/<UTC timestamp>.json. Support --only, --skip and --fast; exit 1 if any job FAILs.",
+    "depends_on": "depends on T1.002, T1.003",
+    "estimate_days": 1.0,
+    "deliverable": "scripts/verify-all.sh",
+    "done_when": "A deliberately failing fixture job turns the table row FAIL and the exit code 1 (TC1.101). FR1.001 FR1.002",
+    "frs": [
+      "FR1.001",
+      "FR1.002"
+    ]
+  },
+  {
+    "id": "T1.006",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "DevOps",
+    "title": "Add lint, typecheck, unit, property and contract jobs",
+    "description": "Wire ruff, mypy, eslint, tsc, pytest -m unit, pytest -m property (Hypothesis profile ci: 500 examples, derandomized seed in report), vitest, and Schemathesis against packages/field-contract/openapi.json.",
+    "depends_on": "depends on T1.005",
+    "estimate_days": 0.75,
+    "deliverable": "scripts/jobs/*.sh",
+    "done_when": "Each job appears in the table and fails on an injected defect. FR1.001 FR1.008",
+    "frs": [
+      "FR1.001",
+      "FR1.008"
+    ]
+  },
+  {
+    "id": "T1.007",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "Backend",
+    "title": "Add the Alembic round-trip job",
+    "description": "Job alembic runs upgrade head, downgrade base, upgrade head on throwaway databases for field and erpsim, then compares pg_dump --schema-only of the first and last upgrade.",
+    "depends_on": "depends on T1.005, T1.024",
+    "estimate_days": 0.5,
+    "deliverable": "scripts/jobs/alembic.sh",
+    "done_when": "Schema diff is empty; a migration without downgrade fails the job (TC1.107). FR1.028",
+    "frs": [
+      "FR1.028"
+    ]
+  },
+  {
+    "id": "T1.008",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "Security",
+    "title": "Add Semgrep 1.181.0 and Trivy jobs",
+    "description": "Pin semgrep==1.181.0; vendor public rule folders (python, typescript, generic secrets, dockerfile) under tools/semgrep/rules with the source commit hash in RULES.lock; run with --metrics=off --error. Trivy fs and config scans fail on HIGH/CRITICAL with a fix available; .trivyignore entries need an expiry date.",
+    "depends_on": "depends on T1.005",
+    "estimate_days": 0.75,
+    "deliverable": "scripts/jobs/semgrep.sh, scripts/jobs/trivy.sh",
+    "done_when": "Seeded vulnerable fixture fails each job (TC1.104, TC1.105). FR1.003",
+    "frs": [
+      "FR1.003"
+    ]
+  },
+  {
+    "id": "T1.009",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "Security",
+    "title": "Write the names and firewall checks",
+    "description": "tools/checks/names.py scans tracked text files against tools/checks/names_denylist.txt (real company and person names) and requires SAMPLE prefixes in seed data. tools/checks/firewall.py forbids imports of core code, HTTP calls to core outside packages/core-contract, model ids ending in -contributor, and cross-service imports (field-api must not import erp_sim; connectors must not import field_api).",
+    "depends_on": "depends on T1.005",
+    "estimate_days": 1.0,
+    "deliverable": "tools/checks/names.py, tools/checks/firewall.py",
+    "done_when": "Each rule has a failing fixture (TC1.102, TC1.103). FR1.004 FR1.005",
+    "frs": [
+      "FR1.004",
+      "FR1.005"
+    ]
+  },
+  {
+    "id": "T1.010",
+    "phase": 1,
+    "workstream": "WS1.1",
+    "role": "Product",
+    "title": "Record branch, commit and review conventions",
+    "description": "Write docs/CONTRIBUTING.md: branches f<phase>/<ws>-<slug>, Conventional Commits with work package scope (feat(f0-ws5): ...), push after every work package. Add a commit-msg hook and the conventions job, CODEOWNERS (role aliases), docs/adr/0000-template.md and ADR-0001 monorepo, ADR-0002 sim-first ERP, ADR-0003 auth bridge.",
+    "depends_on": "depends on T1.005",
+    "estimate_days": 0.5,
+    "deliverable": "docs/CONTRIBUTING.md, .github/CODEOWNERS, docs/adr/",
+    "done_when": "Non-conforming commit message fails the conventions job (TC1.106). FR1.006",
+    "frs": [
+      "FR1.006"
+    ]
+  },
+  {
+    "id": "T1.011",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Create the field-api app factory",
+    "description": "services/field-api/src/field_api/app.py builds the FastAPI app with pydantic-settings config (FIELD_* keys), lifespan for DB pool and JWKS cache, router registry under /v1 and the fixed middleware order: request id, tracing, auth, tenant, idempotency, ETag.",
+    "depends_on": "depends on T1.002",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/app.py",
+    "done_when": "App starts with docker compose; unknown route returns problem+json 404. FR1.009",
+    "frs": [
+      "FR1.009"
+    ]
+  },
+  {
+    "id": "T1.012",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Implement health and readiness",
+    "description": "GET /v1/health returns 200 without dependencies. GET /v1/ready checks DB (SELECT 1 under 200 ms), Alembic head equals code head, JWKS cache age below FIELD_JWKS_MAX_STALE_S and erp-sim reachability (warn only).",
+    "depends_on": "depends on T1.011",
+    "estimate_days": 0.25,
+    "deliverable": "field_api/routes/health.py",
+    "done_when": "DB stopped gives 503 with failing check names (TC1.108). FR1.007",
+    "frs": [
+      "FR1.007"
+    ]
+  },
+  {
+    "id": "T1.013",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Build the problem+json error registry",
+    "description": "field_api/errors.py defines FieldError(code, status, title) and a registry; handlers convert validation, HTTP and unhandled errors into RFC 9457 bodies with type urn:scmtips-field:problem:<code>, instance, request_id. tools/gen_error_codes.py writes docs/ERROR_CODES.md.",
+    "depends_on": "depends on T1.011",
+    "estimate_days": 0.5,
+    "deliverable": "field_api/errors.py, docs/ERROR_CODES.md",
+    "done_when": "PR1.12 passes; every code matches FIELD-<AREA>-<status>-<SLUG>. FR1.009 PR1.12",
+    "frs": [
+      "FR1.009"
+    ]
+  },
+  {
+    "id": "T1.014",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Add request id and structured logging",
+    "description": "Middleware accepts X-Request-Id matching ^[A-Za-z0-9._-]{8,128}$, otherwise generates a UUIDv7; echoes it on every response. JSON logs via structlog with a redaction processor for Authorization, tokens, crop refs and email-like strings.",
+    "depends_on": "depends on T1.011",
+    "estimate_days": 0.5,
+    "deliverable": "field_api/middleware/request_id.py, field_api/logging.py",
+    "done_when": "TC1.117 and TC1.159 pass. FR1.015 FR1.063",
+    "frs": [
+      "FR1.015",
+      "FR1.063"
+    ]
+  },
+  {
+    "id": "T1.015",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Instrument OpenTelemetry and RED metrics",
+    "description": "Use opentelemetry-instrumentation for FastAPI, SQLAlchemy and httpx; W3C traceparent in and out; histogram field_http_server_duration_seconds by route and status; attribute allowlist so no header values or bodies are recorded.",
+    "depends_on": "depends on T1.011",
+    "estimate_days": 0.5,
+    "deliverable": "field_api/telemetry.py",
+    "done_when": "Trace from fake phone to erp-sim shares one trace id in Jaeger (TC1.118). FR1.016",
+    "frs": [
+      "FR1.016"
+    ]
+  },
+  {
+    "id": "T1.016",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Implement UUIDv7 generation",
+    "description": "libs field_common/uuid7.py implements RFC 9562 UUIDv7 with 48-bit ms timestamp and a 12-bit monotonic counter in rand_a; SQL function field.uuid_generate_v7() for defaults; all primary keys use it.",
+    "depends_on": "depends on T1.002",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_common/uuid7.py",
+    "done_when": "PR1.11 passes with 1,000,000 ids per run in under 2 s. FR1.014 PR1.11",
+    "frs": [
+      "FR1.014"
+    ]
+  },
+  {
+    "id": "T1.017",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Build the Idempotency-Key middleware and store",
+    "description": "Require Idempotency-Key on every POST except /v1/auth/exchange. Fingerprint = sha256(method, path, principal_id, canonical JSON body). Insert field.idempotency_record in_progress, run handler, store status, headers and body; replay with Idempotent-Replayed: true; 422 on fingerprint mismatch; 409 with Retry-After: 1 while in progress.",
+    "depends_on": "depends on T1.013, T1.024",
+    "estimate_days": 1.5,
+    "deliverable": "field_api/middleware/idempotency.py",
+    "done_when": "PR1.01, PR1.02, PR1.03 pass; TC1.112-TC1.114 pass. FR1.010 FR1.011 PR1.01 PR1.02 PR1.03",
+    "frs": [
+      "FR1.010",
+      "FR1.011"
+    ]
+  },
+  {
+    "id": "T1.018",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Add ETag and If-Match handling",
+    "description": "ETag is a strong tag derived from (id, version). GET honours If-None-Match with 304; PATCH and PUT require If-Match (428 if missing, 412 if stale) and increment version in the same UPDATE ... WHERE version = :v.",
+    "depends_on": "depends on T1.013",
+    "estimate_days": 0.5,
+    "deliverable": "field_api/http/etag.py",
+    "done_when": "PR1.10 and TC1.115 pass. FR1.012 PR1.10",
+    "frs": [
+      "FR1.012"
+    ]
+  },
+  {
+    "id": "T1.019",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Add cursor pagination",
+    "description": "Keyset pagination on id (UUIDv7) with an HMAC-signed opaque cursor holding last id and filter hash; limit default 50, max 200; response {items, next_cursor}.",
+    "depends_on": "depends on T1.016",
+    "estimate_days": 0.5,
+    "deliverable": "field_api/http/pagination.py",
+    "done_when": "PR1.09 and TC1.116 pass. FR1.013 PR1.09",
+    "frs": [
+      "FR1.013"
+    ]
+  },
+  {
+    "id": "T1.020",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Set tenant context per request",
+    "description": "DB session dependency opens a transaction and calls set_config(&#x27;app.tenant_id&#x27;, :tid, true) and set_config(&#x27;app.site_ids&#x27;, :csv, true) from the verified principal before any query; no principal means no session.",
+    "depends_on": "depends on T1.024, T1.036",
+    "estimate_days": 0.5,
+    "deliverable": "field_api/db.py",
+    "done_when": "TC1.120 passes; unset tenant returns zero rows (PR1.04). FR1.030 PR1.04",
+    "frs": [
+      "FR1.030"
+    ]
+  },
+  {
+    "id": "T1.021",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Export the field-api OpenAPI and generate clients",
+    "description": "tools/export_openapi.py writes packages/field-contract/openapi.json (OpenAPI 3.1); verify-all contract job fails if the file drifts from code. Generate TypeScript (openapi-typescript) and Kotlin (openapi-generator kotlin) clients into packages/field-contract/gen/.",
+    "depends_on": "depends on T1.011",
+    "estimate_days": 0.5,
+    "deliverable": "packages/field-contract/",
+    "done_when": "Drift fixture fails the job; Schemathesis run passes (TC1.110). FR1.008",
+    "frs": [
+      "FR1.008"
+    ]
+  },
+  {
+    "id": "T1.022",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Implement site, location, material and device endpoints",
+    "description": "Routes API1.04-API1.13 as first consumers of the middleware, using permission dependencies from T1.039. Lists use pagination, updates use If-Match, creates use Idempotency-Key.",
+    "depends_on": "depends on T1.017, T1.018, T1.019, T1.025, T1.039",
+    "estimate_days": 1.5,
+    "deliverable": "field_api/routes/",
+    "done_when": "Schemathesis and integration tests for API1.04-API1.13 pass. FR1.031 FR1.032 FR1.023",
+    "frs": [
+      "FR1.023",
+      "FR1.031",
+      "FR1.032"
+    ]
+  },
+  {
+    "id": "T1.023",
+    "phase": 1,
+    "workstream": "WS1.2",
+    "role": "Backend",
+    "title": "Create the field-worker skeleton",
+    "description": "services/field-worker runs loops: outbox relay (FOR UPDATE SKIP LOCKED batches of 100), idempotency purge (hourly, expires_at < now()), probe cleanup (24 h). Each loop sets app.tenant_id per claimed row via field.claim_* SECURITY DEFINER functions.",
+    "depends_on": "depends on T1.024",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-worker/src/field_worker/",
+    "done_when": "PR1.19 and TC1.166 pass. FR1.033 PR1.19",
+    "frs": [
+      "FR1.033"
+    ]
+  },
+  {
+    "id": "T1.024",
+    "phase": 1,
+    "workstream": "WS1.3",
+    "role": "Backend",
+    "title": "Write migration field_0001 baseline",
+    "description": "Alembic env for services/field-api; field_0001 creates schema field, roles grants (field_app NOBYPASSRLS, no DELETE on erp_document), function field.uuid_generate_v7(), trigger function field.touch_updated_at(), tables idempotency_record and outbox with forced RLS.",
+    "depends_on": "depends on T1.004",
+    "estimate_days": 0.75,
+    "deliverable": "alembic/versions/field_0001_baseline.py",
+    "done_when": "Round trip clean (TC1.107). FR1.028",
+    "frs": [
+      "FR1.028"
+    ]
+  },
+  {
+    "id": "T1.025",
+    "phase": 1,
+    "workstream": "WS1.3",
+    "role": "Backend",
+    "title": "Write migration field_0002 data model v1",
+    "description": "Create site, location, material, device, task, task_line, capture, erp_document, posting_job with all columns, checks, indexes and foreign keys from ts.json data_model.",
+    "depends_on": "depends on T1.024",
+    "estimate_days": 1.0,
+    "deliverable": "alembic/versions/field_0002_data_model_v1.py",
+    "done_when": "All tables exist with listed indexes; TC1.107 passes. FR1.028 FR1.029",
+    "frs": [
+      "FR1.028",
+      "FR1.029"
+    ]
+  },
+  {
+    "id": "T1.026",
+    "phase": 1,
+    "workstream": "WS1.3",
+    "role": "Security",
+    "title": "Apply forced RLS and the catalog check",
+    "description": "For every field.* table: ENABLE and FORCE ROW LEVEL SECURITY, policy tenant_isolation USING and WITH CHECK nullif(current_setting(&#x27;app.tenant_id&#x27;, true), &#x27;&#x27;)::uuid = tenant_id. tests/security/test_rls_catalog.py asserts relforcerowsecurity and that field_app lacks BYPASSRLS.",
+    "depends_on": "depends on T1.025",
+    "estimate_days": 0.5,
+    "deliverable": "alembic/versions/field_0002; tests/security/test_rls_catalog.py",
+    "done_when": "TC1.119 and PR1.04 pass. FR1.029 PR1.04",
+    "frs": [
+      "FR1.029"
+    ]
+  },
+  {
+    "id": "T1.027",
+    "phase": 1,
+    "workstream": "WS1.3",
+    "role": "Backend",
+    "title": "Add site data-scope policies",
+    "description": "Policy site_scope on site, location, task, task_line, capture, erp_document: current_setting(&#x27;app.site_ids&#x27;, true) = &#x27;*&#x27; or site_id = any(string_to_array(...)::uuid[]). Scope comes from role_grant.site_ids.",
+    "depends_on": "depends on T1.026, T1.030",
+    "estimate_days": 0.5,
+    "deliverable": "alembic/versions/field_0002",
+    "done_when": "TC1.121 passes. FR1.031",
+    "frs": [
+      "FR1.031"
+    ]
+  },
+  {
+    "id": "T1.028",
+    "phase": 1,
+    "workstream": "WS1.3",
+    "role": "Backend",
+    "title": "Enforce the location hierarchy",
+    "description": "Trigger field.location_validate checks allowed parent kinds (site root: zone or tower; zone>aisle>rack>level>position; tower>sector>level>position), same site as parent, depth <= 6, no cycles on move, and rebuilds path for the moved subtree.",
+    "depends_on": "depends on T1.025",
+    "estimate_days": 0.75,
+    "deliverable": "alembic/versions/field_0002; field_api/domain/location.py",
+    "done_when": "PR1.20 and TC1.171 pass. FR1.032 PR1.20",
+    "frs": [
+      "FR1.032"
+    ]
+  },
+  {
+    "id": "T1.029",
+    "phase": 1,
+    "workstream": "WS1.3",
+    "role": "Backend",
+    "title": "Build the material cache sync",
+    "description": "field-worker job material_sync pages ErpPort.list_materials(plant) and upserts field.material on (tenant_id, erp_material_no, plant); records synced_at and source_hash; marks deleted_in_erp_at after 3 absent syncs.",
+    "depends_on": "depends on T1.025, T1.057",
+    "estimate_days": 0.5,
+    "deliverable": "field_worker/jobs/material_sync.py",
+    "done_when": "TC1.167 passes against SAMPLE seed (50 materials). FR1.034",
+    "frs": [
+      "FR1.034"
+    ]
+  },
+  {
+    "id": "T1.030",
+    "phase": 1,
+    "workstream": "WS1.3",
+    "role": "Backend",
+    "title": "Write migration field_0003 interim role grants",
+    "description": "Create field.role_grant (CS-02 interim) with partial unique index on active grants and RLS. Bootstrap command field-api grant --tenant --user --role field.admin for first admin, audited to outbox.",
+    "depends_on": "depends on T1.025",
+    "estimate_days": 0.5,
+    "deliverable": "alembic/versions/field_0003_role_grant.py",
+    "done_when": "Grant and revoke round trip; TC1.126 passes. FR1.022",
+    "frs": [
+      "FR1.022"
+    ]
+  },
+  {
+    "id": "T1.031",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "Owner",
+    "title": "Inventory the core-p13 endpoints the add-on needs",
+    "description": "Read the core-p13 OpenAPI (read-only) and list each path the add-on would call with method, purpose and whether it exists. Write compat/USED_ENDPOINTS.yaml and resolve D1.05; anything missing becomes a seam entry.",
+    "depends_on": "",
+    "estimate_days": 0.5,
+    "deliverable": "compat/USED_ENDPOINTS.yaml",
+    "done_when": "Every used path is marked exists or seam with a CS id. FR1.024 FR1.026",
+    "frs": [
+      "FR1.024",
+      "FR1.026"
+    ]
+  },
+  {
+    "id": "T1.032",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "Backend",
+    "title": "Generate packages/core-contract for core-p13",
+    "description": "Commit specs/core-p13.json with sha256; generate a Python client (openapi-python-client) and TypeScript types (openapi-typescript) with pinned versions in GENERATOR.lock; verify-all regenerates and compares hashes.",
+    "depends_on": "depends on T1.031",
+    "estimate_days": 0.5,
+    "deliverable": "packages/core-contract/",
+    "done_when": "Regeneration is byte-identical (TC1.127). FR1.025",
+    "frs": [
+      "FR1.025"
+    ]
+  },
+  {
+    "id": "T1.033",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "QA",
+    "title": "Build the compat suite",
+    "description": "compat/tests run per used endpoint: schema presence, required request fields, response fields read by the add-on, auth scheme. compat/diff.py wraps oasdiff with the used-endpoint filter; compat/mutations/ holds 5 seeded breaking specs.",
+    "depends_on": "depends on T1.032",
+    "estimate_days": 1.0,
+    "deliverable": "compat/",
+    "done_when": "Passes on core-p13; fails on 5 of 5 mutations (TC1.128, TC1.129, PR1.13). FR1.026 FR1.027 PR1.13",
+    "frs": [
+      "FR1.026",
+      "FR1.027"
+    ]
+  },
+  {
+    "id": "T1.034",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "QA",
+    "title": "Plan the core-p14 compat column",
+    "description": "compat/MATRIX.md and the compat job accept a list of tags; core-p14 shows SKIPPED-PENDING until specs/core-p14.json exists; a diff report core-p13 to core-p14 is produced automatically when it does.",
+    "depends_on": "depends on T1.033",
+    "estimate_days": 0.25,
+    "deliverable": "compat/MATRIX.md",
+    "done_when": "core-p14 row reads SKIPPED-PENDING, never PASS. FR1.026",
+    "frs": [
+      "FR1.026"
+    ]
+  },
+  {
+    "id": "T1.035",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "Backend",
+    "title": "Build tools/fake-core for development",
+    "description": "Small FastAPI app that serves JWKS with rotating Ed25519 keys, issues core-style session JWTs and P10-style device JWTs (claims per docs/CORE_SEAMS.md assumptions), and a device status endpoint with revocation. Never used outside dev and tests.",
+    "depends_on": "depends on T1.002",
+    "estimate_days": 0.75,
+    "deliverable": "tools/fake-core/",
+    "done_when": "Contract matches assumptions recorded in CS-01 and CS-07. FR1.018 FR1.021",
+    "frs": [
+      "FR1.018",
+      "FR1.021"
+    ]
+  },
+  {
+    "id": "T1.036",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "Security",
+    "title": "Implement JWT verification with JWKS caching",
+    "description": "field_api/auth/jwks.py fetches and caches JWKS (FIELD_JWKS_TTL_S), refreshes once on unknown kid, allows only EdDSA and RS256/ES256 per config, checks iss, aud, exp, nbf with 60 s skew.",
+    "depends_on": "depends on T1.035",
+    "estimate_days": 0.75,
+    "deliverable": "field_api/auth/jwks.py",
+    "done_when": "TC1.123 and TC1.125 pass. FR1.019 FR1.021",
+    "frs": [
+      "FR1.019",
+      "FR1.021"
+    ]
+  },
+  {
+    "id": "T1.037",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "Backend",
+    "title": "Implement POST /v1/auth/exchange",
+    "description": "Accepts a core-signed device or session JWT plus device_id; checks signature, device binding fingerprint, device status and revocation; issues a field token (EdDSA, aud scmtips-field, TTL min(600 s, core exp - now)) with tenant, sub, device, roles and permissions.",
+    "depends_on": "depends on T1.036, T1.025",
+    "estimate_days": 1.0,
+    "deliverable": "field_api/routes/auth.py",
+    "done_when": "PR1.17 and TC1.122 pass. FR1.018 FR1.019 PR1.17",
+    "frs": [
+      "FR1.018",
+      "FR1.019"
+    ]
+  },
+  {
+    "id": "T1.038",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "Backend",
+    "title": "Handle device revocation",
+    "description": "Device status poll every FIELD_DEVICE_POLL_S (default 60) against core (or fake-core); on revoked: set field.device.status, add jti to deny list until token expiry, emit device.revoked. POST /v1/devices/{id}/revoke does the same locally.",
+    "depends_on": "depends on T1.037",
+    "estimate_days": 0.5,
+    "deliverable": "field_worker/jobs/device_status.py",
+    "done_when": "TC1.124 passes; revoked token fails within 60 s. FR1.020",
+    "frs": [
+      "FR1.020"
+    ]
+  },
+  {
+    "id": "T1.039",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "Backend",
+    "title": "Define the role-to-permission map",
+    "description": "field_api/auth/permissions.py maps the 7 field.* roles to field.<area>.<verb> permissions, applies the glasses restriction (CS-07 interim) and exposes require_perm(). Map is exported to docs/PERMISSIONS.md.",
+    "depends_on": "depends on T1.030",
+    "estimate_days": 0.5,
+    "deliverable": "field_api/auth/permissions.py",
+    "done_when": "TC1.126 passes; docs match code. FR1.022",
+    "frs": [
+      "FR1.022"
+    ]
+  },
+  {
+    "id": "T1.040",
+    "phase": 1,
+    "workstream": "WS1.4",
+    "role": "Product",
+    "title": "Write docs/CORE_SEAMS.md",
+    "description": "For CS-01..CS-09 record gap, interim, assumption, test hook (test id), risk if absent and the shape requested from core in Phase 5. Owner reviews.",
+    "depends_on": "depends on T1.031",
+    "estimate_days": 0.5,
+    "deliverable": "docs/CORE_SEAMS.md",
+    "done_when": "TC1.130 passes; owner sign-off line filled. FR1.024",
+    "frs": [
+      "FR1.024"
+    ]
+  },
+  {
+    "id": "T1.041",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Create the erp-sim app skeleton",
+    "description": "services/erp-sim FastAPI app with OData-like conventions: base /sap/opu/odata/sap/<SERVICE>/, {\"d\": ...} envelopes, $filter eq, $expand, $top/$skip, CSRF token fetch emulation, sap-client header (default 100), SAP-style error body {error:{code, message:{lang, value}}}.",
+    "depends_on": "depends on T1.002",
+    "estimate_days": 0.75,
+    "deliverable": "services/erp-sim/src/erp_sim/app.py",
+    "done_when": "Unknown entity returns ZSIM/404 error body. FR1.035",
+    "frs": [
+      "FR1.035"
+    ]
+  },
+  {
+    "id": "T1.042",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Write migration erpsim_0001",
+    "description": "Schema erpsim: document, document_item, number_range, enqueue_lock, dedupe, stock, equipment_install, fault_rule, plus master tables material, plant, storage_location, functional_location. Separate Alembic chain (D1.02).",
+    "depends_on": "depends on T1.041",
+    "estimate_days": 0.75,
+    "deliverable": "services/erp-sim/alembic/versions/erpsim_0001.py",
+    "done_when": "Round trip clean in the alembic job. FR1.028",
+    "frs": [
+      "FR1.028"
+    ]
+  },
+  {
+    "id": "T1.043",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Implement number range allocation",
+    "description": "erp_sim/numbering.py allocates with UPDATE number_range SET current = current + 1 WHERE object = :o AND client = :c AND current < upper RETURNING current, inside the posting transaction. Ranges per BRIEF; material documents also carry doc_year.",
+    "depends_on": "depends on T1.042",
+    "estimate_days": 0.5,
+    "deliverable": "erp_sim/numbering.py",
+    "done_when": "PR1.05 passes with 32 concurrent workers. FR1.042 PR1.05",
+    "frs": [
+      "FR1.042"
+    ]
+  },
+  {
+    "id": "T1.044",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Implement enqueue locks",
+    "description": "erp_sim/locks.py acquires (object_type, object_key) with INSERT ... ON CONFLICT DO NOTHING plus TTL takeover after FIELD_SIM_LOCK_TTL_S; returns ZSIM/LOCKED with holder and object in SAP-like text; releases at end of the logical unit of work.",
+    "depends_on": "depends on T1.042",
+    "estimate_days": 0.5,
+    "deliverable": "erp_sim/locks.py",
+    "done_when": "PR1.06 and TC1.138 pass. FR1.043 PR1.06",
+    "frs": [
+      "FR1.043"
+    ]
+  },
+  {
+    "id": "T1.045",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Build inbound delivery read and goods receipt",
+    "description": "API_INBOUND_DELIVERY_SRV (illustrative): GET A_InbDeliveryHeader(&#x27;<no>&#x27;) with $expand to items; POST PostGoodsReceipt?DeliveryDocument=<no> creates a material document with movement type 101, updates stock and sets delivery GR status.",
+    "depends_on": "depends on T1.043, T1.044, T1.051",
+    "estimate_days": 1.0,
+    "deliverable": "erp_sim/services/inbound_delivery.py",
+    "done_when": "TC1.131 and TC1.132 pass. FR1.035 FR1.036",
+    "frs": [
+      "FR1.035",
+      "FR1.036"
+    ]
+  },
+  {
+    "id": "T1.046",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Build outbound delivery pick and goods issue",
+    "description": "API_OUTBOUND_DELIVERY_SRV (illustrative): PATCH item picked quantity, POST PickAllItems, POST PostGoodsIssue creating movement type 601; GI fails if picked quantity < delivery quantity unless partial flag set.",
+    "depends_on": "depends on T1.045",
+    "estimate_days": 0.75,
+    "deliverable": "erp_sim/services/outbound_delivery.py",
+    "done_when": "TC1.133 passes. FR1.037",
+    "frs": [
+      "FR1.037"
+    ]
+  },
+  {
+    "id": "T1.047",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Build physical inventory documents",
+    "description": "API_PHYSICAL_INVENTORY_DOC_SRV (illustrative): create doc for plant/storage location/materials (freezes book qty), PATCH item counted qty, POST PostDifferences creating 701 (gain) or 702 (loss) material document items.",
+    "depends_on": "depends on T1.045",
+    "estimate_days": 0.75,
+    "deliverable": "erp_sim/services/phys_inv.py",
+    "done_when": "TC1.134 passes. FR1.038",
+    "frs": [
+      "FR1.038"
+    ]
+  },
+  {
+    "id": "T1.048",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Build material document create and reverse",
+    "description": "API_MATERIAL_DOCUMENT_SRV (illustrative): deep-insert header with items (101, 261, 321, 601, 701, 702); POST Cancel creates a reversal document (102, 262, 322, 602, 702/701 per sim mapping) linked by ref fields; never deletes; second reversal fails ZSIM/ALREADY-REVERSED.",
+    "depends_on": "depends on T1.045",
+    "estimate_days": 1.0,
+    "deliverable": "erp_sim/services/material_document.py",
+    "done_when": "PR1.07 and TC1.135 pass. FR1.039 FR1.044 PR1.07",
+    "frs": [
+      "FR1.039",
+      "FR1.044"
+    ]
+  },
+  {
+    "id": "T1.049",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Build equipment create, install and dismantle",
+    "description": "API_EQUIPMENT (illustrative): create equipment (10000000-19999999) with serial and material, install at functional location with date-time, dismantle; install history kept in equipment_install; installing installed equipment fails ZSIM/EQ-INSTALLED.",
+    "depends_on": "depends on T1.043",
+    "estimate_days": 0.75,
+    "deliverable": "erp_sim/services/equipment.py",
+    "done_when": "TC1.136 passes. FR1.040",
+    "frs": [
+      "FR1.040"
+    ]
+  },
+  {
+    "id": "T1.050",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Build maintenance order, notification and measurement documents",
+    "description": "API_MAINTENANCEORDER, API_MAINTNOTIFICATION, measurement documents (illustrative): create order (4100000000+), notification (N10000000+), measurement document (330000000+) against a measuring point with reading, unit and timestamp.",
+    "depends_on": "depends on T1.043",
+    "estimate_days": 0.75,
+    "deliverable": "erp_sim/services/maintenance.py",
+    "done_when": "TC1.137 passes. FR1.041",
+    "frs": [
+      "FR1.041"
+    ]
+  },
+  {
+    "id": "T1.051",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Implement idempotency dedupe",
+    "description": "Every create operation reads header text FIELD:<key> (or header Idempotency-Key); erpsim.dedupe(client, idem_key, request_hash, document_no) unique on (client, idem_key). Same hash returns the original document with sap-message ZSIM/DUP; different hash returns ZSIM/IDEM-CONFLICT.",
+    "depends_on": "depends on T1.042",
+    "estimate_days": 0.5,
+    "deliverable": "erp_sim/dedupe.py",
+    "done_when": "PR1.08 and TC1.139 pass. FR1.045 PR1.08",
+    "frs": [
+      "FR1.045"
+    ]
+  },
+  {
+    "id": "T1.052",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Build the fault injection API",
+    "description": "/_sim/faults CRUD with kinds latency, http_5xx, lock, timeout, partial; match by service, operation, doc key; probability, count, ttl_s, seed; bounds enforced. Enabled only when ERPSIM_FAULTS_ENABLED=true and X-Sim-Admin-Token matches.",
+    "depends_on": "depends on T1.041",
+    "estimate_days": 1.0,
+    "deliverable": "erp_sim/faults.py",
+    "done_when": "PR1.14, TC1.140-TC1.142 pass. FR1.046 FR1.047 PR1.14",
+    "frs": [
+      "FR1.046",
+      "FR1.047"
+    ]
+  },
+  {
+    "id": "T1.053",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "ERP",
+    "title": "Seed SAMPLE master and transactional data",
+    "description": "python -m erp_sim.seed --profile sample loads plant 1010, storage locations 101A and 101Q, 50 materials SAMPLE-MAT-0001..0050, 20 open inbound deliveries, 10 outbound deliveries, 5 functional locations SAMPLE-TWR-0001..0005 with sectors, 12 equipment and 10 measuring points. POST /_sim/reset truncates and reseeds deterministically.",
+    "depends_on": "depends on T1.045, T1.049",
+    "estimate_days": 0.5,
+    "deliverable": "erp_sim/seed/sample.yaml",
+    "done_when": "TC1.143 passes; counts match the profile. FR1.048",
+    "frs": [
+      "FR1.048"
+    ]
+  },
+  {
+    "id": "T1.054",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "Console",
+    "title": "Build the erp-sim admin UI",
+    "description": "Server-rendered pages under /_sim/ui (Jinja2, no build step): documents list with filters, document detail with items and reversal chain, stock view, locks and number ranges, fault rules, reset. Uses packages/ui-tokens CSS.",
+    "depends_on": "depends on T1.048, T1.052, T1.073",
+    "estimate_days": 1.0,
+    "deliverable": "erp_sim/ui/",
+    "done_when": "TC1.144 and TC1.145 pass. FR1.049",
+    "frs": [
+      "FR1.049"
+    ]
+  },
+  {
+    "id": "T1.055",
+    "phase": 1,
+    "workstream": "WS1.5",
+    "role": "QA",
+    "title": "Write erp-sim property and concurrency tests",
+    "description": "Hypothesis state machines for numbering, locks, reversal stock conservation and dedupe under faults; asyncio concurrency harness with 32 workers against a real Postgres.",
+    "depends_on": "depends on T1.048, T1.051, T1.052",
+    "estimate_days": 1.0,
+    "deliverable": "services/erp-sim/tests/property/",
+    "done_when": "PR1.05-PR1.08 and PR1.14 pass at 500 runs. PR1.05 PR1.06 PR1.07 PR1.08",
+    "frs": []
+  },
+  {
+    "id": "T1.056",
+    "phase": 1,
+    "workstream": "WS1.6",
+    "role": "Backend",
+    "title": "Define the ErpPort interface",
+    "description": "connectors/sap/src/field_sap/ports.py: typing.Protocol ErpPort with methods for the eight document families plus find_by_idempotency_key and list_materials; frozen dataclasses for requests and ErpResult; ErpError with kind LOCK, TRANSIENT, TIMEOUT, BUSINESS, AUTH, NOT_FOUND, CONFLICT and retryable flag.",
+    "depends_on": "depends on T1.002",
+    "estimate_days": 0.5,
+    "deliverable": "field_sap/ports.py",
+    "done_when": "mypy --strict passes; ADR-0005 records the port. FR1.050",
+    "frs": [
+      "FR1.050"
+    ]
+  },
+  {
+    "id": "T1.057",
+    "phase": 1,
+    "workstream": "WS1.6",
+    "role": "ERP",
+    "title": "Implement SimAdapter",
+    "description": "field_sap/sim/adapter.py calls erp-sim over httpx with CSRF fetch, header text FIELD:<key>, traceparent propagation and a 10 s timeout; maps ZSIM codes and HTTP status to ErpError; on timeout calls find_by_idempotency_key before reporting failure.",
+    "depends_on": "depends on T1.056, T1.051",
+    "estimate_days": 1.0,
+    "deliverable": "field_sap/sim/adapter.py",
+    "done_when": "TC1.141 and TC1.146 pass. FR1.051",
+    "frs": [
+      "FR1.051"
+    ]
+  },
+  {
+    "id": "T1.058",
+    "phase": 1,
+    "workstream": "WS1.6",
+    "role": "ERP",
+    "title": "Write the S4ODataAdapter stub",
+    "description": "field_sap/s4/adapter.py implements ErpPort signatures, CSRF token handling and error parsing skeleton; operations raise NotImplementedError(&#x27;S4 adapter: <op> not implemented in F0&#x27;). Config schema for base URL, client, auth method documented.",
+    "depends_on": "depends on T1.056",
+    "estimate_days": 0.5,
+    "deliverable": "field_sap/s4/adapter.py",
+    "done_when": "TC1.147 passes. FR1.052",
+    "frs": [
+      "FR1.052"
+    ]
+  },
+  {
+    "id": "T1.059",
+    "phase": 1,
+    "workstream": "WS1.6",
+    "role": "ERP",
+    "title": "Build the mapping layer",
+    "description": "field_sap/mapping/*.py: pure functions from field domain objects (GoodsReceipt, GoodsIssue, CountResult, Reversal, Install, MeasurementReading) to OData payloads and back; Decimal quantities with 3 decimals, ERP item numbers 000010 steps, UoM codes.",
+    "depends_on": "depends on T1.056",
+    "estimate_days": 0.75,
+    "deliverable": "field_sap/mapping/",
+    "done_when": "PR1.16 passes. FR1.053 PR1.16",
+    "frs": [
+      "FR1.053"
+    ]
+  },
+  {
+    "id": "T1.060",
+    "phase": 1,
+    "workstream": "WS1.6",
+    "role": "QA",
+    "title": "Write the port contract suite",
+    "description": "connectors/sap/tests/contract/ runs the same scenarios against SimAdapter (erp-sim) and FakeAdapter (in-memory); later reused for S4ODataAdapter.",
+    "depends_on": "depends on T1.057",
+    "estimate_days": 0.5,
+    "deliverable": "connectors/sap/tests/contract/",
+    "done_when": "TC1.148 passes for both adapters. FR1.050",
+    "frs": [
+      "FR1.050"
+    ]
+  },
+  {
+    "id": "T1.061",
+    "phase": 1,
+    "workstream": "WS1.6",
+    "role": "Backend",
+    "title": "Build the posting worker skeleton",
+    "description": "field_worker/posting.py claims the lowest pending seq per queue_key (one in flight per queue), calls ErpPort, updates erp_document and posting_job, writes erp.posted, erp.failed or erp.reversed to outbox; backoff 2/4/8/16/32/32/32 s, max 8 attempts, then dead. A test-only enqueue helper creates jobs; no public posting endpoint in Phase 1.",
+    "depends_on": "depends on T1.023, T1.057",
+    "estimate_days": 1.25,
+    "deliverable": "field_worker/posting.py",
+    "done_when": "PR1.15, TC1.149, TC1.150 pass. FR1.054 PR1.15",
+    "frs": [
+      "FR1.054"
+    ]
+  },
+  {
+    "id": "T1.062",
+    "phase": 1,
+    "workstream": "WS1.7",
+    "role": "AI",
+    "title": "Run the Meta Model API access spike",
+    "description": "From an India network, sign up and call Muse Spark 1.3 (non-contributor) with a SAMPLE carton image plus prompt, and Muse Wonder with a text prompt; record availability, latency p50/p95 over 20 calls, error codes, data-use terms and pricing seen. Harness tools/spikes/model-api/ refuses model ids containing -contributor.",
+    "depends_on": "depends on T1.009",
+    "estimate_days": 1.0,
+    "deliverable": "tools/spikes/model-api/, docs/META_FIELD.md rows",
+    "done_when": "TC1.151 recorded with evidence or BLOCKED reason. FR1.055",
+    "frs": [
+      "FR1.055"
+    ]
+  },
+  {
+    "id": "T1.063",
+    "phase": 1,
+    "workstream": "WS1.7",
+    "role": "Android",
+    "title": "Build the wearables spike app",
+    "description": "tools/spikes/wearables-android/ minimal Kotlin app using the Wearables Device Access Toolkit: pair owner&#x27;s glasses, take a still, open a video stream (record resolution and fps), route mic audio and play a speaker prompt. Logs timings with traceparent.",
+    "depends_on": "",
+    "estimate_days": 1.5,
+    "deliverable": "tools/spikes/wearables-android/",
+    "done_when": "TC1.153 recorded per capability. FR1.056",
+    "frs": [
+      "FR1.056"
+    ]
+  },
+  {
+    "id": "T1.064",
+    "phase": 1,
+    "workstream": "WS1.7",
+    "role": "Android",
+    "title": "Test display drawing on Meta Ray-Ban Display",
+    "description": "Extend the spike to draw text, a list, an image and a button on Ray-Ban Display and measure draw-to-visible time by high-speed phone video. If no Display glasses are available, mark each display row UNVERIFIED with reason.",
+    "depends_on": "depends on T1.063",
+    "estimate_days": 0.75,
+    "deliverable": "tools/spikes/wearables-android/display/",
+    "done_when": "TC1.155 recorded. FR1.056",
+    "frs": [
+      "FR1.056"
+    ]
+  },
+  {
+    "id": "T1.065",
+    "phase": 1,
+    "workstream": "WS1.7",
+    "role": "Android",
+    "title": "Run the spike on the Mock Device Kit",
+    "description": "Run the same spike flows against the Mock Device Kit with a recorded SAMPLE video as camera source; document which calls behave differently and that display is not simulated. Script runs in an Android emulator for repeatable checks.",
+    "depends_on": "depends on T1.063",
+    "estimate_days": 0.5,
+    "deliverable": "tools/spikes/wearables-android/mock/",
+    "done_when": "TC1.156 passes. FR1.057",
+    "frs": [
+      "FR1.057"
+    ]
+  },
+  {
+    "id": "T1.066",
+    "phase": 1,
+    "workstream": "WS1.7",
+    "role": "AI",
+    "title": "Write docs/META_FIELD.md and decide the Llama fallback",
+    "description": "Table: capability, call or API, device, SDK/firmware version, status VERIFIED/UNVERIFIED/BLOCKED, evidence path and date, notes. Benchmark one Llama open-weights model for the verify task on SAMPLE images; record D1.04 decision.",
+    "depends_on": "depends on T1.062, T1.064, T1.065",
+    "estimate_days": 0.75,
+    "deliverable": "docs/META_FIELD.md",
+    "done_when": "TC1.169 passes; D1.04 decided. FR1.058",
+    "frs": [
+      "FR1.058"
+    ]
+  },
+  {
+    "id": "T1.067",
+    "phase": 1,
+    "workstream": "WS1.7",
+    "role": "Android",
+    "title": "Instrument device-side latency",
+    "description": "Spike app records shutter, frame-on-phone, detect (ML Kit barcode on SAMPLE labels), ranking stub, lens draw ack and upload timings as OTel spans exported via OTLP/HTTP; one traceparent per capture continues to field-api.",
+    "depends_on": "depends on T1.063",
+    "estimate_days": 0.75,
+    "deliverable": "tools/spikes/wearables-android/latency/",
+    "done_when": "Spans appear in Jaeger with the same trace id as server spans. FR1.059",
+    "frs": [
+      "FR1.059"
+    ]
+  },
+  {
+    "id": "T1.068",
+    "phase": 1,
+    "workstream": "WS1.7",
+    "role": "QA",
+    "title": "Build server latency harness and baseline report",
+    "description": "tools/latency/k6/probe.js drives POST /v1/diagnostics/probe at 10, 50 and 100 rps; tools/latency/report.py joins device and server spans and writes docs/LATENCY_BASELINE.md with p50/p95 per segment vs BRIEF targets, host details and gaps.",
+    "depends_on": "depends on T1.067, T1.022",
+    "estimate_days": 1.0,
+    "deliverable": "tools/latency/, docs/LATENCY_BASELINE.md",
+    "done_when": "TC1.157 and TC1.158 pass. FR1.059 FR1.060",
+    "frs": [
+      "FR1.059",
+      "FR1.060"
+    ]
+  },
+  {
+    "id": "T1.069",
+    "phase": 1,
+    "workstream": "WS1.8",
+    "role": "Security",
+    "title": "Write the threat model",
+    "description": "docs/security/THREAT_MODEL.md: data-flow diagram (glasses, phone, field-api, worker, erp-sim/SAP, core, Meta APIs), STRIDE per flow, control and test id per threat, residual risks.",
+    "depends_on": "depends on T1.037",
+    "estimate_days": 0.75,
+    "deliverable": "docs/security/THREAT_MODEL.md",
+    "done_when": "Every threat row has a control and a TC id (TC1.170). FR1.061",
+    "frs": [
+      "FR1.061"
+    ]
+  },
+  {
+    "id": "T1.070",
+    "phase": 1,
+    "workstream": "WS1.8",
+    "role": "Security",
+    "title": "Write data classification and DPIA starter",
+    "description": "DATA_CLASSIFICATION.md (Public, Internal, Confidential, Restricted-Personal) mapped to each column of the v1 data model; docs/privacy/DPIA_STARTER.md covering purposes, lawful basis to confirm with the owner (for example India DPDP Act 2023, GDPR for EU tenants), bystanders, retention via P13e.",
+    "depends_on": "depends on T1.025",
+    "estimate_days": 0.75,
+    "deliverable": "docs/security/DATA_CLASSIFICATION.md, docs/privacy/DPIA_STARTER.md",
+    "done_when": "Every column classified; TC1.170 passes. FR1.061",
+    "frs": [
+      "FR1.061"
+    ]
+  },
+  {
+    "id": "T1.071",
+    "phase": 1,
+    "workstream": "WS1.8",
+    "role": "Security",
+    "title": "Set up secrets handling",
+    "description": "docs/security/SECRETS.md; field-api loads secrets from a vault path or KMS-encrypted file via FIELD_SECRETS_SOURCE, never from repo; dev uses .env.local excluded by .gitignore; Semgrep secrets rules and a response scrubber test ensure no secret appears in API output.",
+    "depends_on": "depends on T1.008",
+    "estimate_days": 0.5,
+    "deliverable": "docs/security/SECRETS.md, field_api/secrets.py",
+    "done_when": "TC1.160 passes. FR1.062",
+    "frs": [
+      "FR1.062"
+    ]
+  },
+  {
+    "id": "T1.072",
+    "phase": 1,
+    "workstream": "WS1.8",
+    "role": "Security",
+    "title": "Write and enforce the dependency policy",
+    "description": "docs/security/DEPENDENCY_POLICY.md: exact pins, lockfiles, new packages at least 14 days old, licence allowlist (MIT, Apache-2.0, BSD-2/3, ISC, PSF, MPL-2.0 for tools), CycloneDX SBOM per build. tools/checks/deps.py enforces it in the lint job.",
+    "depends_on": "depends on T1.008",
+    "estimate_days": 0.5,
+    "deliverable": "docs/security/DEPENDENCY_POLICY.md, tools/checks/deps.py",
+    "done_when": "TC1.165 passes. FR1.064",
+    "frs": [
+      "FR1.064"
+    ]
+  },
+  {
+    "id": "T1.073",
+    "phase": 1,
+    "workstream": "WS1.9",
+    "role": "Design",
+    "title": "Create packages/ui-tokens",
+    "description": "tokens/*.json (color light/dark, lens high-contrast, spacing 4 px scale, typography, radius, motion, elevation) built by a pinned Style Dictionary into CSS variables, a TS module and a Kotlin Compose theme file. Contrast test over declared pairs.",
+    "depends_on": "depends on T1.003",
+    "estimate_days": 0.75,
+    "deliverable": "packages/ui-tokens/",
+    "done_when": "PR1.18 and TC1.163 pass. FR1.067 PR1.18",
+    "frs": [
+      "FR1.067"
+    ]
+  },
+  {
+    "id": "T1.074",
+    "phase": 1,
+    "workstream": "WS1.9",
+    "role": "Console",
+    "title": "Create the field-console shell",
+    "description": "apps/field-console Next.js 15 App Router with layout, left navigation (Home, Sites, Devices, System status), tenant switcher placeholder, tokens CSS, error boundary and 404 page; typed field-api client from packages/field-contract.",
+    "depends_on": "depends on T1.073, T1.021",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/",
+    "done_when": "Shell renders; axe zero serious violations (TC1.145). FR1.066",
+    "frs": [
+      "FR1.066"
+    ]
+  },
+  {
+    "id": "T1.075",
+    "phase": 1,
+    "workstream": "WS1.9",
+    "role": "Console",
+    "title": "Implement console sign-in via core session",
+    "description": "Sign-in redirects to core sign-in, receives a core JWT per D1.05, exchanges it at field-api, keeps the field token in an httpOnly SameSite=Strict cookie through a Next.js route handler; sign-out clears it. No console-owned passwords.",
+    "depends_on": "depends on T1.074, T1.037",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/app/(auth)/",
+    "done_when": "TC1.161 passes against fake-core. FR1.065",
+    "frs": [
+      "FR1.065"
+    ]
+  },
+  {
+    "id": "T1.076",
+    "phase": 1,
+    "workstream": "WS1.9",
+    "role": "Console",
+    "title": "Build empty, no-permission and status screens",
+    "description": "Screens SCR1.02-SCR1.05: home empty state, no-permission, add-on not enabled, system status (health, ready checks, compat matrix, erp-sim reachability). Copy from fs.json.",
+    "depends_on": "depends on T1.075",
+    "estimate_days": 0.75,
+    "deliverable": "apps/field-console/app/",
+    "done_when": "TC1.162 passes; Playwright snapshots stored. FR1.066 FR1.068",
+    "frs": [
+      "FR1.066",
+      "FR1.068"
+    ]
+  },
+  {
+    "id": "T1.077",
+    "phase": 1,
+    "workstream": "WS1.9",
+    "role": "Backend",
+    "title": "Plan and implement per-tenant feature flags",
+    "description": "ADR-0004: keys field.addon.enabled, field.glasses.enabled, field.erp.live_posting, field.console.enabled; resolution order core P13a (via CS-03 when available) > FIELD_FLAG_OVERRIDES > FIELD_TENANT_ALLOWLIST > default off. field_api/flags.py and a dependency that returns 403 FIELD-FLAG-403-DISABLED.",
+    "depends_on": "depends on T1.011",
+    "estimate_days": 0.75,
+    "deliverable": "docs/adr/0004-feature-flags.md, field_api/flags.py",
+    "done_when": "TC1.164 passes. FR1.068",
+    "frs": [
+      "FR1.068"
+    ]
+  },
+  {
+    "id": "T1.078",
+    "phase": 1,
+    "workstream": "WS1.9",
+    "role": "Owner",
+    "title": "Write the Phase 1 report and push",
+    "description": "Run scripts/verify-all.sh, commit the report JSON, write docs/reports/PHASE1_REPORT.md (exit criteria status, measured latency, META table summary, open seams, risks) and push branch f0/foundations.",
+    "depends_on": "depends on T1.066, T1.068, T1.076",
+    "estimate_days": 0.5,
+    "deliverable": "docs/reports/PHASE1_REPORT.md",
+    "done_when": "All exit criteria marked with evidence; branch pushed. FR1.001 FR1.002",
+    "frs": [
+      "FR1.001",
+      "FR1.002"
+    ]
+  }
+]

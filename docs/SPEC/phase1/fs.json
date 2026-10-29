@@ -1,0 +1,413 @@
+{
+  "phase": 1,
+  "functional_requirements": [
+    {
+      "id": "FR1.001",
+      "phase": 1,
+      "category": "Repository and CI",
+      "description": "The system shall provide scripts/verify-all.sh that runs the jobs lint, typecheck, unit, property, contract, compat, alembic, semgrep, trivy, names, firewall and conventions and prints one PASS/FAIL/SKIP row per job with duration. GitHub Actions cannot run here; one local gate replaces CI. Must TC1.101"
+    },
+    {
+      "id": "FR1.002",
+      "phase": 1,
+      "category": "Repository and CI",
+      "description": "The system shall exit verify-all with status 1 if any job FAILs, support --only and --skip, and write reports/verify-all/<UTC timestamp>.json with job, status, duration_s and log path. Machine-readable evidence for phase reports. Must TC1.101"
+    },
+    {
+      "id": "FR1.003",
+      "phase": 1,
+      "category": "Repository and CI",
+      "description": "The system shall run Semgrep 1.181.0 offline with vendored public rule folders pinned by commit hash and fail on any blocking finding, and run Trivy fs/config scans failing on HIGH or CRITICAL findings with a fix available. Same security gate as core. Must TC1.104 TC1.105"
+    },
+    {
+      "id": "FR1.004",
+      "phase": 1,
+      "category": "Repository and CI",
+      "description": "The system shall fail the names job when any tracked file contains an entry from tools/checks/names_denylist.txt or when seed data values lack the SAMPLE prefix. BRIEF forbids real company and person names. Must TC1.102"
+    },
+    {
+      "id": "FR1.005",
+      "phase": 1,
+      "category": "Repository and CI",
+      "description": "The system shall fail the firewall job on: imports of core packages, HTTP calls to core outside packages/core-contract, model ids ending in -contributor, and cross-service imports between field-api, erp-sim and connectors. Keeps the add-on separate from core and customer data away from contributor models. Must TC1.103"
+    },
+    {
+      "id": "FR1.006",
+      "phase": 1,
+      "category": "Repository and CI",
+      "description": "The system shall enforce Conventional Commit messages with a phase scope, branch names f<phase>/<ws>-<slug>, CODEOWNERS for every top-level path and an ADR template. Traceable history across build sessions. Should TC1.106"
+    },
+    {
+      "id": "FR1.007",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall expose GET /v1/health (process alive, no dependencies) and GET /v1/ready (database, migration head, JWKS cache freshness) returning 503 with failing check names when not ready. Operability and safe start order. Must TC1.108"
+    },
+    {
+      "id": "FR1.008",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall publish the field-api OpenAPI 3.1 document at packages/field-contract/openapi.json and fail the contract job if it drifts from the running code. Generated Kotlin and TypeScript clients depend on it. Must TC1.110"
+    },
+    {
+      "id": "FR1.009",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall return every error as RFC 9457 application/problem+json with type, title, status, detail, code, instance and request_id, where code matches ^FIELD-[A-Z]{2,8}-[0-9]{3}-[A-Z0-9-]+$ and its number equals status. Uniform client handling. Must TC1.111 PR1.12"
+    },
+    {
+      "id": "FR1.010",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall require an Idempotency-Key header (1-128 visible ASCII characters) on every POST except /v1/auth/exchange, store the first response for 24 h, and replay it with Idempotent-Replayed: true for the same key and fingerprint. Offline replays must not duplicate state or ERP documents. Must TC1.112 TC1.113 TC1.114 PR1.01"
+    },
+    {
+      "id": "FR1.011",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall return 422 FIELD-IDEM-422-KEY-REUSED when a key is reused with a different fingerprint and 409 FIELD-IDEM-409-IN-PROGRESS with Retry-After: 1 while the first request with that key is still running. Detects client bugs and concurrent retries. Must TC1.173 PR1.02 PR1.03"
+    },
+    {
+      "id": "FR1.012",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall return a strong ETag on every single-resource GET and write, require If-Match on PATCH/PUT (428 if missing, 412 if stale) and return 304 for a matching If-None-Match. Prevents lost updates. Must TC1.115 PR1.10"
+    },
+    {
+      "id": "FR1.013",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall paginate every list with an opaque signed cursor, default limit 50, maximum 200, returning {items, next_cursor}, and reject limits above 200 or tampered cursors with 400. Stable paging over growing tables. Must TC1.116 PR1.09"
+    },
+    {
+      "id": "FR1.014",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall generate all resource IDs as RFC 9562 UUIDv7, monotonic within a process. Time-ordered keys support keyset pagination and index locality. Must PR1.11"
+    },
+    {
+      "id": "FR1.015",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall accept an inbound X-Request-Id matching ^[A-Za-z0-9._-]{8,128}$, otherwise generate a UUIDv7, and echo it on every response and log line. Support correlation. Must TC1.117"
+    },
+    {
+      "id": "FR1.016",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall emit OpenTelemetry traces for HTTP, database and outbound HTTP calls, continue an inbound W3C traceparent, propagate it to erp-sim and core, and export RED metrics per route. Trace from phone to ERP. Must TC1.118"
+    },
+    {
+      "id": "FR1.017",
+      "phase": 1,
+      "category": "API conventions",
+      "description": "The system shall emit timestamps as RFC 3339 UTC with a Z suffix and reject inputs without a timezone offset with 400 FIELD-REQ-400-TIMEZONE. Unambiguous times across sites. Must TC1.110 PR1.12"
+    },
+    {
+      "id": "FR1.018",
+      "phase": 1,
+      "category": "Auth bridge",
+      "description": "The system shall provide POST /v1/auth/exchange that accepts a core-signed device or session JWT and a device_id, verifies it, and issues a field access token with TTL min(600 s, core token remaining lifetime). Interim for CS-01. Must TC1.122 PR1.17"
+    },
+    {
+      "id": "FR1.019",
+      "phase": 1,
+      "category": "Auth bridge",
+      "description": "The system shall reject tokens with an invalid signature, unknown kid after one JWKS refresh, alg not in the allowlist, wrong iss or aud, exp or nbf outside 60 s skew, or device binding mismatch, with 401 FIELD-AUTH-401-*. Token forgery and replay protection. Must TC1.123 PR1.17"
+    },
+    {
+      "id": "FR1.020",
+      "phase": 1,
+      "category": "Auth bridge",
+      "description": "The system shall block a revoked device within FIELD_DEVICE_POLL_S (default 60 s) by denying exchange and existing field tokens, and emit device.revoked. P10 revocation must hold in the add-on. Must TC1.124 PR1.17"
+    },
+    {
+      "id": "FR1.021",
+      "phase": 1,
+      "category": "Auth bridge",
+      "description": "The system shall verify console users&#x27; core-issued JWTs against cached core JWKS, refresh on unknown kid, and refuse service from /v1/ready when the cache is older than FIELD_JWKS_MAX_STALE_S. Console trusts core SSO only. Must TC1.125"
+    },
+    {
+      "id": "FR1.022",
+      "phase": 1,
+      "category": "Auth bridge",
+      "description": "The system shall map the roles field.operator, field.technician, field.supervisor, inventory.controller, field.integration, field.viewer and field.admin to field.<area>.<verb> permissions and return 403 FIELD-AUTH-403-PERMISSION when missing. Least privilege. Must TC1.126"
+    },
+    {
+      "id": "FR1.023",
+      "phase": 1,
+      "category": "Auth bridge",
+      "description": "The system shall register a device binding (kind phone or glasses, core device reference, binding fingerprint, user) once per core device and restrict glasses-bound tokens to capture and read permissions. Interim for CS-07. Must TC1.168"
+    },
+    {
+      "id": "FR1.024",
+      "phase": 1,
+      "category": "Auth bridge",
+      "description": "The system shall maintain docs/CORE_SEAMS.md listing CS-01..CS-09 with gap, interim, assumption, test hook and requested core shape, and every core path used shall be either listed as existing in core-p13 or mapped to a seam. Phase 5 delivers seams as one small PR. Must TC1.130"
+    },
+    {
+      "id": "FR1.025",
+      "phase": 1,
+      "category": "Core contract and compat",
+      "description": "The system shall generate packages/core-contract from the core-p13 OpenAPI file with pinned generator versions and fail verify-all if regeneration is not byte-identical. Reproducible core client. Must TC1.127"
+    },
+    {
+      "id": "FR1.026",
+      "phase": 1,
+      "category": "Core contract and compat",
+      "description": "The system shall run compat/ tests for each endpoint in compat/USED_ENDPOINTS.yaml against core-p13 and show core-p14 as SKIPPED-PENDING until its spec exists. Visible readiness for the P14 switch-over. Must TC1.128"
+    },
+    {
+      "id": "FR1.027",
+      "phase": 1,
+      "category": "Core contract and compat",
+      "description": "The system shall classify spec changes to used endpoints as breaking (removed path, method, response field read by the add-on, new required request field, narrowed type or enum, changed auth) and fail compat on any breaking change. Detect P14 impact early. Must TC1.129 PR1.13"
+    },
+    {
+      "id": "FR1.028",
+      "phase": 1,
+      "category": "Data model and tenancy",
+      "description": "The system shall manage the field and erpsim schemas with Alembic (field_0001..field_0003, erpsim_0001) where every migration has a downgrade and upgrade-downgrade-upgrade leaves an identical schema. Safe rollbacks. Must TC1.107"
+    },
+    {
+      "id": "FR1.029",
+      "phase": 1,
+      "category": "Data model and tenancy",
+      "description": "The system shall enable and force row-level security on every field table with a policy tenant_id = nullif(current_setting(&#x27;app.tenant_id&#x27;, true), &#x27;&#x27;)::uuid for both USING and WITH CHECK, and run as a role without BYPASSRLS. Tenant isolation in depth. Must TC1.119 PR1.04"
+    },
+    {
+      "id": "FR1.030",
+      "phase": 1,
+      "category": "Data model and tenancy",
+      "description": "The system shall set app.tenant_id and app.site_ids per transaction from the verified principal only and refuse to open a database session for unauthenticated requests. Fail closed. Must TC1.120 PR1.04"
+    },
+    {
+      "id": "FR1.031",
+      "phase": 1,
+      "category": "Data model and tenancy",
+      "description": "The system shall restrict site-scoped tables (site, location, task, task_line, capture, erp_document) to the principal&#x27;s site scope from role_grant.site_ids, where &#x27;*&#x27; means all sites. P11 data-scope pattern. Should TC1.121"
+    },
+    {
+      "id": "FR1.032",
+      "phase": 1,
+      "category": "Data model and tenancy",
+      "description": "The system shall enforce the location hierarchy site > zone > aisle > rack > level > position and tower > sector > level > position, same site as parent, depth at most 6, no cycles, and a unique path per site. Correct bins and functional locations for later phases. Must TC1.171 PR1.20"
+    },
+    {
+      "id": "FR1.033",
+      "phase": 1,
+      "category": "Data model and tenancy",
+      "description": "The system shall write every domain event to field.outbox in the same transaction as the state change using the BRIEF envelope, and the worker shall publish each at least once with consumers deduplicating by id. No lost or phantom events. Must TC1.166 PR1.19"
+    },
+    {
+      "id": "FR1.034",
+      "phase": 1,
+      "category": "Data model and tenancy",
+      "description": "The system shall cache ERP material master in field.material keyed by (tenant, erp_material_no, plant), refreshed by material_sync, and flag rows absent from 3 consecutive syncs with deleted_in_erp_at. Offline lookups without stale ghosts. Should TC1.167"
+    },
+    {
+      "id": "FR1.035",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall serve inbound delivery headers and items in an OData-like JSON envelope with $filter eq, $expand, $top and $skip, using SAMPLE deliveries numbered 180000000-189999999. Read side for receiving. Must TC1.131"
+    },
+    {
+      "id": "FR1.036",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall post goods receipt for an inbound delivery creating a material document (4900000000-4999999999, with year) with movement type 101 per item and increasing stock for plant, storage location and batch. Receiving post. Must TC1.132"
+    },
+    {
+      "id": "FR1.037",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall record picked quantities on outbound deliveries (800000000-899999999) and post goods issue with movement type 601, refusing GI when picked < delivery quantity unless partial is set. Picking post. Must TC1.133"
+    },
+    {
+      "id": "FR1.038",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall create physical inventory documents (100000000-199999999) that freeze book quantity, accept counts per item, and post differences as movement type 701 (gain) or 702 (loss). Stock count post. Must TC1.134"
+    },
+    {
+      "id": "FR1.039",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall create material documents with movement types 101, 261, 321, 601, 701, 702 and reverse them with 102, 262, 322, 602 and the opposite 701/702 (sim convention, to confirm), linking original and reversal. Corrections by reversal. Must TC1.135 PR1.07"
+    },
+    {
+      "id": "FR1.040",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall create equipment (10000000-19999999) with serial and material, install and dismantle it at functional locations with timestamps, keep full install history, and refuse install of already installed equipment. Tower and asset flows in Phase 4. Must TC1.136"
+    },
+    {
+      "id": "FR1.041",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall create maintenance orders (4100000000+), notifications (N10000000+) and measurement documents (330000000+) against measuring points with reading, unit and timestamp. Maintenance and meter flows. Must TC1.137"
+    },
+    {
+      "id": "FR1.042",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall allocate document numbers per object and client that are unique, strictly increasing in allocation order and within the BRIEF range, and return ZSIM/NR-EXHAUSTED at the upper bound. Realistic numbering under concurrency. Must PR1.05"
+    },
+    {
+      "id": "FR1.043",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall hold an exclusive enqueue lock per document during each logical unit of work and return ZSIM/LOCKED (HTTP 400, SAP-style text naming object and holder) to any other session until release or TTL expiry. Reproduce SAP enqueue conflicts. Must TC1.138 PR1.06"
+    },
+    {
+      "id": "FR1.044",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall never delete a posted document; reversal sets status reversed and reversed_by on the original, and a second reversal or reversal of a reversal returns ZSIM/ALREADY-REVERSED or ZSIM/REVERSAL-NOT-ALLOWED. ERP documents are never deleted. Must TC1.135 PR1.07"
+    },
+    {
+      "id": "FR1.045",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall dedupe create operations by idempotency key from header text FIELD:<key>: same key and request hash returns the original document with sap-message ZSIM/DUP, different hash returns ZSIM/IDEM-CONFLICT. Never two ERP documents for one key. Must TC1.139 PR1.01 PR1.08"
+    },
+    {
+      "id": "FR1.046",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall provide /_sim/faults to create, list and delete rules of kind latency, http_5xx, lock, timeout or partial, matched by service, operation and optional document key, with probability, count, ttl_s and seed. Repeatable failure testing. Must TC1.140 TC1.141 PR1.14"
+    },
+    {
+      "id": "FR1.047",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall bound faults (latency <= 30000 ms, probability 0-1, count <= 10000, ttl_s <= 3600), apply no rule after its count or ttl is spent, and expose /_sim/* only when ERPSIM_FAULTS_ENABLED=true and X-Sim-Admin-Token matches. Faults cannot leak into normal runs. Must TC1.142 PR1.14"
+    },
+    {
+      "id": "FR1.048",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall load a deterministic SAMPLE seed profile and rebuild the whole simulator database from it via POST /_sim/reset (X-Sim-Admin-Token required); reset is a test fixture rebuild, not a document deletion, and has no S/4 adapter equivalent. Repeatable tests and demos. Must TC1.143"
+    },
+    {
+      "id": "FR1.049",
+      "phase": 1,
+      "category": "Simulated ERP",
+      "description": "The erp-sim shall provide an admin UI at /_sim/ui listing documents with filters, document detail with items and reversal chain, stock, locks, number ranges and fault rules. Inspection without SAP GUI. Should TC1.144 TC1.145"
+    },
+    {
+      "id": "FR1.050",
+      "phase": 1,
+      "category": "SAP connector",
+      "description": "The system shall define ErpPort in connectors/sap with operations for the eight document families, find_by_idempotency_key and list_materials, and a port contract suite that every adapter must pass. One seam for SAP variants. Must TC1.148"
+    },
+    {
+      "id": "FR1.051",
+      "phase": 1,
+      "category": "SAP connector",
+      "description": "The SimAdapter shall send the idempotency key in header text, propagate traceparent, map erp-sim errors to ErpError kinds (LOCK, TRANSIENT, TIMEOUT, BUSINESS, AUTH, NOT_FOUND, CONFLICT) and reconcile timeouts via find_by_idempotency_key. Correct retry decisions. Must TC1.141 TC1.146 PR1.08"
+    },
+    {
+      "id": "FR1.052",
+      "phase": 1,
+      "category": "SAP connector",
+      "description": "The system shall include an S4ODataAdapter stub with configuration schema, CSRF handling and error parsing skeleton whose operations raise NotImplementedError naming the operation. Shape the real adapter early. Should TC1.147"
+    },
+    {
+      "id": "FR1.053",
+      "phase": 1,
+      "category": "SAP connector",
+      "description": "The mapping layer shall convert field domain objects to OData payloads and back losslessly, with Decimal quantities to 3 places, item numbers in steps of 10 and ERP unit codes. No rounding or item-number drift. Must PR1.16"
+    },
+    {
+      "id": "FR1.054",
+      "phase": 1,
+      "category": "SAP connector",
+      "description": "The posting worker shall process posting_job rows in seq order per queue_key with at most one in flight per queue, retry retryable errors with backoff 2/4/8/16/32 s (capped at 32 s) for at most 8 attempts, then mark dead and emit erp.failed. Avoid SAP lock errors and bound retries. Must TC1.149 TC1.150 PR1.15"
+    },
+    {
+      "id": "FR1.055",
+      "phase": 1,
+      "category": "Meta feasibility",
+      "description": "The project shall test Meta Model API access from India for Muse Spark 1.3 and Muse Wonder using non-contributor model ids and SAMPLE inputs, recording availability, latency, errors and terms. Model access is unconfirmed. Must TC1.151"
+    },
+    {
+      "id": "FR1.056",
+      "phase": 1,
+      "category": "Meta feasibility",
+      "description": "The project shall test the Wearables Device Access Toolkit on the owner&#x27;s glasses for still capture, video stream, microphone, speaker and, on Meta Ray-Ban Display, drawing text, list, image and button. Device capabilities are unconfirmed. Must TC1.153 TC1.155"
+    },
+    {
+      "id": "FR1.057",
+      "phase": 1,
+      "category": "Meta feasibility",
+      "description": "The project shall run the spike flows on the Mock Device Kit and document behaviour differences, including the lack of display simulation. Repeatable checks without hardware. Should TC1.156"
+    },
+    {
+      "id": "FR1.058",
+      "phase": 1,
+      "category": "Meta feasibility",
+      "description": "The project shall publish docs/META_FIELD.md with one row per capability marked VERIFIED, UNVERIFIED or BLOCKED, with device, SDK version, evidence and date, and record decision D1.04 on the Llama fallback. Evidence-based Phase 2 design. Must TC1.169"
+    },
+    {
+      "id": "FR1.059",
+      "phase": 1,
+      "category": "Latency and security baseline",
+      "description": "The latency harness shall time shutter, glasses-to-phone, detect, ranking, lens draw, upload and server ingest per capture and carry one trace id from device through field-api, worker and erp-sim. Measure the BRIEF budget. Must TC1.118 TC1.157"
+    },
+    {
+      "id": "FR1.060",
+      "phase": 1,
+      "category": "Latency and security baseline",
+      "description": "The project shall publish docs/LATENCY_BASELINE.md with p50, p95 and sample size per segment against BRIEF targets, including server probe ingest at 10, 50 and 100 rps. First measured numbers. Must TC1.157 TC1.158"
+    },
+    {
+      "id": "FR1.061",
+      "phase": 1,
+      "category": "Latency and security baseline",
+      "description": "The project shall publish a STRIDE threat model with a control and test id per threat, a data classification of every v1 column and a DPIA starter. Security and privacy by design. Must TC1.170"
+    },
+    {
+      "id": "FR1.062",
+      "phase": 1,
+      "category": "Latency and security baseline",
+      "description": "The system shall load secrets only from FIELD_SECRETS_SOURCE (vault path or KMS-encrypted file), never commit them and never return them in any API response. Secret hygiene. Must TC1.160"
+    },
+    {
+      "id": "FR1.063",
+      "phase": 1,
+      "category": "Latency and security baseline",
+      "description": "The system shall redact Authorization headers, tokens, crop references, email addresses and phone numbers from logs and span attributes. Logs never contain tokens, crops or personal data. Must TC1.159"
+    },
+    {
+      "id": "FR1.064",
+      "phase": 1,
+      "category": "Latency and security baseline",
+      "description": "The system shall enforce the dependency policy: exact pins, lockfiles, new packages at least 14 days old, licence allowlist and a CycloneDX SBOM per build. Supply-chain control. Must TC1.105 TC1.165"
+    },
+    {
+      "id": "FR1.065",
+      "phase": 1,
+      "category": "Console, tokens and flags",
+      "description": "The console shall sign users in only through the core session, hold the field token in an httpOnly SameSite=Strict cookie and offer sign-out. Single sign-on with core. Must TC1.161"
+    },
+    {
+      "id": "FR1.066",
+      "phase": 1,
+      "category": "Console, tokens and flags",
+      "description": "The console shell shall show defined empty, loading, error, no-permission and add-on-disabled states and meet WCAG 2.2 AA (no serious axe violations). Accessible, never blank. Must TC1.145 TC1.162 PR1.18"
+    },
+    {
+      "id": "FR1.067",
+      "phase": 1,
+      "category": "Console, tokens and flags",
+      "description": "The system shall build packages/ui-tokens deterministically into CSS variables, a TypeScript module and a Kotlin Compose theme, with every declared text/background pair at contrast >= 4.5:1. Shared look and accessibility. Should TC1.163 PR1.18"
+    },
+    {
+      "id": "FR1.068",
+      "phase": 1,
+      "category": "Console, tokens and flags",
+      "description": "The system shall gate the add-on per tenant with flag field.addon.enabled resolved in order core P13a (via CS-03) > FIELD_FLAG_OVERRIDES > FIELD_TENANT_ALLOWLIST > off, returning 403 FIELD-FLAG-403-DISABLED when off. Per-tenant enablement. Must TC1.162 TC1.164"
+    }
+  ]
+}

@@ -1,0 +1,413 @@
+{
+  "phase": 4,
+  "functional_requirements": [
+    {
+      "id": "FR4.001",
+      "phase": 4,
+      "category": "Site model",
+      "description": "The system shall represent tower sites with location kinds tower_site, tower, sector, level, position, shelter, rack and rack_slot, each with parent_id and erp_ref holding the SAP functional location. Mirrors SAP structure so postings and audits use the same keys. Must TC4.106 PR4.16"
+    },
+    {
+      "id": "FR4.002",
+      "phase": 4,
+      "category": "Site model",
+      "description": "The system shall store height_m above ground for every level and derive the level order from height, and shall attach every position to exactly one level and one sector. Climb routes and the lens checklist depend on height and sector. Must TC4.106"
+    },
+    {
+      "id": "FR4.003",
+      "phase": 4,
+      "category": "Site model",
+      "description": "The system shall model shelters with racks and rack slots under the tower_site so ground equipment (BBU, rectifier) is audited like tower equipment. Most baseband equipment sits in shelters. Must TC4.106"
+    },
+    {
+      "id": "FR4.004",
+      "phase": 4,
+      "category": "Import",
+      "description": "The system shall import functional locations from SAP (API_FUNCTIONALLOCATION, to confirm in Phase 1) into a staged import job and show a preview of new, changed, moved and removed locations before apply. Prevents unreviewed structure changes. Must TC4.101 PR4.16"
+    },
+    {
+      "id": "FR4.005",
+      "phase": 4,
+      "category": "Import",
+      "description": "The system shall import installed equipment from SAP (API_EQUIPMENT) with equipment number, serial number, material, manufacturer part number, functional location and installation date, and link each to its location. Builds the expected installed base for audits. Must TC4.102"
+    },
+    {
+      "id": "FR4.006",
+      "phase": 4,
+      "category": "Import",
+      "description": "The system shall support delta imports by SAP last-change timestamp and shall produce no changes when the same source data is imported twice. Imports are re-run nightly. Must TC4.103 PR4.16"
+    },
+    {
+      "id": "FR4.007",
+      "phase": 4,
+      "category": "Import",
+      "description": "The system shall reject import rows that would create orphan locations or cycles and report each rejected row with its reason, while applying valid rows. One bad row must not block a site. Must TC4.104 PR4.16"
+    },
+    {
+      "id": "FR4.008",
+      "phase": 4,
+      "category": "Import",
+      "description": "The system shall validate functional location codes against a tenant-configured mask (SAMPLE: IN01-TWR-nnnn[-Tnn[-Sx[-Lnn[-Pnn]]]]) and flag non-conforming codes in the preview. Catches SAP data quality issues early. Should TC4.105"
+    },
+    {
+      "id": "FR4.009",
+      "phase": 4,
+      "category": "Check-in",
+      "description": "The system shall accept a site check-in only when the phone location is inside the site geofence (default radius 150 m) after subtracting reported accuracy and the accuracy is <= 50 m. Confirms physical presence without false accepts. Must TC4.107 PR4.17"
+    },
+    {
+      "id": "FR4.010",
+      "phase": 4,
+      "category": "Check-in",
+      "description": "The system shall require a site access permit reference (text, 4\u201340 characters) and a validity window that covers the check-in time, and store it on the site visit. Site access is permit-controlled. Must TC4.108"
+    },
+    {
+      "id": "FR4.011",
+      "phase": 4,
+      "category": "Check-in",
+      "description": "The system shall allow a field.supervisor to override a failed geofence check with a mandatory reason, recorded as an audit event in core P13e. GPS fails under some structures. Should TC4.109"
+    },
+    {
+      "id": "FR4.012",
+      "phase": 4,
+      "category": "Check-in",
+      "description": "The system shall close the site visit on check-out, stop the lone-worker timer and warn with MSG4.18 when outbox items for the site have not synced. Avoids silent data loss when leaving site. Must TC4.110"
+    },
+    {
+      "id": "FR4.013",
+      "phase": 4,
+      "category": "Check-in",
+      "description": "The system shall set the barometric altitude baseline at check-in and re-calibrate it at each recognised rest platform with known height. Barometer drift would break level detection. Must TC4.111"
+    },
+    {
+      "id": "FR4.014",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall generate an audit task with one expected task_line per installed equipment at the site, grouped by tower, sector and level, from the current installed base. Defines what the audit must find. Must TC4.112"
+    },
+    {
+      "id": "FR4.015",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall show on the lens, when stationary, the current sector and level, captured and expected counts and up to 4 missing equipment classes, updated within 400 ms of each capture. Lets the technician see what is still missing. Must TC4.113"
+    },
+    {
+      "id": "FR4.016",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall read nameplate serials with on-device OCR, normalise confusable characters per the equipment class serial pattern, and propose the best-matching serial. Gloved hands cannot type. Must TC4.114"
+    },
+    {
+      "id": "FR4.017",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall create a capture with code_type serial_text, OCR confidence, readability, crop_ref and the position at which it was taken. Every finding needs evidence and location. Must TC4.114"
+    },
+    {
+      "id": "FR4.018",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall queue Muse Spark nameplate verification when OCR confidence < 0.92, the serial is not expected at the site, a confusable character was normalised or the class pattern fails, plus a 10% random sample, through core prompt registry entry field.nameplate_verify.v1 and the AI budget, using non-contributor variants only. Applies the BRIEF routing rule within budget. Must TC4.115 TC4.117 TC4.167 PR4.18"
+    },
+    {
+      "id": "FR4.019",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall set verify_status to verified, mismatch or failed from the verification result and shall never change ERP state from an AI result alone. Nothing AI posts to the ERP on its own. Must TC4.116 PR4.18"
+    },
+    {
+      "id": "FR4.020",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall store photo evidence only as crops with on-device face blur and only after consent is recorded per the P10 rule. Privacy baseline. Must TC4.118"
+    },
+    {
+      "id": "FR4.021",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall allow manual serial entry only with a photo of the nameplate attached and shall mark such captures verify_status=queued. Manual entry is the highest error source. Must TC4.119"
+    },
+    {
+      "id": "FR4.022",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall record unknown equipment as a tower_only finding with class, serial, position and photo evidence. Unrecorded equipment must reach the ERP owner. Must TC4.120"
+    },
+    {
+      "id": "FR4.023",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall let the technician mark an expected item as missing with reason not_found, removed_by_other or inaccessible, creating an erp_only finding. Explains gaps. Must TC4.121"
+    },
+    {
+      "id": "FR4.024",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall compute audit completeness as count(captured intersect expected) / count(expected) per sector, level, tower and site, and define it as 1.0 with flag empty_scope when expected is empty. One clear measure that cannot exceed 1. Must PR4.03"
+    },
+    {
+      "id": "FR4.025",
+      "phase": 4,
+      "category": "Reconcile",
+      "description": "The system shall reconcile captures against expected items and classify each difference as matched, serial_mismatch, tower_only, erp_only or misplaced, reporting both ERP-only and tower-only differences. Symmetric detection avoids blind spots. Must PR4.11"
+    },
+    {
+      "id": "FR4.026",
+      "phase": 4,
+      "category": "Reconcile",
+      "description": "The system shall open one exception_case per unresolved finding, deduplicated by site, serial and class, and emit exception.opened. Feeds the mismatch queue and Phase 6. Must TC4.116 TC4.124"
+    },
+    {
+      "id": "FR4.027",
+      "phase": 4,
+      "category": "Reconcile",
+      "description": "The system shall offer mismatch decisions re_capture, accept_erp, update_erp and record_move, where update_erp and record_move create a core approval obeying bands and SoD (decider is not the capturing technician). ERP corrections need control. Must TC4.123"
+    },
+    {
+      "id": "FR4.028",
+      "phase": 4,
+      "category": "Audit",
+      "description": "The system shall allow audit sign-off only when every expected line is captured, explained by a finding, or waived by a supervisor with reason. Prevents incomplete audits being closed. Must TC4.122"
+    },
+    {
+      "id": "FR4.029",
+      "phase": 4,
+      "category": "Equipment",
+      "description": "The system shall post an install event as an equipment install at the position&#x27;s functional location via the SAP adapter (API_EQUIPMENT, to confirm in Phase 1) and record a serial_event of type install. Keeps SAP installed base current. Must TC4.125 PR4.01 PR4.14"
+    },
+    {
+      "id": "FR4.030",
+      "phase": 4,
+      "category": "Equipment",
+      "description": "The system shall post a dismantle event as an equipment dismantle from the functional location and record a serial_event of type dismantle with target location (store or scrap). Dismantled items must be tracked to store. Must TC4.126 PR4.01"
+    },
+    {
+      "id": "FR4.031",
+      "phase": 4,
+      "category": "Equipment",
+      "description": "The system shall execute a replace event as a dismantle of the old serial followed by an install of the new serial at the same position, in one posting queue with consecutive sequence numbers. Positions never hold two items. Must TC4.127 PR4.15"
+    },
+    {
+      "id": "FR4.032",
+      "phase": 4,
+      "category": "Equipment",
+      "description": "The system shall build a capture checklist from the published asset model BOM and refuse to stage an install until every serialised BOM item has a captured serial. Serialised parts must be recorded. Must TC4.128"
+    },
+    {
+      "id": "FR4.033",
+      "phase": 4,
+      "category": "Equipment",
+      "description": "The system shall reject an install of a serial that is currently installed at another location with 409 FIELD-EQP-409-ALREADY-INSTALLED, unless it is part of a move (dismantle then install). A serial is in one place at a time. Must TC4.129 PR4.02"
+    },
+    {
+      "id": "FR4.034",
+      "phase": 4,
+      "category": "Equipment",
+      "description": "The system shall keep serial_event history append-only with a per-serial sequence and never update or delete events; corrections are new events. Auditability. Must PR4.01"
+    },
+    {
+      "id": "FR4.035",
+      "phase": 4,
+      "category": "Equipment",
+      "description": "The system shall remove a staged event on undo before posting, and on undo after posting create a compensating ERP operation linked by ref_doc_no and set the original erp_document status to reversed. ERP documents are never deleted. Must TC4.130 PR4.13"
+    },
+    {
+      "id": "FR4.036",
+      "phase": 4,
+      "category": "Equipment",
+      "description": "The system shall post equipment events through one ordered posting queue per tower functional location with backoff 2/4/8/16/32 s, max 8 attempts, then erp.failed and an exception case. Avoids SAP enqueue lock errors and keeps order. Must TC4.125 TC4.131 PR4.12"
+    },
+    {
+      "id": "FR4.037",
+      "phase": 4,
+      "category": "Equipment",
+      "description": "The system shall record the source store location (plant and storage location) on install events where the equipment was issued from store, so trails start at the store. Trails show store to site. Should TC4.132"
+    },
+    {
+      "id": "FR4.038",
+      "phase": 4,
+      "category": "Safety",
+      "description": "The system shall classify the technician state as ground, climbing, stationary or unknown from IMU vertical speed and barometric altitude, treating unknown as climbing. Fail-safe classification. Must TC4.133 TC4.140"
+    },
+    {
+      "id": "FR4.039",
+      "phase": 4,
+      "category": "Safety",
+      "description": "The system shall emit no lens, audio or haptic prompt while the state is climbing or unknown, and shall hold due prompts until stationary for 3 s, then deliver at most the 3 newest. No distraction while climbing. Must TC4.134 PR4.04"
+    },
+    {
+      "id": "FR4.040",
+      "phase": 4,
+      "category": "Safety",
+      "description": "The system shall accept captures and staging on structure only when the state is stationary and the harness is confirmed. Hands-free capture only when safe. Must TC4.135 PR4.05"
+    },
+    {
+      "id": "FR4.041",
+      "phase": 4,
+      "category": "Safety",
+      "description": "The system shall confirm the harness only when the spoken phrase &#x27;harness clipped&#x27; (confidence >= 0.80) and a tap on the glasses touchpad or phone button occur within 10 s, and shall clear the confirmation on any climbing state or altitude change > 1.5 m. Two independent acts reduce bypass. Must TC4.136 PR4.05"
+    },
+    {
+      "id": "FR4.042",
+      "phase": 4,
+      "category": "Safety",
+      "description": "The system shall detect arrival at a rest platform (altitude within \u00b11.5 m of platform height and stationary), log a checkpoint and show &#x27;Rest platform L2. Clip in before you continue.&#x27; Supports site climbing procedure. Must TC4.137"
+    },
+    {
+      "id": "FR4.043",
+      "phase": 4,
+      "category": "Safety",
+      "description": "The system shall run a lone-worker timer (default 20 min, tenant range 10\u201360 min) restarted by voice &#x27;check in&#x27; or tap, warn 2 min before expiry when stationary, and defer the warning while climbing. Lone-worker procedure support. Must TC4.138 PR4.19"
+    },
+    {
+      "id": "FR4.044",
+      "phase": 4,
+      "category": "Safety",
+      "description": "The system shall escalate when the timer expires and the 5 min grace passes without check-in, sending a core web push and console alert to supervisors with site, tower, last altitude and last check-in time. Timely help. Must TC4.139 PR4.19"
+    },
+    {
+      "id": "FR4.045",
+      "phase": 4,
+      "category": "Safety",
+      "description": "The system shall activate climb-safe mode automatically when altitude exceeds baseline + 2 m or the technician is on a climb edge, and shall not allow the technician to disable it on structure. Safety cannot depend on remembering a toggle. Must TC4.141 TC4.140"
+    },
+    {
+      "id": "FR4.046",
+      "phase": 4,
+      "category": "Graph",
+      "description": "The system shall store 3D site graph nodes with x, y, z (metres, site-local frame) and kinds way, place, asset with subkinds ground, ladder_foot, rest_platform, sector_platform, antenna, shelter and rack. Vertical routing needs height. Must TC4.142"
+    },
+    {
+      "id": "FR4.047",
+      "phase": 4,
+      "category": "Graph",
+      "description": "The system shall compute routes with Dijkstra where climb edge cost = length x 3 and walk edge cost = length, and shall prefer routes through rest platforms only by cost. Consistent with BRIEF positioning rule. Must PR4.07"
+    },
+    {
+      "id": "FR4.048",
+      "phase": 4,
+      "category": "Graph",
+      "description": "The system shall produce newcomer guidance from the route, e.g. &#x27;Climb 40 m to Level 3 platform. Clip in at every rest platform.&#x27;, spoken before climbing starts. Newcomers need site-specific guidance. Must TC4.143 TC4.165"
+    },
+    {
+      "id": "FR4.049",
+      "phase": 4,
+      "category": "Trails",
+      "description": "The system shall build an equipment trail from serial_event history (store, site, tower, sector, level, position) and replay it in event timestamp order, ties broken by sequence. Explains where equipment has been. Must TC4.132 TC4.144 PR4.06"
+    },
+    {
+      "id": "FR4.050",
+      "phase": 4,
+      "category": "Console",
+      "description": "The system shall provide a 3D site explorer on the console with orbit, zoom, sector and level selection, and an equipment trail replay with play, pause and step. Planning and briefing. Should TC4.144"
+    },
+    {
+      "id": "FR4.051",
+      "phase": 4,
+      "category": "Models",
+      "description": "The system shall accept glTF 2.0 (.glb) uploads up to 25 MB and 300k triangles per equipment class version, validate them, and store them with a SHA-256 content hash. Keeps phone rendering feasible. Must TC4.145"
+    },
+    {
+      "id": "FR4.052",
+      "phase": 4,
+      "category": "Models",
+      "description": "The system shall assign balloon numbers to BOM items that are unique within a model version and stable across versions for the same part number and node path. Manuals and training stay valid. Must PR4.10"
+    },
+    {
+      "id": "FR4.053",
+      "phase": 4,
+      "category": "Models",
+      "description": "The system shall store per BOM item the part number, description, quantity, serialised flag, parent item (for sub-parts) and glTF node names. Drives checklists and views. Must TC4.145 PR4.08"
+    },
+    {
+      "id": "FR4.054",
+      "phase": 4,
+      "category": "Models",
+      "description": "The system shall version asset models with semantic versions, make published versions immutable, and pin each equipment record to the version current at install. Reproducible views and checklists. Must TC4.146"
+    },
+    {
+      "id": "FR4.055",
+      "phase": 4,
+      "category": "Models",
+      "description": "The system shall render an exploded view on the phone with a slider t in [0,1], where each part offset = t x explode vector, and parts at t=0 are at assembled positions. Part identification in the field. Should TC4.147 PR4.09"
+    },
+    {
+      "id": "FR4.056",
+      "phase": 4,
+      "category": "Models",
+      "description": "The system shall render the same exploded view on the console with orbit, explode slider, balloon labels, isolate part and highlight serialised parts. Planning and admin review. Should TC4.148 PR4.09"
+    },
+    {
+      "id": "FR4.057",
+      "phase": 4,
+      "category": "Models",
+      "description": "The system shall check on upload that each top-level BOM item quantity equals the number of mapped node instances, excluding sub-part nodes, and refuse publish otherwise. BOM and model must agree. Must TC4.149 PR4.08"
+    },
+    {
+      "id": "FR4.058",
+      "phase": 4,
+      "category": "Offline",
+      "description": "The system shall provide a site pack (locations, expected installed base, graph, asset models, permit reference template) of at most 60 MB with an ERP snapshot version. Remote sites have weak signal. Must TC4.150"
+    },
+    {
+      "id": "FR4.059",
+      "phase": 4,
+      "category": "Offline",
+      "description": "The system shall run audits and equipment events fully offline and replay the outbox per tower in original sequence when signal returns. Order matters for SAP equipment. Must TC4.151 PR4.12"
+    },
+    {
+      "id": "FR4.060",
+      "phase": 4,
+      "category": "Offline",
+      "description": "The system shall check each replayed event against current ERP state and open an exception case instead of posting when the ERP state changed since the pack snapshot in a conflicting way. No forced overwrites. Must TC4.152"
+    },
+    {
+      "id": "FR4.061",
+      "phase": 4,
+      "category": "Reports",
+      "description": "The system shall export a site audit report as PDF and CSV listing every expected item and finding with status, serials, decision and an authenticated evidence link. Shareable audit evidence. Should TC4.153 PR4.20"
+    },
+    {
+      "id": "FR4.062",
+      "phase": 4,
+      "category": "Console",
+      "description": "The system shall provide a site and tower explorer with the location tree, installed equipment per position and last audit date. Supervisors navigate sites. Must TC4.154"
+    },
+    {
+      "id": "FR4.063",
+      "phase": 4,
+      "category": "Console",
+      "description": "The system shall provide an audit progress board showing completeness per site, tower and sector, refreshed within 10 s of sync. Live oversight. Must TC4.155"
+    },
+    {
+      "id": "FR4.064",
+      "phase": 4,
+      "category": "Console",
+      "description": "The system shall provide a mismatch queue filterable by site, class, age and verify_status, showing crop, OCR text, Spark result and ERP record per finding. Fast, evidence-based decisions. Must TC4.156"
+    },
+    {
+      "id": "FR4.065",
+      "phase": 4,
+      "category": "Installed base",
+      "description": "The system shall maintain an installed-base read model of serial to site, tower, sector, level, position, equipment number and since timestamp, readable via GET /v1/installed-base. Prepares Phase 5 exposure by serial. Must TC4.157"
+    },
+    {
+      "id": "FR4.066",
+      "phase": 4,
+      "category": "Installed base",
+      "description": "The system shall emit installed_base.changed on each posted install, dismantle or reversal and publish it to core via P13f signed webhooks. Phase 5 consumers need change events. Must TC4.158"
+    },
+    {
+      "id": "FR4.067",
+      "phase": 4,
+      "category": "Audit trail",
+      "description": "The system shall write audit events to core P13e for check-in, geofence override, harness confirmations, checkpoints, escalations, mismatch decisions and model publishes. Safety and compliance review. Must TC4.109 TC4.123"
+    },
+    {
+      "id": "FR4.068",
+      "phase": 4,
+      "category": "Accessibility",
+      "description": "The system shall keep lens text at >= 24 sp equivalent with high contrast, offer voice alternatives for every lens action, and meet WCAG 2.1 AA on console screens. Outdoor glare and gloves. Must TC4.148 TC4.164"
+    }
+  ]
+}

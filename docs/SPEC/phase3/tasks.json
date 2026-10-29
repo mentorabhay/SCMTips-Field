@@ -1,0 +1,1112 @@
+[
+  {
+    "id": "T3.001",
+    "phase": 3,
+    "workstream": "WS3.1",
+    "role": "ERP",
+    "title": "Add erp-sim inbound delivery service",
+    "description": "Implement A_InbDeliveryHeader/A_InbDeliveryItem reads, PATCH of ActualDeliveryQuantity with ETag, and function imports PostGoodsReceipt and putaway functions in services/erp-sim/src/erp_sim/services/inbound.py. Material documents numbered 4900000000+, mvt 101 per item.",
+    "depends_on": "",
+    "estimate_days": 1.5,
+    "deliverable": "services/erp-sim/src/erp_sim/services/inbound.py",
+    "done_when": "Sim posts GR for SAMPLE delivery 180000123 and returns a material document in range; delivery OverallGoodsMovementStatus becomes C. FR3.010 FR3.043",
+    "frs": [
+      "FR3.010",
+      "FR3.043"
+    ]
+  },
+  {
+    "id": "T3.002",
+    "phase": 3,
+    "workstream": "WS3.1",
+    "role": "Backend",
+    "title": "Add Alembic migrations for Phase 3 tables",
+    "description": "Create field_0030\u2013field_0039: task_line warehouse columns, handling_unit extensions, count_record, pi_document, posting_job ordering columns, site graph tables, anchor, trail_point, approval_request. All with tenant_id and forced RLS.",
+    "depends_on": "",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/alembic/versions/field_0030*.py \u2026 field_0039*.py",
+    "done_when": "Upgrade and downgrade run clean on an empty and a seeded database; RLS policy test passes for each table. FR3.065",
+    "frs": [
+      "FR3.065"
+    ]
+  },
+  {
+    "id": "T3.003",
+    "phase": 3,
+    "workstream": "WS3.1",
+    "role": "ERP",
+    "title": "Add erp-sim outbound delivery service",
+    "description": "Implement A_OutbDeliveryHeader/Item reads, PickOneItem, ConfirmPickingOneItem, PostGoodsIssue (601) and ReverseGoodsIssue (602) in services/erp-sim/src/erp_sim/services/outbound.py with enqueue lock per delivery.",
+    "depends_on": "depends on T3.001",
+    "estimate_days": 1.5,
+    "deliverable": "services/erp-sim/src/erp_sim/services/outbound.py",
+    "done_when": "SAMPLE delivery 800000045 can be picked, issued and reversed; lock conflict returns 423 while another session holds it. FR3.023 FR3.024 FR3.043",
+    "frs": [
+      "FR3.023",
+      "FR3.024",
+      "FR3.043"
+    ]
+  },
+  {
+    "id": "T3.004",
+    "phase": 3,
+    "workstream": "WS3.1",
+    "role": "ERP",
+    "title": "Add erp-sim physical inventory service",
+    "description": "Implement A_PhysInventoryDocHeader/Item create and read, count entry by PATCH, InitiateRecount and PostDifferences (701 gain, 702 loss) with freeze snapshot and posting block flags in services/erp-sim/src/erp_sim/services/physinv.py. Numbering 100000000+.",
+    "depends_on": "depends on T3.001",
+    "estimate_days": 1.5,
+    "deliverable": "services/erp-sim/src/erp_sim/services/physinv.py",
+    "done_when": "PI doc with freeze snapshots book qty at creation; PostDifferences posts against the snapshot and returns a material document. FR3.035 FR3.037 FR3.043",
+    "frs": [
+      "FR3.035",
+      "FR3.037",
+      "FR3.043"
+    ]
+  },
+  {
+    "id": "T3.005",
+    "phase": 3,
+    "workstream": "WS3.1",
+    "role": "ERP",
+    "title": "Add erp-sim material document service",
+    "description": "Implement A_MaterialDocumentHeader/Item read, Cancel and CancelItem (102/602 reversal semantics), and creation of 321 transfers in services/erp-sim/src/erp_sim/services/matdoc.py. Reversal of an already reversed item returns 409.",
+    "depends_on": "depends on T3.001",
+    "estimate_days": 1.0,
+    "deliverable": "services/erp-sim/src/erp_sim/services/matdoc.py",
+    "done_when": "Cancel of a 101 document creates a 102 document referencing it; stock per material/plant/stock type nets to zero. FR3.011 FR3.015 PR3.01",
+    "frs": [
+      "FR3.011",
+      "FR3.015"
+    ]
+  },
+  {
+    "id": "T3.006",
+    "phase": 3,
+    "workstream": "WS3.1",
+    "role": "ERP",
+    "title": "Write declarative SAP mapping files",
+    "description": "Author connectors/sap/mappings/{inbound_delivery,outbound_delivery,physinv,material_document}.yaml mapping field entities to OData entity sets, properties, function imports, units and conversions; each row carries verification status VERIFIED or UNVERIFIED.",
+    "depends_on": "",
+    "estimate_days": 1.5,
+    "deliverable": "connectors/sap/mappings/*.yaml",
+    "done_when": "JSON Schema validation passes; mapping docs table generated into docs/SPEC/F2_SAP_MAPPING.md. FR3.042",
+    "frs": [
+      "FR3.042"
+    ]
+  },
+  {
+    "id": "T3.007",
+    "phase": 3,
+    "workstream": "WS3.1",
+    "role": "ERP",
+    "title": "Implement adapter warehouse calls",
+    "description": "Implement connectors/sap/src/sap_adapter/warehouse.py: CSRF token fetch, sap-client header, If-Match on PATCH, function import calls, SAP message parsing into retryable/non-retryable classes, and pre-post probes via document flow.",
+    "depends_on": "depends on T3.006",
+    "estimate_days": 2.0,
+    "deliverable": "connectors/sap/src/sap_adapter/warehouse.py",
+    "done_when": "Golden-payload tests produce byte-identical requests for SAMPLE commands; error classifier unit tests pass. FR3.044 FR3.041",
+    "frs": [
+      "FR3.041",
+      "FR3.044"
+    ]
+  },
+  {
+    "id": "T3.008",
+    "phase": 3,
+    "workstream": "WS3.1",
+    "role": "QA",
+    "title": "Build the parity contract suite",
+    "description": "Write compat/sap_parity/ tests that run the same command scripts against erp-sim and against recorded SAP fixtures (VCR cassettes) and compare normalised observable state.",
+    "depends_on": "depends on T3.001, T3.003, T3.004, T3.005, T3.007",
+    "estimate_days": 1.5,
+    "deliverable": "compat/sap_parity/",
+    "done_when": "Suite green on sim; fixture runs skip with UNVERIFIED reason when cassettes absent. FR3.043 PR3.15",
+    "frs": [
+      "FR3.043"
+    ]
+  },
+  {
+    "id": "T3.009",
+    "phase": 3,
+    "workstream": "WS3.1",
+    "role": "ERP",
+    "title": "Add sim fault injection profiles for warehouse",
+    "description": "Extend erp-sim fault profiles with warehouse_lock (423 30%), timeout_after_commit (5%), validation_400 and latency_p95_2s; selectable by header X-Sim-Fault-Profile in non-production only.",
+    "depends_on": "depends on T3.001",
+    "estimate_days": 0.5,
+    "deliverable": "services/erp-sim/src/erp_sim/faults/warehouse.py",
+    "done_when": "Chaos tests can select each profile; production build rejects the header. FR3.043 FR3.040",
+    "frs": [
+      "FR3.040",
+      "FR3.043"
+    ]
+  },
+  {
+    "id": "T3.010",
+    "phase": 3,
+    "workstream": "WS3.2",
+    "role": "Backend",
+    "title": "Implement ordered posting queue claim",
+    "description": "In services/field-worker/src/field_worker/posting/queue.py claim the lowest-seq pending job per queue_key using FOR UPDATE SKIP LOCKED plus pg_try_advisory_xact_lock(hashtext(tenant_id||queue_key)); later jobs wait until predecessors are posted or cancelled.",
+    "depends_on": "depends on T3.002",
+    "estimate_days": 1.5,
+    "deliverable": "services/field-worker/src/field_worker/posting/queue.py",
+    "done_when": "PR3.07 passes; two workers never process the same queue_key concurrently (TC3.131). FR3.038 FR3.039 PR3.07",
+    "frs": [
+      "FR3.038",
+      "FR3.039"
+    ]
+  },
+  {
+    "id": "T3.011",
+    "phase": 3,
+    "workstream": "WS3.2",
+    "role": "Backend",
+    "title": "Implement retry classification and backoff",
+    "description": "Apply backoff 2/4/8/16/32 s (cap 32) with \u00b110% jitter, max 8 attempts; retry on network, 5xx, 423 and SAP enqueue lock messages; fail fast on 4xx validation; on final failure emit erp.failed and open an exception case.",
+    "depends_on": "depends on T3.010",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-worker/src/field_worker/posting/retry.py",
+    "done_when": "PR3.13 passes; TC3.132 shows attempts at expected offsets. FR3.040 PR3.13",
+    "frs": [
+      "FR3.040"
+    ]
+  },
+  {
+    "id": "T3.012",
+    "phase": 3,
+    "workstream": "WS3.2",
+    "role": "Backend",
+    "title": "Implement idempotency and pre-post probe",
+    "description": "Store one idempotency key per erp_document (unique), send it as compact 23-char header text F+base64url(uuid), and before any retry probe SAP for an existing document (document flow or header text) and adopt it if found.",
+    "depends_on": "depends on T3.007, T3.010",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-worker/src/field_worker/posting/idempotency.py",
+    "done_when": "PR3.06 passes; TC3.133 shows no duplicate after timeout-after-commit. FR3.041 PR3.06",
+    "frs": [
+      "FR3.041"
+    ]
+  },
+  {
+    "id": "T3.013",
+    "phase": 3,
+    "workstream": "WS3.2",
+    "role": "Backend",
+    "title": "Expose posting queue APIs",
+    "description": "Add GET /v1/posting-queues, GET /v1/posting-queues/{queue_key}/jobs, POST /v1/posting-jobs/{id}/retry and POST /v1/posting-jobs/{id}/cancel with field.queue.manage permission and audit.",
+    "depends_on": "depends on T3.010",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/posting/routes.py",
+    "done_when": "Schemathesis passes; cancel re-evaluates later jobs per BR3.14. FR3.045",
+    "frs": [
+      "FR3.045"
+    ]
+  },
+  {
+    "id": "T3.014",
+    "phase": 3,
+    "workstream": "WS3.2",
+    "role": "Backend",
+    "title": "Emit posting events through the outbox",
+    "description": "Write posting.requested, erp.posted, erp.failed and erp.reversed with warehouse payloads (queue_key, seq, doc_type, movement types, items) to the outbox in the same transaction as state changes.",
+    "depends_on": "depends on T3.010",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-worker/src/field_worker/posting/events.py",
+    "done_when": "Event payloads validate against EV3.01\u2013EV3.04 schemas; no event without committed state. FR3.038 FR3.064",
+    "frs": [
+      "FR3.038",
+      "FR3.064"
+    ]
+  },
+  {
+    "id": "T3.015",
+    "phase": 3,
+    "workstream": "WS3.2",
+    "role": "DevOps",
+    "title": "Add posting metrics and alerts",
+    "description": "Export field_posting_latency_seconds, field_posting_attempts_total, field_queue_blocked_seconds and alert when any queue is blocked > 300 s or success within 5 min < 99.5% over 1 h.",
+    "depends_on": "depends on T3.010",
+    "estimate_days": 0.5,
+    "deliverable": "deploy/observability/posting.rules.yaml",
+    "done_when": "Alerts fire in the chaos run and clear after recovery. FR3.040",
+    "frs": [
+      "FR3.040"
+    ]
+  },
+  {
+    "id": "T3.016",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Import inbound deliveries into receive tasks",
+    "description": "Poll A_InbDeliveryHeader/Item every FIELD_IBD_POLL_S for the site&#x27;s plants and storage locations, upsert by DeliveryDocument and LastChangeDateTime, and create one receive task per delivery with one task_line per item.",
+    "depends_on": "depends on T3.007, T3.002",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-worker/src/field_worker/warehouse/ibd_import.py",
+    "done_when": "TC3.101 and TC3.103 pass; re-import creates no duplicates. FR3.001 FR3.003",
+    "frs": [
+      "FR3.001",
+      "FR3.003"
+    ]
+  },
+  {
+    "id": "T3.017",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Add CSV inbound delivery import with guided-load conventions",
+    "description": "Add console upload of an SAP delivery export CSV with column mapping, material matching ladder (auto-accept >= 0.95 with no rival within 0.05, else review) and preview before creating tasks.",
+    "depends_on": "depends on T3.016",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/receiving/csv_import.py; apps/field-console/app/warehouse/imports/",
+    "done_when": "TC3.102 passes with SAMPLE CSV of 40 lines; ambiguous matches land in review. FR3.002",
+    "frs": [
+      "FR3.002"
+    ]
+  },
+  {
+    "id": "T3.018",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Validate SSCC captures for receiving",
+    "description": "On capture.created with code_type sscc, validate 18 digits and GS1 mod-10 check digit, reject duplicates within the delivery (unique index tenant_id, delivery_ref, sscc), and attach the HU to the matching task_line.",
+    "depends_on": "depends on T3.002",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/receiving/sscc.py",
+    "done_when": "PR3.12 passes; duplicate returns 409 FIELD-RCV-409-SSCC-DUPLICATE with MSG3.03. FR3.004 PR3.12",
+    "frs": [
+      "FR3.004"
+    ]
+  },
+  {
+    "id": "T3.019",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Derive HU quantity and counted quantity",
+    "description": "Set HU qty from GS1 AI 37 or AI 30 when present, else material units per carton, else request a voice count; compute line counted qty as sum of non-discarded captures unless a voice override exists.",
+    "depends_on": "depends on T3.018",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/counting.py",
+    "done_when": "PR3.02 passes; TC3.105 passes. FR3.005 FR3.006 PR3.02",
+    "frs": [
+      "FR3.005",
+      "FR3.006"
+    ]
+  },
+  {
+    "id": "T3.020",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Apply over and under delivery rules",
+    "description": "Evaluate counted vs expected with the PO tolerances cached on task_line; block confirm above tolerance and open an exception case; require reason code below expected and record late-receipt candidates.",
+    "depends_on": "depends on T3.019",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/receiving/tolerance.py",
+    "done_when": "PR3.14 passes; TC3.106, TC3.107 pass. FR3.007 FR3.008 PR3.14",
+    "frs": [
+      "FR3.007",
+      "FR3.008"
+    ]
+  },
+  {
+    "id": "T3.021",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Handle damaged cartons",
+    "description": "Implement &#x27;mark damaged&#x27; on the last capture: require crop evidence, exclude from unrestricted GR, then reject or post to blocked stock per site setting (D3.01).",
+    "depends_on": "depends on T3.019",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/warehouse/receiving/damage.py",
+    "done_when": "TC3.108 passes for both settings. FR3.009",
+    "frs": [
+      "FR3.009"
+    ]
+  },
+  {
+    "id": "T3.022",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Stage and post goods receipt",
+    "description": "On confirm create erp_document (doc_type GR, mvt 101), build PATCH ActualDeliveryQuantity per item plus PostGoodsReceipt jobs in queue IBD:<delivery> in confirm order.",
+    "depends_on": "depends on T3.010, T3.020",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/receiving/post.py",
+    "done_when": "TC3.109 passes; material document number in 4900000000\u20134999999999 recorded. FR3.010",
+    "frs": [
+      "FR3.010"
+    ]
+  },
+  {
+    "id": "T3.023",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Implement undo after post as reversal",
+    "description": "Map &#x27;undo&#x27; after posting to a reversal erp_document (102) using CancelItem for a line or Cancel for the whole document; original stays posted with status reversed after success.",
+    "depends_on": "depends on T3.022, T3.005",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/receiving/reverse.py",
+    "done_when": "PR3.01 passes; TC3.110 passes. FR3.011 PR3.01",
+    "frs": [
+      "FR3.011"
+    ]
+  },
+  {
+    "id": "T3.024",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Route quality-hold receipts",
+    "description": "When material.qm_inspection is true or a site hold rule matches supplier+material, post GR to quality inspection stock and direct putaway to bins in zones with hold=true; add release with 321 by field.quality.release.",
+    "depends_on": "depends on T3.022",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/receiving/quality.py",
+    "done_when": "TC3.111 passes. FR3.012 FR3.015",
+    "frs": [
+      "FR3.012",
+      "FR3.015"
+    ]
+  },
+  {
+    "id": "T3.025",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Generate putaway tasks with bin proposal",
+    "description": "After GR posted create one putaway line per HU; propose fixed bin, else nearest empty allowed bin by graph distance; reserve the bin for 30 min.",
+    "depends_on": "depends on T3.022, T3.046",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/putaway.py",
+    "done_when": "Proposal deterministic for SAMPLE layout; reserved bins not proposed twice. FR3.013",
+    "frs": [
+      "FR3.013"
+    ]
+  },
+  {
+    "id": "T3.026",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Confirm putaway by bin scan",
+    "description": "Accept bin label QR or barcode; matching bin confirms; other bin requires &#x27;confirm&#x27; plus reason and checks capacity and hold zone rules; call putaway functions only for sites with putaway_in_erp=true (D3.04).",
+    "depends_on": "depends on T3.025",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/warehouse/putaway.py",
+    "done_when": "TC3.112 passes. FR3.013 FR3.014",
+    "frs": [
+      "FR3.013",
+      "FR3.014"
+    ]
+  },
+  {
+    "id": "T3.027",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Record dock-to-stock timestamps",
+    "description": "Store dock_arrived_at (task start or first capture), gr_posted_at and putaway_confirmed_at per HU; expose to the receiving dashboard.",
+    "depends_on": "depends on T3.026",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/warehouse/metrics.py",
+    "done_when": "TC3.113 passes on fixture with known durations. FR3.016",
+    "frs": [
+      "FR3.016"
+    ]
+  },
+  {
+    "id": "T3.028",
+    "phase": 3,
+    "workstream": "WS3.3",
+    "role": "Backend",
+    "title": "Add receive task APIs",
+    "description": "Implement API3.01, API3.04\u2013API3.08 for receiving and putaway with Idempotency-Key, ETag and problem+json codes FIELD-RCV-*.",
+    "depends_on": "depends on T3.019, T3.022",
+    "estimate_days": 1.0,
+    "deliverable": "packages/field-contract/openapi.yaml (warehouse paths)",
+    "done_when": "Schemathesis contract run passes with zero schema violations. FR3.061 FR3.065",
+    "frs": [
+      "FR3.061",
+      "FR3.065"
+    ]
+  },
+  {
+    "id": "T3.029",
+    "phase": 3,
+    "workstream": "WS3.4",
+    "role": "Backend",
+    "title": "Import outbound deliveries into pick tasks",
+    "description": "Poll A_OutbDeliveryHeader/Item with OverallPickingStatus not C; create one pick task per delivery; sort lines by route order from the site graph.",
+    "depends_on": "depends on T3.007, T3.046",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-worker/src/field_worker/warehouse/obd_import.py",
+    "done_when": "TC3.114 passes. FR3.017 FR3.026",
+    "frs": [
+      "FR3.017",
+      "FR3.026"
+    ]
+  },
+  {
+    "id": "T3.030",
+    "phase": 3,
+    "workstream": "WS3.4",
+    "role": "Backend",
+    "title": "Confirm picks by capture",
+    "description": "Require source bin scan then product capture (GTIN DataMatrix or HU SSCC); reject wrong material; enforce batch AI 10 and serial AI 21 when material is batch or serial managed.",
+    "depends_on": "depends on T3.029",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/outbound/pick.py",
+    "done_when": "TC3.115, TC3.116 pass. FR3.018 FR3.019",
+    "frs": [
+      "FR3.018",
+      "FR3.019"
+    ]
+  },
+  {
+    "id": "T3.031",
+    "phase": 3,
+    "workstream": "WS3.4",
+    "role": "Backend",
+    "title": "Handle short picks",
+    "description": "Accept &#x27;count n&#x27; below required with reason bin_empty, damaged or not_found; open a short-pick exception and create a cycle-count request for the source bin.",
+    "depends_on": "depends on T3.030",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/warehouse/outbound/short_pick.py",
+    "done_when": "TC3.117 passes. FR3.020 FR3.028",
+    "frs": [
+      "FR3.020",
+      "FR3.028"
+    ]
+  },
+  {
+    "id": "T3.032",
+    "phase": 3,
+    "workstream": "WS3.4",
+    "role": "Backend",
+    "title": "Post picking quantities",
+    "description": "Queue PickOneItem and ConfirmPickingOneItem jobs per line in OBD:<delivery> in confirm order.",
+    "depends_on": "depends on T3.030, T3.010",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/warehouse/outbound/post.py",
+    "done_when": "TC3.118 passes. FR3.021",
+    "frs": [
+      "FR3.021"
+    ]
+  },
+  {
+    "id": "T3.033",
+    "phase": 3,
+    "workstream": "WS3.4",
+    "role": "Backend",
+    "title": "Pack picked lines into outbound HUs",
+    "description": "Generate SSCC from tenant GS1 company prefix (SAMPLE 0890123), extension digit and serial reference with check digit, or accept a pre-printed SSCC scan; packed qty per line <= picked qty; render PDF label.",
+    "depends_on": "depends on T3.030",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/outbound/pack.py",
+    "done_when": "TC3.119 passes; PR3.12 covers generated SSCCs. FR3.022",
+    "frs": [
+      "FR3.022"
+    ]
+  },
+  {
+    "id": "T3.034",
+    "phase": 3,
+    "workstream": "WS3.4",
+    "role": "Backend",
+    "title": "Post goods issue and reversal",
+    "description": "Allow PostGoodsIssue (601) only when all lines picked or short-confirmed and packed where required; GI qty = picked qty; reversal 602 via ReverseGoodsIssue on undo after post or supervisor action.",
+    "depends_on": "depends on T3.033",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/outbound/goods_issue.py",
+    "done_when": "PR3.08 passes; TC3.120 passes. FR3.023 FR3.024 FR3.025",
+    "frs": [
+      "FR3.023",
+      "FR3.024",
+      "FR3.025"
+    ]
+  },
+  {
+    "id": "T3.035",
+    "phase": 3,
+    "workstream": "WS3.4",
+    "role": "Backend",
+    "title": "Optimise pick path order",
+    "description": "Order stops by graph shortest-path distances using nearest neighbour followed by 2-opt for <= 40 stops; fall back to bin name order if graph unpublished.",
+    "depends_on": "depends on T3.047",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/sitegraph/pickpath.py",
+    "done_when": "Route length <= bin-order length on 100 SAMPLE pick lists. FR3.026",
+    "frs": [
+      "FR3.026"
+    ]
+  },
+  {
+    "id": "T3.036",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Backend",
+    "title": "Create PI documents from planner requests",
+    "description": "Implement POST /v1/pi-documents and console form (plant, storage location, bins or materials, planned count date, freeze, posting block); create in ERP via queue PID:<doc>/<year>.",
+    "depends_on": "depends on T3.004, T3.010",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/inventory/documents.py",
+    "done_when": "TC3.121 passes. FR3.027",
+    "frs": [
+      "FR3.027"
+    ]
+  },
+  {
+    "id": "T3.037",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Backend",
+    "title": "Implement cycle-count rules",
+    "description": "Add cycle_count_rule config (ABC frequency SAMPLE A 30 d, B 90 d, C 180 d; triggers short_pick, putaway_mismatch); daily job at 02:00 site local groups due items into PI requests of <= FIELD_PI_MAX_ITEMS.",
+    "depends_on": "depends on T3.036",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-worker/src/field_worker/warehouse/cycle_count.py",
+    "done_when": "TC3.122 passes. FR3.028",
+    "frs": [
+      "FR3.028"
+    ]
+  },
+  {
+    "id": "T3.038",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Security",
+    "title": "Enforce blind count projection",
+    "description": "Define OperatorCountLine schema without book fields; operator routes, websocket topics and lens payloads use it; only field.pi.book.read sees book qty in console after the count is committed.",
+    "depends_on": "depends on T3.036",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/inventory/projection.py",
+    "done_when": "PR3.03 passes; TC3.123 scanner finds no book qty in any operator response. FR3.029",
+    "frs": [
+      "FR3.029"
+    ]
+  },
+  {
+    "id": "T3.039",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Backend",
+    "title": "Implement count entry and commit",
+    "description": "Count line qty from captures or &#x27;count n&#x27;; &#x27;count zero&#x27; sets zero flag; commit only on &#x27;confirm&#x27;; one count_record per counter per count number.",
+    "depends_on": "depends on T3.038, T3.019",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/inventory/counting.py",
+    "done_when": "TC3.124 passes; PR3.02 covers count lines. FR3.030",
+    "frs": [
+      "FR3.030"
+    ]
+  },
+  {
+    "id": "T3.040",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Backend",
+    "title": "Evaluate variance and recount rules",
+    "description": "After commit compute difference vs book snapshot; require recount when |diff|/book > FIELD_PI_RECOUNT_PCT or |diff value| > FIELD_PI_RECOUNT_VALUE; assign recount to a different operator; accept recount within \u00b1max(1 unit, 0.5%) else third count by inventory controller.",
+    "depends_on": "depends on T3.039",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/inventory/recount.py",
+    "done_when": "PR3.04 passes; TC3.125, TC3.126 pass. FR3.031 FR3.032 FR3.033",
+    "frs": [
+      "FR3.031",
+      "FR3.032",
+      "FR3.033"
+    ]
+  },
+  {
+    "id": "T3.041",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Backend",
+    "title": "Assign and claim recounts",
+    "description": "Add POST /v1/pi-documents/{id}/items/{item}/recount-assignment and the claim check on count submission: the recount operator must differ from every earlier counter of the item; console suggests eligible operators on shift at the site.",
+    "depends_on": "depends on T3.040",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/warehouse/inventory/assignment.py",
+    "done_when": "PR3.04 passes; same-operator claim returns 409 FIELD-PI-409-RECOUNT-SAME-OPERATOR. FR3.032",
+    "frs": [
+      "FR3.032"
+    ]
+  },
+  {
+    "id": "T3.042",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Backend",
+    "title": "Apply freeze book inventory semantics",
+    "description": "Store book snapshot at PI creation when freeze=true; compute differences vs snapshot; show &#x27;Movements since freeze: n&#x27; when material movements occurred after snapshot.",
+    "depends_on": "depends on T3.036",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/warehouse/inventory/freeze.py",
+    "done_when": "PR3.16 passes; TC3.128 passes. FR3.035",
+    "frs": [
+      "FR3.035"
+    ]
+  },
+  {
+    "id": "T3.043",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Backend",
+    "title": "Enforce posting block",
+    "description": "While a PI doc has posting block, refuse putaway and pick confirmations for affected bin/material pairs with FIELD-PI-423-POSTING-BLOCKED and MSG3.15.",
+    "depends_on": "depends on T3.036",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/warehouse/inventory/block.py",
+    "done_when": "TC3.129 passes. FR3.036",
+    "frs": [
+      "FR3.036"
+    ]
+  },
+  {
+    "id": "T3.044",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Backend",
+    "title": "Implement field-local approval interim",
+    "description": "Create approval_request with band from the mirrored core band table (P13d bundle export), SoD check (approver not a counter, not the requester), approver re-authentication via core SSO max_age=300; adapter interface ready for the Phase 5 seam.",
+    "depends_on": "depends on T3.040",
+    "estimate_days": 1.5,
+    "deliverable": "services/field-api/src/field_api/approvals/local.py",
+    "done_when": "PR3.05 passes; TC3.127 and TC3.155 pass. FR3.034",
+    "frs": [
+      "FR3.034"
+    ]
+  },
+  {
+    "id": "T3.045",
+    "phase": 3,
+    "workstream": "WS3.5",
+    "role": "Backend",
+    "title": "Post counts and differences",
+    "description": "Queue count PATCH then PostDifferences (701 gain, 702 loss) in PID queue; difference posting waits for approval when value > FIELD_PI_APPROVAL_VALUE.",
+    "depends_on": "depends on T3.044, T3.010",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/warehouse/inventory/post.py",
+    "done_when": "TC3.130 passes. FR3.034 FR3.037",
+    "frs": [
+      "FR3.034",
+      "FR3.037"
+    ]
+  },
+  {
+    "id": "T3.046",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Backend",
+    "title": "Import storage bins into the location tree",
+    "description": "Import SAP storage bins (CSV or OData read where available) and parse with a per-site regex (SAMPLE ^(?<aisle>\\d{2})-(?<rack>\\d{2})-(?<level>\\d{2})$) into zone>aisle>rack>level>position; reject cycles; report unparsed bins.",
+    "depends_on": "depends on T3.002",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/sitegraph/bin_import.py",
+    "done_when": "PR3.11 passes; TC3.137 passes. FR3.046",
+    "frs": [
+      "FR3.046"
+    ]
+  },
+  {
+    "id": "T3.047",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Backend",
+    "title": "Generate the default site graph",
+    "description": "Create way nodes per aisle segment, place nodes per bin face, walk edges along aisles, road edges in forklift lanes and climb edges for mezzanine stairs; lengths from coordinates.",
+    "depends_on": "depends on T3.046",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/sitegraph/generate.py",
+    "done_when": "Generated graph is connected for SAMPLE site; every bin has one place node. FR3.047",
+    "frs": [
+      "FR3.047"
+    ]
+  },
+  {
+    "id": "T3.048",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Console",
+    "title": "Build the console graph editor",
+    "description": "Canvas editor for nodes, edges, kinds, landmarks (&#x27;look for&#x27; cues), forklift zones and anchors with validation and versioned draft/publish in apps/field-console/app/sites/[id]/graph/.",
+    "depends_on": "depends on T3.047",
+    "estimate_days": 2.0,
+    "deliverable": "apps/field-console/app/sites/[id]/graph/",
+    "done_when": "TC3.138 passes; publish blocked while validation errors exist. FR3.047 FR3.048",
+    "frs": [
+      "FR3.047",
+      "FR3.048"
+    ]
+  },
+  {
+    "id": "T3.049",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Backend",
+    "title": "Register anchors",
+    "description": "Add anchor CRUD: QR labels carry anchor id and HMAC-SHA256 tag (key per site in vault), BLE iBeacon UUID/major/minor, UWB anchor id; each bound to a node and x/y/z.",
+    "depends_on": "depends on T3.047",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/sitegraph/anchors.py",
+    "done_when": "TC3.139 passes; forged tag rejected. FR3.048",
+    "frs": [
+      "FR3.048"
+    ]
+  },
+  {
+    "id": "T3.050",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Android",
+    "title": "Implement positioning fusion on Android",
+    "description": "In apps/field-android/core/positioning implement a constant-velocity 2D Kalman filter fusing QR fixes, UWB ranges, BLE RSSI fixes, step-detection dead reckoning and ARCore VIO when the phone is held; snap to nearest edge within 2 m.",
+    "depends_on": "depends on T3.049",
+    "estimate_days": 2.0,
+    "deliverable": "apps/field-android/core/positioning/",
+    "done_when": "PR3.17 passes; TC3.140 median error <= 1.0 m with UWB. FR3.049",
+    "frs": [
+      "FR3.049"
+    ]
+  },
+  {
+    "id": "T3.051",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Backend",
+    "title": "Implement route API and step builder",
+    "description": "Dijkstra with climb weight \u00d73 and road edges excluded for pedestrian profile; build steps with distances, turns and &#x27;look for&#x27; cues; re-route when off-route > 4 m for 5 s.",
+    "depends_on": "depends on T3.047",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/src/field_api/sitegraph/route.py",
+    "done_when": "PR3.09 passes; TC3.141 passes. FR3.050",
+    "frs": [
+      "FR3.050"
+    ]
+  },
+  {
+    "id": "T3.052",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Android",
+    "title": "Implement walking-quiet mode",
+    "description": "Suppress lens and audio prompts and disable capture when in a forklift zone and speed > FIELD_WQ_SPEED_MPS for 1 s; queue prompts and release after 1.5 s stationary; show only &#x27;Walking. Prompts paused.&#x27;",
+    "depends_on": "depends on T3.050",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core/safety/WalkingQuiet.kt",
+    "done_when": "PR3.10 passes; TC3.142 passes. FR3.052",
+    "frs": [
+      "FR3.052"
+    ]
+  },
+  {
+    "id": "T3.053",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Android",
+    "title": "Build 2D and 3D wayfinding views",
+    "description": "Phone 2D SVG map with route line and position dot; 3D extruded racks with SceneView (D3.05); lens shows next step and distance only.",
+    "depends_on": "depends on T3.051",
+    "estimate_days": 1.5,
+    "deliverable": "apps/field-android/feature/wayfinding/",
+    "done_when": "TC3.141 usability pass rate >= 90%. FR3.051",
+    "frs": [
+      "FR3.051"
+    ]
+  },
+  {
+    "id": "T3.054",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Backend",
+    "title": "Record trails",
+    "description": "Record trail_point at 1 Hz only while a task is active, upload in batches via POST /v1/trails, retain 30 days, supervisor access with field.trail.read, operator sees own.",
+    "depends_on": "depends on T3.050",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/sitegraph/trails.py",
+    "done_when": "TC3.143 passes. FR3.053",
+    "frs": [
+      "FR3.053"
+    ]
+  },
+  {
+    "id": "T3.055",
+    "phase": 3,
+    "workstream": "WS3.6",
+    "role": "Backend",
+    "title": "Publish graph versions to devices",
+    "description": "On publish emit graph.published; devices download the version (gzip JSON, ETag) and keep the last two versions for offline routing.",
+    "depends_on": "depends on T3.048",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/sitegraph/publish.py",
+    "done_when": "Device switches to new version within 60 s of publish when online. FR3.047 FR3.062",
+    "frs": [
+      "FR3.047",
+      "FR3.062"
+    ]
+  },
+  {
+    "id": "T3.056",
+    "phase": 3,
+    "workstream": "WS3.7",
+    "role": "Console",
+    "title": "Build the live task board",
+    "description": "Console page with columns open, in progress, blocked, awaiting posting, done; cards show task type, delivery/doc, operator, progress; updates via live topic taskboard.{site_id}.",
+    "depends_on": "depends on T3.028",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/app/warehouse/board/",
+    "done_when": "TC3.144: update visible <= 2 s p95 with 200 active operators. FR3.054",
+    "frs": [
+      "FR3.054"
+    ]
+  },
+  {
+    "id": "T3.057",
+    "phase": 3,
+    "workstream": "WS3.7",
+    "role": "Console",
+    "title": "Build the discrepancy queue",
+    "description": "List warehouse exception cases (over, under, damaged, short pick, SSCC duplicate, variance, recount, approval pending, posting failed) with decide actions gated by permissions and audited.",
+    "depends_on": "depends on T3.020, T3.040",
+    "estimate_days": 1.5,
+    "deliverable": "apps/field-console/app/warehouse/discrepancies/",
+    "done_when": "TC3.106 and TC3.136 pass. FR3.055",
+    "frs": [
+      "FR3.055"
+    ]
+  },
+  {
+    "id": "T3.058",
+    "phase": 3,
+    "workstream": "WS3.7",
+    "role": "Console",
+    "title": "Build the receiving dashboard",
+    "description": "Show dock-to-stock p50/p90 by day, open deliveries, deliveries past planned date, GR posting latency; CSV export.",
+    "depends_on": "depends on T3.027",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/app/warehouse/receiving/",
+    "done_when": "TC3.145 numbers match fixture. FR3.056",
+    "frs": [
+      "FR3.056"
+    ]
+  },
+  {
+    "id": "T3.059",
+    "phase": 3,
+    "workstream": "WS3.7",
+    "role": "Console",
+    "title": "Build the inventory accuracy KPI",
+    "description": "Compute accuracy (items within tolerance / items counted) and value accuracy (1 - sum|diff value| / sum book value) per site per week; trend chart.",
+    "depends_on": "depends on T3.044",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/app/warehouse/accuracy/",
+    "done_when": "TC3.145 values match fixture. FR3.057",
+    "frs": [
+      "FR3.057"
+    ]
+  },
+  {
+    "id": "T3.060",
+    "phase": 3,
+    "workstream": "WS3.7",
+    "role": "Console",
+    "title": "Build PI documents, approvals and posting queue pages",
+    "description": "Console pages for PI documents (status, counts, recounts), approval decisions with re-authentication, and posting queues with retry now and cancel.",
+    "depends_on": "depends on T3.013, T3.044",
+    "estimate_days": 1.5,
+    "deliverable": "apps/field-console/app/warehouse/{inventory,approvals,queues}/",
+    "done_when": "TC3.127, TC3.136 pass. FR3.045 FR3.034",
+    "frs": [
+      "FR3.034",
+      "FR3.045"
+    ]
+  },
+  {
+    "id": "T3.061",
+    "phase": 3,
+    "workstream": "WS3.8",
+    "role": "Backend",
+    "title": "Export receipts, counts and variances for core guided load",
+    "description": "Daily 01:00 site local and on demand, write field_supply_<site>_<yyyymmdd>.csv with stable row_key per field record; console download; mapping documented in docs/runbooks/core-guided-load.md.",
+    "depends_on": "depends on T3.022, T3.045",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-worker/src/field_worker/exports/core_supply.py",
+    "done_when": "PR3.18 passes; TC3.146 loads in core-p13 compat. FR3.058 FR3.060",
+    "frs": [
+      "FR3.058",
+      "FR3.060"
+    ]
+  },
+  {
+    "id": "T3.062",
+    "phase": 3,
+    "workstream": "WS3.8",
+    "role": "Backend",
+    "title": "Detect late receipts",
+    "description": "Flag inbound delivery items open past PlannedDeliveryDate + FIELD_LATE_GRACE_H, and under-deliveries with remainder; emit receipt.late and add expected_date rows to the export so the core starvation clock recomputes.",
+    "depends_on": "depends on T3.061",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-worker/src/field_worker/warehouse/late_receipt.py",
+    "done_when": "TC3.147 passes. FR3.059",
+    "frs": [
+      "FR3.059"
+    ]
+  },
+  {
+    "id": "T3.063",
+    "phase": 3,
+    "workstream": "WS3.8",
+    "role": "Android",
+    "title": "Implement lens screens for warehouse tasks",
+    "description": "Compose lens layouts for receive, putaway, pick, count and wayfinding (SCR3.01, SCR3.03, SCR3.04, SCR3.06) with exact copy from fs.json; max 3 lines of 24 characters.",
+    "depends_on": "depends on T3.028",
+    "estimate_days": 1.5,
+    "deliverable": "apps/field-android/feature/warehouse/lens/",
+    "done_when": "TC3.154 passes; copy snapshot tests match fs.json strings. FR3.061",
+    "frs": [
+      "FR3.061"
+    ]
+  },
+  {
+    "id": "T3.064",
+    "phase": 3,
+    "workstream": "WS3.8",
+    "role": "Android",
+    "title": "Implement phone screens for warehouse tasks",
+    "description": "Compose phone screens SCR3.02, SCR3.05, SCR3.07 with line lists, reason pickers, pack view and wayfinding; offline banners and outbox counts.",
+    "depends_on": "depends on T3.028",
+    "estimate_days": 1.5,
+    "deliverable": "apps/field-android/feature/warehouse/phone/",
+    "done_when": "Maestro flows for receive, pick and count pass. FR3.061 FR3.062",
+    "frs": [
+      "FR3.061",
+      "FR3.062"
+    ]
+  },
+  {
+    "id": "T3.065",
+    "phase": 3,
+    "workstream": "WS3.8",
+    "role": "Android",
+    "title": "Implement offline behaviour for warehouse tasks",
+    "description": "Cache assigned tasks (never book qty) in Room; stage confirms offline; outbox posts in order on reconnect; show MSG3.10 when posting waits.",
+    "depends_on": "depends on T3.064",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core/outbox/WarehouseOutbox.kt",
+    "done_when": "TC3.148 passes. FR3.062",
+    "frs": [
+      "FR3.062"
+    ]
+  },
+  {
+    "id": "T3.066",
+    "phase": 3,
+    "workstream": "WS3.8",
+    "role": "Design",
+    "title": "Add accessibility and gloves voice-only mode",
+    "description": "TalkBack labels, 48 dp targets, 4.5:1 contrast, dynamic type; gloves mode switches every warehouse step to voice with read-back.",
+    "depends_on": "depends on T3.064",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/feature/warehouse/ (a11y)",
+    "done_when": "TC3.149 and TC3.150 pass. FR3.063",
+    "frs": [
+      "FR3.063"
+    ]
+  },
+  {
+    "id": "T3.067",
+    "phase": 3,
+    "workstream": "WS3.8",
+    "role": "Security",
+    "title": "Write the warehouse audit trail",
+    "description": "Write audit entries for confirm, post, reversal, decision, approval, graph publish and export with actor, before/after hash and trace_id; forward per Phase 1 audit mechanism.",
+    "depends_on": "depends on T3.022, T3.044",
+    "estimate_days": 0.5,
+    "deliverable": "services/field-api/src/field_api/audit/warehouse.py",
+    "done_when": "TC3.151 passes. FR3.064",
+    "frs": [
+      "FR3.064"
+    ]
+  },
+  {
+    "id": "T3.068",
+    "phase": 3,
+    "workstream": "WS3.9",
+    "role": "QA",
+    "title": "Write Phase 3 property tests",
+    "description": "Implement PR3.01\u2013PR3.18 with Hypothesis, Kotest and fast-check at the configured runs; add to verify-all.",
+    "depends_on": "depends on T3.023, T3.035, T3.041, T3.051, T3.052",
+    "estimate_days": 2.5,
+    "deliverable": "services/*/tests/properties/, apps/field-android/**/test/, apps/field-console/tests/properties/",
+    "done_when": "All properties pass; shrunk counterexamples saved for regressions. PR3.01 PR3.18",
+    "frs": []
+  },
+  {
+    "id": "T3.069",
+    "phase": 3,
+    "workstream": "WS3.9",
+    "role": "QA",
+    "title": "Run chaos and load tests on posting",
+    "description": "k6 script for 50 documents/min with sim fault profiles; measure success within 5 min and blocked-queue time.",
+    "depends_on": "depends on T3.011, T3.012",
+    "estimate_days": 1.0,
+    "deliverable": "tests/load/posting_k6.js",
+    "done_when": "TC3.153 passes; success >= 99.5%. FR3.040 FR3.038",
+    "frs": [
+      "FR3.038",
+      "FR3.040"
+    ]
+  },
+  {
+    "id": "T3.070",
+    "phase": 3,
+    "workstream": "WS3.9",
+    "role": "Security",
+    "title": "Run security tests for warehouse APIs",
+    "description": "Book-qty leak scanner, site-scope RLS tests, SoD and re-authentication bypass attempts, forged anchor and replayed idempotency keys.",
+    "depends_on": "depends on T3.038, T3.044, T3.049",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/tests/security/test_warehouse.py",
+    "done_when": "TC3.123, TC3.139, TC3.152, TC3.155 pass. FR3.029 FR3.065",
+    "frs": [
+      "FR3.029",
+      "FR3.065"
+    ]
+  },
+  {
+    "id": "T3.071",
+    "phase": 3,
+    "workstream": "WS3.9",
+    "role": "QA",
+    "title": "Run device and usability sessions",
+    "description": "Walk tests on the SAMPLE aisle for positioning, walking-quiet and newcomer wayfinding with 5 newcomer participants (role labels only).",
+    "depends_on": "depends on T3.051, T3.052, T3.053",
+    "estimate_days": 1.0,
+    "deliverable": "docs/reports/F2_device_usability.md",
+    "done_when": "TC3.140\u2013TC3.142 and TC3.154 results recorded. FR3.049 FR3.051",
+    "frs": [
+      "FR3.049",
+      "FR3.051"
+    ]
+  },
+  {
+    "id": "T3.072",
+    "phase": 3,
+    "workstream": "WS3.9",
+    "role": "Owner",
+    "title": "Write the Phase 3 report and push",
+    "description": "Run scripts/verify-all.sh, write docs/reports/PHASE3_REPORT.md with FR coverage, VERIFIED/UNVERIFIED SAP mapping rows and open items; push the phase branch.",
+    "depends_on": "depends on T3.068, T3.069, T3.070, T3.071",
+    "estimate_days": 0.5,
+    "deliverable": "docs/reports/PHASE3_REPORT.md",
+    "done_when": "verify-all prints PASS for all rows; branch pushed. FR3.042",
+    "frs": [
+      "FR3.042"
+    ]
+  }
+]

@@ -1,0 +1,1163 @@
+[
+  {
+    "id": "T4.001",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "Backend",
+    "title": "Write tower location migrations",
+    "description": "Create Alembic migrations field_0041 (location kinds tower_site, tower, sector, level, position, shelter, rack, rack_slot; columns height_m, sector_code, fl_code) and field_0042 (site geofence, site_visit). Include forced RLS policies and downgrade paths.",
+    "depends_on": "",
+    "estimate_days": 1.0,
+    "deliverable": "services/field-api/alembic/versions/field_0041_tower_locations.py, field_0042_site_visit.py",
+    "done_when": "Upgrade/downgrade pass on empty and seeded DB; RLS test denies cross-tenant reads. FR4.001 FR4.002 FR4.003",
+    "frs": [
+      "FR4.001",
+      "FR4.002",
+      "FR4.003"
+    ]
+  },
+  {
+    "id": "T4.002",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "Backend",
+    "title": "Build site tree service and API",
+    "description": "Implement services/field-api/src/field_api/sites/tree.py returning the nested tree for a site with installed equipment per position (API4.02), with ETag and site_id data scope.",
+    "depends_on": "depends on T4.001",
+    "estimate_days": 1.0,
+    "deliverable": "sites/tree.py, OpenAPI path /v1/sites/{id}/tree",
+    "done_when": "Contract test TC4.106 passes; level order follows height_m. FR4.001 FR4.002 FR4.003",
+    "frs": [
+      "FR4.001",
+      "FR4.002",
+      "FR4.003"
+    ]
+  },
+  {
+    "id": "T4.003",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "Backend",
+    "title": "Implement functional location mask validator",
+    "description": "Add a configurable mask parser (FIELD_FL_MASK) that validates codes and derives kind and parent code from segments.",
+    "depends_on": "",
+    "estimate_days": 0.5,
+    "deliverable": "sites/fl_mask.py",
+    "done_when": "TC4.105 passes for 20 SAMPLE valid and invalid codes. FR4.008",
+    "frs": [
+      "FR4.008"
+    ]
+  },
+  {
+    "id": "T4.004",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "ERP",
+    "title": "Build SAP functional location reader",
+    "description": "Implement connectors/sap/fl_import.py paging API_FUNCTIONALLOCATION with $filter on prefix and LastChangeDateTime; map to staging rows. Mark the service UNVERIFIED in docs/META_FIELD.md until confirmed.",
+    "depends_on": "",
+    "estimate_days": 1.0,
+    "deliverable": "connectors/sap/fl_import.py",
+    "done_when": "Reads 3 SAMPLE sites from erp-sim; paging over 1000 rows works. FR4.004",
+    "frs": [
+      "FR4.004"
+    ]
+  },
+  {
+    "id": "T4.005",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "ERP",
+    "title": "Build SAP installed equipment reader",
+    "description": "Implement connectors/sap/equipment_read.py for API_EQUIPMENT fields Equipment, SerialNumber, Material, ManufacturerPartNmbr, FunctionalLocation, EquipInstallationDate.",
+    "depends_on": "depends on T4.004",
+    "estimate_days": 1.0,
+    "deliverable": "connectors/sap/equipment_read.py",
+    "done_when": "TC4.102 passes; serial duplicates are reported. FR4.005",
+    "frs": [
+      "FR4.005"
+    ]
+  },
+  {
+    "id": "T4.006",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "Backend",
+    "title": "Implement import job staging, preview and apply",
+    "description": "Create field.fl_import_job and staging rows; compute diff (new, changed, moved, removed, rejected); apply upserts by erp_ref and erp_equipment_no in one transaction per site (API4.01).",
+    "depends_on": "depends on T4.004, T4.005, T4.003",
+    "estimate_days": 1.5,
+    "deliverable": "sites/import_service.py",
+    "done_when": "TC4.101 and PR4.16 pass. FR4.004 FR4.006 FR4.007 PR4.16",
+    "frs": [
+      "FR4.004",
+      "FR4.006",
+      "FR4.007"
+    ]
+  },
+  {
+    "id": "T4.007",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "Backend",
+    "title": "Add delta import and schedule",
+    "description": "Store per-connection watermark; nightly job in field-worker; repeat run with same data produces zero changes.",
+    "depends_on": "depends on T4.006",
+    "estimate_days": 0.5,
+    "deliverable": "field-worker jobs/fl_import.py",
+    "done_when": "TC4.103 passes. FR4.006",
+    "frs": [
+      "FR4.006"
+    ]
+  },
+  {
+    "id": "T4.008",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "Backend",
+    "title": "Report rejected import rows",
+    "description": "Detect orphans and cycles with a topological pass; store reason per row; block apply above 20% rejected without step-up.",
+    "depends_on": "depends on T4.006",
+    "estimate_days": 0.5,
+    "deliverable": "sites/import_validate.py",
+    "done_when": "TC4.104 passes. FR4.007",
+    "frs": [
+      "FR4.007"
+    ]
+  },
+  {
+    "id": "T4.009",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "ERP",
+    "title": "Create erp-sim tower fixtures",
+    "description": "Seed 3 SAMPLE sites (IN01-TWR-0042, -0057, -0103) with 2 towers, 3 sectors, 4 levels and 48 equipment records including 3 deliberate mismatches.",
+    "depends_on": "",
+    "estimate_days": 0.5,
+    "deliverable": "services/erp-sim/fixtures/towers.json",
+    "done_when": "Fixtures load; counts asserted in test. FR4.005",
+    "frs": [
+      "FR4.005"
+    ]
+  },
+  {
+    "id": "T4.010",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "Backend",
+    "title": "Implement site check-in API",
+    "description": "POST /v1/sites/{id}/visits with geofence (distance - accuracy <= radius, accuracy <= 50 m) and permit reference validity; offline-created visits accepted with captured_at and same rules (API4.03).",
+    "depends_on": "depends on T4.001",
+    "estimate_days": 1.0,
+    "deliverable": "visits/api.py",
+    "done_when": "TC4.107, TC4.108 and PR4.17 pass. FR4.009 FR4.010 PR4.17",
+    "frs": [
+      "FR4.009",
+      "FR4.010"
+    ]
+  },
+  {
+    "id": "T4.011",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "Backend",
+    "title": "Add geofence override with audit",
+    "description": "Supervisor override endpoint with mandatory reason; write core P13e audit event field.visit.override.",
+    "depends_on": "depends on T4.010",
+    "estimate_days": 0.5,
+    "deliverable": "visits/override.py",
+    "done_when": "TC4.109 passes. FR4.011 FR4.067",
+    "frs": [
+      "FR4.011",
+      "FR4.067"
+    ]
+  },
+  {
+    "id": "T4.012",
+    "phase": 4,
+    "workstream": "WS4.1",
+    "role": "Backend",
+    "title": "Implement check-out",
+    "description": "PATCH /v1/visits/{id} status=checked_out; stop timer; return unsynced counts reported by the phone; phone shows MSG4.18.",
+    "depends_on": "depends on T4.010",
+    "estimate_days": 0.5,
+    "deliverable": "visits/api.py",
+    "done_when": "TC4.110 passes. FR4.012",
+    "frs": [
+      "FR4.012"
+    ]
+  },
+  {
+    "id": "T4.013",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "Backend",
+    "title": "Generate audit tasks from installed base",
+    "description": "Create task type audit with task_line per installed equipment, grouped by tower/sector/level; snapshot version recorded on the task.",
+    "depends_on": "depends on T4.006",
+    "estimate_days": 1.0,
+    "deliverable": "audit/generate.py",
+    "done_when": "TC4.112 passes for SAMPLE site with 24 lines. FR4.014",
+    "frs": [
+      "FR4.014"
+    ]
+  },
+  {
+    "id": "T4.014",
+    "phase": 4,
+    "workstream": "WS4.3",
+    "role": "Backend",
+    "title": "Implement audit completeness service",
+    "description": "Compute completeness per sector, level, tower, site (API4.07) with empty_scope rule; cache per tower and invalidate on capture sync.",
+    "depends_on": "depends on T4.013",
+    "estimate_days": 0.5,
+    "deliverable": "audit/progress.py",
+    "done_when": "PR4.03 passes. FR4.024 FR4.063 PR4.03",
+    "frs": [
+      "FR4.024",
+      "FR4.063"
+    ]
+  },
+  {
+    "id": "T4.015",
+    "phase": 4,
+    "workstream": "WS4.3",
+    "role": "Backend",
+    "title": "Build reconciliation engine",
+    "description": "Implement audit/reconcile.py classifying matched, serial_mismatch, tower_only, erp_only, misplaced using expected lines, captures and site-wide installed base.",
+    "depends_on": "depends on T4.013",
+    "estimate_days": 1.5,
+    "deliverable": "audit/reconcile.py",
+    "done_when": "PR4.11 passes with 500 runs. FR4.025 PR4.11",
+    "frs": [
+      "FR4.025"
+    ]
+  },
+  {
+    "id": "T4.016",
+    "phase": 4,
+    "workstream": "WS4.3",
+    "role": "Backend",
+    "title": "Open and deduplicate exception cases",
+    "description": "Create exception_case per unresolved finding keyed by (site, serial, class); emit exception.opened through outbox.",
+    "depends_on": "depends on T4.015",
+    "estimate_days": 0.5,
+    "deliverable": "audit/exceptions.py",
+    "done_when": "TC4.124 passes. FR4.026",
+    "frs": [
+      "FR4.026"
+    ]
+  },
+  {
+    "id": "T4.017",
+    "phase": 4,
+    "workstream": "WS4.3",
+    "role": "Backend",
+    "title": "Implement mismatch queue API",
+    "description": "GET /v1/mismatches with filters site, class, age, verify_status and cursor pagination; includes crop refs, OCR text, Spark result, ERP record (API4.16).",
+    "depends_on": "depends on T4.016",
+    "estimate_days": 0.5,
+    "deliverable": "audit/mismatch_api.py",
+    "done_when": "Contract tests pass; data scope enforced. FR4.064",
+    "frs": [
+      "FR4.064"
+    ]
+  },
+  {
+    "id": "T4.018",
+    "phase": 4,
+    "workstream": "WS4.3",
+    "role": "Backend",
+    "title": "Enforce audit sign-off rule",
+    "description": "Sign-off allowed only when every expected line is captured, explained or waived with reason; returns MSG4.21 count otherwise.",
+    "depends_on": "depends on T4.015",
+    "estimate_days": 0.5,
+    "deliverable": "audit/signoff.py",
+    "done_when": "TC4.122 passes. FR4.028",
+    "frs": [
+      "FR4.028"
+    ]
+  },
+  {
+    "id": "T4.019",
+    "phase": 4,
+    "workstream": "WS4.3",
+    "role": "Backend",
+    "title": "Add missing and unknown finding endpoints",
+    "description": "Endpoints to mark missing with reason and record unknown equipment with class and evidence; both feed reconciliation.",
+    "depends_on": "depends on T4.015",
+    "estimate_days": 0.5,
+    "deliverable": "audit/findings_api.py",
+    "done_when": "TC4.120 and TC4.121 pass. FR4.022 FR4.023",
+    "frs": [
+      "FR4.022",
+      "FR4.023"
+    ]
+  },
+  {
+    "id": "T4.020",
+    "phase": 4,
+    "workstream": "WS4.4",
+    "role": "ERP",
+    "title": "Extend erp-sim with functional locations and equipment install/dismantle",
+    "description": "Add FL tree, equipment time segments, install/dismantle endpoints, change-document numbering, idempotency dedupe, lock and fault injection.",
+    "depends_on": "depends on T4.009",
+    "estimate_days": 1.5,
+    "deliverable": "services/erp-sim/src/erp_sim/equipment/",
+    "done_when": "SCR4.14 shows segments; contract tests pass. FR4.029 FR4.030",
+    "frs": [
+      "FR4.029",
+      "FR4.030"
+    ]
+  },
+  {
+    "id": "T4.021",
+    "phase": 4,
+    "workstream": "WS4.4",
+    "role": "ERP",
+    "title": "Implement SAP adapter equipment operations",
+    "description": "connectors/sap/equipment.py install, dismantle, create; carries idempotency key in long-text marker; maps SAP messages to FIELD error codes. Live SAP behind FIELD_SAP_EQUIPMENT_LIVE.",
+    "depends_on": "depends on T4.020",
+    "estimate_days": 1.0,
+    "deliverable": "connectors/sap/equipment.py",
+    "done_when": "Contract tests against erp-sim pass; UNVERIFIED for live SAP. FR4.029 FR4.030",
+    "frs": [
+      "FR4.029",
+      "FR4.030"
+    ]
+  },
+  {
+    "id": "T4.022",
+    "phase": 4,
+    "workstream": "WS4.4",
+    "role": "Backend",
+    "title": "Configure posting queue per tower",
+    "description": "Use tower functional location as queue_key; per-tower seq; backoff 2/4/8/16/32 s, max 8 attempts, then erp.failed + exception.",
+    "depends_on": "depends on T4.021",
+    "estimate_days": 1.0,
+    "deliverable": "field-worker posting/equipment_queue.py",
+    "done_when": "TC4.131 and PR4.12 pass. FR4.036 PR4.12",
+    "frs": [
+      "FR4.036"
+    ]
+  },
+  {
+    "id": "T4.023",
+    "phase": 4,
+    "workstream": "WS4.4",
+    "role": "Backend",
+    "title": "Build equipment events API",
+    "description": "POST /v1/equipment-events for install, dismantle, replace (API4.08) with Idempotency-Key, BOM gate, single-location check and staging/confirm flow.",
+    "depends_on": "depends on T4.022, T4.025",
+    "estimate_days": 1.5,
+    "deliverable": "equipment/api.py",
+    "done_when": "TC4.125\u2013TC4.129, PR4.14, PR4.15 pass. FR4.029 FR4.030 FR4.031 FR4.033 PR4.14 PR4.15",
+    "frs": [
+      "FR4.029",
+      "FR4.030",
+      "FR4.031",
+      "FR4.033"
+    ]
+  },
+  {
+    "id": "T4.024",
+    "phase": 4,
+    "workstream": "WS4.4",
+    "role": "Backend",
+    "title": "Implement reversal on undo-after-post",
+    "description": "POST /v1/equipment-events/{id}/reverse creating compensating operation with ref_doc_no and setting original erp_document reversed (API4.09).",
+    "depends_on": "depends on T4.023",
+    "estimate_days": 1.0,
+    "deliverable": "equipment/reverse.py",
+    "done_when": "TC4.130 and PR4.13 pass. FR4.035 PR4.13",
+    "frs": [
+      "FR4.035"
+    ]
+  },
+  {
+    "id": "T4.025",
+    "phase": 4,
+    "workstream": "WS4.4",
+    "role": "Backend",
+    "title": "Implement serial_event history and single-location invariant",
+    "description": "Append-only serial_event with per-serial seq; partial unique index on installed_base(serial) where active; DB trigger rejects update/delete.",
+    "depends_on": "depends on T4.001",
+    "estimate_days": 1.0,
+    "deliverable": "alembic field_0043_serial_event.py, equipment/history.py",
+    "done_when": "PR4.01 and PR4.02 pass. FR4.033 FR4.034 PR4.01 PR4.02",
+    "frs": [
+      "FR4.033",
+      "FR4.034"
+    ]
+  },
+  {
+    "id": "T4.026",
+    "phase": 4,
+    "workstream": "WS4.3",
+    "role": "Backend",
+    "title": "Implement mismatch decisions with core approvals",
+    "description": "POST /v1/mismatches/{id}/decision; update_erp and record_move create a core approval with band and SoD; on approval post corrective events via the tower queue.",
+    "depends_on": "depends on T4.017, T4.023",
+    "estimate_days": 1.0,
+    "deliverable": "audit/decisions.py",
+    "done_when": "TC4.123 passes; SoD violation returns 403 FIELD-EXC-403-SOD. FR4.027 FR4.067",
+    "frs": [
+      "FR4.027",
+      "FR4.067"
+    ]
+  },
+  {
+    "id": "T4.027",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "Backend",
+    "title": "Build installed-base read model and API",
+    "description": "Create field.installed_base view over active serial_event segments; GET /v1/installed-base?serial=&site_id= (API4.18).",
+    "depends_on": "depends on T4.025",
+    "estimate_days": 0.5,
+    "deliverable": "installed_base/api.py",
+    "done_when": "TC4.157 passes against erp-sim. FR4.065",
+    "frs": [
+      "FR4.065"
+    ]
+  },
+  {
+    "id": "T4.028",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "Backend",
+    "title": "Emit installed_base.changed and publish via P13f",
+    "description": "Outbox event on erp.posted/erp.reversed for equipment; register publisher topic in core P13f.",
+    "depends_on": "depends on T4.027",
+    "estimate_days": 0.5,
+    "deliverable": "installed_base/events.py",
+    "done_when": "TC4.158 passes with signed webhook verification. FR4.066",
+    "frs": [
+      "FR4.066"
+    ]
+  },
+  {
+    "id": "T4.029",
+    "phase": 4,
+    "workstream": "WS4.6",
+    "role": "Backend",
+    "title": "Record store source on install",
+    "description": "Add source_plant and source_storage_location to install events and serial_event; populate from swap task or scan of store label.",
+    "depends_on": "depends on T4.025",
+    "estimate_days": 0.5,
+    "deliverable": "equipment/history.py",
+    "done_when": "TC4.132 passes. FR4.037",
+    "frs": [
+      "FR4.037"
+    ]
+  },
+  {
+    "id": "T4.030",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "Android",
+    "title": "Build Android tower audit feature module",
+    "description": "apps/field-android/feature/towerAudit with task list, sector/level navigation and capture integration with the Phase 2 engine and device token.",
+    "depends_on": "depends on T4.013",
+    "estimate_days": 2.0,
+    "deliverable": "feature/towerAudit/",
+    "done_when": "Maestro flow tower_audit.yaml passes. FR4.014 FR4.017",
+    "frs": [
+      "FR4.014",
+      "FR4.017"
+    ]
+  },
+  {
+    "id": "T4.031",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "Android",
+    "title": "Render lens sector checklist",
+    "description": "Lens layout SCR4.02 with counts, up to 4 missing classes, harness icon, timer; only rendered through the climb prompt gate.",
+    "depends_on": "depends on T4.030, T4.040",
+    "estimate_days": 1.0,
+    "deliverable": "feature/towerAudit/lens/SectorChecklist.kt",
+    "done_when": "TC4.113 passes; update <= 400 ms after capture. FR4.015 FR4.068",
+    "frs": [
+      "FR4.015",
+      "FR4.068"
+    ]
+  },
+  {
+    "id": "T4.032",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "Android",
+    "title": "Implement on-device nameplate OCR",
+    "description": "NameplateReader.kt using ML Kit text recognition on the ranked crop; select candidate lines; score against class serial patterns.",
+    "depends_on": "depends on T4.030",
+    "estimate_days": 1.5,
+    "deliverable": "core/ocr/NameplateReader.kt",
+    "done_when": "TC4.114: exact match >= 92% on SAMPLE set of 300 plates. FR4.016 FR4.017",
+    "frs": [
+      "FR4.016",
+      "FR4.017"
+    ]
+  },
+  {
+    "id": "T4.033",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "Android",
+    "title": "Write serial pattern normalisation library",
+    "description": "Shared rules (Kotlin and Python) for confusable pairs O/0, I/1, S/5, B/8, Z/2 per class regex; reports which characters were normalised.",
+    "depends_on": "",
+    "estimate_days": 0.5,
+    "deliverable": "core/ocr/SerialPatterns.kt, libs field_api/serials.py",
+    "done_when": "Unit tests and PR4.18 generator share fixtures. FR4.016",
+    "frs": [
+      "FR4.016"
+    ]
+  },
+  {
+    "id": "T4.034",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "Android",
+    "title": "Integrate photo evidence consent and blur",
+    "description": "Reuse Phase 2 consent and on-device face blur for nameplate crops; store capture_evidence with consent_ref.",
+    "depends_on": "depends on T4.030",
+    "estimate_days": 0.5,
+    "deliverable": "feature/towerAudit/Evidence.kt",
+    "done_when": "TC4.118 passes. FR4.020",
+    "frs": [
+      "FR4.020"
+    ]
+  },
+  {
+    "id": "T4.035",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "AI",
+    "title": "Build Muse Spark nameplate verify job",
+    "description": "field-worker job applying routing rules (confidence < 0.92, unexpected, normalised, pattern fail, 10% sample), calling core prompt registry field.nameplate_verify.v1; writes verify_status and emits capture.verified/capture.mismatch.",
+    "depends_on": "depends on T4.033",
+    "estimate_days": 1.5,
+    "deliverable": "field-worker jobs/nameplate_verify.py",
+    "done_when": "TC4.115, TC4.116, TC4.117 and PR4.18 pass. FR4.018 FR4.019 PR4.18",
+    "frs": [
+      "FR4.018",
+      "FR4.019"
+    ]
+  },
+  {
+    "id": "T4.036",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "AI",
+    "title": "Register prompt and enforce non-contributor models",
+    "description": "Prompt registry entry with model allow-list excluding -contributor; Llama fallback route; budget alarm at 80%.",
+    "depends_on": "depends on T4.035",
+    "estimate_days": 0.5,
+    "deliverable": "docs/prompts/field.nameplate_verify.v1.md",
+    "done_when": "TC4.167 passes. FR4.018",
+    "frs": [
+      "FR4.018"
+    ]
+  },
+  {
+    "id": "T4.037",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "Android",
+    "title": "Build manual entry, unknown and missing UX",
+    "description": "Phone flows for typed serial with mandatory plate photo, unknown class picker and mark missing reasons.",
+    "depends_on": "depends on T4.030, T4.019",
+    "estimate_days": 1.0,
+    "deliverable": "feature/towerAudit/ManualEntry.kt",
+    "done_when": "TC4.119, TC4.120, TC4.121 pass. FR4.021 FR4.022 FR4.023",
+    "frs": [
+      "FR4.021",
+      "FR4.022",
+      "FR4.023"
+    ]
+  },
+  {
+    "id": "T4.038",
+    "phase": 4,
+    "workstream": "WS4.4",
+    "role": "Android",
+    "title": "Build install/replace staging with BOM checklist",
+    "description": "Phone screen SCR4.06 driven by the pinned asset model BOM; post then confirm; undo before and after post.",
+    "depends_on": "depends on T4.023, T4.059",
+    "estimate_days": 1.5,
+    "deliverable": "feature/swap/",
+    "done_when": "TC4.128 passes; replace stages dismantle then install. FR4.031 FR4.032 FR4.035",
+    "frs": [
+      "FR4.031",
+      "FR4.032",
+      "FR4.035"
+    ]
+  },
+  {
+    "id": "T4.039",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "Android",
+    "title": "Implement climb state detector",
+    "description": "ClimbSafe.kt fusing accelerometer (vertical, gravity-aligned) and barometer at 25 Hz with thresholds from config; unknown on sensor gaps > 1 s.",
+    "depends_on": "",
+    "estimate_days": 1.5,
+    "deliverable": "core/safety/ClimbStateDetector.kt",
+    "done_when": "TC4.133 on 40 recorded traces: zero climbing segments misclassified as stationary. FR4.038",
+    "frs": [
+      "FR4.038"
+    ]
+  },
+  {
+    "id": "T4.040",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "Android",
+    "title": "Implement prompt gate",
+    "description": "Single PromptGate through which every lens, audio and haptic prompt passes; holds prompts while climbing/unknown; releases max 3 newest after 3 s stationary.",
+    "depends_on": "depends on T4.039",
+    "estimate_days": 1.0,
+    "deliverable": "core/safety/PromptGate.kt",
+    "done_when": "PR4.04 passes in Kotest. FR4.039 PR4.04",
+    "frs": [
+      "FR4.039"
+    ]
+  },
+  {
+    "id": "T4.041",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "Android",
+    "title": "Implement harness confirmation",
+    "description": "Voice phrase &#x27;harness clipped&#x27; (>= 0.80) plus glasses touchpad or phone button tap within 10 s; cleared on climbing or > 1.5 m altitude change; audit event.",
+    "depends_on": "depends on T4.039",
+    "estimate_days": 1.0,
+    "deliverable": "core/safety/HarnessCheck.kt",
+    "done_when": "TC4.136 and PR4.05 pass. FR4.041 FR4.040 PR4.05",
+    "frs": [
+      "FR4.040",
+      "FR4.041"
+    ]
+  },
+  {
+    "id": "T4.042",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "Android",
+    "title": "Detect rest platform checkpoints",
+    "description": "Match altitude to graph rest_platform heights \u00b11.5 m when stationary; log checkpoint; re-calibrate baro baseline.",
+    "depends_on": "depends on T4.039, T4.050",
+    "estimate_days": 0.5,
+    "deliverable": "core/safety/Checkpoints.kt",
+    "done_when": "TC4.137 and TC4.111 pass. FR4.042 FR4.013",
+    "frs": [
+      "FR4.013",
+      "FR4.042"
+    ]
+  },
+  {
+    "id": "T4.043",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "Android",
+    "title": "Activate climb-safe automatically",
+    "description": "Enable at baseline + 2 m or on a climb edge; disable control hidden on structure.",
+    "depends_on": "depends on T4.039",
+    "estimate_days": 0.5,
+    "deliverable": "core/safety/ClimbSafe.kt",
+    "done_when": "TC4.141 passes. FR4.045",
+    "frs": [
+      "FR4.045"
+    ]
+  },
+  {
+    "id": "T4.044",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "Backend",
+    "title": "Build climb session telemetry API",
+    "description": "POST /v1/climb-sessions/{id}/events receiving state changes, harness confirmations, checkpoints, check-ins (no raw sensor data) (API4.15).",
+    "depends_on": "depends on T4.010",
+    "estimate_days": 0.5,
+    "deliverable": "safety/api.py",
+    "done_when": "Contract tests pass; events in P13e. FR4.067",
+    "frs": [
+      "FR4.067"
+    ]
+  },
+  {
+    "id": "T4.045",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "Backend",
+    "title": "Implement lone-worker timer and escalation",
+    "description": "Phone timer with deferral while climbing; server timer from heartbeats; escalation after grace via core web push and console alert.",
+    "depends_on": "depends on T4.044",
+    "estimate_days": 1.5,
+    "deliverable": "safety/lone_worker.py, core/safety/LoneWorkerTimer.kt",
+    "done_when": "TC4.138, TC4.139 and PR4.19 pass. FR4.043 FR4.044 PR4.19",
+    "frs": [
+      "FR4.043",
+      "FR4.044"
+    ]
+  },
+  {
+    "id": "T4.046",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "Console",
+    "title": "Build console lone-worker monitor",
+    "description": "SCR4.13 with active visits, timers, escalation banner and acknowledge (field.visit.ack).",
+    "depends_on": "depends on T4.045",
+    "estimate_days": 0.5,
+    "deliverable": "apps/field-console/app/safety/",
+    "done_when": "Playwright test shows banner within 5 s of escalation. FR4.044",
+    "frs": [
+      "FR4.044"
+    ]
+  },
+  {
+    "id": "T4.047",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "QA",
+    "title": "Build sensor replay harness for climb tests",
+    "description": "Record IMU/baro traces from 20 real or rig climbs; replay into detector on device and JVM for regression.",
+    "depends_on": "depends on T4.039",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/testdata/climbs/",
+    "done_when": "TC4.140 runs from replay in verify-all. FR4.038 FR4.039",
+    "frs": [
+      "FR4.038",
+      "FR4.039"
+    ]
+  },
+  {
+    "id": "T4.048",
+    "phase": 4,
+    "workstream": "WS4.2",
+    "role": "Android",
+    "title": "Extend voice grammar for tower work",
+    "description": "Add phrases harness clipped, check in, mark missing, route to the Phase 2 grammar with the 0.80 floor and confirm turn.",
+    "depends_on": "depends on T4.030",
+    "estimate_days": 0.5,
+    "deliverable": "core/voice/TowerGrammar.kt",
+    "done_when": "Unit tests for each phrase at 0.79 and 0.81 confidence. FR4.041 FR4.043 FR4.068",
+    "frs": [
+      "FR4.041",
+      "FR4.043",
+      "FR4.068"
+    ]
+  },
+  {
+    "id": "T4.049",
+    "phase": 4,
+    "workstream": "WS4.5",
+    "role": "Product",
+    "title": "Run safety design review",
+    "description": "Review climb-safe and lone-worker behaviour with the tenant safety officer role; document that the app supplements and does not replace site safety procedures.",
+    "depends_on": "depends on T4.041, T4.045",
+    "estimate_days": 0.5,
+    "deliverable": "docs/adr/ADR-F3-climb-safe.md",
+    "done_when": "Signed review with open items logged. FR4.039 FR4.045",
+    "frs": [
+      "FR4.039",
+      "FR4.045"
+    ]
+  },
+  {
+    "id": "T4.050",
+    "phase": 4,
+    "workstream": "WS4.6",
+    "role": "Backend",
+    "title": "Extend site graph for 3D",
+    "description": "Migration field_0044 adding z, subkind, platform_height_m, sector_code to site_graph_node and climb_length_m to site_graph_edge; coordinate with Phase 3 column set.",
+    "depends_on": "depends on T4.001",
+    "estimate_days": 0.5,
+    "deliverable": "alembic field_0044_graph_3d.py",
+    "done_when": "TC4.142 passes. FR4.046",
+    "frs": [
+      "FR4.046"
+    ]
+  },
+  {
+    "id": "T4.051",
+    "phase": 4,
+    "workstream": "WS4.6",
+    "role": "Backend",
+    "title": "Implement 3D routing",
+    "description": "graph/route3d.py Dijkstra with climb cost x3; GET /v1/sites/{id}/route (API4.11).",
+    "depends_on": "depends on T4.050",
+    "estimate_days": 1.0,
+    "deliverable": "graph/route3d.py",
+    "done_when": "PR4.07 passes. FR4.047 PR4.07",
+    "frs": [
+      "FR4.047"
+    ]
+  },
+  {
+    "id": "T4.052",
+    "phase": 4,
+    "workstream": "WS4.6",
+    "role": "Backend",
+    "title": "Generate newcomer guidance",
+    "description": "Template from route: total climb to target platform, platforms passed, clip-in rule; spoken before climbing.",
+    "depends_on": "depends on T4.051",
+    "estimate_days": 0.5,
+    "deliverable": "graph/guidance.py",
+    "done_when": "TC4.143 text equals expected strings. FR4.048",
+    "frs": [
+      "FR4.048"
+    ]
+  },
+  {
+    "id": "T4.053",
+    "phase": 4,
+    "workstream": "WS4.6",
+    "role": "Backend",
+    "title": "Build equipment trail API",
+    "description": "GET /v1/equipment/{serial}/trail ordered by occurred_at then seq with location path labels (API4.10).",
+    "depends_on": "depends on T4.025, T4.029",
+    "estimate_days": 0.5,
+    "deliverable": "trails/api.py",
+    "done_when": "PR4.06 passes. FR4.049 PR4.06",
+    "frs": [
+      "FR4.049"
+    ]
+  },
+  {
+    "id": "T4.054",
+    "phase": 4,
+    "workstream": "WS4.6",
+    "role": "Console",
+    "title": "Build console 3D explorer and trail replay",
+    "description": "SCR4.08 3D tower view and SCR4.12 replay with play, pause, step.",
+    "depends_on": "depends on T4.051, T4.053",
+    "estimate_days": 1.5,
+    "deliverable": "apps/field-console/app/sites/[id]/graph/",
+    "done_when": "TC4.144 passes. FR4.050 FR4.049",
+    "frs": [
+      "FR4.049",
+      "FR4.050"
+    ]
+  },
+  {
+    "id": "T4.055",
+    "phase": 4,
+    "workstream": "WS4.7",
+    "role": "Backend",
+    "title": "Build asset model upload and validation",
+    "description": "POST /v1/asset-models: .glb <= 25 MB, <= 300k triangles, BOM CSV, node mapping, serialised coverage, quantity rule; sample models in tools/sample-models.",
+    "depends_on": "depends on T4.001",
+    "estimate_days": 1.5,
+    "deliverable": "models/upload.py",
+    "done_when": "TC4.145 and TC4.149 pass. FR4.051 FR4.053 FR4.057 PR4.08",
+    "frs": [
+      "FR4.051",
+      "FR4.053",
+      "FR4.057"
+    ]
+  },
+  {
+    "id": "T4.056",
+    "phase": 4,
+    "workstream": "WS4.7",
+    "role": "Backend",
+    "title": "Implement balloon registry",
+    "description": "Per equipment class registry keyed by (part_no, node_path) assigning balloons once; retired numbers never reused.",
+    "depends_on": "depends on T4.055",
+    "estimate_days": 0.5,
+    "deliverable": "models/balloons.py",
+    "done_when": "PR4.10 passes. FR4.052 PR4.10",
+    "frs": [
+      "FR4.052"
+    ]
+  },
+  {
+    "id": "T4.057",
+    "phase": 4,
+    "workstream": "WS4.7",
+    "role": "Console",
+    "title": "Build console model viewer",
+    "description": "WebGL scene-graph viewer with orbit, explode slider, balloons, isolate, serialised highlight; keyboard accessible.",
+    "depends_on": "depends on T4.055",
+    "estimate_days": 1.5,
+    "deliverable": "apps/field-console/components/ModelViewer/",
+    "done_when": "TC4.148 passes; >= 50 fps on reference laptop. FR4.056 FR4.068 PR4.09",
+    "frs": [
+      "FR4.056",
+      "FR4.068"
+    ]
+  },
+  {
+    "id": "T4.058",
+    "phase": 4,
+    "workstream": "WS4.7",
+    "role": "Android",
+    "title": "Build phone exploded view",
+    "description": "SceneView/Filament viewer with slider, balloon labels and part list; loads models from site pack.",
+    "depends_on": "depends on T4.055, T4.061",
+    "estimate_days": 1.5,
+    "deliverable": "feature/exploded/",
+    "done_when": "TC4.147: >= 30 fps for 150k triangles. FR4.055 PR4.09",
+    "frs": [
+      "FR4.055"
+    ]
+  },
+  {
+    "id": "T4.059",
+    "phase": 4,
+    "workstream": "WS4.7",
+    "role": "Backend",
+    "title": "Implement model versioning and pinning",
+    "description": "Semver versions, publish with step-up, immutability, equipment pinned to version at install; asset_model.published event.",
+    "depends_on": "depends on T4.055",
+    "estimate_days": 0.5,
+    "deliverable": "models/versions.py",
+    "done_when": "TC4.146 passes. FR4.054",
+    "frs": [
+      "FR4.054"
+    ]
+  },
+  {
+    "id": "T4.060",
+    "phase": 4,
+    "workstream": "WS4.8",
+    "role": "Backend",
+    "title": "Build audit report export",
+    "description": "Worker job rendering PDF and CSV with authenticated evidence links; retention via P13e policy (API4.17).",
+    "depends_on": "depends on T4.015",
+    "estimate_days": 1.0,
+    "deliverable": "field-worker jobs/audit_report.py",
+    "done_when": "TC4.153 and PR4.20 pass. FR4.061 PR4.20",
+    "frs": [
+      "FR4.061"
+    ]
+  },
+  {
+    "id": "T4.061",
+    "phase": 4,
+    "workstream": "WS4.8",
+    "role": "Backend",
+    "title": "Build site pack API",
+    "description": "GET /v1/sites/{id}/pack returning a signed manifest with chunks (tree, installed base, graph, models) and snapshot_version; delta by ETag (API4.05).",
+    "depends_on": "depends on T4.002, T4.050, T4.059",
+    "estimate_days": 1.0,
+    "deliverable": "sitepack/api.py",
+    "done_when": "TC4.150: SAMPLE pack <= 60 MB. FR4.058",
+    "frs": [
+      "FR4.058"
+    ]
+  },
+  {
+    "id": "T4.062",
+    "phase": 4,
+    "workstream": "WS4.8",
+    "role": "Android",
+    "title": "Store site packs on the phone",
+    "description": "Download over Wi-Fi by default, verify hashes, store in Room and app files; expire packs older than 14 days.",
+    "depends_on": "depends on T4.061",
+    "estimate_days": 1.0,
+    "deliverable": "core/sitepack/",
+    "done_when": "TC4.151 runs offline. FR4.058 FR4.059",
+    "frs": [
+      "FR4.058",
+      "FR4.059"
+    ]
+  },
+  {
+    "id": "T4.063",
+    "phase": 4,
+    "workstream": "WS4.8",
+    "role": "Android",
+    "title": "Order outbox replay per tower",
+    "description": "Room outbox with (tower_fl, seq); upload in order; failed event blocks only its tower.",
+    "depends_on": "depends on T4.062",
+    "estimate_days": 1.0,
+    "deliverable": "core/outbox/TowerOrdering.kt",
+    "done_when": "PR4.12 passes in Kotest and Hypothesis. FR4.059 PR4.12",
+    "frs": [
+      "FR4.059"
+    ]
+  },
+  {
+    "id": "T4.064",
+    "phase": 4,
+    "workstream": "WS4.8",
+    "role": "Backend",
+    "title": "Detect replay conflicts",
+    "description": "Worker compares event preconditions (expected current FL of serial) with ERP state; on conflict open exception and hold tower queue.",
+    "depends_on": "depends on T4.022, T4.063",
+    "estimate_days": 1.0,
+    "deliverable": "field-worker posting/conflicts.py",
+    "done_when": "TC4.152 passes. FR4.060",
+    "frs": [
+      "FR4.060"
+    ]
+  },
+  {
+    "id": "T4.065",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "Console",
+    "title": "Build console site and tower explorer",
+    "description": "SCR4.08 list, tree, position details, last audit date; data scope enforced.",
+    "depends_on": "depends on T4.002",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/app/sites/",
+    "done_when": "TC4.154 passes. FR4.062",
+    "frs": [
+      "FR4.062"
+    ]
+  },
+  {
+    "id": "T4.066",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "Console",
+    "title": "Build console audit progress board",
+    "description": "SCR4.09 with live updates via SSE from field-api, stale indicator after 2 min.",
+    "depends_on": "depends on T4.014",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/app/audits/",
+    "done_when": "TC4.155 passes. FR4.063",
+    "frs": [
+      "FR4.063"
+    ]
+  },
+  {
+    "id": "T4.067",
+    "phase": 4,
+    "workstream": "WS4.3",
+    "role": "Console",
+    "title": "Build console mismatch queue",
+    "description": "SCR4.10 with filters, evidence, decisions and approval status.",
+    "depends_on": "depends on T4.017, T4.026",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/app/mismatches/",
+    "done_when": "TC4.156 passes. FR4.064 FR4.027",
+    "frs": [
+      "FR4.027",
+      "FR4.064"
+    ]
+  },
+  {
+    "id": "T4.068",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "QA",
+    "title": "Write Python property tests",
+    "description": "Hypothesis suites for PR4.01\u201303, 06\u201308, 10\u201318, 20 in services/field-api/tests/properties/test_f3_*.py.",
+    "depends_on": "depends on T4.023, T4.015",
+    "estimate_days": 2.0,
+    "deliverable": "services/field-api/tests/properties/",
+    "done_when": "All pass at stated runs in verify-all. PR4.01 PR4.03 PR4.11",
+    "frs": []
+  },
+  {
+    "id": "T4.069",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "QA",
+    "title": "Write Kotlin property tests",
+    "description": "Kotest suites for PR4.04, PR4.05, PR4.12, PR4.19 on JVM with sensor generators.",
+    "depends_on": "depends on T4.040, T4.063",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-android/core/safety/src/test/",
+    "done_when": "All pass at stated runs. PR4.04 PR4.05 PR4.19",
+    "frs": []
+  },
+  {
+    "id": "T4.070",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "QA",
+    "title": "Write console property and UI tests",
+    "description": "fast-check for PR4.09 exploded offsets in the viewer; Playwright for SCR4.08\u2013SCR4.13; axe checks.",
+    "depends_on": "depends on T4.057, T4.067",
+    "estimate_days": 1.0,
+    "deliverable": "apps/field-console/tests/",
+    "done_when": "TC4.164 passes with no serious axe violations. FR4.068 PR4.09",
+    "frs": [
+      "FR4.068"
+    ]
+  },
+  {
+    "id": "T4.071",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "QA",
+    "title": "Run contract and compat tests",
+    "description": "Schemathesis over Phase 4 paths; compat tests against core-p13 for approvals, push, prompt registry.",
+    "depends_on": "depends on T4.023",
+    "estimate_days": 0.5,
+    "deliverable": "compat/, packages/field-contract/",
+    "done_when": "TC4.162 passes. FR4.029",
+    "frs": [
+      "FR4.029"
+    ]
+  },
+  {
+    "id": "T4.072",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "DevOps",
+    "title": "Add observability for Phase 4",
+    "description": "Metrics, traces and alerts listed in ts.json observability; dashboards for posting per tower, climb violations, escalations.",
+    "depends_on": "depends on T4.022, T4.045",
+    "estimate_days": 1.0,
+    "deliverable": "deploy/otel/f3-dashboards.json",
+    "done_when": "Alerts fire in chaos test TC4.131. FR4.036 FR4.044",
+    "frs": [
+      "FR4.036",
+      "FR4.044"
+    ]
+  },
+  {
+    "id": "T4.073",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "Security",
+    "title": "Run security checks",
+    "description": "STRIDE review, RLS tests, evidence link auth, log scrubbing, Semgrep and Trivy with no high findings.",
+    "depends_on": "depends on T4.060",
+    "estimate_days": 1.0,
+    "deliverable": "docs/security/f3-threat-model.md",
+    "done_when": "TC4.153, TC4.159, TC4.166 pass. FR4.020 FR4.061",
+    "frs": [
+      "FR4.020",
+      "FR4.061"
+    ]
+  },
+  {
+    "id": "T4.074",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "DevOps",
+    "title": "Wire feature flags and rollout",
+    "description": "Flags FIELD_F3_TOWER_AUDIT, FIELD_F3_EQUIP_POSTING, FIELD_F3_CLIMB_SAFE (always on when F3 enabled), FIELD_F3_MODELS via P13a.",
+    "depends_on": "depends on T4.023",
+    "estimate_days": 0.5,
+    "deliverable": "config/flags.yaml",
+    "done_when": "Rollback steps rehearsed on staging. FR4.045",
+    "frs": [
+      "FR4.045"
+    ]
+  },
+  {
+    "id": "T4.075",
+    "phase": 4,
+    "workstream": "WS4.9",
+    "role": "Owner",
+    "title": "Produce Phase 4 report and verify-all run",
+    "description": "Run scripts/verify-all.sh, record PASS/FAIL table, list FR status and open items, push branch.",
+    "depends_on": "depends on T4.068, T4.069, T4.070, T4.071, T4.073",
+    "estimate_days": 0.5,
+    "deliverable": "docs/SPEC/phase-4-report.md",
+    "done_when": "Report pushed with verify-all PASS table. FR4.067",
+    "frs": [
+      "FR4.067"
+    ]
+  }
+]

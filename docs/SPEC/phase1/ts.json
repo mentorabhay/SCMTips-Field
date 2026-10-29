@@ -1,0 +1,85 @@
+{
+  "phase": 1,
+  "apis": [
+    {
+      "id": "API1.01",
+      "phase": 1,
+      "method": "GET",
+      "path": "/v1/health",
+      "summary": "\u2014 Liveness.",
+      "details": "Permission none Idempotent yes, Idempotency-Key required SLO p95 10 ms Errors None. Request Response {\"status\":\"ok\",\"version\":\"0.1.0\"}"
+    },
+    {
+      "id": "API1.02",
+      "phase": 1,
+      "method": "GET",
+      "path": "/v1/ready",
+      "summary": "\u2014 Readiness with checks.",
+      "details": "Permission none Idempotent yes, Idempotency-Key required SLO p95 250 ms Errors 503 FIELD-SYS-503-NOT-READY: any required check fails Request Response {\"status\":\"ready\",\"checks\":{\"db\":\"ok\",\"migrations\":\"ok\",\"jwks\":\"ok\",\"erp\":\"warn\"}}"
+    },
+    {
+      "id": "API1.03",
+      "phase": 1,
+      "method": "POST",
+      "path": "/v1/auth/exchange",
+      "summary": "\u2014 Exchange a core-signed JWT for a field access token (CS-01 interim).",
+      "details": "Permission core-signed JWT in body Idempotent no SLO p95 80 ms (cached JWKS) Errors 401 FIELD-AUTH-401-SIGNATURE: signature invalid 401 FIELD-AUTH-401-KEY-UNKNOWN: kid unknown after refresh 401 FIELD-AUTH-401-TOKEN-EXPIRED: exp passed 401 FIELD-AUTH-401-BINDING: device binding mismatch 401 FIELD-AUTH-401-DEVICE-REVOKED: device revoked 403 FIELD-AUTH-403-NO-ROLE: no role grant 403 FIELD-FLAG-403-DISABLED: tenant not enabled Request {\"core_token\":\"<jwt>\",\"device_id\":\"0192f1c4-7a10-7c3e-9a51-3b0c1d2e4f60\"} Response {\"access_token\":\"<jwt>\",\"token_type\":\"Bearer\",\"expires_in\":600,\"tenant_id\":\"0192...\",\"roles\":[\"field.operator\"]}"
+    },
+    {
+      "id": "API1.04",
+      "phase": 1,
+      "method": "GET",
+      "path": "/v1/me",
+      "summary": "\u2014 Principal, roles, permissions, site scope, flags.",
+      "details": "Permission any field token Idempotent yes, Idempotency-Key required SLO p95 40 ms Errors 401 FIELD-AUTH-401-TOKEN-EXPIRED Request Response {\"sub\":\"0192...\",\"tenant\":{\"id\":\"0192...\",\"name\":\"SAMPLE Tenant A\"},\"roles\":[\"field.admin\"],\"permissions\":[\"field.site.edit\"],\"site_ids\":\"*\",\"flags\":{\"field.addon.enabled\":true}}"
+    },
+    {
+      "id": "API1.05",
+      "phase": 1,
+      "method": "GET",
+      "path": "/v1/sites?cursor=&amp;limit=",
+      "summary": "\u2014 List sites in scope.",
+      "details": "Permission field.site.read Idempotent yes, Idempotency-Key required SLO p95 60 ms Errors 400 FIELD-PAGE-400-LIMIT: limit > 200 400 FIELD-PAGE-400-CURSOR: tampered or filter changed Request Response {\"items\":[{\"id\":\"0192...\",\"code\":\"SAMPLE-WH-01\",\"name\":\"SAMPLE Warehouse 01\",\"kind\":\"warehouse\",\"erp_plant\":\"1010\",\"version\":1}],\"next_cursor\":\"eyJr...\"}"
+    },
+    {
+      "id": "API1.08",
+      "phase": 1,
+      "method": "GET",
+      "path": "/v1/locations?site_id=&amp;parent_id=&amp;kind=&amp;cursor=&amp;limit=",
+      "summary": "\u2014 List locations.",
+      "details": "Permission field.location.read Idempotent yes, Idempotency-Key required SLO p95 60 ms Errors 400 FIELD-PAGE-400-LIMIT Request Response {\"items\":[{\"id\":\"0192...\",\"kind\":\"rack\",\"code\":\"R12\",\"path\":\"Z01/A03/R12\",\"erp_ref\":\"101A-03-12\"}],\"next_cursor\":null}"
+    },
+    {
+      "id": "API1.10",
+      "phase": 1,
+      "method": "GET",
+      "path": "/v1/materials?plant=&amp;q=&amp;cursor=&amp;limit=",
+      "summary": "\u2014 Search cached materials.",
+      "details": "Permission field.material.read Idempotent yes, Idempotency-Key required SLO p95 60 ms Errors 400 FIELD-PAGE-400-LIMIT Request Response {\"items\":[{\"erp_material_no\":\"SAMPLE-MAT-0007\",\"plant\":\"1010\",\"description\":\"SAMPLE Carton 40x30\",\"base_uom\":\"EA\",\"batch_managed\":true,\"synced_at\":\"2026-11-02T08:00:00Z\"}],\"next_cursor\":null}"
+    },
+    {
+      "id": "API1.13",
+      "phase": 1,
+      "method": "GET",
+      "path": "/v1/system/status",
+      "summary": "\u2014 Ready checks, compat matrix, ERP reachability for console.",
+      "details": "Permission field.system.read Idempotent yes, Idempotency-Key required SLO p95 300 ms Errors None. Request Response {\"ready\":true,\"compat\":{\"core-p13\":\"PASS\",\"core-p14\":\"SKIPPED-PENDING\"},\"erp\":{\"system\":\"erp-sim\",\"reachable\":true,\"p95_ms\":410}}"
+    },
+    {
+      "id": "API1.15",
+      "phase": 1,
+      "method": "POST",
+      "path": "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/Cancel?MaterialDocument=&#x27;4900000101&#x27;&amp;MaterialDocumentYear=&#x27;2026&#x27; (erp-sim)",
+      "summary": "\u2014 Reverse a material document.",
+      "details": "Permission X-CSRF-Token + sim basic auth Idempotent yes, Idempotency-Key required SLO sim p50 420 ms Errors 400 ZSIM/ALREADY-REVERSED 400 ZSIM/REVERSAL-NOT-ALLOWED 400 ZSIM/STOCK-NEGATIVE Request {\"HeaderText\":\"FIELD:0192f1c4-9c33-7e12\"} Response 201 {\"d\":{\"MaterialDocument\":\"4900000102\",\"ReversedDocument\":\"4900000101\",\"GoodsMovementType\":\"102\"}}"
+    },
+    {
+      "id": "API1.16",
+      "phase": 1,
+      "method": "POST",
+      "path": "/_sim/faults (erp-sim)",
+      "summary": "\u2014 Create a fault rule.",
+      "details": "Permission X-Sim-Admin-Token; ERPSIM_FAULTS_ENABLED=true Idempotent no SLO p95 50 ms Errors 400 ZSIM/FAULT-INVALID: out-of-bounds value 404: faults disabled Request {\"kind\":\"partial\",\"match\":{\"service\":\"API_INBOUND_DELIVERY_SRV\",\"operation\":\"PostGoodsReceipt\",\"doc_key\":\"180000012\"},\"probability\":1.0,\"count\":1,\"ttl_s\":120,\"seed\":42} Response 201 {\"id\":\"f_01\",\"hits\":0,\"expires_at\":\"2026-11-05T10:02:00Z\"}"
+    }
+  ]
+}

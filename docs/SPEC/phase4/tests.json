@@ -1,0 +1,647 @@
+{
+  "phase": 4,
+  "properties": [
+    {
+      "id": "PR4.01",
+      "phase": 4,
+      "name": "Install then dismantle",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all serials and positions, posting install then dismantle leaves the equipment not installed and history contains both events in order with increasing seq. Generator Random sequences of 1\u201330 install/dismantle/move ops over 1\u20135 serials and 1\u20138 positions; bias to back-to-back install/dismantle and equal timestamps. Oracle Model-based: in-memory reference state machine vs field-api + erp-sim results. Shrinking Single serial, install at P1 then dismantle; failure shows history order or status. Case Given When Then Data TC4.001 Serial 21A7K0093 not installed install at P02 then dismantle status dismantled; history [install seq1, dismantle seq2] IN01-TWR-0042-T01-SA-L03-P02 TC4.002 Same timestamp for both ops install and dismantle at 10:00:00Z order by seq preserved occurred_at equal TC4.003 Offline then sync both ops replayed after 2 h same final state as online outbox seq 5,6"
+    },
+    {
+      "id": "PR4.02",
+      "phase": 4,
+      "name": "One location per serial",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all event sequences accepted by the API, a serial has at most one active install segment at any instant. Generator Interleaved concurrent install requests for the same serial at 2\u20134 positions across 1\u20133 towers, plus moves. Oracle Scan of serial_event segments for overlap; DB partial unique index never violated. Shrinking Two installs of one serial at two positions, second must be 409. Case Given When Then Data TC4.004 S-1001 installed at T01 P02 install S-1001 at T02 P01 409 FIELD-EQP-409-ALREADY-INSTALLED S-1001 TC4.005 Move = dismantle then install record_move T01 P02 to T01 P03 one active segment at each instant seq 7,8 TC4.006 Concurrent installs from 2 phones both POST within 5 ms exactly one succeeds 2 devices"
+    },
+    {
+      "id": "PR4.03",
+      "phase": 4,
+      "name": "Completeness bounded",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all expected sets E and capture sets C, completeness = |C intersect E| / |E| lies in [0,1], equals 1 only if E is a subset of C, and is 1.0 with empty_scope when E is empty. Generator E size 0\u201360, C size 0\u201380 with overlap ratio 0\u20131, duplicates and tower-only serials. Oracle Direct set computation in the oracle. Shrinking E empty or C containing only tower-only serials. Case Given When Then Data TC4.007 E 6 items, 5 matched, 2 unknown compute 0.833 6 expected TC4.008 E empty compute 1.0, empty_scope=true new sector TC4.009 Duplicate captures of same serial compute counted once 3 captures of 21A7K0093"
+    },
+    {
+      "id": "PR4.04",
+      "phase": 4,
+      "name": "No prompts while climbing",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all sensor traces and prompt schedules, PromptGate emits no prompt while state is climbing or unknown, and emits no task prompt while harness is unconfirmed on structure. Generator Synthetic IMU/baro traces (climb 0.1\u20130.6 m/s, pauses 0\u201330 s, noise, sensor gaps) plus random prompt submissions incl. lone-worker warnings. Oracle Timeline check: every emit timestamp falls in a stationary window >= 3 s with appropriate harness state. Shrinking Prompt submitted 1 ms before a climb starts. Case Given When Then Data TC4.010 Climbing 0.22 m/s lone-worker warning due held, emitted after stationary 3 s trace climb_07 TC4.011 Sensor gap 1.4 s at height checklist update due held (unknown state) gap TC4.012 Stationary, harness unconfirmed task prompt due only harness check emitted L3"
+    },
+    {
+      "id": "PR4.05",
+      "phase": 4,
+      "name": "Capture gate",
+      "engine": "Kotest",
+      "runs": "1000 runs",
+      "statement": "For all sequences of state, voice and tap events, a capture is accepted on structure only if state is stationary and a voice phrase and tap occurred within 10 s with no climbing or > 1.5 m altitude change since. Generator Random interleavings of phrase (conf 0.6\u20131.0), taps, climbs, altitude changes 0\u20133 m. Oracle Reference harness automaton. Shrinking Phrase at t=0, tap at t=10.01 s. Case Given When Then Data TC4.013 Phrase 0.85 + tap after 4 s capture accepted L2 TC4.014 Phrase only capture rejected, MSG4.07 no tap TC4.015 Confirmed then climbed 1.6 m capture rejected until re-confirm L2 to L3"
+    },
+    {
+      "id": "PR4.06",
+      "phase": 4,
+      "name": "Trail order",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all serial histories, trail replay visits locations in non-decreasing occurred_at with ties broken by seq, and visits every history location exactly once per event. Generator Histories of 1\u201340 events with shuffled insertion order, equal timestamps, reversals. Oracle Sort of raw events by (occurred_at, seq) equals replay order. Shrinking Two events with the same timestamp inserted in reverse order. Case Given When Then Data TC4.016 Store, site, Sector A L3, Sector B L2 replay same order S-1001 TC4.017 Equal timestamps replay seq order seq 3,4 TC4.018 Reversal present replay reversal shown after original ref_doc"
+    },
+    {
+      "id": "PR4.07",
+      "phase": 4,
+      "name": "Route respects climb weight",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all connected 3D graphs, the returned route cost equals walk length + 3 x climb length and is <= the cost of every other simple path between the same nodes. Generator Random graphs 3\u201312 nodes (brute force) and 50\u20132000 nodes (compare with networkx), climb ratio 0\u20130.7. Oracle Brute-force enumeration for small graphs; networkx Dijkstra with weights for large. Shrinking 3-node graph where a longer walk beats a short climb. Case Given When Then Data TC4.019 Ladder 40 m vs stairs 100 m walk route stairs (100 < 120) 2 paths TC4.020 Ladder 30 m vs walk 100 m route ladder (90 < 100) 2 paths TC4.021 Disconnected target route 422 FIELD-GRAPH-422-NO-ROUTE isolated node"
+    },
+    {
+      "id": "PR4.08",
+      "phase": 4,
+      "name": "BOM counts",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all valid models, each top-level BOM qty equals the number of node instances mapped to it, excluding nodes mapped to its sub-parts; publish is refused otherwise. Generator Random BOM trees depth 1\u20134, qty 1\u20138, shared node names, sub-parts. Oracle Count from glTF node map independent of validator code. Shrinking One top-level item with one extra sub-part node. Case Given When Then Data TC4.022 RRU connectors qty 4, 4 nodes validate ok RRU@1.3.0 TC4.023 Fan qty 1 with 2 screw sub-parts validate ok; screws not counted FAN-01 TC4.024 Qty 4, 3 nodes publish refused MSG4.24 TMA@1.0.0"
+    },
+    {
+      "id": "PR4.09",
+      "phase": 4,
+      "name": "Exploded offsets",
+      "engine": "fast-check",
+      "runs": "1000 runs",
+      "statement": "For all models and t in [0,1], part position at t=0 equals assembled position, and position is linear in t with offset at t=1 equal to explode_vector. Generator Random transforms, vectors up to 0.5 m, t including 0, 1, values outside range. Oracle Analytic computation with tolerance 1e-6 m. Shrinking Single node with non-zero vector at t=0. Case Given When Then Data TC4.025 t=0 render all parts at assembled positions RRU TC4.026 t=1 render offset equals vector PSU [0,0.12,0] TC4.027 t=1.4 render clamped to t=1 slider overshoot"
+    },
+    {
+      "id": "PR4.10",
+      "phase": 4,
+      "name": "Balloon stability",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all sequences of model versions, balloon numbers are unique within a version, the same (part_no, node_path) keeps its number across versions, and retired numbers are never reused. Generator Random version chains of 2\u20138 with add, remove, rename node, reorder rows. Oracle Registry replay vs reference map. Shrinking Remove part then add a new part in the next version. Case Given When Then Data TC4.028 Part 1234-55 balloon 7 in 1.2.0 publish 1.3.0 balloon 7 RRU TC4.029 Part removed in 1.3.0 add new part in 1.4.0 new number, not 9 retired 9 TC4.030 Rows reordered publish numbers unchanged CSV shuffle"
+    },
+    {
+      "id": "PR4.11",
+      "phase": 4,
+      "name": "Mismatch symmetry",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all expected and captured sets, every ERP-only item and every tower-only item is reported, and swapping the roles of the two sets swaps erp_only and tower_only counts. Generator Random sets with overlap, misplaced serials, class-matched serial differences. Oracle Set differences computed independently; role swap check. Shrinking One ERP-only and one tower-only item at different positions. Case Given When Then Data TC4.031 ERP has S-2, tower has S-9 reconcile erp_only S-2 and tower_only S-9 (or serial_mismatch if same position and class) P01/P04 TC4.032 Swap sets reconcile counts swapped same data TC4.033 S-5 expected at P02 found at P03 reconcile misplaced site IB"
+    },
+    {
+      "id": "PR4.12",
+      "phase": 4,
+      "name": "Per-tower order on replay",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all offline outboxes with events across towers and arbitrary upload interruptions, ERP calls for each tower occur in original seq order; other towers are not blocked by a held tower. Generator Outboxes of 1\u2013200 events across 1\u20134 towers; random network drops, duplicates, retries, one failing event. Oracle ERP-sim call log per queue_key is strictly increasing in seq. Shrinking Two events of one tower uploaded in reverse after a drop. Case Given When Then Data TC4.034 T01 seq 17,18; T02 seq 5 upload 18 before 17 ERP sees 17 then 18 2 towers TC4.035 T01 seq 31 conflict replay T01 held, T02 continues conflict TC4.036 Duplicate upload of seq 17 replay one ERP call same Idempotency-Key"
+    },
+    {
+      "id": "PR4.13",
+      "phase": 4,
+      "name": "Reversal restores",
+      "engine": "Hypothesis",
+      "runs": "300 runs",
+      "statement": "For all posted events, reversing them in reverse order returns installed_base to its state before the first event, while all erp_document rows remain with originals marked reversed. Generator Random posted sequences 1\u201310 per tower then reversals. Oracle Snapshot comparison; count of erp_document rows never decreases. Shrinking Single install then reverse. Case Given When Then Data TC4.037 Install posted reverse not installed; doc reversed EQ-INST-10000123 TC4.038 Replace posted reverse install then dismantle old serial back at position seq 17,18 TC4.039 Reverse twice second reverse 409 FIELD-EQP-409-NOT-POSTED same event"
+    },
+    {
+      "id": "PR4.14",
+      "phase": 4,
+      "name": "Idempotent equipment events",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all requests, repeating with the same Idempotency-Key and body returns the same response and creates no new serial_event; same key with a different body returns 422. Generator Random request bodies, repeat counts 1\u20135, body mutations. Oracle Row counts and response equality. Shrinking Same key with one changed field. Case Given When Then Data TC4.040 Same key and body x3 POST one event, identical responses key 7f3a... TC4.041 Same key, different serial POST 422 FIELD-IDEM-422-BODY key 7f3a... TC4.042 After 24 h POST same key treated as new request retention 24 h"
+    },
+    {
+      "id": "PR4.15",
+      "phase": 4,
+      "name": "Replace atomicity",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all replace requests, the dismantle of the old serial has seq n and the install of the new serial seq n+1 on the same queue, and the position never holds two active serials. Generator Random positions with capacity 1, interleaved other events on the tower. Oracle Segment overlap scan on the position. Shrinking Replace concurrent with another install on the same position. Case Given When Then Data TC4.043 Replace S-OLD by S-NEW post seq 17 dismantle, 18 install P02 TC4.044 Concurrent install at P02 post second rejected 409 capacity 1 TC4.045 Dismantle fails 8 times post install not attempted; exception fault injection"
+    },
+    {
+      "id": "PR4.16",
+      "phase": 4,
+      "name": "Import idempotent and acyclic",
+      "engine": "Hypothesis",
+      "runs": "300 runs",
+      "statement": "For all SAP functional location sets, importing twice yields zero changes the second time, every location has an existing parent or is a site root, and no cycles exist. Generator Random FL trees 1\u2013500 nodes, renamed parents, orphans, cycles injected, shuffled pages. Oracle Tree walk validation and diff of two imports. Shrinking Two-node cycle in source data. Case Given When Then Data TC4.046 3 SAMPLE sites import twice second preview all zeros IN01-TWR-0042/0057/0103 TC4.047 Orphan FL import row rejected, others applied IN01-TWR-0042-T09-SA TC4.048 Cycle A>B>A import both rows rejected cycle"
+    },
+    {
+      "id": "PR4.17",
+      "phase": 4,
+      "name": "Geofence rule",
+      "engine": "Hypothesis",
+      "runs": "1000 runs",
+      "statement": "For all coordinates and accuracies, check-in is accepted iff haversine distance - accuracy <= radius and accuracy <= 50 m. Generator Points 0\u20132000 m from site centre, accuracy 1\u2013200 m, latitudes -60..60, edge bias at boundary. Oracle Independent haversine implementation. Shrinking Distance exactly radius + accuracy. Case Given When Then Data TC4.049 160 m, accuracy 20 m, radius 150 m check in accepted 140 <= 150 TC4.050 100 m, accuracy 60 m check in 422 accuracy 60 > 50 TC4.051 200 m, accuracy 20 m check in 403 geofence 180 > 150"
+    },
+    {
+      "id": "PR4.18",
+      "phase": 4,
+      "name": "Verify routing and no AI posting",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all captures, verification is queued when any routing rule applies, the 10% sample is deterministic per capture id, and no ERP call results from a verify outcome alone. Generator Random captures with confidence 0.5\u20131.0, expected or not, normalised chars, pattern pass/fail, manual flag. Oracle Rule table oracle; ERP-sim call log empty for verify-only flows. Shrinking Confidence exactly 0.92. Case Given When Then Data TC4.052 conf 0.88 route queued 21A7K0093 TC4.053 conf 0.97, expected, clean route not_needed unless sample hash % 100 >= 10 TC4.054 Spark mismatch outcome exception opened, zero ERP calls verify mismatch"
+    },
+    {
+      "id": "PR4.19",
+      "phase": 4,
+      "name": "Lone-worker timer",
+      "engine": "Kotest",
+      "runs": "500 runs",
+      "statement": "For all check-in schedules and climb periods, escalation fires iff no check-in occurs within interval + grace, warnings are never emitted while climbing, and each check-in restarts the timer. Generator Random check-in times, intervals 10\u201360 min, climb windows, offline gaps. Oracle Discrete-event simulation reference. Shrinking Check-in exactly at interval + grace. Case Given When Then Data TC4.055 Last check-in 14:00, 20+5 min no check-in escalate at 14:25 default TC4.056 Climbing at warning time T-2 min warning deferred, escalation unchanged climb 14:17\u201314:24 TC4.057 Check-in at 14:24:59 check in no escalation; next due 14:44:59 edge"
+    },
+    {
+      "id": "PR4.20",
+      "phase": 4,
+      "name": "Report round trip",
+      "engine": "Hypothesis",
+      "runs": "200 runs",
+      "statement": "For all audits, the CSV export has one row per expected line plus one per tower-only finding, values match API data, and every evidence link resolves to evidence of the same tenant. Generator Random audits 0\u2013500 lines, unicode serials, commas and quotes in descriptions. Oracle Parse CSV and join with API results; HEAD each link with and without session. Shrinking Description containing a comma and quote. Case Given When Then Data TC4.058 24 lines, 1 tower-only export CSV 25 rows IN01-TWR-0042 TC4.059 Link without session GET 401 evidence link TC4.060 Description &#x27;Panel, 65\" tilt&#x27; export correctly quoted CSV escape"
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "TC4.001",
+      "phase": 4,
+      "action": "Serial 21A7K0093 not installed",
+      "setup": "install at P02 then dismantle",
+      "expected": "status dismantled; history [install seq1, dismantle seq2]",
+      "notes": "IN01-TWR-0042-T01-SA-L03-P02"
+    },
+    {
+      "id": "TC4.002",
+      "phase": 4,
+      "action": "Same timestamp for both ops",
+      "setup": "install and dismantle at 10:00:00Z",
+      "expected": "order by seq preserved",
+      "notes": "occurred_at equal"
+    },
+    {
+      "id": "TC4.003",
+      "phase": 4,
+      "action": "Offline then sync",
+      "setup": "both ops replayed after 2 h",
+      "expected": "same final state as online",
+      "notes": "outbox seq 5,6"
+    },
+    {
+      "id": "TC4.004",
+      "phase": 4,
+      "action": "S-1001 installed at T01 P02",
+      "setup": "install S-1001 at T02 P01",
+      "expected": "409 FIELD-EQP-409-ALREADY-INSTALLED",
+      "notes": "S-1001"
+    },
+    {
+      "id": "TC4.005",
+      "phase": 4,
+      "action": "Move = dismantle then install",
+      "setup": "record_move T01 P02 to T01 P03",
+      "expected": "one active segment at each instant",
+      "notes": "seq 7,8"
+    },
+    {
+      "id": "TC4.006",
+      "phase": 4,
+      "action": "Concurrent installs from 2 phones",
+      "setup": "both POST within 5 ms",
+      "expected": "exactly one succeeds",
+      "notes": "2 devices"
+    },
+    {
+      "id": "TC4.007",
+      "phase": 4,
+      "action": "E 6 items, 5 matched, 2 unknown",
+      "setup": "compute",
+      "expected": "0.833",
+      "notes": "6 expected"
+    },
+    {
+      "id": "TC4.008",
+      "phase": 4,
+      "action": "E empty",
+      "setup": "compute",
+      "expected": "1.0, empty_scope=true",
+      "notes": "new sector"
+    },
+    {
+      "id": "TC4.009",
+      "phase": 4,
+      "action": "Duplicate captures of same serial",
+      "setup": "compute",
+      "expected": "counted once",
+      "notes": "3 captures of 21A7K0093"
+    },
+    {
+      "id": "TC4.010",
+      "phase": 4,
+      "action": "Climbing 0.22 m/s",
+      "setup": "lone-worker warning due",
+      "expected": "held, emitted after stationary 3 s",
+      "notes": "trace climb_07"
+    },
+    {
+      "id": "TC4.011",
+      "phase": 4,
+      "action": "Sensor gap 1.4 s at height",
+      "setup": "checklist update due",
+      "expected": "held (unknown state)",
+      "notes": "gap"
+    },
+    {
+      "id": "TC4.012",
+      "phase": 4,
+      "action": "Stationary, harness unconfirmed",
+      "setup": "task prompt due",
+      "expected": "only harness check emitted",
+      "notes": "L3"
+    },
+    {
+      "id": "TC4.013",
+      "phase": 4,
+      "action": "Phrase 0.85 + tap after 4 s",
+      "setup": "capture",
+      "expected": "accepted",
+      "notes": "L2"
+    },
+    {
+      "id": "TC4.014",
+      "phase": 4,
+      "action": "Phrase only",
+      "setup": "capture",
+      "expected": "rejected, MSG4.07",
+      "notes": "no tap"
+    },
+    {
+      "id": "TC4.015",
+      "phase": 4,
+      "action": "Confirmed then climbed 1.6 m",
+      "setup": "capture",
+      "expected": "rejected until re-confirm",
+      "notes": "L2 to L3"
+    },
+    {
+      "id": "TC4.016",
+      "phase": 4,
+      "action": "Store, site, Sector A L3, Sector B L2",
+      "setup": "replay",
+      "expected": "same order",
+      "notes": "S-1001"
+    },
+    {
+      "id": "TC4.017",
+      "phase": 4,
+      "action": "Equal timestamps",
+      "setup": "replay",
+      "expected": "seq order",
+      "notes": "seq 3,4"
+    },
+    {
+      "id": "TC4.018",
+      "phase": 4,
+      "action": "Reversal present",
+      "setup": "replay",
+      "expected": "reversal shown after original",
+      "notes": "ref_doc"
+    },
+    {
+      "id": "TC4.019",
+      "phase": 4,
+      "action": "Ladder 40 m vs stairs 100 m walk",
+      "setup": "route",
+      "expected": "stairs (100 < 120)",
+      "notes": "2 paths"
+    },
+    {
+      "id": "TC4.020",
+      "phase": 4,
+      "action": "Ladder 30 m vs walk 100 m",
+      "setup": "route",
+      "expected": "ladder (90 < 100)",
+      "notes": "2 paths"
+    },
+    {
+      "id": "TC4.021",
+      "phase": 4,
+      "action": "Disconnected target",
+      "setup": "route",
+      "expected": "422 FIELD-GRAPH-422-NO-ROUTE",
+      "notes": "isolated node"
+    },
+    {
+      "id": "TC4.022",
+      "phase": 4,
+      "action": "RRU connectors qty 4, 4 nodes",
+      "setup": "validate",
+      "expected": "ok",
+      "notes": "RRU@1.3.0"
+    },
+    {
+      "id": "TC4.023",
+      "phase": 4,
+      "action": "Fan qty 1 with 2 screw sub-parts",
+      "setup": "validate",
+      "expected": "ok; screws not counted",
+      "notes": "FAN-01"
+    },
+    {
+      "id": "TC4.024",
+      "phase": 4,
+      "action": "Qty 4, 3 nodes",
+      "setup": "publish",
+      "expected": "refused MSG4.24",
+      "notes": "TMA@1.0.0"
+    },
+    {
+      "id": "TC4.025",
+      "phase": 4,
+      "action": "t=0",
+      "setup": "render",
+      "expected": "all parts at assembled positions",
+      "notes": "RRU"
+    },
+    {
+      "id": "TC4.026",
+      "phase": 4,
+      "action": "t=1",
+      "setup": "render",
+      "expected": "offset equals vector",
+      "notes": "PSU [0,0.12,0]"
+    },
+    {
+      "id": "TC4.027",
+      "phase": 4,
+      "action": "t=1.4",
+      "setup": "render",
+      "expected": "clamped to t=1",
+      "notes": "slider overshoot"
+    },
+    {
+      "id": "TC4.028",
+      "phase": 4,
+      "action": "Part 1234-55 balloon 7 in 1.2.0",
+      "setup": "publish 1.3.0",
+      "expected": "balloon 7",
+      "notes": "RRU"
+    },
+    {
+      "id": "TC4.029",
+      "phase": 4,
+      "action": "Part removed in 1.3.0",
+      "setup": "add new part in 1.4.0",
+      "expected": "new number, not 9",
+      "notes": "retired 9"
+    },
+    {
+      "id": "TC4.030",
+      "phase": 4,
+      "action": "Rows reordered",
+      "setup": "publish",
+      "expected": "numbers unchanged",
+      "notes": "CSV shuffle"
+    },
+    {
+      "id": "TC4.031",
+      "phase": 4,
+      "action": "ERP has S-2, tower has S-9",
+      "setup": "reconcile",
+      "expected": "erp_only S-2 and tower_only S-9 (or serial_mismatch if same position and class)",
+      "notes": "P01/P04"
+    },
+    {
+      "id": "TC4.032",
+      "phase": 4,
+      "action": "Swap sets",
+      "setup": "reconcile",
+      "expected": "counts swapped",
+      "notes": "same data"
+    },
+    {
+      "id": "TC4.033",
+      "phase": 4,
+      "action": "S-5 expected at P02 found at P03",
+      "setup": "reconcile",
+      "expected": "misplaced",
+      "notes": "site IB"
+    },
+    {
+      "id": "TC4.034",
+      "phase": 4,
+      "action": "T01 seq 17,18; T02 seq 5",
+      "setup": "upload 18 before 17",
+      "expected": "ERP sees 17 then 18",
+      "notes": "2 towers"
+    },
+    {
+      "id": "TC4.035",
+      "phase": 4,
+      "action": "T01 seq 31 conflict",
+      "setup": "replay",
+      "expected": "T01 held, T02 continues",
+      "notes": "conflict"
+    },
+    {
+      "id": "TC4.036",
+      "phase": 4,
+      "action": "Duplicate upload of seq 17",
+      "setup": "replay",
+      "expected": "one ERP call",
+      "notes": "same Idempotency-Key"
+    },
+    {
+      "id": "TC4.037",
+      "phase": 4,
+      "action": "Install posted",
+      "setup": "reverse",
+      "expected": "not installed; doc reversed",
+      "notes": "EQ-INST-10000123"
+    },
+    {
+      "id": "TC4.038",
+      "phase": 4,
+      "action": "Replace posted",
+      "setup": "reverse install then dismantle",
+      "expected": "old serial back at position",
+      "notes": "seq 17,18"
+    },
+    {
+      "id": "TC4.039",
+      "phase": 4,
+      "action": "Reverse twice",
+      "setup": "second reverse",
+      "expected": "409 FIELD-EQP-409-NOT-POSTED",
+      "notes": "same event"
+    },
+    {
+      "id": "TC4.040",
+      "phase": 4,
+      "action": "Same key and body x3",
+      "setup": "POST",
+      "expected": "one event, identical responses",
+      "notes": "key 7f3a..."
+    },
+    {
+      "id": "TC4.041",
+      "phase": 4,
+      "action": "Same key, different serial",
+      "setup": "POST",
+      "expected": "422 FIELD-IDEM-422-BODY",
+      "notes": "key 7f3a..."
+    },
+    {
+      "id": "TC4.042",
+      "phase": 4,
+      "action": "After 24 h",
+      "setup": "POST same key",
+      "expected": "treated as new request",
+      "notes": "retention 24 h"
+    },
+    {
+      "id": "TC4.043",
+      "phase": 4,
+      "action": "Replace S-OLD by S-NEW",
+      "setup": "post",
+      "expected": "seq 17 dismantle, 18 install",
+      "notes": "P02"
+    },
+    {
+      "id": "TC4.044",
+      "phase": 4,
+      "action": "Concurrent install at P02",
+      "setup": "post",
+      "expected": "second rejected 409",
+      "notes": "capacity 1"
+    },
+    {
+      "id": "TC4.045",
+      "phase": 4,
+      "action": "Dismantle fails 8 times",
+      "setup": "post",
+      "expected": "install not attempted; exception",
+      "notes": "fault injection"
+    },
+    {
+      "id": "TC4.046",
+      "phase": 4,
+      "action": "3 SAMPLE sites",
+      "setup": "import twice",
+      "expected": "second preview all zeros",
+      "notes": "IN01-TWR-0042/0057/0103"
+    },
+    {
+      "id": "TC4.047",
+      "phase": 4,
+      "action": "Orphan FL",
+      "setup": "import",
+      "expected": "row rejected, others applied",
+      "notes": "IN01-TWR-0042-T09-SA"
+    },
+    {
+      "id": "TC4.048",
+      "phase": 4,
+      "action": "Cycle A>B>A",
+      "setup": "import",
+      "expected": "both rows rejected",
+      "notes": "cycle"
+    },
+    {
+      "id": "TC4.049",
+      "phase": 4,
+      "action": "160 m, accuracy 20 m, radius 150 m",
+      "setup": "check in",
+      "expected": "accepted",
+      "notes": "140 <= 150"
+    },
+    {
+      "id": "TC4.050",
+      "phase": 4,
+      "action": "100 m, accuracy 60 m",
+      "setup": "check in",
+      "expected": "422 accuracy",
+      "notes": "60 > 50"
+    },
+    {
+      "id": "TC4.051",
+      "phase": 4,
+      "action": "200 m, accuracy 20 m",
+      "setup": "check in",
+      "expected": "403 geofence",
+      "notes": "180 > 150"
+    },
+    {
+      "id": "TC4.052",
+      "phase": 4,
+      "action": "conf 0.88",
+      "setup": "route",
+      "expected": "queued",
+      "notes": "21A7K0093"
+    },
+    {
+      "id": "TC4.053",
+      "phase": 4,
+      "action": "conf 0.97, expected, clean",
+      "setup": "route",
+      "expected": "not_needed unless sample",
+      "notes": "hash % 100 >= 10"
+    },
+    {
+      "id": "TC4.054",
+      "phase": 4,
+      "action": "Spark mismatch",
+      "setup": "outcome",
+      "expected": "exception opened, zero ERP calls",
+      "notes": "verify mismatch"
+    },
+    {
+      "id": "TC4.055",
+      "phase": 4,
+      "action": "Last check-in 14:00, 20+5 min",
+      "setup": "no check-in",
+      "expected": "escalate at 14:25",
+      "notes": "default"
+    },
+    {
+      "id": "TC4.056",
+      "phase": 4,
+      "action": "Climbing at warning time",
+      "setup": "T-2 min",
+      "expected": "warning deferred, escalation unchanged",
+      "notes": "climb 14:17\u201314:24"
+    },
+    {
+      "id": "TC4.057",
+      "phase": 4,
+      "action": "Check-in at 14:24:59",
+      "setup": "check in",
+      "expected": "no escalation; next due 14:44:59",
+      "notes": "edge"
+    },
+    {
+      "id": "TC4.058",
+      "phase": 4,
+      "action": "24 lines, 1 tower-only",
+      "setup": "export CSV",
+      "expected": "25 rows",
+      "notes": "IN01-TWR-0042"
+    },
+    {
+      "id": "TC4.059",
+      "phase": 4,
+      "action": "Link without session",
+      "setup": "GET",
+      "expected": "401",
+      "notes": "evidence link"
+    },
+    {
+      "id": "TC4.060",
+      "phase": 4,
+      "action": "Description &#x27;Panel, 65\" tilt&#x27;",
+      "setup": "export",
+      "expected": "correctly quoted",
+      "notes": "CSV escape"
+    }
+  ]
+}

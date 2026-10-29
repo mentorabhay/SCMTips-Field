@@ -1,0 +1,395 @@
+{
+  "phase": 3,
+  "functional_requirements": [
+    {
+      "id": "FR3.001",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall poll A_InbDeliveryHeader/A_InbDeliveryItem every FIELD_IBD_POLL_S seconds for plants and storage locations in site scope and create one receive task per open inbound delivery with one task_line per item. Tasks must exist before trucks arrive. Must TC3.101"
+    },
+    {
+      "id": "FR3.002",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall import inbound deliveries from a CSV export using guided-load conventions: column mapping, material matching auto-accept at >= 0.95 with no rival within 0.05, all other rows to review. Tenants without an adapter can still receive. Must TC3.102"
+    },
+    {
+      "id": "FR3.003",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall make delivery import idempotent by DeliveryDocument and LastChangeDateTime, update open lines on change and flag a conflict instead of changing lines that already have captures. Avoid duplicate tasks and silent changes. Must TC3.101 TC3.103"
+    },
+    {
+      "id": "FR3.004",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall accept an SSCC only if it has 18 digits with a valid GS1 mod-10 check digit and is not already captured on the same delivery. SSCC is the carton identity. Must PR3.12 TC3.104"
+    },
+    {
+      "id": "FR3.005",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall create a handling_unit per accepted SSCC with quantity from GS1 AI 37 or AI 30, else from material units per carton, else by voice count. Quantities must be known per carton. Must TC3.105"
+    },
+    {
+      "id": "FR3.006",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall compute counted quantity per line as the sum of quantities of non-discarded captures unless a voice count override exists, in which case the latest override applies. One rule for scan and voice counts. Must PR3.02"
+    },
+    {
+      "id": "FR3.007",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall block confirm when counted quantity exceeds expected by more than the over-delivery tolerance and open an over-delivery case for supervisor decision. Prevent unagreed receipts. Must PR3.14 TC3.106"
+    },
+    {
+      "id": "FR3.008",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall require a reason code (short_shipped, damaged_in_transit, later_delivery) to confirm a line below expected quantity and record the remainder as a late-receipt candidate. Under-deliveries feed supply risk. Must PR3.14 TC3.107"
+    },
+    {
+      "id": "FR3.009",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall exclude cartons marked damaged from unrestricted quantity, require photo evidence, and per site setting either not receive them or post them to blocked stock. Damaged goods must not be issued. Must TC3.108"
+    },
+    {
+      "id": "FR3.010",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall, on confirm, update ActualDeliveryQuantity per item and call PostGoodsReceipt so SAP posts movement type 101, and record the material document number. Core receiving outcome. Must PR3.01 TC3.109"
+    },
+    {
+      "id": "FR3.011",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall turn &#x27;undo&#x27; after posting into a reversal document with movement type 102 (Cancel or CancelItem) and never delete or edit the original document. ERP documents are never deleted. Must PR3.01 TC3.110"
+    },
+    {
+      "id": "FR3.012",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall post receipts of materials requiring inspection to quality inspection stock and propose putaway only to bins in zones with hold=true. Uninspected stock must not be used. Must TC3.111"
+    },
+    {
+      "id": "FR3.013",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall create one putaway line per HU after GR, propose the fixed bin else the nearest empty allowed bin by graph distance, and confirm by bin label scan; a different bin needs &#x27;confirm&#x27; and a reason. Stock location accuracy. Must TC3.112"
+    },
+    {
+      "id": "FR3.014",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall send putaway confirmation to SAP only for sites with putaway_in_erp=true and otherwise record the HU bin in field.location. IM-only plants have no bin postings. Should TC3.112"
+    },
+    {
+      "id": "FR3.015",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall post movement type 321 to release quality inspection stock when a user with field.quality.release records a release decision. Close the quality-hold loop. Should TC3.111"
+    },
+    {
+      "id": "FR3.016",
+      "phase": 3,
+      "category": "Receiving",
+      "description": "The system shall record dock_arrived_at, gr_posted_at and putaway_confirmed_at per HU. Dock-to-stock KPI. Must TC3.113"
+    },
+    {
+      "id": "FR3.017",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall import open outbound deliveries (OverallPickingStatus not C) and create one pick task per delivery with lines in route order. Pick lists per delivery. Must TC3.114"
+    },
+    {
+      "id": "FR3.018",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall confirm a pick only after a source bin scan followed by a product capture that matches the delivery item material. Catch wrong picks at source. Must TC3.115"
+    },
+    {
+      "id": "FR3.019",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall require batch (GS1 AI 10) or serial (AI 21) capture for batch- or serial-managed materials and reject a batch different from the one on the delivery item. Traceability. Should TC3.116"
+    },
+    {
+      "id": "FR3.020",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall accept a short pick with reason bin_empty, damaged or not_found, open a short-pick case and create a cycle-count request for the source bin. Ship what exists; fix stock. Must TC3.117"
+    },
+    {
+      "id": "FR3.021",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall send picked quantities with PickOneItem and ConfirmPickingOneItem per line in the delivery&#x27;s queue. SAP picking status. Must TC3.118"
+    },
+    {
+      "id": "FR3.022",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall pack picked lines into outbound HUs identified by generated or pre-printed SSCCs and refuse any packing that would exceed picked quantity. Shipping units. Must PR3.08 PR3.12 TC3.119"
+    },
+    {
+      "id": "FR3.023",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall call PostGoodsIssue (movement type 601) only when every line is picked or short-confirmed and packed where packing is required. Complete deliveries only. Must PR3.08 TC3.120"
+    },
+    {
+      "id": "FR3.024",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall reverse a posted goods issue with ReverseGoodsIssue (movement type 602) on undo after posting or supervisor action and return lines to picked. Correct mistakes. Must TC3.120"
+    },
+    {
+      "id": "FR3.025",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall reject any goods issue request whose quantity for an item exceeds the picked quantity for that item. No phantom issues. Must PR3.08"
+    },
+    {
+      "id": "FR3.026",
+      "phase": 3,
+      "category": "Outbound",
+      "description": "The system shall order pick stops by site-graph distance using nearest neighbour plus 2-opt for up to 40 stops. Shorter walks. Should PR3.09 TC3.114"
+    },
+    {
+      "id": "FR3.027",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall create PI documents from a planner request (plant, storage location, bins or materials, planned count date, freeze, posting block). Planned counts. Must TC3.121"
+    },
+    {
+      "id": "FR3.028",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall run cycle-count rules daily at 02:00 site local (ABC frequency and short-pick/putaway-mismatch triggers) and group due items into PI requests of at most FIELD_PI_MAX_ITEMS. Regular counting. Must TC3.122 TC3.117"
+    },
+    {
+      "id": "FR3.029",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall never include book quantity, book value or variance in any operator-facing response, websocket message, lens frame or device cache. Blind count independence. Must PR3.03 TC3.123"
+    },
+    {
+      "id": "FR3.030",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall build a count from captures and &#x27;count n&#x27;, treat &#x27;count zero&#x27; as a zero count, and commit only on &#x27;confirm&#x27;. Explicit commit. Must PR3.02 TC3.124 TC3.150"
+    },
+    {
+      "id": "FR3.031",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall require a recount when |difference| / book > FIELD_PI_RECOUNT_PCT or |difference value| > FIELD_PI_RECOUNT_VALUE. Catch count errors. Must PR3.04 TC3.125"
+    },
+    {
+      "id": "FR3.032",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall assign and accept a recount only from an operator who has not counted that item before on the document. Independent recount. Must PR3.04 TC3.126"
+    },
+    {
+      "id": "FR3.033",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall accept a recount within max(1 base unit, 0.5%) of the previous count, else require a third count by an inventory controller; at most 3 counts. Bounded recount loop. Should PR3.04 TC3.126"
+    },
+    {
+      "id": "FR3.034",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall post differences (701 gain, 702 loss) and, when the absolute difference value of the document exceeds FIELD_PI_APPROVAL_VALUE, only after approval in the matching core band by an approver who is neither requester nor counter. Controlled write-offs. Must PR3.05 TC3.127 TC3.155"
+    },
+    {
+      "id": "FR3.035",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall, for documents with freeze, compute differences against the book snapshot taken at document creation and warn when movements occurred after the snapshot. SAP freeze semantics. Must PR3.16 TC3.128"
+    },
+    {
+      "id": "FR3.036",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall refuse pick and putaway confirmations for bin/material pairs on a PI document with posting block until differences are posted or the document is deleted. No movements during count. Must TC3.129"
+    },
+    {
+      "id": "FR3.037",
+      "phase": 3,
+      "category": "Physical inventory",
+      "description": "The system shall send counts by PATCH of the PI item and difference posting as a later job in the same queue. Order and lock safety. Must TC3.130"
+    },
+    {
+      "id": "FR3.038",
+      "phase": 3,
+      "category": "Posting",
+      "description": "The system shall keep one ordered posting queue per ERP reference document (IBD:, OBD:, PID:) and execute jobs strictly in confirm order. Avoid SAP lock errors and keep order. Must PR3.07 TC3.130 TC3.148 TC3.153"
+    },
+    {
+      "id": "FR3.039",
+      "phase": 3,
+      "category": "Posting",
+      "description": "The system shall allow at most one worker to process a queue_key at a time. Locks. Must PR3.07 TC3.131"
+    },
+    {
+      "id": "FR3.040",
+      "phase": 3,
+      "category": "Posting",
+      "description": "The system shall retry retryable failures with backoff 2/4/8/16/32 s (cap 32 s, \u00b110% jitter) up to 8 attempts, fail fast on validation errors, then emit erp.failed and open an exception case. Bounded retries. Must PR3.13 TC3.132 TC3.153"
+    },
+    {
+      "id": "FR3.041",
+      "phase": 3,
+      "category": "Posting",
+      "description": "The system shall give every erp_document exactly one idempotency key, pass it to the adapter and probe SAP for an existing document before each retry. No duplicate postings. Must PR3.06 TC3.133"
+    },
+    {
+      "id": "FR3.042",
+      "phase": 3,
+      "category": "Posting",
+      "description": "The system shall keep field-level mappings in versioned declarative files per OData service with a VERIFIED/UNVERIFIED status per row. Change mappings without code. Must PR3.15 TC3.134"
+    },
+    {
+      "id": "FR3.043",
+      "phase": 3,
+      "category": "Posting",
+      "description": "The system shall provide erp-sim parity for the entities, function imports, numbering, locks, reversal rules and fault profiles used by Phase 3. Trustworthy simulator. Must PR3.15 TC3.135"
+    },
+    {
+      "id": "FR3.044",
+      "phase": 3,
+      "category": "Posting",
+      "description": "The adapter shall fetch CSRF tokens, send sap-client, use If-Match on PATCH, time out at FIELD_SAP_TIMEOUT_S and classify SAP messages as retryable or not. Protocol correctness. Must TC3.134"
+    },
+    {
+      "id": "FR3.045",
+      "phase": 3,
+      "category": "Posting",
+      "description": "The system shall show failed and blocked queues to field.integration and field.supervisor with &#x27;Retry now&#x27; and &#x27;Cancel job&#x27;, and re-evaluate dependent later jobs after a cancel. Operability. Must TC3.136"
+    },
+    {
+      "id": "FR3.046",
+      "phase": 3,
+      "category": "Site graph",
+      "description": "The system shall import SAP storage bins into the location tree using a per-site pattern and reject any parent assignment that creates a cycle. Bins are the map&#x27;s base. Must PR3.11 TC3.137"
+    },
+    {
+      "id": "FR3.047",
+      "phase": 3,
+      "category": "Site graph",
+      "description": "The system shall provide a console graph editor for nodes, edges, kinds, landmarks and forklift zones with validation and versioned draft/publish. Graph matches the floor. Must PR3.11 TC3.138"
+    },
+    {
+      "id": "FR3.048",
+      "phase": 3,
+      "category": "Site graph",
+      "description": "The system shall register QR anchors with an HMAC tag, BLE beacons and UWB anchors, each bound to a node and coordinates. Position fixes. Must TC3.139"
+    },
+    {
+      "id": "FR3.049",
+      "phase": 3,
+      "category": "Site graph",
+      "description": "The phone shall fuse QR, UWB, BLE, step dead reckoning and ARCore VIO (phone held) with a Kalman filter and snap to the nearest existing edge within 2 m. Usable indoor position. Must PR3.17 TC3.140"
+    },
+    {
+      "id": "FR3.050",
+      "phase": 3,
+      "category": "Site graph",
+      "description": "The system shall compute routes with Dijkstra (climb weight \u00d73, no road edges for pedestrians), build steps with distance, turn and &#x27;look for&#x27; cue, and re-route after > 4 m off-route for 5 s. Newcomer wayfinding. Must PR3.09 TC3.141"
+    },
+    {
+      "id": "FR3.051",
+      "phase": 3,
+      "category": "Site graph",
+      "description": "The phone shall show a 2D map and a 3D rack view; the lens shall show only the next step and distance. Different needs per surface. Should TC3.141"
+    },
+    {
+      "id": "FR3.052",
+      "phase": 3,
+      "category": "Site graph",
+      "description": "The phone shall suppress prompts and disable capture while in a forklift zone at speed > FIELD_WQ_SPEED_MPS for 1 s, queue prompts and release them after 1.5 s stationary. Safety. Must PR3.10 TC3.142"
+    },
+    {
+      "id": "FR3.053",
+      "phase": 3,
+      "category": "Site graph",
+      "description": "The system shall record trail points at 1 Hz only during active tasks, keep them 30 days and show them only to field.trail.read holders and the operator. Replay and route learning with privacy. Should TC3.143"
+    },
+    {
+      "id": "FR3.054",
+      "phase": 3,
+      "category": "Console",
+      "description": "The console shall show a live task board with updates within 2 s p95. Shift steering. Must TC3.144"
+    },
+    {
+      "id": "FR3.055",
+      "phase": 3,
+      "category": "Console",
+      "description": "The console shall list warehouse discrepancies and allow permitted decisions with audit. Clear exceptions fast. Must TC3.106 TC3.136"
+    },
+    {
+      "id": "FR3.056",
+      "phase": 3,
+      "category": "Console",
+      "description": "The console shall show a receiving dashboard with dock-to-stock p50/p90, open deliveries and late receipts. KPI. Must TC3.145 TC3.113"
+    },
+    {
+      "id": "FR3.057",
+      "phase": 3,
+      "category": "Console",
+      "description": "The console shall show item and value inventory accuracy per site per week. KPI. Must TC3.145"
+    },
+    {
+      "id": "FR3.058",
+      "phase": 3,
+      "category": "Core linkage",
+      "description": "The system shall export receipts, counts, variances and late receipts as a guided-load CSV daily and on demand. Core supply linkage (interim). Must PR3.18 TC3.146"
+    },
+    {
+      "id": "FR3.059",
+      "phase": 3,
+      "category": "Core linkage",
+      "description": "The system shall flag late receipts and add expected-date rows to the export so the core starvation clock recomputes. Supply risk signal. Must TC3.147"
+    },
+    {
+      "id": "FR3.060",
+      "phase": 3,
+      "category": "Core linkage",
+      "description": "The export shall use a stable row_key per field record so reloading produces no duplicates, behind flag FIELD_CORE_LINK_MODE=guided_load for the Phase 5 switch. Idempotent loads. Must PR3.18 TC3.146"
+    },
+    {
+      "id": "FR3.061",
+      "phase": 3,
+      "category": "Lens/phone UX",
+      "description": "The lens and phone shall show the warehouse task screens and copy defined in SCR3.01\u2013SCR3.07. Consistent UX. Must TC3.104 TC3.154"
+    },
+    {
+      "id": "FR3.062",
+      "phase": 3,
+      "category": "Lens/phone UX",
+      "description": "The phone shall cache tasks (without book quantity), stage confirms offline and post them in confirm order on reconnect. Dock dead spots. Must PR3.03 TC3.148"
+    },
+    {
+      "id": "FR3.063",
+      "phase": 3,
+      "category": "Lens/phone UX",
+      "description": "The phone shall meet TalkBack, 48 dp, 4.5:1 contrast rules and offer a gloves voice-only mode for every warehouse step. Accessibility and cold rooms. Must TC3.149 TC3.150"
+    },
+    {
+      "id": "FR3.064",
+      "phase": 3,
+      "category": "Lens/phone UX",
+      "description": "The system shall audit confirms, posts, reversals, decisions, approvals, graph publishes and exports with actor, time and trace_id. Traceability. Must TC3.151"
+    },
+    {
+      "id": "FR3.065",
+      "phase": 3,
+      "category": "Lens/phone UX",
+      "description": "The system shall enforce field.* permissions and site scope on every warehouse API with RLS. Security. Must TC3.152 TC3.123"
+    }
+  ]
+}

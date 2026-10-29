@@ -1,0 +1,647 @@
+{
+  "phase": 1,
+  "properties": [
+    {
+      "id": "PR1.01",
+      "phase": 1,
+      "name": "Idempotent replay",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all POST requests r and keys k, sending (k, r) any number n >= 1 times, sequentially or after lost responses, yields identical status and body, exactly one created row and at most one ERP document. Generator Hypothesis: random site/device/probe bodies; n in 1..6; interleaved response drops (p=0.3); random gaps 0-2 s with frozen clock; keys UUIDv7 or random 1-128 printable ASCII. Oracle Compare all responses byte-wise; COUNT rows by idempotency key = 1; erpsim.document count per dedupe key <= 1. Shrinking Single body, n=2, one dropped response. Case Given When Then Data TC1.001 POST /v1/sites with key K1 sent 3 times 3 identical 201 bodies, 1 site row, replays carry Idempotent-Replayed: true K1=0192f1c4-8b22-7d01-a3f4-5e6f7a8b9c0d, code SAMPLE-WH-01 TC1.002 Probe POST with key K2 whose first response is dropped client retries second response equals stored first response; 1 capture row K2=probe-0001 TC1.003 Posting job with idem key K3 posted to erp-sim twice due to worker restart second post erp-sim returns same 4900000101 with ZSIM/DUP; one document delivery 180000012"
+    },
+    {
+      "id": "PR1.02",
+      "phase": 1,
+      "name": "Key reuse with different body",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all key k and bodies a != b (canonical), after (k, a) completes, (k, b) returns 422 FIELD-IDEM-422-KEY-REUSED and leaves state unchanged. Generator Pairs of bodies differing in one field (string, number, nested, key order only as negative control); principal change as a variant. Oracle Response 422 problem+json; DB snapshot before equals after; key-order-only variant must replay (not 422). Shrinking Bodies differing in one character. Case Given When Then Data TC1.004 Completed POST /v1/sites K with name &#x27;A&#x27; POST K with name &#x27;B&#x27; 422 and site name stays &#x27;A&#x27; K=0192f1c4-1111-7000-8000-000000000001 TC1.005 Completed POST K body {a:1,b:2} POST K body {b:2,a:1} replay 201 (same fingerprint) canonical JSON TC1.006 Completed POST K by principal P1 same body by principal P2 422 (fingerprint includes principal) P1, P2 SAMPLE users"
+    },
+    {
+      "id": "PR1.03",
+      "phase": 1,
+      "name": "Concurrent same key",
+      "engine": "Hypothesis",
+      "runs": "300 runs",
+      "statement": "For all c concurrent requests with the same key and body, exactly one executes the handler; others get 409 FIELD-IDEM-409-IN-PROGRESS or the replayed result. Generator c in 2..32 asyncio tasks; handler latency 0-300 ms; random crash of the first executor (p=0.1) to exercise takeover. Oracle Handler invocation counter = 1 (or 2 only after a crash with rollback); responses are only {201 replay, 409}. Shrinking c=2 with 1 ms handler. Case Given When Then Data TC1.007 32 parallel POSTs with key K handler sleeps 200 ms 1 x 201, others 409 with Retry-After: 1 or replay K=probe-par-01 TC1.008 First executor crashes after insert second retries after 30 s lock second executes; one row total locked_until=+30 s TC1.009 2 parallel POSTs, different bodies race one 201, other 409 or 422; never two rows K=probe-par-02"
+    },
+    {
+      "id": "PR1.04",
+      "phase": 1,
+      "name": "RLS isolation",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all tenants A != B and rows of any field table, a session with app.tenant_id = A never reads, updates or inserts rows with tenant_id = B, and a session with no tenant reads zero rows. Generator Random 2-5 tenants, 0-50 rows per table per tenant via factories; random queries (select all, by id of other tenant, update by id, insert with foreign tenant_id); connection as field_app. Oracle Rows returned all have tenant_id = A; foreign updates affect 0 rows; foreign inserts raise 42501; unset tenant count = 0. Shrinking One table, two tenants, one row each. Case Given When Then Data TC1.010 Tenants A and B each with 10 sites SELECT * FROM field.site as A only A rows SAMPLE Tenant A, SAMPLE Tenant B TC1.011 Session A INSERT erp_document with tenant_id = B error 42501 (WITH CHECK) doc_type material_document TC1.012 No app.tenant_id SELECT count(*) from each field table 0 for all 12 tables fresh connection"
+    },
+    {
+      "id": "PR1.05",
+      "phase": 1,
+      "name": "ERP sim numbering",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all concurrent allocations on object o, numbers are unique, strictly increasing in allocation order, inside the BRIEF range, and exhaustion returns ZSIM/NR-EXHAUSTED. Generator 1-32 workers x 1-200 allocations per object family; random rollbacks (p=0.1); ranges shrunk to 50 numbers for exhaustion runs. Oracle Committed set has no duplicates; sorted by commit order is increasing; all in [lower, upper]; allocation count beyond upper raises. Shrinking Two workers, one allocation each. Case Given When Then Data TC1.013 32 workers posting GR 1,000 postings 1,000 unique material documents within 4900000000-4999999999 year 2026 TC1.014 Range shrunk to 180000000-180000049 51st delivery created ZSIM/NR-EXHAUSTED object inbound_delivery TC1.015 Allocation rolled back next allocation number not reused (gap allowed) 180000013 rolled back"
+    },
+    {
+      "id": "PR1.06",
+      "phase": 1,
+      "name": "Lock exclusivity",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all interleavings of sessions acquiring and releasing locks on document keys, at most one session holds a given key at any time, and an expired lock can be taken over. Generator Hypothesis RuleBasedStateMachine: rules acquire(s, key), release(s, key), advance_clock(0-40 s); 1-8 sessions, 1-4 keys. Oracle Model of holders per key; real erpsim.enqueue_lock compared after each step; acquire by non-holder before TTL returns ZSIM/LOCKED. Shrinking Two sessions, one key, acquire-acquire. Case Given When Then Data TC1.016 Session S1 holds 180000012 S2 acquires ZSIM/LOCKED naming S1 TTL 30 s TC1.017 S1 holds, clock +31 s S2 acquires S2 holds; S1 release is a no-op FIELD_SIM_LOCK_TTL_S=30 TC1.018 S1 holds 180000012 S2 acquires 180000013 both succeed different keys"
+    },
+    {
+      "id": "PR1.07",
+      "phase": 1,
+      "name": "Reversal conserves stock",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all sequences of postings and reversals, net stock per (material, plant, storage location, batch, stock type) equals the sum of non-reversed postings, document count never decreases, and each document is reversed at most once. Generator Random sequences length 1-40 over 10 SAMPLE materials with movement types 101, 261, 321, 601, 701, 702 and Cancel on random earlier documents; quantities Decimal 0.001-9999.999. Oracle Model ledger vs erpsim.stock; COUNT(document) monotonic; second Cancel returns ZSIM/ALREADY-REVERSED; reversal of reversal returns ZSIM/REVERSAL-NOT-ALLOWED. Shrinking Post 101 then Cancel. Case Given When Then Data TC1.019 GR 101 of 24.000 EA SAMPLE-MAT-0007 Cancel 102 document; stock delta 0 4900000101 -> 4900000102 TC1.020 701 gain of 2.000 then Cancel stock checked net 0; reversal uses 702 (sim convention) PI doc 100000004 TC1.021 Reversed document Cancel again ZSIM/ALREADY-REVERSED; counts unchanged 4900000101"
+    },
+    {
+      "id": "PR1.08",
+      "phase": 1,
+      "name": "Sim dedupe under faults",
+      "engine": "Hypothesis",
+      "runs": "300 runs",
+      "statement": "For all create requests with key k under any fault schedule (latency, 5xx, timeout, partial), at most one document exists for k and find_by_idempotency_key(k) returns it after commit. Generator Random fault rules per operation (p 0-1, count 1-5), retries 1-8 by SimAdapter, partial faults committing then dropping responses. Oracle SELECT count(*) from erpsim.dedupe where idem_key = k <= 1; adapter final result doc_no equals dedupe doc_no. Shrinking One partial fault then one retry. Case Given When Then Data TC1.022 Fault partial count=1 on GR adapter posts with retry 1 document; adapter reports 4900000101 seed 42 TC1.023 Fault http_5xx p=0.5 count=5 adapter posts 0 or 1 documents; if 1, result matches seed 7 TC1.024 Same key, different payload after success post ZSIM/IDEM-CONFLICT; no new document key FIELD:K9"
+    },
+    {
+      "id": "PR1.09",
+      "phase": 1,
+      "name": "Pagination completeness",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all row sets and limits 1..200, iterating next_cursor until null returns every pre-existing row exactly once, in id order, even with concurrent inserts. Generator 0-1,500 rows with UUIDv7 ids; limit uniform 1-200 with edge bias to 1, 199, 200; concurrent inserts and deletes between pages. Oracle Union of pages superset of initial rows minus deleted; no duplicates; ids strictly increasing across pages. Shrinking 3 rows, limit 1, one insert mid-way. Case Given When Then Data TC1.025 1,000 materials page with limit 200 5 pages; 1,000 distinct ids; last next_cursor null plant 1010 TC1.026 Exactly 200 rows limit 200 1 page; next_cursor null (lookahead row) edge TC1.027 Rows inserted between pages continue paging no duplicates; old rows all present 50 inserts"
+    },
+    {
+      "id": "PR1.10",
+      "phase": 1,
+      "name": "ETag precondition",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all sequences of concurrent updates with If-Match, an update succeeds iff its tag equals the current tag, version increases by exactly 1 per success, and no update is lost. Generator 2-10 clients each reading then patching random fields with random delays; some send stale or missing tags. Oracle Final version = 1 + successes; every success saw the tag of the previous version; failures are 412 or 428. Shrinking Two clients, same tag. Case Given When Then Data TC1.028 Site v1 read by C1 and C2 both PATCH with v1 tag one 200 (v2), one 412 SAMPLE-WH-01 TC1.029 PATCH without If-Match sent 428 site id 0192... TC1.030 GET with If-None-Match current tag sent 304 empty body"
+    },
+    {
+      "id": "PR1.11",
+      "phase": 1,
+      "name": "UUIDv7 ordering",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all generated id sequences in one process, ids are strictly increasing as 128-bit values, version nibble is 7, variant is 10, and the timestamp is within 1 s of the wall clock. Generator 1-1,000,000 ids; clock mocked to stall, jump backwards up to 5 s, or advance; threads 1-8. Oracle Byte comparison of consecutive ids; bit checks; timestamp extraction vs mocked clock. Shrinking Two ids in the same millisecond. Case Given When Then Data TC1.031 Clock frozen at one ms generate 5,000 ids strictly increasing via counter and rollover into next ms t=1762300000000 TC1.032 Clock jumps back 2 s generate ids still increase (ms held) TC1.033 8 threads generate 100,000 total no duplicates"
+    },
+    {
+      "id": "PR1.12",
+      "phase": 1,
+      "name": "problem+json conformance",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all requests that produce non-2xx responses, the body validates against schemas/problem.json, code matches the pattern, its number equals status, and request_id equals X-Request-Id. Generator Schemathesis stateful fuzzing of all field-api operations plus Hypothesis-generated bad headers, bad timestamps without offset, oversized bodies. Oracle JSON Schema validation; regex; header comparison; no stack traces or SQL in detail. Shrinking Single missing required field. Case Given When Then Data TC1.034 POST /v1/sites missing name sent 400 with errors[0].pointer &#x27;/name&#x27; code FIELD-REQ-400-VALIDATION TC1.035 captured_at &#x27;2026-11-04T09:00:00&#x27; (no offset) POST probe 400 FIELD-REQ-400-TIMEZONE TC1.036 Unknown route GET /v1/nope 404 problem+json FIELD-REQ-404-ROUTE"
+    },
+    {
+      "id": "PR1.13",
+      "phase": 1,
+      "name": "Compat change detection",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all spec mutations of used endpoints, the classifier reports BREAK iff the mutation removes a path, method or read response field, adds a required request field not sent, narrows a type or enum, or changes auth; additive optional changes are not breaking. Generator Mutation generator over specs/core-p13.json restricted to USED_ENDPOINTS: remove, rename, retype, add-required, add-optional, add-enum, change-security. Oracle Expected label from the mutation kind; compare classifier verdict. Shrinking Single field removal on one endpoint. Case Given When Then Data TC1.037 Remove a response field read by the add-on classify BREAK RESP_FIELD_REMOVED e.g. JWKS keys[].kid TC1.038 Add optional response field classify no BREAK TC1.039 Add required request field classify BREAK NEW_REQUIRED"
+    },
+    {
+      "id": "PR1.14",
+      "phase": 1,
+      "name": "Fault injection bounded",
+      "engine": "Hypothesis",
+      "runs": "300 runs",
+      "statement": "For all fault rules, hits never exceed count, no hit occurs after ttl_s, injected latency lies in [latency_ms, latency_ms + 50 ms], observed rate over N calls lies within the 99.9% binomial bound of probability, and no fault applies when disabled. Generator Rules with probability 0-1, count 1-100, ttl 1-120 s (mocked clock), latency 0-2000 ms; N 50-2,000 calls; seeds random. Oracle Hit counters, timestamps, measured durations; binomial interval check; with ERPSIM_FAULTS_ENABLED=false all rules inert. Shrinking count=1, two calls. Case Given When Then Data TC1.040 Rule count=3 p=1 10 calls exactly 3 faults kind http_5xx TC1.041 Rule ttl_s=60 call at t=61 s no fault mocked clock TC1.042 Rule latency 2000 ms p=1 call duration 2000-2050 ms seed 1"
+    },
+    {
+      "id": "PR1.15",
+      "phase": 1,
+      "name": "Posting order and backoff",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all job sets and failure schedules, jobs with the same queue_key succeed in seq order with at most one running, delays follow 2/4/8/16/32/32/32 s (+0-250 ms jitter), and no job exceeds 8 attempts. Generator 1-50 queue_keys, 1-20 jobs each; failure kinds per attempt drawn from LOCK, TIMEOUT, BUSINESS, success; mocked clock; 1-4 workers. Oracle Per queue_key success order equals seq order; running count per key <= 1; attempt timestamps vs schedule; attempts <= 8; dead jobs emit erp.failed. Shrinking One key, two jobs, first fails once. Case Given When Then Data TC1.043 IBD:180000012 seq 1-3, seq 1 LOCK once run success order 1,2,3; seq 2 waits for seq 1 2 workers TC1.044 Job failing LOCK always run to end 8 attempts, status dead, erp.failed delays 2,4,8,16,32,32,32 TC1.045 BUSINESS error run failed after 1 attempt; later seq blocked ZSIM/QTY-EXCEEDS"
+    },
+    {
+      "id": "PR1.16",
+      "phase": 1,
+      "name": "Mapping round trip",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all valid field domain objects o, parse(to_odata(o)) == o, quantities keep 3 decimals exactly, and item numbers are 000010 steps. Generator Hypothesis builds GoodsReceipt, GoodsIssue, CountResult, Reversal, Install, MeasurementReading with Decimal quantities 0.001-999999.999, 1-99 items, unicode batch text limited to SAP charset. Oracle Structural equality; Decimal equality; regex on item numbers. Shrinking One item quantity 0.001. Case Given When Then Data TC1.046 GR with 3 items round trip equal; items 000010, 000020, 000030 SAMPLE-MAT-0001..0003 TC1.047 Quantity 0.1 + 0.2 summed to_odata &#x27;0.300&#x27; exactly TC1.048 Measurement 12.345 bar round trip equal including unit BAR point SAMPLE-MP-0003"
+    },
+    {
+      "id": "PR1.17",
+      "phase": 1,
+      "name": "Token exchange acceptance",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all token variants, exchange succeeds iff signature valid, alg allowed, iss and aud match, now within [nbf-60 s, exp+60 s], device binding matches and device active; the issued TTL <= min(600 s, exp - now). Generator fake-core issues tokens with random mutations: key, alg (incl. none, HS256), iss, aud, exp/nbf offsets -3600..3600 s, binding, device status. Oracle Oracle predicate over mutation set; issued token exp checked. Shrinking Single mutated claim. Case Given When Then Data TC1.049 Valid device JWT with 240 s left exchange 200, expires_in <= 240 device dev_SAMPLE_0042 TC1.050 alg none exchange 401 FIELD-AUTH-401-SIGNATURE TC1.051 Revoked device exchange 401 FIELD-AUTH-401-DEVICE-REVOKED"
+    },
+    {
+      "id": "PR1.18",
+      "phase": 1,
+      "name": "Token contrast",
+      "engine": "fast-check",
+      "runs": "500 runs",
+      "statement": "For all declared text/background token pairs in light, dark and lens themes, WCAG contrast ratio >= 4.5:1 (>= 3:1 for large-text pairs marked large). Generator fast-check samples pairs from tokens/pairs.json and random alpha compositing over declared backgrounds. Oracle WCAG 2.x relative luminance formula. Shrinking One pair below threshold. Case Given When Then Data TC1.052 Light theme text.primary on surface.base compute ratio >= 4.5 TC1.053 Dark theme text.muted on surface.raised compute ratio >= 4.5 TC1.054 Lens theme status.ok on lens.bg compute ratio >= 4.5 (to confirm on Display)"
+    },
+    {
+      "id": "PR1.19",
+      "phase": 1,
+      "name": "Outbox exactly-once effect",
+      "engine": "Hypothesis",
+      "runs": "300 runs",
+      "statement": "For all transactions with state changes, an outbox row is committed iff the change commits; the relay publishes each id at least once and a deduplicating consumer applies each id exactly once under relay crashes. Generator Random transactions committing or rolling back; relay crash points (before publish, after publish before mark); 1-3 relay instances. Oracle Count outbox rows = committed changes; consumer applied-set equals outbox id set. Shrinking One commit, crash after publish. Case Given When Then Data TC1.055 Site create then rollback inspect outbox no row TC1.056 Relay crashes after publish before mark restart event published twice; consumer applies once dedupe by id TC1.057 3 relays 1,000 events each id applied once SKIP LOCKED"
+    },
+    {
+      "id": "PR1.20",
+      "phase": 1,
+      "name": "Location hierarchy valid",
+      "engine": "Hypothesis",
+      "runs": "500 runs",
+      "statement": "For all sequences of location creates and moves, the stored graph is a forest per site with allowed parent kinds, depth <= 6, unique paths and paths consistent with parents. Generator RuleBasedStateMachine: create(kind, parent), move(node, new parent), rename(code); 1-200 operations, both warehouse and tower trees. Oracle Model tree; reject set predicted by BR1.17; recompute paths from parents and compare. Shrinking Move a node under its own child. Case Given When Then Data TC1.058 Tower TWR-0001 > sector SEC-A > level L2 > position P1 create accepted; path TWR-0001/SEC-A/L2/P1 TC1.059 Rack under tower create 422 FIELD-LOC-422-PARENT-KIND TC1.060 Move aisle A03 under its rack R12 move 422 FIELD-LOC-422-CYCLE"
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "TC1.001",
+      "phase": 1,
+      "action": "POST /v1/sites with key K1",
+      "setup": "sent 3 times",
+      "expected": "3 identical 201 bodies, 1 site row, replays carry Idempotent-Replayed: true",
+      "notes": "K1=0192f1c4-8b22-7d01-a3f4-5e6f7a8b9c0d, code SAMPLE-WH-01"
+    },
+    {
+      "id": "TC1.002",
+      "phase": 1,
+      "action": "Probe POST with key K2 whose first response is dropped",
+      "setup": "client retries",
+      "expected": "second response equals stored first response; 1 capture row",
+      "notes": "K2=probe-0001"
+    },
+    {
+      "id": "TC1.003",
+      "phase": 1,
+      "action": "Posting job with idem key K3 posted to erp-sim twice due to worker restart",
+      "setup": "second post",
+      "expected": "erp-sim returns same 4900000101 with ZSIM/DUP; one document",
+      "notes": "delivery 180000012"
+    },
+    {
+      "id": "TC1.004",
+      "phase": 1,
+      "action": "Completed POST /v1/sites K with name &#x27;A&#x27;",
+      "setup": "POST K with name &#x27;B&#x27;",
+      "expected": "422 and site name stays &#x27;A&#x27;",
+      "notes": "K=0192f1c4-1111-7000-8000-000000000001"
+    },
+    {
+      "id": "TC1.005",
+      "phase": 1,
+      "action": "Completed POST K body {a:1,b:2}",
+      "setup": "POST K body {b:2,a:1}",
+      "expected": "replay 201 (same fingerprint)",
+      "notes": "canonical JSON"
+    },
+    {
+      "id": "TC1.006",
+      "phase": 1,
+      "action": "Completed POST K by principal P1",
+      "setup": "same body by principal P2",
+      "expected": "422 (fingerprint includes principal)",
+      "notes": "P1, P2 SAMPLE users"
+    },
+    {
+      "id": "TC1.007",
+      "phase": 1,
+      "action": "32 parallel POSTs with key K",
+      "setup": "handler sleeps 200 ms",
+      "expected": "1 x 201, others 409 with Retry-After: 1 or replay",
+      "notes": "K=probe-par-01"
+    },
+    {
+      "id": "TC1.008",
+      "phase": 1,
+      "action": "First executor crashes after insert",
+      "setup": "second retries after 30 s lock",
+      "expected": "second executes; one row total",
+      "notes": "locked_until=+30 s"
+    },
+    {
+      "id": "TC1.009",
+      "phase": 1,
+      "action": "2 parallel POSTs, different bodies",
+      "setup": "race",
+      "expected": "one 201, other 409 or 422; never two rows",
+      "notes": "K=probe-par-02"
+    },
+    {
+      "id": "TC1.010",
+      "phase": 1,
+      "action": "Tenants A and B each with 10 sites",
+      "setup": "SELECT * FROM field.site as A",
+      "expected": "only A rows",
+      "notes": "SAMPLE Tenant A, SAMPLE Tenant B"
+    },
+    {
+      "id": "TC1.011",
+      "phase": 1,
+      "action": "Session A",
+      "setup": "INSERT erp_document with tenant_id = B",
+      "expected": "error 42501 (WITH CHECK)",
+      "notes": "doc_type material_document"
+    },
+    {
+      "id": "TC1.012",
+      "phase": 1,
+      "action": "No app.tenant_id",
+      "setup": "SELECT count(*) from each field table",
+      "expected": "0 for all 12 tables",
+      "notes": "fresh connection"
+    },
+    {
+      "id": "TC1.013",
+      "phase": 1,
+      "action": "32 workers posting GR",
+      "setup": "1,000 postings",
+      "expected": "1,000 unique material documents within 4900000000-4999999999",
+      "notes": "year 2026"
+    },
+    {
+      "id": "TC1.014",
+      "phase": 1,
+      "action": "Range shrunk to 180000000-180000049",
+      "setup": "51st delivery created",
+      "expected": "ZSIM/NR-EXHAUSTED",
+      "notes": "object inbound_delivery"
+    },
+    {
+      "id": "TC1.015",
+      "phase": 1,
+      "action": "Allocation rolled back",
+      "setup": "next allocation",
+      "expected": "number not reused (gap allowed)",
+      "notes": "180000013 rolled back"
+    },
+    {
+      "id": "TC1.016",
+      "phase": 1,
+      "action": "Session S1 holds 180000012",
+      "setup": "S2 acquires",
+      "expected": "ZSIM/LOCKED naming S1",
+      "notes": "TTL 30 s"
+    },
+    {
+      "id": "TC1.017",
+      "phase": 1,
+      "action": "S1 holds, clock +31 s",
+      "setup": "S2 acquires",
+      "expected": "S2 holds; S1 release is a no-op",
+      "notes": "FIELD_SIM_LOCK_TTL_S=30"
+    },
+    {
+      "id": "TC1.018",
+      "phase": 1,
+      "action": "S1 holds 180000012",
+      "setup": "S2 acquires 180000013",
+      "expected": "both succeed",
+      "notes": "different keys"
+    },
+    {
+      "id": "TC1.019",
+      "phase": 1,
+      "action": "GR 101 of 24.000 EA SAMPLE-MAT-0007",
+      "setup": "Cancel",
+      "expected": "102 document; stock delta 0",
+      "notes": "4900000101 -> 4900000102"
+    },
+    {
+      "id": "TC1.020",
+      "phase": 1,
+      "action": "701 gain of 2.000 then Cancel",
+      "setup": "stock checked",
+      "expected": "net 0; reversal uses 702 (sim convention)",
+      "notes": "PI doc 100000004"
+    },
+    {
+      "id": "TC1.021",
+      "phase": 1,
+      "action": "Reversed document",
+      "setup": "Cancel again",
+      "expected": "ZSIM/ALREADY-REVERSED; counts unchanged",
+      "notes": "4900000101"
+    },
+    {
+      "id": "TC1.022",
+      "phase": 1,
+      "action": "Fault partial count=1 on GR",
+      "setup": "adapter posts with retry",
+      "expected": "1 document; adapter reports 4900000101",
+      "notes": "seed 42"
+    },
+    {
+      "id": "TC1.023",
+      "phase": 1,
+      "action": "Fault http_5xx p=0.5 count=5",
+      "setup": "adapter posts",
+      "expected": "0 or 1 documents; if 1, result matches",
+      "notes": "seed 7"
+    },
+    {
+      "id": "TC1.024",
+      "phase": 1,
+      "action": "Same key, different payload after success",
+      "setup": "post",
+      "expected": "ZSIM/IDEM-CONFLICT; no new document",
+      "notes": "key FIELD:K9"
+    },
+    {
+      "id": "TC1.025",
+      "phase": 1,
+      "action": "1,000 materials",
+      "setup": "page with limit 200",
+      "expected": "5 pages; 1,000 distinct ids; last next_cursor null",
+      "notes": "plant 1010"
+    },
+    {
+      "id": "TC1.026",
+      "phase": 1,
+      "action": "Exactly 200 rows",
+      "setup": "limit 200",
+      "expected": "1 page; next_cursor null (lookahead row)",
+      "notes": "edge"
+    },
+    {
+      "id": "TC1.027",
+      "phase": 1,
+      "action": "Rows inserted between pages",
+      "setup": "continue paging",
+      "expected": "no duplicates; old rows all present",
+      "notes": "50 inserts"
+    },
+    {
+      "id": "TC1.028",
+      "phase": 1,
+      "action": "Site v1 read by C1 and C2",
+      "setup": "both PATCH with v1 tag",
+      "expected": "one 200 (v2), one 412",
+      "notes": "SAMPLE-WH-01"
+    },
+    {
+      "id": "TC1.029",
+      "phase": 1,
+      "action": "PATCH without If-Match",
+      "setup": "sent",
+      "expected": "428",
+      "notes": "site id 0192..."
+    },
+    {
+      "id": "TC1.030",
+      "phase": 1,
+      "action": "GET with If-None-Match current tag",
+      "setup": "sent",
+      "expected": "304 empty body",
+      "notes": ""
+    },
+    {
+      "id": "TC1.031",
+      "phase": 1,
+      "action": "Clock frozen at one ms",
+      "setup": "generate 5,000 ids",
+      "expected": "strictly increasing via counter and rollover into next ms",
+      "notes": "t=1762300000000"
+    },
+    {
+      "id": "TC1.032",
+      "phase": 1,
+      "action": "Clock jumps back 2 s",
+      "setup": "generate",
+      "expected": "ids still increase (ms held)",
+      "notes": ""
+    },
+    {
+      "id": "TC1.033",
+      "phase": 1,
+      "action": "8 threads",
+      "setup": "generate 100,000 total",
+      "expected": "no duplicates",
+      "notes": ""
+    },
+    {
+      "id": "TC1.034",
+      "phase": 1,
+      "action": "POST /v1/sites missing name",
+      "setup": "sent",
+      "expected": "400 with errors[0].pointer &#x27;/name&#x27;",
+      "notes": "code FIELD-REQ-400-VALIDATION"
+    },
+    {
+      "id": "TC1.035",
+      "phase": 1,
+      "action": "captured_at &#x27;2026-11-04T09:00:00&#x27; (no offset)",
+      "setup": "POST probe",
+      "expected": "400 FIELD-REQ-400-TIMEZONE",
+      "notes": ""
+    },
+    {
+      "id": "TC1.036",
+      "phase": 1,
+      "action": "Unknown route",
+      "setup": "GET /v1/nope",
+      "expected": "404 problem+json FIELD-REQ-404-ROUTE",
+      "notes": ""
+    },
+    {
+      "id": "TC1.037",
+      "phase": 1,
+      "action": "Remove a response field read by the add-on",
+      "setup": "classify",
+      "expected": "BREAK RESP_FIELD_REMOVED",
+      "notes": "e.g. JWKS keys[].kid"
+    },
+    {
+      "id": "TC1.038",
+      "phase": 1,
+      "action": "Add optional response field",
+      "setup": "classify",
+      "expected": "no BREAK",
+      "notes": ""
+    },
+    {
+      "id": "TC1.039",
+      "phase": 1,
+      "action": "Add required request field",
+      "setup": "classify",
+      "expected": "BREAK NEW_REQUIRED",
+      "notes": ""
+    },
+    {
+      "id": "TC1.040",
+      "phase": 1,
+      "action": "Rule count=3 p=1",
+      "setup": "10 calls",
+      "expected": "exactly 3 faults",
+      "notes": "kind http_5xx"
+    },
+    {
+      "id": "TC1.041",
+      "phase": 1,
+      "action": "Rule ttl_s=60",
+      "setup": "call at t=61 s",
+      "expected": "no fault",
+      "notes": "mocked clock"
+    },
+    {
+      "id": "TC1.042",
+      "phase": 1,
+      "action": "Rule latency 2000 ms p=1",
+      "setup": "call",
+      "expected": "duration 2000-2050 ms",
+      "notes": "seed 1"
+    },
+    {
+      "id": "TC1.043",
+      "phase": 1,
+      "action": "IBD:180000012 seq 1-3, seq 1 LOCK once",
+      "setup": "run",
+      "expected": "success order 1,2,3; seq 2 waits for seq 1",
+      "notes": "2 workers"
+    },
+    {
+      "id": "TC1.044",
+      "phase": 1,
+      "action": "Job failing LOCK always",
+      "setup": "run to end",
+      "expected": "8 attempts, status dead, erp.failed",
+      "notes": "delays 2,4,8,16,32,32,32"
+    },
+    {
+      "id": "TC1.045",
+      "phase": 1,
+      "action": "BUSINESS error",
+      "setup": "run",
+      "expected": "failed after 1 attempt; later seq blocked",
+      "notes": "ZSIM/QTY-EXCEEDS"
+    },
+    {
+      "id": "TC1.046",
+      "phase": 1,
+      "action": "GR with 3 items",
+      "setup": "round trip",
+      "expected": "equal; items 000010, 000020, 000030",
+      "notes": "SAMPLE-MAT-0001..0003"
+    },
+    {
+      "id": "TC1.047",
+      "phase": 1,
+      "action": "Quantity 0.1 + 0.2 summed",
+      "setup": "to_odata",
+      "expected": "&#x27;0.300&#x27; exactly",
+      "notes": ""
+    },
+    {
+      "id": "TC1.048",
+      "phase": 1,
+      "action": "Measurement 12.345 bar",
+      "setup": "round trip",
+      "expected": "equal including unit BAR",
+      "notes": "point SAMPLE-MP-0003"
+    },
+    {
+      "id": "TC1.049",
+      "phase": 1,
+      "action": "Valid device JWT with 240 s left",
+      "setup": "exchange",
+      "expected": "200, expires_in <= 240",
+      "notes": "device dev_SAMPLE_0042"
+    },
+    {
+      "id": "TC1.050",
+      "phase": 1,
+      "action": "alg none",
+      "setup": "exchange",
+      "expected": "401 FIELD-AUTH-401-SIGNATURE",
+      "notes": ""
+    },
+    {
+      "id": "TC1.051",
+      "phase": 1,
+      "action": "Revoked device",
+      "setup": "exchange",
+      "expected": "401 FIELD-AUTH-401-DEVICE-REVOKED",
+      "notes": ""
+    },
+    {
+      "id": "TC1.052",
+      "phase": 1,
+      "action": "Light theme text.primary on surface.base",
+      "setup": "compute",
+      "expected": "ratio >= 4.5",
+      "notes": ""
+    },
+    {
+      "id": "TC1.053",
+      "phase": 1,
+      "action": "Dark theme text.muted on surface.raised",
+      "setup": "compute",
+      "expected": "ratio >= 4.5",
+      "notes": ""
+    },
+    {
+      "id": "TC1.054",
+      "phase": 1,
+      "action": "Lens theme status.ok on lens.bg",
+      "setup": "compute",
+      "expected": "ratio >= 4.5 (to confirm on Display)",
+      "notes": ""
+    },
+    {
+      "id": "TC1.055",
+      "phase": 1,
+      "action": "Site create then rollback",
+      "setup": "inspect outbox",
+      "expected": "no row",
+      "notes": ""
+    },
+    {
+      "id": "TC1.056",
+      "phase": 1,
+      "action": "Relay crashes after publish before mark",
+      "setup": "restart",
+      "expected": "event published twice; consumer applies once",
+      "notes": "dedupe by id"
+    },
+    {
+      "id": "TC1.057",
+      "phase": 1,
+      "action": "3 relays",
+      "setup": "1,000 events",
+      "expected": "each id applied once",
+      "notes": "SKIP LOCKED"
+    },
+    {
+      "id": "TC1.058",
+      "phase": 1,
+      "action": "Tower TWR-0001 > sector SEC-A > level L2 > position P1",
+      "setup": "create",
+      "expected": "accepted; path TWR-0001/SEC-A/L2/P1",
+      "notes": ""
+    },
+    {
+      "id": "TC1.059",
+      "phase": 1,
+      "action": "Rack under tower",
+      "setup": "create",
+      "expected": "422 FIELD-LOC-422-PARENT-KIND",
+      "notes": ""
+    },
+    {
+      "id": "TC1.060",
+      "phase": 1,
+      "action": "Move aisle A03 under its rack R12",
+      "setup": "move",
+      "expected": "422 FIELD-LOC-422-CYCLE",
+      "notes": ""
+    }
+  ]
+}
