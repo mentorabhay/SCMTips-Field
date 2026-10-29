@@ -45,6 +45,7 @@ def append_serial_event(
     cur: Any | None = None,
 ) -> dict[str, Any]:
     """Append a serial event with monotonic per-serial sequence (FR4.033 / PR4.02 / T4.029)."""
+
     def _execute_append(c: Any) -> dict[str, Any]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
@@ -84,11 +85,19 @@ def append_serial_event(
 
         # Map event_type to allowed CHECK constraint ('issue', 'install', 'dismantle', 'move', 'return', 'audit_seen', 'reversal')
         op_type = event_type
-        if op_type not in ('issue', 'install', 'dismantle', 'move', 'return', 'audit_seen', 'reversal'):
-            op_type = 'install'
+        if op_type not in (
+            "issue",
+            "install",
+            "dismantle",
+            "move",
+            "return",
+            "audit_seen",
+            "reversal",
+        ):
+            op_type = "install"
 
-        to_loc = location_id if op_type in ('install', 'issue', 'move') else None
-        from_loc = location_id if op_type in ('dismantle', 'return') else None
+        to_loc = location_id if op_type in ("install", "issue", "move") else None
+        from_loc = location_id if op_type in ("dismantle", "return") else None
         idem_key = idempotency_key or f"se-{uuid.uuid4()}"
         ts_occurred = occurred_at or datetime.now(UTC)
 
@@ -171,16 +180,18 @@ def get_serial_history(tenant_id: str, serial_no: str) -> list[dict[str, Any]]:
 
             history: list[dict[str, Any]] = []
             for r in rows:
-                history.append({
-                    "id": str(r[0]),
-                    "seq": r[1],
-                    "event_type": r[2],
-                    "location_id": str(r[3]) if r[3] else None,
-                    "fl_code": r[4],
-                    "created_by": None,
-                    "details": {"idempotency_key": r[5]},
-                    "created_at": r[6].isoformat() if hasattr(r[6], "isoformat") else str(r[6]),
-                })
+                history.append(
+                    {
+                        "id": str(r[0]),
+                        "seq": r[1],
+                        "event_type": r[2],
+                        "location_id": str(r[3]) if r[3] else None,
+                        "fl_code": r[4],
+                        "created_by": None,
+                        "details": {"idempotency_key": r[5]},
+                        "created_at": r[6].isoformat() if hasattr(r[6], "isoformat") else str(r[6]),
+                    }
+                )
 
             return history
 
@@ -195,6 +206,7 @@ def check_single_location_invariant(
 
     Returns (is_allowed, current_location_id, current_fl_code).
     """
+
     def _execute_check(c: Any) -> tuple[bool, str | None, str | None]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))

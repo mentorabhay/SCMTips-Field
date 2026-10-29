@@ -72,7 +72,9 @@ def api_get_audit_report_metadata(
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (principal.tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (principal.tenant_id,))
+            cur.execute(
+                "SELECT set_config('app.current_tenant_id', %s, true);", (principal.tenant_id,)
+            )
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             cur.execute(
@@ -122,22 +124,33 @@ def api_access_evidence(
             # Cross-tenant access attempt: forbidden
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error_code": "FIELD-EVD-404-CROSS-TENANT", "message": "Evidence not found in tenant realm"},
+                detail={
+                    "error_code": "FIELD-EVD-404-CROSS-TENANT",
+                    "message": "Evidence not found in tenant realm",
+                },
             )
         target_tenant = principal.tenant_id
     elif tenant and exp and sig:
         # Case 2: Authenticated via signed token
-        if not verify_signed_evidence_url(tenant_id=tenant, evidence_id=id, expires_at_timestamp=exp, provided_signature=sig):
+        if not verify_signed_evidence_url(
+            tenant_id=tenant, evidence_id=id, expires_at_timestamp=exp, provided_signature=sig
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"error_code": "FIELD-EVD-401-INVALID-TOKEN", "message": "Invalid or expired evidence signature"},
+                detail={
+                    "error_code": "FIELD-EVD-401-INVALID-TOKEN",
+                    "message": "Invalid or expired evidence signature",
+                },
             )
         target_tenant = tenant
     else:
         # Unauthenticated: no token and no session
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error_code": "FIELD-EVD-401-UNAUTHENTICATED", "message": "Valid session or signed URL token required"},
+            detail={
+                "error_code": "FIELD-EVD-401-UNAUTHENTICATED",
+                "message": "Valid session or signed URL token required",
+            },
         )
 
     # Return simulated evidence crop payload with correct tenant header

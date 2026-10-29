@@ -47,10 +47,21 @@ def stage_fl_import(
                 """,
                 (tenant_id, f"{filter_prefix}%"),
             )
-            existing_locs = {r[2]: {"id": str(r[0]), "code": r[1], "parent_id": str(r[3]) if r[3] else None, "height_m": float(r[4]) if r[4] is not None else None, "sector_code": r[5]} for r in cur.fetchall()}
+            existing_locs = {
+                r[2]: {
+                    "id": str(r[0]),
+                    "code": r[1],
+                    "parent_id": str(r[3]) if r[3] else None,
+                    "height_m": float(r[4]) if r[4] is not None else None,
+                    "sector_code": r[5],
+                }
+                for r in cur.fetchall()
+            }
 
             known_parents = set(existing_locs.keys())
-            val_summary = validate_import_staging_rows(fl_rows, known_parent_codes=known_parents, allow_step_up=allow_step_up)
+            val_summary = validate_import_staging_rows(
+                fl_rows, known_parent_codes=known_parents, allow_step_up=allow_step_up
+            )
 
             # Compute diff
             new_rows = []
@@ -82,7 +93,9 @@ def stage_fl_import(
                         is_moved = True
 
                     # Check attributes change
-                    if r.get("height_m") != curr.get("height_m") or r.get("sector_code") != curr.get("sector_code"):
+                    if r.get("height_m") != curr.get("height_m") or r.get(
+                        "sector_code"
+                    ) != curr.get("sector_code"):
                         if not is_moved:
                             changed_rows.append(code)
 
@@ -129,7 +142,9 @@ def stage_fl_import(
                     watermark_from,
                     json.dumps(counts),
                     json.dumps(val_summary.rejected_rows),
-                    json.dumps({"locations": val_summary.valid_rows, "equipment": equipment_rows or []}),
+                    json.dumps(
+                        {"locations": val_summary.valid_rows, "equipment": equipment_rows or []}
+                    ),
                     json.dumps(diff_preview),
                 ),
             )
@@ -178,11 +193,18 @@ def apply_fl_import_job(
             if status == "applied":
                 return {"job_id": job_id, "status": "applied", "message": "Job already applied"}
 
-            total = counts.get("new", 0) + counts.get("changed", 0) + counts.get("moved", 0) + counts.get("rejected", 0)
+            total = (
+                counts.get("new", 0)
+                + counts.get("changed", 0)
+                + counts.get("moved", 0)
+                + counts.get("rejected", 0)
+            )
             if total > 0:
                 rejection_pct = (counts.get("rejected", 0) / total) * 100.0
                 if rejection_pct > 20.0 and not allow_step_up:
-                    raise ValueError(f"FIELD-IMP-422-BLOCKED: Rejection percentage {rejection_pct:.1f}% exceeds 20%")
+                    raise ValueError(
+                        f"FIELD-IMP-422-BLOCKED: Rejection percentage {rejection_pct:.1f}% exceeds 20%"
+                    )
 
             locations = staging.get("locations", [])
             # Sort locations by depth so parents are inserted before children

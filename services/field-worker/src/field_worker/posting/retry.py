@@ -41,12 +41,18 @@ def classify_error(exc: Exception) -> tuple[str, bool, str]:
     if status_code == 423 or "ZSIM/LOCKED" in msg or "locked by" in msg.lower():
         return ("lock", True, "ZSIM/LOCKED")
 
-    if any(lock_code in msg for lock_code in ("VL/046", "MC/601", "enqueue lock", "LockContentionError")):
+    if any(
+        lock_code in msg
+        for lock_code in ("VL/046", "MC/601", "enqueue lock", "LockContentionError")
+    ):
         return ("lock", True, "VL/046" if "VL/046" in msg else "MC/601")
 
     # Check for network / timeout issues
     err_type_name = type(exc).__name__.lower()
-    if any(net_term in err_type_name or net_term in msg.lower() for net_term in ("connect", "timeout", "network", "socket", "reset")):
+    if any(
+        net_term in err_type_name or net_term in msg.lower()
+        for net_term in ("connect", "timeout", "network", "socket", "reset")
+    ):
         return ("network", True, "COMMUNICATION_FAILURE")
 
     # Check for HTTP Server errors (5xx)

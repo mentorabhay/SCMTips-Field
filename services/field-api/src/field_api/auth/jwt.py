@@ -16,7 +16,11 @@ logger = structlog.get_logger(__name__)
 
 def get_jwt_secret() -> str:
     """Resolve JWT secret key from environment or fallback development configuration."""
-    return os.getenv("JWT_SECRET_KEY") or os.getenv("FIELD_JWT_SECRET") or "dev-core-secret-key-minimum-32-characters-for-hs256"
+    return (
+        os.getenv("JWT_SECRET_KEY")
+        or os.getenv("FIELD_JWT_SECRET")
+        or "dev-core-secret-key-minimum-32-characters-for-hs256"
+    )
 
 
 class Principal(BaseModel):

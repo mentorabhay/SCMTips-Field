@@ -235,30 +235,33 @@ class PostingQueueWorker:
                 idempotency_key=idem_key,
             )
             if adopted:
-                    # Adopt document and mark completed
-                    with psycopg.connect(self.db_url, autocommit=False) as adopt_conn, adopt_conn.cursor() as adopt_cur:
-                        adopt_cur.execute(f"SET app.tenant_id = '{tenant_id}';")
-                        adopt_cur.execute(
-                            """
+                # Adopt document and mark completed
+                with (
+                    psycopg.connect(self.db_url, autocommit=False) as adopt_conn,
+                    adopt_conn.cursor() as adopt_cur,
+                ):
+                    adopt_cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+                    adopt_cur.execute(
+                        """
                             UPDATE field.posting_job
                             SET status = 'completed', locked_by = NULL, locked_until = NULL, updated_at = NOW()
                             WHERE id = %s;
                         """,
-                            (claimed.job_id,),
-                        )
-                        emit_erp_posted(
-                            adopt_cur,
-                            tenant_id=tenant_id,
-                            job_id=claimed.job_id,
-                            doc_type=doc_family,
-                            doc_no=adopted["document_number"],
-                            doc_year=adopted["fiscal_year"],
-                            movement_types=["101"],
-                            queue_key=claimed.queue_key,
-                            adopted_by_probe=True,
-                        )
-                        adopt_conn.commit()
-                    return True
+                        (claimed.job_id,),
+                    )
+                    emit_erp_posted(
+                        adopt_cur,
+                        tenant_id=tenant_id,
+                        job_id=claimed.job_id,
+                        doc_type=doc_family,
+                        doc_no=adopted["document_number"],
+                        doc_year=adopted["fiscal_year"],
+                        movement_types=["101"],
+                        queue_key=claimed.queue_key,
+                        adopted_by_probe=True,
+                    )
+                    adopt_conn.commit()
+                return True
 
         # 3. Dispatch to ERP
         post_req = ErpPostingRequest(
@@ -286,7 +289,10 @@ class PostingQueueWorker:
                 raise NotImplementedError(f"Unsupported doc family: {doc_family}")
 
             # Mark completed and emit erp.posted
-            with psycopg.connect(self.db_url, autocommit=False) as conn_done, conn_done.cursor() as cur_done:
+            with (
+                psycopg.connect(self.db_url, autocommit=False) as conn_done,
+                conn_done.cursor() as cur_done,
+            ):
                 cur_done.execute(f"SET app.tenant_id = '{tenant_id}';")
                 cur_done.execute(
                     """
@@ -313,7 +319,10 @@ class PostingQueueWorker:
         except Exception as exc:
             error_class, is_retryable, sap_msg = classify_error(exc)
 
-            with psycopg.connect(self.db_url, autocommit=False) as conn_err, conn_err.cursor() as cur_err:
+            with (
+                psycopg.connect(self.db_url, autocommit=False) as conn_err,
+                conn_err.cursor() as cur_err,
+            ):
                 cur_err.execute(f"SET app.tenant_id = '{tenant_id}';")
 
                 if not is_retryable or claimed.attempts >= claimed.max_attempts:

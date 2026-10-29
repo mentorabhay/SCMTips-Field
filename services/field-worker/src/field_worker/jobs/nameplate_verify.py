@@ -140,7 +140,9 @@ class NameplateVerifyService:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-                    cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+                    cur.execute(
+                        "SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,)
+                    )
                     cur.execute(
                         """
                         INSERT INTO field.outbox (id, tenant_id, aggregate_id, event_type, payload)
@@ -150,7 +152,12 @@ class NameplateVerifyService:
                             str(uuid.uuid4()),
                             tenant_id,
                             capture_id,
-                            json.dumps({"capture_id": capture_id, "alert": "Budget 0; capture remains queued"}),
+                            json.dumps(
+                                {
+                                    "capture_id": capture_id,
+                                    "alert": "Budget 0; capture remains queued",
+                                }
+                            ),
                         ),
                     )
                 conn.commit()
@@ -228,7 +235,9 @@ class NameplateVerifyService:
                 elif verdict == "mismatch":
                     # TC4.116 / FR4.019: set verify_status=mismatch, emit capture.mismatch, open exception_case.
                     # CRITICAL: NO ERP call is made!
-                    reason_text = f"mismatch: expected/read {candidate_serial}, actual {actual_serial}"
+                    reason_text = (
+                        f"mismatch: expected/read {candidate_serial}, actual {actual_serial}"
+                    )
                     cur.execute(
                         """
                         UPDATE field.capture
@@ -259,7 +268,9 @@ class NameplateVerifyService:
                             tenant_id,
                             site_id,
                             dedupe_key,
-                            json.dumps({"capture_id": capture_id, "candidate_serial": candidate_serial}),
+                            json.dumps(
+                                {"capture_id": capture_id, "candidate_serial": candidate_serial}
+                            ),
                             json.dumps({"actual_serial": actual_serial, "model": model_to_use}),
                         ),
                     )
@@ -273,12 +284,14 @@ class NameplateVerifyService:
                             str(uuid.uuid4()),
                             tenant_id,
                             capture_id,
-                            json.dumps({
-                                "capture_id": capture_id,
-                                "candidate_serial": candidate_serial,
-                                "actual_serial": actual_serial,
-                                "exception_case_id": case_id,
-                            }),
+                            json.dumps(
+                                {
+                                    "capture_id": capture_id,
+                                    "candidate_serial": candidate_serial,
+                                    "actual_serial": actual_serial,
+                                    "exception_case_id": case_id,
+                                }
+                            ),
                         ),
                     )
 

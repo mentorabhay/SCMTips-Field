@@ -118,7 +118,11 @@ def api_signoff_audit(
     except AuditSignoffConflict as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"error_code": e.error_code, "message": str(e), "unresolved_count": e.unresolved_count},
+            detail={
+                "error_code": e.error_code,
+                "message": str(e),
+                "unresolved_count": e.unresolved_count,
+            },
         )
     except ValueError as e:
         if "404" in str(e):

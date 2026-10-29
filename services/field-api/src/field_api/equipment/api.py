@@ -28,7 +28,9 @@ router = APIRouter(tags=["equipment", "equipment-events"])
 
 
 class EquipmentEventRequest(BaseModel):
-    event_type: str = Field(..., description="'install', 'dismantle', 'replace', 'move', or 'issue'")
+    event_type: str = Field(
+        ..., description="'install', 'dismantle', 'replace', 'move', or 'issue'"
+    )
     serial_no: str
     site_id: str
     location_id: str | None = None
@@ -48,7 +50,9 @@ class ReverseEventRequest(BaseModel):
     reason: str | None = None
 
 
-@router.post("/v1/equipment-events", response_model=dict[str, Any], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/v1/equipment-events", response_model=dict[str, Any], status_code=status.HTTP_201_CREATED
+)
 def api_record_equipment_event(
     body: EquipmentEventRequest,
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
@@ -57,6 +61,7 @@ def api_record_equipment_event(
     """API4.08: Execute equipment lifecycle event (install, dismantle, replace, move, issue)."""
     try:
         from datetime import datetime
+
         dt_occurred = datetime.fromisoformat(body.occurred_at) if body.occurred_at else None
         return record_equipment_event(
             tenant_id=principal.tenant_id,
@@ -80,7 +85,11 @@ def api_record_equipment_event(
     except SingleLocationViolationError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"error_code": e.code, "message": str(e), "current_location": e.current_location_id},
+            detail={
+                "error_code": e.code,
+                "message": str(e),
+                "current_location": e.current_location_id,
+            },
         )
     except ValueError as e:
         if "400" in str(e) or "NOT-INSTALLED" in str(e):

@@ -68,7 +68,9 @@ def record_equipment_event(
                     raise ValueError("location_id is required for install operation")
 
                 # Single-location invariant check (PR4.14 / FR4.034)
-                allowed, curr_loc, curr_fl = check_single_location_invariant(tenant_id, serial_no, location_id, cur=cur)
+                allowed, curr_loc, curr_fl = check_single_location_invariant(
+                    tenant_id, serial_no, location_id, cur=cur
+                )
                 if not allowed:
                     raise SingleLocationViolationError(serial_no, curr_loc or "", curr_fl)
 
@@ -104,7 +106,12 @@ def record_equipment_event(
                     event_type="install",
                     location_id=location_id,
                     equipment_id=eq_id,
-                    details={"material": mat_name, "fl_code": fl_code, "notes": notes, "crop_ref": evidence_crop_ref},
+                    details={
+                        "material": mat_name,
+                        "fl_code": fl_code,
+                        "notes": notes,
+                        "crop_ref": evidence_crop_ref,
+                    },
                     created_by=created_by,
                     source_plant=source_plant,
                     source_storage_location=source_storage_location,
@@ -128,13 +135,15 @@ def record_equipment_event(
                         tenant_id,
                         site_id,
                         doc_no,
-                        json.dumps({
-                            "event_id": event_id,
-                            "serial_no": serial_no,
-                            "location_id": location_id,
-                            "fl_code": fl_code,
-                            "idempotency_key": idempotency_key,
-                        }),
+                        json.dumps(
+                            {
+                                "event_id": event_id,
+                                "serial_no": serial_no,
+                                "location_id": location_id,
+                                "fl_code": fl_code,
+                                "idempotency_key": idempotency_key,
+                            }
+                        ),
                     ),
                 )
 
@@ -161,7 +170,9 @@ def record_equipment_event(
                 )
                 eq_row = cur.fetchone()
                 if not eq_row or eq_row[2] != "installed":
-                    raise ValueError(f"Equipment '{serial_no}' is not currently installed [FIELD-EQ-400-NOT-INSTALLED]")
+                    raise ValueError(
+                        f"Equipment '{serial_no}' is not currently installed [FIELD-EQ-400-NOT-INSTALLED]"
+                    )
 
                 eq_id = str(eq_row[0])
                 old_loc_id = eq_row[1]
@@ -205,12 +216,14 @@ def record_equipment_event(
                         tenant_id,
                         site_id,
                         doc_no,
-                        json.dumps({
-                            "event_id": event_id,
-                            "serial_no": serial_no,
-                            "previous_location_id": str(old_loc_id) if old_loc_id else None,
-                            "idempotency_key": idempotency_key,
-                        }),
+                        json.dumps(
+                            {
+                                "event_id": event_id,
+                                "serial_no": serial_no,
+                                "previous_location_id": str(old_loc_id) if old_loc_id else None,
+                                "idempotency_key": idempotency_key,
+                            }
+                        ),
                     ),
                 )
 
@@ -232,7 +245,9 @@ def record_equipment_event(
                     raise ValueError("location_id is required for replace operation")
 
                 # Single-location check on new serial
-                allowed, curr_loc, curr_fl = check_single_location_invariant(tenant_id, serial_no, location_id, cur=cur)
+                allowed, curr_loc, curr_fl = check_single_location_invariant(
+                    tenant_id, serial_no, location_id, cur=cur
+                )
                 if not allowed:
                     raise SingleLocationViolationError(serial_no, curr_loc or "", curr_fl)
 
@@ -289,7 +304,11 @@ def record_equipment_event(
                     event_type="install",
                     location_id=location_id,
                     equipment_id=new_eq_id,
-                    details={"replaces": old_serial_no, "fl_code": fl_code, "crop_ref": evidence_crop_ref},
+                    details={
+                        "replaces": old_serial_no,
+                        "fl_code": fl_code,
+                        "crop_ref": evidence_crop_ref,
+                    },
                     created_by=created_by,
                     cur=cur,
                 )
@@ -309,14 +328,16 @@ def record_equipment_event(
                         tenant_id,
                         site_id,
                         doc_no,
-                        json.dumps({
-                            "event_id": event_id,
-                            "serial_no": serial_no,
-                            "old_serial_no": old_serial_no,
-                            "location_id": location_id,
-                            "fl_code": fl_code,
-                            "idempotency_key": idempotency_key,
-                        }),
+                        json.dumps(
+                            {
+                                "event_id": event_id,
+                                "serial_no": serial_no,
+                                "old_serial_no": old_serial_no,
+                                "location_id": location_id,
+                                "fl_code": fl_code,
+                                "idempotency_key": idempotency_key,
+                            }
+                        ),
                     ),
                 )
 
@@ -403,7 +424,12 @@ def record_equipment_event(
                     event_type="issue",
                     location_id=location_id,
                     equipment_id=eq_id,
-                    details={"material": mat_name, "notes": notes, "source_plant": source_plant, "source_sloc": source_storage_location},
+                    details={
+                        "material": mat_name,
+                        "notes": notes,
+                        "source_plant": source_plant,
+                        "source_sloc": source_storage_location,
+                    },
                     created_by=created_by,
                     source_plant=source_plant,
                     source_storage_location=source_storage_location,
@@ -426,13 +452,15 @@ def record_equipment_event(
                         tenant_id,
                         site_id,
                         doc_no,
-                        json.dumps({
-                            "event_id": event_id,
-                            "serial_no": serial_no,
-                            "source_plant": source_plant,
-                            "source_storage_location": source_storage_location,
-                            "idempotency_key": idempotency_key,
-                        }),
+                        json.dumps(
+                            {
+                                "event_id": event_id,
+                                "serial_no": serial_no,
+                                "source_plant": source_plant,
+                                "source_storage_location": source_storage_location,
+                                "idempotency_key": idempotency_key,
+                            }
+                        ),
                     ),
                 )
 

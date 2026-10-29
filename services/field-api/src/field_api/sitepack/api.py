@@ -240,7 +240,10 @@ def api_get_site_pack(
     if total_size > MAX_PACK_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={"error_code": "FIELD-PACK-413-SIZE", "message": f"Site pack {total_size} bytes exceeds 60 MB limit"},
+            detail={
+                "error_code": "FIELD-PACK-413-SIZE",
+                "message": f"Site pack {total_size} bytes exceeds 60 MB limit",
+            },
         )
 
     # Deterministic snapshot version & ETag

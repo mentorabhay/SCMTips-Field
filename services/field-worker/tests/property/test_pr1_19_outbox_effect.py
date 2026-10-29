@@ -64,10 +64,17 @@ def test_pr1_19_outbox_transaction_atomicity(should_commit: bool, payload_tag: s
 @pytest.mark.property
 @settings(max_examples=30)
 @given(
-    st.lists(st.text(min_size=4, max_size=10, alphabet="0123456789abcdef"), min_size=1, max_size=15, unique=True),
+    st.lists(
+        st.text(min_size=4, max_size=10, alphabet="0123456789abcdef"),
+        min_size=1,
+        max_size=15,
+        unique=True,
+    ),
     st.integers(min_value=1, max_value=3),  # Simulated crash/retry count
 )
-def test_pr1_19_consumer_deduplication_under_crashes(event_ids: list[str], duplicates_per_event: int) -> None:
+def test_pr1_19_consumer_deduplication_under_crashes(
+    event_ids: list[str], duplicates_per_event: int
+) -> None:
     """PR1.19: At-least-once delivery with consumer deduplication achieves exactly-once effects (TC1.056, TC1.057)."""
     # Simulate at-least-once published stream with duplicates due to relay crash
     published_stream: list[str] = []

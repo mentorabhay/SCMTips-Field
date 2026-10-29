@@ -167,7 +167,9 @@ def run_audit_reconciliation(
                 """,
                 (tenant_id, task_id),
             )
-            marked_missing_map = {r[0]: {"reason": r[1], "location_id": r[2]} for r in cur.fetchall()}
+            marked_missing_map = {
+                r[0]: {"reason": r[1], "location_id": r[2]} for r in cur.fetchall()
+            }
 
             # 6. Classification
             matched_count = 0
@@ -182,7 +184,9 @@ def run_audit_reconciliation(
             cap_set = set(captured_by_serial.keys())
 
             # Symmetric core
-            common_serials, erp_only_serials, tower_only_serials = classify_sets_symmetric(exp_set, cap_set)
+            common_serials, erp_only_serials, tower_only_serials = classify_sets_symmetric(
+                exp_set, cap_set
+            )
 
             # A. Process common serials: check location match vs misplaced
             for s in common_serials:
@@ -200,19 +204,21 @@ def run_audit_reconciliation(
                     matched_count += 1
                     finding_class = "matched"
 
-                findings_to_upsert.append({
-                    "task_id": task_id,
-                    "site_id": site_id,
-                    "tower_location_id": tower_location_id or exp_loc or cap_loc or site_id,
-                    "location_id": cap_loc or exp_loc,
-                    "task_line_id": exp_item["task_line_id"],
-                    "capture_id": cap_item["capture_id"],
-                    "class": finding_class,
-                    "expected_serial": s,
-                    "found_serial": s,
-                    "reason": None,
-                    "dedupe_key": f"{site_id}:{s}:{finding_class}",
-                })
+                findings_to_upsert.append(
+                    {
+                        "task_id": task_id,
+                        "site_id": site_id,
+                        "tower_location_id": tower_location_id or exp_loc or cap_loc or site_id,
+                        "location_id": cap_loc or exp_loc,
+                        "task_line_id": exp_item["task_line_id"],
+                        "capture_id": cap_item["capture_id"],
+                        "class": finding_class,
+                        "expected_serial": s,
+                        "found_serial": s,
+                        "reason": None,
+                        "dedupe_key": f"{site_id}:{s}:{finding_class}",
+                    }
+                )
 
             # B. Process Tower-only serials: check if misplaced from another tower or completely unknown
             for s in tower_only_serials:
@@ -228,19 +234,21 @@ def run_audit_reconciliation(
                     tower_only_count += 1
                     finding_class = "tower_only"
 
-                findings_to_upsert.append({
-                    "task_id": task_id,
-                    "site_id": site_id,
-                    "tower_location_id": tower_location_id or cap_loc or site_id,
-                    "location_id": cap_loc,
-                    "task_line_id": None,
-                    "capture_id": cap_item["capture_id"],
-                    "class": finding_class,
-                    "expected_serial": None,
-                    "found_serial": s,
-                    "reason": None,
-                    "dedupe_key": f"{site_id}:{s}:{finding_class}",
-                })
+                findings_to_upsert.append(
+                    {
+                        "task_id": task_id,
+                        "site_id": site_id,
+                        "tower_location_id": tower_location_id or cap_loc or site_id,
+                        "location_id": cap_loc,
+                        "task_line_id": None,
+                        "capture_id": cap_item["capture_id"],
+                        "class": finding_class,
+                        "expected_serial": None,
+                        "found_serial": s,
+                        "reason": None,
+                        "dedupe_key": f"{site_id}:{s}:{finding_class}",
+                    }
+                )
 
             # C. Process ERP-only serials: missing from captures
             for s in erp_only_serials:
@@ -250,19 +258,21 @@ def run_audit_reconciliation(
                 reason = marked_missing_map.get(s, {}).get("reason", "not_found")
                 erp_only_count += 1
 
-                findings_to_upsert.append({
-                    "task_id": task_id,
-                    "site_id": site_id,
-                    "tower_location_id": tower_location_id or exp_loc or site_id,
-                    "location_id": exp_loc,
-                    "task_line_id": exp_item["task_line_id"],
-                    "capture_id": None,
-                    "class": "erp_only",
-                    "expected_serial": s,
-                    "found_serial": None,
-                    "reason": reason,
-                    "dedupe_key": f"{site_id}:{s}:erp_only",
-                })
+                findings_to_upsert.append(
+                    {
+                        "task_id": task_id,
+                        "site_id": site_id,
+                        "tower_location_id": tower_location_id or exp_loc or site_id,
+                        "location_id": exp_loc,
+                        "task_line_id": exp_item["task_line_id"],
+                        "capture_id": None,
+                        "class": "erp_only",
+                        "expected_serial": s,
+                        "found_serial": None,
+                        "reason": reason,
+                        "dedupe_key": f"{site_id}:{s}:erp_only",
+                    }
+                )
 
             # 7. Persist findings to field.audit_finding
             for f in findings_to_upsert:

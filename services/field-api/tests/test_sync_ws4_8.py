@@ -66,7 +66,7 @@ def _auth_headers(
         values=st.lists(
             st.tuples(
                 st.integers(min_value=1, max_value=100),  # seq
-                st.sampled_from(["install", "dismantle"]), # op
+                st.sampled_from(["install", "dismantle"]),  # op
             ),
             min_size=1,
             max_size=15,
@@ -86,13 +86,15 @@ def test_pr4_12_per_tower_order_on_replay_property(
     all_events = []
     for t_fl, ev_list in tower_events.items():
         for seq, op in ev_list:
-            all_events.append({
-                "id": str(uuid.uuid4()),
-                "tower_fl": t_fl,
-                "seq": seq,
-                "op": op,
-                "status": "pending",
-            })
+            all_events.append(
+                {
+                    "id": str(uuid.uuid4()),
+                    "tower_fl": t_fl,
+                    "seq": seq,
+                    "op": op,
+                    "status": "pending",
+                }
+            )
 
     # Coordinator state
     held_set = {held_tower}
@@ -108,8 +110,7 @@ def test_pr4_12_per_tower_order_on_replay_property(
                 continue  # Held tower blocked
             # Find next lowest unprocessed seq
             remaining = [
-                e for e in all_events
-                if e["tower_fl"] == t_fl and e["status"] == "pending"
+                e for e in all_events if e["tower_fl"] == t_fl and e["status"] == "pending"
             ]
             if remaining:
                 next_ev = min(remaining, key=lambda x: x["seq"])
@@ -130,7 +131,9 @@ def test_pr4_12_per_tower_order_on_replay_property(
             ev["status"] = "completed"
 
     # Invariant 2: The held tower processed ZERO events
-    assert len(processed_by_tower.get(held_tower, [])) == 0, f"Held tower {held_tower} illegally processed events"
+    assert len(processed_by_tower.get(held_tower, [])) == 0, (
+        f"Held tower {held_tower} illegally processed events"
+    )
 
     # Invariant 3: All non-held towers processed ALL their pending events in exact order
     for t_fl, ev_list in tower_events.items():
@@ -187,7 +190,14 @@ def test_pr4_20_report_round_trip_property(num_expected: int, num_tower_only: in
                     INSERT INTO field.location (id, tenant_id, site_id, code, fl_code, kind, sector_code, height_m, path, depth)
                     VALUES (%s, %s, %s, %s, %s, 'level', 'A', 15.0, %s, 3);
                     """,
-                    (loc_id, tenant_id, site_id, f"L{i}", f"SITE-T01-A-L{i:02d}", f"T01.A.L{i:02d}"),
+                    (
+                        loc_id,
+                        tenant_id,
+                        site_id,
+                        f"L{i}",
+                        f"SITE-T01-A-L{i:02d}",
+                        f"T01.A.L{i:02d}",
+                    ),
                 )
                 cur.execute(
                     """
@@ -199,7 +209,16 @@ def test_pr4_20_report_round_trip_property(num_expected: int, num_tower_only: in
                         %s, %s, 'open', 'waived', %s
                     );
                     """,
-                    (str(uuid.uuid4()), tenant_id, task_id, site_id, loc_id, f"EXP-SN-{i}", f"EXP-SN-{i}", f"matched-{uuid.uuid4()}"),
+                    (
+                        str(uuid.uuid4()),
+                        tenant_id,
+                        task_id,
+                        site_id,
+                        loc_id,
+                        f"EXP-SN-{i}",
+                        f"EXP-SN-{i}",
+                        f"matched-{uuid.uuid4()}",
+                    ),
                 )
 
             # Insert tower-only findings (unexpected equipment on structure)
@@ -214,7 +233,14 @@ def test_pr4_20_report_round_trip_property(num_expected: int, num_tower_only: in
                         NULL, %s, 'open', NULL, %s
                     );
                     """,
-                    (str(uuid.uuid4()), tenant_id, task_id, site_id, f"TWR-ONLY-{j}", f"twr-only-{uuid.uuid4()}"),
+                    (
+                        str(uuid.uuid4()),
+                        tenant_id,
+                        task_id,
+                        site_id,
+                        f"TWR-ONLY-{j}",
+                        f"twr-only-{uuid.uuid4()}",
+                    ),
                 )
             conn.commit()
 
@@ -225,7 +251,9 @@ def test_pr4_20_report_round_trip_property(num_expected: int, num_tower_only: in
 
     # Invariant 1: Total rows == num_expected + num_tower_only
     total_expected_rows = num_expected + num_tower_only
-    assert len(reader) == total_expected_rows, f"Expected {total_expected_rows} rows, got {len(reader)}"
+    assert len(reader) == total_expected_rows, (
+        f"Expected {total_expected_rows} rows, got {len(reader)}"
+    )
 
     # Invariant 2: Every evidence URL belongs to this tenant and verifies
     for row in reader:
@@ -420,7 +448,9 @@ def test_tc4_152_replay_conflict_detection_and_hold():
     assert held_job["status"] == "held"
 
     # 7. Release hold
-    released = release_queue_hold(tenant_id=tenant_id, queue_key=queue_key, released_by="supervisor-01")
+    released = release_queue_hold(
+        tenant_id=tenant_id, queue_key=queue_key, released_by="supervisor-01"
+    )
     assert released is True
     assert is_queue_held(tenant_id=tenant_id, queue_key=queue_key) is False
 

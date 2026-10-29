@@ -22,7 +22,9 @@ ALLOWED_DECISIONS = {"re_capture", "accept_erp", "update_erp", "record_move", "w
 class SoDViolationError(PermissionError):
     """Raised when the decider is the same technician who captured the serial (FR4.027 / TC4.123)."""
 
-    def __init__(self, message: str = "FIELD-EXC-403-SOD: decider cannot be the capturing technician") -> None:
+    def __init__(
+        self, message: str = "FIELD-EXC-403-SOD: decider cannot be the capturing technician"
+    ) -> None:
         super().__init__(message)
         self.error_code = "FIELD-EXC-403-SOD"
 
@@ -30,7 +32,9 @@ class SoDViolationError(PermissionError):
 class MismatchAlreadyResolvedError(ValueError):
     """Raised when attempting to decide an already resolved finding (API4.16)."""
 
-    def __init__(self, message: str = "FIELD-EXC-409-RESOLVED: finding is already resolved") -> None:
+    def __init__(
+        self, message: str = "FIELD-EXC-409-RESOLVED: finding is already resolved"
+    ) -> None:
         super().__init__(message)
         self.error_code = "FIELD-EXC-409-RESOLVED"
 
@@ -229,13 +233,16 @@ def approve_mismatch_decision(
                     str(uuid.uuid4()),
                     tenant_id,
                     finding_id or approval_id,
-                    json.dumps({
-                        "approval_id": approval_id,
-                        "finding_id": finding_id,
-                        "approver_id": approver_id,
-                        "decision": decision,
-                        "timestamp": now.isoformat(),
-                    }, default=str),
+                    json.dumps(
+                        {
+                            "approval_id": approval_id,
+                            "finding_id": finding_id,
+                            "approver_id": approver_id,
+                            "decision": decision,
+                            "timestamp": now.isoformat(),
+                        },
+                        default=str,
+                    ),
                 ),
             )
 

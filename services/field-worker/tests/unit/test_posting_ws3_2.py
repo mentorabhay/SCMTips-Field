@@ -124,7 +124,9 @@ def test_t3_011_retry_classification_and_backoff_jitter():
         delays = [compute_backoff_jitter(attempt) for _ in range(20)]
         for d in delays:
             # Jitter is ±10%
-            assert expected_base * 0.89 <= d <= expected_base * 1.11, f"Attempt {attempt} delay {d} out of range"
+            assert expected_base * 0.89 <= d <= expected_base * 1.11, (
+                f"Attempt {attempt} delay {d} out of range"
+            )
 
 
 @pytest.mark.unit
@@ -303,7 +305,10 @@ def test_t3_014_outbox_events_emission():
     # Verify rows in outbox
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute(f"SET app.tenant_id = '{tenant_id}';")
-        cur.execute("SELECT event_type FROM field.outbox WHERE tenant_id = %s ORDER BY created_at ASC;", (tenant_id,))
+        cur.execute(
+            "SELECT event_type FROM field.outbox WHERE tenant_id = %s ORDER BY created_at ASC;",
+            (tenant_id,),
+        )
         types = [r[0] for r in cur.fetchall()]
         assert types == ["posting.requested", "erp.posted", "erp.reversed", "erp.failed"]
 
@@ -360,7 +365,10 @@ async def test_t3_012_pre_post_probe_adoption():
         assert cur.fetchone()[0] == "completed"
 
         # Check outbox event has adopted_by_probe = True
-        cur.execute("SELECT payload FROM field.outbox WHERE tenant_id = %s AND event_type = 'erp.posted';", (tenant_id,))
+        cur.execute(
+            "SELECT payload FROM field.outbox WHERE tenant_id = %s AND event_type = 'erp.posted';",
+            (tenant_id,),
+        )
         raw = cur.fetchone()[0]
         payload = raw if isinstance(raw, dict) else json.loads(raw)
         assert payload["data"]["adopted_by_probe"] is True

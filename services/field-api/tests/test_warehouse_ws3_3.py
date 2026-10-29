@@ -158,8 +158,18 @@ async def test_tc3_101_and_tc3_103_ibd_polling_and_conflict():
                 "LastChangeDateTime": now_dt.isoformat(),
                 "to_DeliveryDocumentItem": {
                     "results": [
-                        {"DeliveryDocumentItem": "000010", "Material": "MAT-A", "ActualDeliveryQuantity": "24", "DeliveryQuantityUnit": "EA"},
-                        {"DeliveryDocumentItem": "000020", "Material": "MAT-B", "ActualDeliveryQuantity": "12", "DeliveryQuantityUnit": "EA"},
+                        {
+                            "DeliveryDocumentItem": "000010",
+                            "Material": "MAT-A",
+                            "ActualDeliveryQuantity": "24",
+                            "DeliveryQuantityUnit": "EA",
+                        },
+                        {
+                            "DeliveryDocumentItem": "000020",
+                            "Material": "MAT-B",
+                            "ActualDeliveryQuantity": "12",
+                            "DeliveryQuantityUnit": "EA",
+                        },
                     ]
                 },
             },
@@ -170,7 +180,12 @@ async def test_tc3_101_and_tc3_103_ibd_polling_and_conflict():
                 "LastChangeDateTime": now_dt.isoformat(),
                 "to_DeliveryDocumentItem": {
                     "results": [
-                        {"DeliveryDocumentItem": "000010", "Material": "MAT-C", "ActualDeliveryQuantity": "36", "DeliveryQuantityUnit": "EA"},
+                        {
+                            "DeliveryDocumentItem": "000010",
+                            "Material": "MAT-C",
+                            "ActualDeliveryQuantity": "36",
+                            "DeliveryQuantityUnit": "EA",
+                        },
                     ]
                 },
             },
@@ -233,8 +248,18 @@ async def test_tc3_101_and_tc3_103_ibd_polling_and_conflict():
                 "LastChangeDateTime": later_dt.isoformat(),
                 "to_DeliveryDocumentItem": {
                     "results": [
-                        {"DeliveryDocumentItem": "000010", "Material": "MAT-A", "ActualDeliveryQuantity": "30", "DeliveryQuantityUnit": "EA"},
-                        {"DeliveryDocumentItem": "000020", "Material": "MAT-B", "ActualDeliveryQuantity": "15", "DeliveryQuantityUnit": "EA"},
+                        {
+                            "DeliveryDocumentItem": "000010",
+                            "Material": "MAT-A",
+                            "ActualDeliveryQuantity": "30",
+                            "DeliveryQuantityUnit": "EA",
+                        },
+                        {
+                            "DeliveryDocumentItem": "000020",
+                            "Material": "MAT-B",
+                            "ActualDeliveryQuantity": "15",
+                            "DeliveryQuantityUnit": "EA",
+                        },
                     ]
                 },
             }
@@ -282,10 +307,18 @@ def test_tc3_102_csv_import_with_match_ladder():
         for i in range(1, 37)
     ]
     # Add rival pairs to create 4 ambiguous matches
-    known_materials.append({"id": str(uuid.uuid4()), "code": "SCREW-HEX-M8-A", "name": "Hex Screw M8 Style A"})
-    known_materials.append({"id": str(uuid.uuid4()), "code": "SCREW-HEX-M8-B", "name": "Hex Screw M8 Style B"})
-    known_materials.append({"id": str(uuid.uuid4()), "code": "BOLT-FLANGE-10-A", "name": "Flange Bolt 10 A"})
-    known_materials.append({"id": str(uuid.uuid4()), "code": "BOLT-FLANGE-10-B", "name": "Flange Bolt 10 B"})
+    known_materials.append(
+        {"id": str(uuid.uuid4()), "code": "SCREW-HEX-M8-A", "name": "Hex Screw M8 Style A"}
+    )
+    known_materials.append(
+        {"id": str(uuid.uuid4()), "code": "SCREW-HEX-M8-B", "name": "Hex Screw M8 Style B"}
+    )
+    known_materials.append(
+        {"id": str(uuid.uuid4()), "code": "BOLT-FLANGE-10-A", "name": "Flange Bolt 10 A"}
+    )
+    known_materials.append(
+        {"id": str(uuid.uuid4()), "code": "BOLT-FLANGE-10-B", "name": "Flange Bolt 10 B"}
+    )
 
     # Pre-seed materials in database for foreign key constraint
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
@@ -301,9 +334,11 @@ def test_tc3_102_csv_import_with_match_ladder():
             )
 
     # Build 40 CSV lines: 36 exact matches, 4 ambiguous
-    lines = ["DeliveryDocument,DeliveryDocumentItem,Material,ActualDeliveryQuantity,DeliveryQuantityUnit"]
+    lines = [
+        "DeliveryDocument,DeliveryDocumentItem,Material,ActualDeliveryQuantity,DeliveryQuantityUnit"
+    ]
     for i in range(1, 37):
-        lines.append(f"180000001,{i*10},MAT-{i:04d},10,EA")
+        lines.append(f"180000001,{i * 10},MAT-{i:04d},10,EA")
     # 4 ambiguous rows
     lines.append("180000001,370,SCREW-HEX-M8,5,EA")
     lines.append("180000001,380,SCREW-HEX-M8,5,EA")
@@ -352,7 +387,9 @@ def test_tc3_104_and_pr3_12_sscc_validation_and_duplicate():
     assert exc.value.status == 400
 
     # First valid capture succeeds
-    hu = validate_and_record_sscc(tenant_id=tenant_id, delivery_ref=delivery_ref, sscc=valid_sscc, quantity=12.0)
+    hu = validate_and_record_sscc(
+        tenant_id=tenant_id, delivery_ref=delivery_ref, sscc=valid_sscc, quantity=12.0
+    )
     assert hu["sscc"] == valid_sscc
     assert hu["quantity"] == 12.0
 
@@ -370,17 +407,23 @@ def test_tc3_104_and_pr3_12_sscc_validation_and_duplicate():
 def test_tc3_105_and_pr3_02_counting_hierarchy_and_line_qty():
     """TC3.105 & PR3.02: AI 37 > pack quantity > voice count, and counted_qty = latest voice or sum of captures."""
     # 1. AI 37 takes priority
-    qty_1, needs_v1 = derive_hu_quantity(barcode_data="00008901230000000014(37)12", material_units_per_carton=24)
+    qty_1, needs_v1 = derive_hu_quantity(
+        barcode_data="00008901230000000014(37)12", material_units_per_carton=24
+    )
     assert qty_1 == 12.0
     assert needs_v1 is False
 
     # 2. Material pack quantity when AI 37 is absent
-    qty_2, needs_v2 = derive_hu_quantity(barcode_data="00008901230000000014", material_units_per_carton=24)
+    qty_2, needs_v2 = derive_hu_quantity(
+        barcode_data="00008901230000000014", material_units_per_carton=24
+    )
     assert qty_2 == 24.0
     assert needs_v2 is False
 
     # 3. Request voice count when both absent
-    qty_3, needs_v3 = derive_hu_quantity(barcode_data="00008901230000000014", material_units_per_carton=None)
+    qty_3, needs_v3 = derive_hu_quantity(
+        barcode_data="00008901230000000014", material_units_per_carton=None
+    )
     assert qty_3 is None
     assert needs_v3 is True
 
@@ -390,7 +433,11 @@ def test_tc3_105_and_pr3_02_counting_hierarchy_and_line_qty():
     assert compute_line_counted_quantity(captures) == 36.0
 
     # If 1 capture is discarded, sum of non-discarded = 24
-    captures_with_discard = [{"quantity": 12.0}, {"quantity": 12.0, "is_discarded": True}, {"quantity": 12.0}]
+    captures_with_discard = [
+        {"quantity": 12.0},
+        {"quantity": 12.0, "is_discarded": True},
+        {"quantity": 12.0},
+    ]
     assert compute_line_counted_quantity(captures_with_discard) == 24.0
 
     # If voice count exists ('count 30'), voice count overrides captures
@@ -409,7 +456,9 @@ def test_tc3_105_and_pr3_02_counting_hierarchy_and_line_qty():
 def test_tc3_106_and_tc3_107_delivery_tolerances():
     """TC3.106 & TC3.107: Over-delivery blocked without supervisor approval; under-delivery requires reason code."""
     # TC3.106: Expected 100, tol 10% (max 110), counted 130
-    d_over = evaluate_receipt_tolerance(expected_qty=100.0, counted_qty=130.0, over_tolerance_pct=10.0)
+    d_over = evaluate_receipt_tolerance(
+        expected_qty=100.0, counted_qty=130.0, over_tolerance_pct=10.0
+    )
     assert d_over.is_blocked is True
     assert d_over.status == "OVER_DELIVERY_BLOCKED"
     assert d_over.exception_case_opened is True
@@ -467,18 +516,25 @@ def test_tc3_108_damaged_carton_handling():
 
     # With photo evidence:
     res = mark_handling_unit_damaged(
-        tenant_id=tenant_id, hu_id=hu_id, evidence_crop_id=uuid7_str(), damage_description="Crushed corner"
+        tenant_id=tenant_id,
+        hu_id=hu_id,
+        evidence_crop_id=uuid7_str(),
+        damage_description="Crushed corner",
     )
     assert res["is_damaged"] is True
 
     # Mode 1: Reject mode (total 100, damaged 12 -> unrestricted 88, rejected 12)
-    p_reject = resolve_damaged_carton_posting(site_damaged_mode="reject", total_counted_qty=100.0, damaged_qty=12.0)
+    p_reject = resolve_damaged_carton_posting(
+        site_damaged_mode="reject", total_counted_qty=100.0, damaged_qty=12.0
+    )
     assert p_reject["unrestricted_qty"] == 88.0
     assert p_reject["rejected_qty"] == 12.0
     assert p_reject["blocked_qty"] == 0.0
 
     # Mode 2: Blocked mode (unrestricted 88, blocked 12)
-    p_blocked = resolve_damaged_carton_posting(site_damaged_mode="blocked", total_counted_qty=100.0, damaged_qty=12.0)
+    p_blocked = resolve_damaged_carton_posting(
+        site_damaged_mode="blocked", total_counted_qty=100.0, damaged_qty=12.0
+    )
     assert p_blocked["unrestricted_qty"] == 88.0
     assert p_blocked["blocked_qty"] == 12.0
     assert p_blocked["rejected_qty"] == 0.0
@@ -614,7 +670,11 @@ def test_tc3_112_putaway_proposal_and_scan():
 
     # Confirm matching bin: succeeds immediately
     c1 = confirm_putaway_scan(
-        tenant_id=tenant_id, site_id=site_id, hu_id=hu_id, scanned_bin="03-05-01", proposed_bin="03-05-01"
+        tenant_id=tenant_id,
+        site_id=site_id,
+        hu_id=hu_id,
+        scanned_bin="03-05-01",
+        proposed_bin="03-05-01",
     )
     assert c1["status"] == "confirmed"
     assert c1["is_divergent"] is False
@@ -622,7 +682,11 @@ def test_tc3_112_putaway_proposal_and_scan():
     # Confirm divergent bin (scanned 03-05-03 vs proposed 03-05-02) without reason fails
     with pytest.raises(FieldError):
         confirm_putaway_scan(
-            tenant_id=tenant_id, site_id=site_id, hu_id=hu_id, scanned_bin="03-05-03", proposed_bin="03-05-02"
+            tenant_id=tenant_id,
+            site_id=site_id,
+            hu_id=hu_id,
+            scanned_bin="03-05-03",
+            proposed_bin="03-05-02",
         )
 
     # With reason 'bin_full' succeeds

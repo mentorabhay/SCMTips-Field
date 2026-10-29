@@ -98,7 +98,9 @@ def sign_off_audit_task(
                 exp_serial = line[1]
                 line_status = line[3]
 
-                is_captured = (exp_serial in captured_serials) or (line_status in ('captured', 'done'))
+                is_captured = (exp_serial in captured_serials) or (
+                    line_status in ("captured", "done")
+                )
                 is_explained = exp_serial in explained_serials
 
                 if not is_captured and not is_explained:
@@ -138,7 +140,9 @@ def sign_off_audit_task(
                 "site_id": str(site_id),
                 "signed_by": signed_by,
                 "waiver_applied": supervisor_waiver and unresolved_count > 0,
-                "waiver_reason": waiver_reason if (supervisor_waiver and unresolved_count > 0) else None,
+                "waiver_reason": waiver_reason
+                if (supervisor_waiver and unresolved_count > 0)
+                else None,
                 "unresolved_waived_count": unresolved_count,
                 "signed_off_at": now.isoformat(),
             }

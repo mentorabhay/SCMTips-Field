@@ -139,7 +139,10 @@ def parse_and_preview_csv(
         materials = []
         with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
             cur.execute(f"SET app.tenant_id = '{tenant_id}';")
-            cur.execute("SELECT id, erp_material_no, description, gtin FROM field.material WHERE tenant_id = %s;", (tenant_id,))
+            cur.execute(
+                "SELECT id, erp_material_no, description, gtin FROM field.material WHERE tenant_id = %s;",
+                (tenant_id,),
+            )
             for r in cur.fetchall():
                 materials.append({"id": str(r[0]), "code": r[1], "name": r[2] or "", "gtin": r[3]})
 

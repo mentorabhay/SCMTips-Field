@@ -49,8 +49,8 @@ def _auth_headers(tenant_id: str, user_id: str = "test-user-ws46") -> dict[str, 
     events=st.lists(
         st.tuples(
             st.integers(min_value=0, max_value=1000),  # timestamp offset in seconds
-            st.integers(min_value=1, max_value=500),   # seq
-            st.text(min_size=1, max_size=10, alphabet="ABC123"), # loc
+            st.integers(min_value=1, max_value=500),  # seq
+            st.text(min_size=1, max_size=10, alphabet="ABC123"),  # loc
         ),
         min_size=1,
         max_size=40,
@@ -107,10 +107,34 @@ def test_pr4_07_route_respects_climb_weight(walk_a, climb_a, walk_b, climb_b):
         "end": {"id": "end", "name": "End Node"},
     }
     edges = [
-        {"from_node_id": "start", "to_node_id": "nodeA", "distance_m": walk_a / 2, "climb_length_m": climb_a / 2, "is_one_way": True},
-        {"from_node_id": "nodeA", "to_node_id": "end", "distance_m": walk_a / 2, "climb_length_m": climb_a / 2, "is_one_way": True},
-        {"from_node_id": "start", "to_node_id": "nodeB", "distance_m": walk_b / 2, "climb_length_m": climb_b / 2, "is_one_way": True},
-        {"from_node_id": "nodeB", "to_node_id": "end", "distance_m": walk_b / 2, "climb_length_m": climb_b / 2, "is_one_way": True},
+        {
+            "from_node_id": "start",
+            "to_node_id": "nodeA",
+            "distance_m": walk_a / 2,
+            "climb_length_m": climb_a / 2,
+            "is_one_way": True,
+        },
+        {
+            "from_node_id": "nodeA",
+            "to_node_id": "end",
+            "distance_m": walk_a / 2,
+            "climb_length_m": climb_a / 2,
+            "is_one_way": True,
+        },
+        {
+            "from_node_id": "start",
+            "to_node_id": "nodeB",
+            "distance_m": walk_b / 2,
+            "climb_length_m": climb_b / 2,
+            "is_one_way": True,
+        },
+        {
+            "from_node_id": "nodeB",
+            "to_node_id": "end",
+            "distance_m": walk_b / 2,
+            "climb_length_m": climb_b / 2,
+            "is_one_way": True,
+        },
     ]
 
     cost_a = walk_a + 3.0 * climb_a
@@ -333,10 +357,18 @@ def test_api4_11_route_endpoint():
                     (%s, %s, %s, 'rp-L3', 'waypoint', 40.0, 'rest_platform');
                 """,
                 (
-                    n_ground, tenant_id, site_id,
-                    n_ladder, tenant_id, site_id,
-                    n_rp2, tenant_id, site_id,
-                    n_rp3, tenant_id, site_id,
+                    n_ground,
+                    tenant_id,
+                    site_id,
+                    n_ladder,
+                    tenant_id,
+                    site_id,
+                    n_rp2,
+                    tenant_id,
+                    site_id,
+                    n_rp3,
+                    tenant_id,
+                    site_id,
                 ),
             )
 
@@ -353,9 +385,21 @@ def test_api4_11_route_endpoint():
                     (%s, %s, %s, %s, %s, 0.0, 20.0, false);
                 """,
                 (
-                    str(uuid.uuid4()), tenant_id, site_id, n_ground, n_ladder,
-                    str(uuid.uuid4()), tenant_id, site_id, n_ladder, n_rp2,
-                    str(uuid.uuid4()), tenant_id, site_id, n_rp2, n_rp3,
+                    str(uuid.uuid4()),
+                    tenant_id,
+                    site_id,
+                    n_ground,
+                    n_ladder,
+                    str(uuid.uuid4()),
+                    tenant_id,
+                    site_id,
+                    n_ladder,
+                    n_rp2,
+                    str(uuid.uuid4()),
+                    tenant_id,
+                    site_id,
+                    n_rp2,
+                    n_rp3,
                 ),
             )
 
@@ -415,7 +459,11 @@ def test_api4_11_missing_node_and_unreachable():
     )
     assert resp_404.status_code == 404
     body_404 = resp_404.json()
-    err_code = body_404.get("code") or (body_404.get("detail", {}).get("error_code") if isinstance(body_404.get("detail"), dict) else None)
+    err_code = body_404.get("code") or (
+        body_404.get("detail", {}).get("error_code")
+        if isinstance(body_404.get("detail"), dict)
+        else None
+    )
     assert err_code == "FIELD-GRAPH-404-NODE" or "FIELD-GRAPH-404-NODE" in str(body_404)
 
     # 2. 422 for unreachable disconnected nodes
@@ -425,5 +473,9 @@ def test_api4_11_missing_node_and_unreachable():
     )
     assert resp_422.status_code == 422
     body_422 = resp_422.json()
-    err_code_422 = body_422.get("code") or (body_422.get("detail", {}).get("error_code") if isinstance(body_422.get("detail"), dict) else None)
+    err_code_422 = body_422.get("code") or (
+        body_422.get("detail", {}).get("error_code")
+        if isinstance(body_422.get("detail"), dict)
+        else None
+    )
     assert err_code_422 == "FIELD-GRAPH-422-NO-ROUTE" or "FIELD-GRAPH-422-NO-ROUTE" in str(body_422)

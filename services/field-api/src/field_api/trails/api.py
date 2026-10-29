@@ -23,9 +23,14 @@ router = APIRouter(tags=["Equipment Trails"])
 class TrailPoint(BaseModel):
     seq: int = Field(..., description="Monotonic event sequence number")
     type: str = Field(..., description="Event type: issue, install, dismantle, move, etc.")
-    label: str = Field(..., description="Human-readable location label (e.g. Plant 1100 / SL 0001 or IN01-TWR-0042 T01 Sector A L3 P02)")
+    label: str = Field(
+        ...,
+        description="Human-readable location label (e.g. Plant 1100 / SL 0001 or IN01-TWR-0042 T01 Sector A L3 P02)",
+    )
     at: str = Field(..., description="ISO 8601 occurred_at timestamp")
-    location_id: str | None = Field(None, description="Location UUID if bound to a structure location")
+    location_id: str | None = Field(
+        None, description="Location UUID if bound to a structure location"
+    )
     altitude_m: float | None = Field(None, description="Height in meters if available")
 
 
@@ -55,7 +60,10 @@ def get_equipment_trail(tenant_id: str, serial_no: str) -> dict[str, Any]:
             if not eq_row:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"error_code": "FIELD-EQP-404-SERIAL", "message": f"Equipment with serial '{serial_no}' not found"},
+                    detail={
+                        "error_code": "FIELD-EQP-404-SERIAL",
+                        "message": f"Equipment with serial '{serial_no}' not found",
+                    },
                 )
 
             eq_id = eq_row[0]
@@ -111,7 +119,9 @@ def get_equipment_trail(tenant_id: str, serial_no: str) -> dict[str, Any]:
             formatted_site = f"{to_site} " if to_site and not to_fl.startswith(to_site) else ""
             label = f"{formatted_site}{to_fl}".strip()
         elif from_fl:
-            formatted_site = f"{from_site} " if from_site and not from_fl.startswith(from_site) else ""
+            formatted_site = (
+                f"{from_site} " if from_site and not from_fl.startswith(from_site) else ""
+            )
             label = f"{formatted_site}{from_fl}".strip()
         elif s_plant:
             label = f"Plant {s_plant}"

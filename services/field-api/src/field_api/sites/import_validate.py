@@ -70,22 +70,26 @@ def validate_import_staging_rows(
 
         # 1. Mask validation
         if not code:
-            rejected_rows.append({
-                "fl_code": "",
-                "reason": "Missing functional location code",
-                "error_type": "FIELD-FL-422-EMPTY",
-                "row": r,
-            })
+            rejected_rows.append(
+                {
+                    "fl_code": "",
+                    "reason": "Missing functional location code",
+                    "error_type": "FIELD-FL-422-EMPTY",
+                    "row": r,
+                }
+            )
             continue
 
         mask_res = validate_fl_code(code)
         if not mask_res.is_valid:
-            rejected_rows.append({
-                "fl_code": code,
-                "reason": f"Mask validation failed on segment '{mask_res.error_segment}': {mask_res.error_reason}",
-                "error_type": "FIELD-FL-422-MASK",
-                "row": r,
-            })
+            rejected_rows.append(
+                {
+                    "fl_code": code,
+                    "reason": f"Mask validation failed on segment '{mask_res.error_segment}': {mask_res.error_reason}",
+                    "error_type": "FIELD-FL-422-MASK",
+                    "row": r,
+                }
+            )
             continue
 
         # 2. Cycle detection via traversal
@@ -103,23 +107,27 @@ def validate_import_staging_rows(
             curr = parent_map.get(curr)
 
         if has_cycle:
-            rejected_rows.append({
-                "fl_code": code,
-                "reason": f"Hierarchy cycle detected involving parent '{parent}'",
-                "error_type": "FIELD-LOC-422-CYCLE",
-                "row": r,
-            })
+            rejected_rows.append(
+                {
+                    "fl_code": code,
+                    "reason": f"Hierarchy cycle detected involving parent '{parent}'",
+                    "error_type": "FIELD-LOC-422-CYCLE",
+                    "row": r,
+                }
+            )
             continue
 
         # 3. Orphan detection
         # If parent is specified, it must either be in the batch or in known DB parents
         if parent and parent not in all_batch_codes and parent not in known_parents:
-            rejected_rows.append({
-                "fl_code": code,
-                "reason": f"Parent location '{parent}' does not exist in batch or database",
-                "error_type": "FIELD-LOC-422-ORPHAN",
-                "row": r,
-            })
+            rejected_rows.append(
+                {
+                    "fl_code": code,
+                    "reason": f"Parent location '{parent}' does not exist in batch or database",
+                    "error_type": "FIELD-LOC-422-ORPHAN",
+                    "row": r,
+                }
+            )
             continue
 
         # Row is valid

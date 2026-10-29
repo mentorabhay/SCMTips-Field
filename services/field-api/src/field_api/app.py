@@ -39,11 +39,14 @@ from field_api.routes.sites import router as sites_router
 from field_api.routes.status import router as status_router
 from field_api.routes.voice import router as voice_router
 from field_api.safety.api import router as safety_router
+from field_api.sitegraph.routes import router as sitegraph_router
 from field_api.sitepack.api import router as sitepack_router
 from field_api.sites.tree import router as site_tree_router
 from field_api.trails.api import router as trails_router
 from field_api.visits.api import router as visits_router
 from field_api.visits.override import router as visits_override_router
+from field_api.warehouse.inventory.routes import router as warehouse_inventory_router
+from field_api.warehouse.outbound.routes import router as warehouse_outbound_router
 from field_api.warehouse.receiving.routes import router as warehouse_router
 
 logger = structlog.get_logger(__name__)
@@ -121,9 +124,12 @@ def create_app() -> FastAPI:
         )
         if extra_fields is not None:
             import json as _json
+
             content = _json.loads(res.body.decode())
             content["detail"] = extra_fields
-            return JSONResponse(status_code=exc.status_code, content=content, headers=dict(res.headers))
+            return JSONResponse(
+                status_code=exc.status_code, content=content, headers=dict(res.headers)
+            )
         return res
 
     @app.exception_handler(404)
@@ -147,6 +153,7 @@ def create_app() -> FastAPI:
         )
         if extra is not None:
             import json as _json
+
             content = _json.loads(res.body.decode())
             content["detail"] = extra
             return JSONResponse(status_code=404, content=content, headers=dict(res.headers))
@@ -179,6 +186,9 @@ def create_app() -> FastAPI:
     app.include_router(status_router)
     app.include_router(posting_router)
     app.include_router(warehouse_router)
+    app.include_router(warehouse_outbound_router)
+    app.include_router(warehouse_inventory_router)
+    app.include_router(sitegraph_router)
     app.include_router(site_tree_router)
     app.include_router(visits_router)
     app.include_router(visits_override_router)

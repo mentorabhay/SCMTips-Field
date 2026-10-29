@@ -36,7 +36,9 @@ DATABASE_URL = (
     .replace("@localhost:", "@127.0.0.1:")
 )
 
-EVIDENCE_HMAC_SECRET = os.getenv("FIELD_EVIDENCE_SECRET", "dev-evidence-hmac-secret-min32bytes-field-phase4")
+EVIDENCE_HMAC_SECRET = os.getenv(
+    "FIELD_EVIDENCE_SECRET", "dev-evidence-hmac-secret-min32bytes-field-phase4"
+)
 
 
 def generate_signed_evidence_url(
@@ -48,7 +50,9 @@ def generate_signed_evidence_url(
     """Generate tamper-proof signed evidence link scoped to tenant (TC4.153)."""
     expires_at = int((datetime.now(UTC) + timedelta(hours=expires_in_hours)).timestamp())
     signature_payload = f"{tenant_id}:{evidence_id}:{expires_at}".encode()
-    sig = hmac.new(EVIDENCE_HMAC_SECRET.encode("utf-8"), signature_payload, hashlib.sha256).hexdigest()
+    sig = hmac.new(
+        EVIDENCE_HMAC_SECRET.encode("utf-8"), signature_payload, hashlib.sha256
+    ).hexdigest()
     return f"{base_url}/v1/evidence/{evidence_id}?tenant={tenant_id}&exp={expires_at}&sig={sig}"
 
 
@@ -65,7 +69,9 @@ def verify_signed_evidence_url(
         return False
 
     signature_payload = f"{tenant_id}:{evidence_id}:{expires_at_timestamp}".encode()
-    expected_sig = hmac.new(EVIDENCE_HMAC_SECRET.encode("utf-8"), signature_payload, hashlib.sha256).hexdigest()
+    expected_sig = hmac.new(
+        EVIDENCE_HMAC_SECRET.encode("utf-8"), signature_payload, hashlib.sha256
+    ).hexdigest()
     return hmac.compare_digest(expected_sig, provided_signature)
 
 
@@ -81,7 +87,10 @@ def generate_audit_report(
     if report_format not in ("csv", "pdf", "json"):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error_code": "FIELD-RPT-422-FORMAT", "message": f"Unsupported format: {report_format}"},
+            detail={
+                "error_code": "FIELD-RPT-422-FORMAT",
+                "message": f"Unsupported format: {report_format}",
+            },
         )
 
     now = datetime.now(UTC)
@@ -161,17 +170,19 @@ def generate_audit_report(
         # Signed authenticated evidence link (TC4.153)
         auth_url = generate_signed_evidence_url(tenant_id=tenant_id, evidence_id=evidence_ref)
 
-        report_rows.append({
-            "task_id": task_id,
-            "site_id": site_id,
-            "fl_code": fl_code,
-            "finding_class": f_class,
-            "status": f_status,
-            "expected_serial": exp_serial,
-            "found_serial": found_serial,
-            "decision": decision,
-            "evidence_url": auth_url,
-        })
+        report_rows.append(
+            {
+                "task_id": task_id,
+                "site_id": site_id,
+                "fl_code": fl_code,
+                "finding_class": f_class,
+                "status": f_status,
+                "expected_serial": exp_serial,
+                "found_serial": found_serial,
+                "decision": decision,
+                "evidence_url": auth_url,
+            }
+        )
 
     # 6. Render format
     if report_format == "csv":
@@ -211,7 +222,9 @@ def generate_audit_report(
         content_bytes = "\n".join(pdf_lines).encode("utf-8")
         mime_type = "application/pdf"
     else:
-        content_bytes = json.dumps({"task_id": task_id, "findings": report_rows}, indent=2).encode("utf-8")
+        content_bytes = json.dumps({"task_id": task_id, "findings": report_rows}, indent=2).encode(
+            "utf-8"
+        )
         mime_type = "application/json"
 
     file_size = len(content_bytes)

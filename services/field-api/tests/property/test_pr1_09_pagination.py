@@ -10,7 +10,10 @@ from hypothesis import given, settings
 @settings(max_examples=50)
 @given(
     st.lists(
-        st.tuples(st.integers(min_value=1, max_value=100000), st.text(min_size=1, max_size=10, alphabet="abcdef0123456789")),
+        st.tuples(
+            st.integers(min_value=1, max_value=100000),
+            st.text(min_size=1, max_size=10, alphabet="abcdef0123456789"),
+        ),
         min_size=1,
         max_size=100,
         unique_by=lambda x: x[0],

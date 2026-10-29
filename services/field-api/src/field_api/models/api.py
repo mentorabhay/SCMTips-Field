@@ -26,7 +26,9 @@ router = APIRouter(tags=["Asset Models & 3D BOM"])
 
 
 class BomPatchRequest(BaseModel):
-    items: list[dict[str, Any]] = Field(..., description="List of BOM item updates (part_no, description, etc.)")
+    items: list[dict[str, Any]] = Field(
+        ..., description="List of BOM item updates (part_no, description, etc.)"
+    )
 
 
 @router.post(
@@ -51,7 +53,10 @@ async def api_upload_asset_model(
         if not glb_b64 or not eq_class or not ver:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={"error_code": "FIELD-MOD-422-INVALID", "message": "Missing required fields in JSON payload"},
+                detail={
+                    "error_code": "FIELD-MOD-422-INVALID",
+                    "message": "Missing required fields in JSON payload",
+                },
             )
         glb_data = base64.b64decode(glb_b64)
     else:
@@ -63,15 +68,26 @@ async def api_upload_asset_model(
         if not eq_class or not ver or not glb_field or not bom_csv_field:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={"error_code": "FIELD-MOD-422-INVALID", "message": "Missing required multipart fields"},
+                detail={
+                    "error_code": "FIELD-MOD-422-INVALID",
+                    "message": "Missing required multipart fields",
+                },
             )
         glb_data = (
             await glb_field.read()
             if hasattr(glb_field, "read")
             else (glb_field.encode("utf-8") if isinstance(glb_field, str) else bytes(glb_field))
         )
-        csv_bytes = await bom_csv_field.read() if hasattr(bom_csv_field, "read") else bytes(bom_csv_field, "utf-8")
-        csv_text = csv_bytes.decode("utf-8") if isinstance(csv_bytes, (bytes, bytearray)) else str(csv_bytes)
+        csv_bytes = (
+            await bom_csv_field.read()
+            if hasattr(bom_csv_field, "read")
+            else bytes(bom_csv_field, "utf-8")
+        )
+        csv_text = (
+            csv_bytes.decode("utf-8")
+            if isinstance(csv_bytes, (bytes, bytearray))
+            else str(csv_bytes)
+        )
 
     return create_asset_model_draft(
         tenant_id=principal.tenant_id,
@@ -96,12 +112,17 @@ def api_publish_asset_model(
 ) -> dict[str, Any]:
     """API4.13: Publish model version, allocate stable balloons, and emit outbox event."""
     # Check publish permission or step-up verification
-    has_perm = "field.model.publish" in (principal.roles or []) or "field.model.publish" in (getattr(principal, "permissions", []) or [])
+    has_perm = "field.model.publish" in (principal.roles or []) or "field.model.publish" in (
+        getattr(principal, "permissions", []) or []
+    )
     if not has_perm and not x_stepup_token:
         # Require step-up authorization
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error_code": "FIELD-AUTH-401-STEPUP", "message": "Publishing model requires supervisor step-up authorization"},
+            detail={
+                "error_code": "FIELD-AUTH-401-STEPUP",
+                "message": "Publishing model requires supervisor step-up authorization",
+            },
         )
 
     return publish_asset_model(

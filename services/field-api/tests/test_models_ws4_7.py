@@ -153,7 +153,9 @@ def test_pr4_08_bom_counts_property(top_qty: int, num_nodes: int, num_child_node
     else:
         # Invalid: must report mismatch issue
         qty_issues = [iss for iss in issues if "FIELD-MOD-422-QTY-MISMATCH" in iss]
-        assert len(qty_issues) >= 1, f"Expected mismatch issue when top_qty={top_qty} != net={net_mapped}"
+        assert len(qty_issues) >= 1, (
+            f"Expected mismatch issue when top_qty={top_qty} != net={net_mapped}"
+        )
 
 
 # ==============================================================================
@@ -161,8 +163,16 @@ def test_pr4_08_bom_counts_property(top_qty: int, num_nodes: int, num_child_node
 # ==============================================================================
 @settings(max_examples=1000, deadline=None)
 @given(
-    p0=st.tuples(st.floats(min_value=-100.0, max_value=100.0), st.floats(min_value=-100.0, max_value=100.0), st.floats(min_value=-100.0, max_value=100.0)),
-    v=st.tuples(st.floats(min_value=-50.0, max_value=50.0), st.floats(min_value=-50.0, max_value=50.0), st.floats(min_value=-50.0, max_value=50.0)),
+    p0=st.tuples(
+        st.floats(min_value=-100.0, max_value=100.0),
+        st.floats(min_value=-100.0, max_value=100.0),
+        st.floats(min_value=-100.0, max_value=100.0),
+    ),
+    v=st.tuples(
+        st.floats(min_value=-50.0, max_value=50.0),
+        st.floats(min_value=-50.0, max_value=50.0),
+        st.floats(min_value=-50.0, max_value=50.0),
+    ),
     t=st.floats(min_value=0.0, max_value=1.0),
     alpha=st.floats(min_value=0.0, max_value=1.0),
     t2=st.floats(min_value=0.0, max_value=1.0),
@@ -175,6 +185,7 @@ def test_pr4_09_exploded_offsets_linearity_property(
     t2: float,
 ):
     """PR4.09: Position at t=0 equals assembled pos; offset at t=1 equals v; linear in t."""
+
     def p(s: float) -> tuple[float, float, float]:
         clamped_s = max(0.0, min(1.0, s))
         return (
@@ -236,7 +247,9 @@ def test_pr4_10_balloon_stability_property(version_sequences: list[list[tuple[st
 
         # Invariant 1: Balloon numbers are unique within this version
         ver_balloons = [it["balloon_no"] for it in assigned_items]
-        assert len(ver_balloons) == len(set(ver_balloons)), f"Duplicate balloon numbers in version {ver_idx}"
+        assert len(ver_balloons) == len(set(ver_balloons)), (
+            f"Duplicate balloon numbers in version {ver_idx}"
+        )
 
         # Invariant 2: Stable across versions for same (part_no, node_path)
         active_keys = set()
@@ -246,10 +259,14 @@ def test_pr4_10_balloon_stability_property(version_sequences: list[list[tuple[st
             b_no = it["balloon_no"]
 
             if key in seen_in_history:
-                assert b_no == seen_in_history[key], f"Balloon changed for {key}: was {seen_in_history[key]}, got {b_no}"
+                assert b_no == seen_in_history[key], (
+                    f"Balloon changed for {key}: was {seen_in_history[key]}, got {b_no}"
+                )
             else:
                 # Invariant 3: Retired numbers are NEVER reused for a newly introduced part
-                assert b_no not in retired_numbers, f"Retired balloon number {b_no} was illegally reused for new key {key}"
+                assert b_no not in retired_numbers, (
+                    f"Retired balloon number {b_no} was illegally reused for new key {key}"
+                )
                 seen_in_history[key] = b_no
 
         # Mark parts dropped in this version as retired
@@ -362,11 +379,7 @@ def test_tc4_146_published_version_immutable():
     res_patch = client.patch(
         f"/v1/asset-models/{model_id}/bom",
         headers=headers,
-        json={
-            "items": [
-                {"part_no": "MOD-01", "description": "Modified Description Illegal"}
-            ]
-        },
+        json={"items": [{"part_no": "MOD-01", "description": "Modified Description Illegal"}]},
     )
     assert res_patch.status_code == 409
     assert res_patch.json()["detail"]["error_code"] == "FIELD-MOD-409-PUBLISHED"

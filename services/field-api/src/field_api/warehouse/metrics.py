@@ -13,8 +13,16 @@ def compute_dock_to_stock_duration_minutes(
     stock_putaway: datetime | str,
 ) -> float:
     """Calculate elapsed minutes between dock arrival and putaway confirmation."""
-    t0 = datetime.fromisoformat(str(dock_arrival).replace("Z", "+00:00")) if isinstance(dock_arrival, str) else dock_arrival
-    t1 = datetime.fromisoformat(str(stock_putaway).replace("Z", "+00:00")) if isinstance(stock_putaway, str) else stock_putaway
+    t0 = (
+        datetime.fromisoformat(str(dock_arrival).replace("Z", "+00:00"))
+        if isinstance(dock_arrival, str)
+        else dock_arrival
+    )
+    t1 = (
+        datetime.fromisoformat(str(stock_putaway).replace("Z", "+00:00"))
+        if isinstance(stock_putaway, str)
+        else stock_putaway
+    )
     diff_s = (t1 - t0).total_seconds()
     return round(diff_s / 60.0, 2)
 

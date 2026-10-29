@@ -78,6 +78,7 @@ def assign_model_balloons_in_db(
     Returns:
         (balloons_assigned, balloons_kept)
     """
+
     def _execute(c: Any) -> tuple[int, int]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))

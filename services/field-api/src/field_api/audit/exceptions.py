@@ -159,12 +159,14 @@ def open_and_deduplicate_exceptions(
                         ),
                     )
 
-                    opened_cases.append({
-                        "case_id": str(actual_case_id),
-                        "finding_id": finding_id,
-                        "dedupe_key": dedupe_key,
-                        "class": f_class,
-                    })
+                    opened_cases.append(
+                        {
+                            "case_id": str(actual_case_id),
+                            "finding_id": finding_id,
+                            "dedupe_key": dedupe_key,
+                            "class": f_class,
+                        }
+                    )
 
         conn.commit()
 

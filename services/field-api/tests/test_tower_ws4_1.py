@@ -107,17 +107,21 @@ def test_tc4_101_fl_import_preview_and_apply(auth_headers):
     # Add 12 levels (4 per sector)
     for sec in ["SA", "SB", "SC"]:
         for idx, lvl in enumerate(["L01", "L02", "L03", "L04"], start=1):
-            fl_rows.append({
-                "fl_code": f"IN01-TWR-0042-T01-{sec}-{lvl}",
-                "parent_fl_code": f"IN01-TWR-0042-T01-{sec}",
-                "height_m": idx * 10.0,
-            })
+            fl_rows.append(
+                {
+                    "fl_code": f"IN01-TWR-0042-T01-{sec}-{lvl}",
+                    "parent_fl_code": f"IN01-TWR-0042-T01-{sec}",
+                    "height_m": idx * 10.0,
+                }
+            )
     # Add 7 positions
     for p_idx in range(1, 8):
-        fl_rows.append({
-            "fl_code": f"IN01-TWR-0042-T01-SA-L01-P{p_idx:02d}",
-            "parent_fl_code": "IN01-TWR-0042-T01-SA-L01",
-        })
+        fl_rows.append(
+            {
+                "fl_code": f"IN01-TWR-0042-T01-SA-L01-P{p_idx:02d}",
+                "parent_fl_code": "IN01-TWR-0042-T01-SA-L01",
+            }
+        )
 
     assert len(fl_rows) == 31
 
@@ -227,11 +231,21 @@ def test_tc4_103_delta_import_watermark(auth_headers):
     prefix = "IN01-TWR-0042"
 
     initial_fls = [
-        {"FunctionalLocation": "IN01-TWR-0042", "SuperiorFunctionalLocation": "", "LastChangeDateTime": "2026-10-01T08:00:00Z"},
-        {"FunctionalLocation": "IN01-TWR-0042-T01", "SuperiorFunctionalLocation": "IN01-TWR-0042", "LastChangeDateTime": "2026-10-01T08:00:00Z"},
+        {
+            "FunctionalLocation": "IN01-TWR-0042",
+            "SuperiorFunctionalLocation": "",
+            "LastChangeDateTime": "2026-10-01T08:00:00Z",
+        },
+        {
+            "FunctionalLocation": "IN01-TWR-0042-T01",
+            "SuperiorFunctionalLocation": "IN01-TWR-0042",
+            "LastChangeDateTime": "2026-10-01T08:00:00Z",
+        },
     ]
 
-    transport1 = httpx.MockTransport(lambda req: httpx.Response(200, json={"d": {"results": initial_fls}}))
+    transport1 = httpx.MockTransport(
+        lambda req: httpx.Response(200, json={"d": {"results": initial_fls}})
+    )
     client1 = httpx.Client(transport=transport1)
 
     # Initial import run
@@ -246,10 +260,20 @@ def test_tc4_103_delta_import_watermark(auth_headers):
 
     # Now simulate 2 changed/added FLs
     delta_fls = [
-        {"FunctionalLocation": "IN01-TWR-0042-T01-SA", "SuperiorFunctionalLocation": "IN01-TWR-0042-T01", "LastChangeDateTime": "2026-10-15T09:00:00Z"},
-        {"FunctionalLocation": "IN01-TWR-0042-T01-SB", "SuperiorFunctionalLocation": "IN01-TWR-0042-T01", "LastChangeDateTime": "2026-10-15T09:30:00Z"},
+        {
+            "FunctionalLocation": "IN01-TWR-0042-T01-SA",
+            "SuperiorFunctionalLocation": "IN01-TWR-0042-T01",
+            "LastChangeDateTime": "2026-10-15T09:00:00Z",
+        },
+        {
+            "FunctionalLocation": "IN01-TWR-0042-T01-SB",
+            "SuperiorFunctionalLocation": "IN01-TWR-0042-T01",
+            "LastChangeDateTime": "2026-10-15T09:30:00Z",
+        },
     ]
-    transport2 = httpx.MockTransport(lambda req: httpx.Response(200, json={"d": {"results": delta_fls}}))
+    transport2 = httpx.MockTransport(
+        lambda req: httpx.Response(200, json={"d": {"results": delta_fls}})
+    )
     client2 = httpx.Client(transport=transport2)
 
     res3 = run_fl_delta_import(t_id, conn_id, prefix, client=client2)
@@ -329,7 +353,15 @@ def test_tc4_106_site_tree_api(auth_headers):
                 INSERT INTO field.location (id, tenant_id, site_id, parent_id, kind, code, path, depth, erp_ref, sector_code, height_m)
                 VALUES (field.uuid_generate_v7(), %s::uuid, %s::uuid, %s::uuid, 'level', %s, %s, 4, %s, 'A', %s);
                 """,
-                (t_id, site_id, s_uuid, lvl_code, f"IN01-TWR-0042-T01-SA-{lvl_code}", f"IN01-TWR-0042-T01-SA-{lvl_code}", h),
+                (
+                    t_id,
+                    site_id,
+                    s_uuid,
+                    lvl_code,
+                    f"IN01-TWR-0042-T01-SA-{lvl_code}",
+                    f"IN01-TWR-0042-T01-SA-{lvl_code}",
+                    h,
+                ),
             )
 
     # Call API GET /v1/sites/{id}/tree

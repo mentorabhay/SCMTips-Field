@@ -78,9 +78,20 @@ def seeded_tower_site(test_tenant_id: str) -> dict:
                             %s, %s, %s, 3
                         );
                         """,
-                        (loc_id, test_tenant_id, site_id, fl_code, fl_code, sec, height, f"T01.{sec}.L0{lvl_num}"),
+                        (
+                            loc_id,
+                            test_tenant_id,
+                            site_id,
+                            fl_code,
+                            fl_code,
+                            sec,
+                            height,
+                            f"T01.{sec}.L0{lvl_num}",
+                        ),
                     )
-                    locations.append({"id": loc_id, "fl_code": fl_code, "sector": sec, "height": height})
+                    locations.append(
+                        {"id": loc_id, "fl_code": fl_code, "sector": sec, "height": height}
+                    )
 
             # 3. Create 24 installed equipment items (4 items per location)
             classes = ["RRU", "TMA", "ANT_PANEL", "BBU"]
@@ -159,22 +170,30 @@ def test_tc4_114_serial_pattern_normalisation():
 def test_tc4_115_verify_routing_table():
     """TC4.115 / FR4.018: Evaluates BRIEF routing rules for nameplate verification."""
     # 1. Low confidence (< 0.92) -> queue
-    r1 = evaluate_verify_routing("cap-1", confidence=0.88, is_expected=True, is_normalised=False, pattern_matched=True)
+    r1 = evaluate_verify_routing(
+        "cap-1", confidence=0.88, is_expected=True, is_normalised=False, pattern_matched=True
+    )
     assert r1.should_verify is True
     assert r1.reason == "confidence_below_threshold"
 
     # 2. Unexpected serial -> queue
-    r2 = evaluate_verify_routing("cap-2", confidence=0.95, is_expected=False, is_normalised=False, pattern_matched=True)
+    r2 = evaluate_verify_routing(
+        "cap-2", confidence=0.95, is_expected=False, is_normalised=False, pattern_matched=True
+    )
     assert r2.should_verify is True
     assert r2.reason == "unexpected_serial"
 
     # 3. Confusable normalised -> queue
-    r3 = evaluate_verify_routing("cap-3", confidence=0.96, is_expected=True, is_normalised=True, pattern_matched=True)
+    r3 = evaluate_verify_routing(
+        "cap-3", confidence=0.96, is_expected=True, is_normalised=True, pattern_matched=True
+    )
     assert r3.should_verify is True
     assert r3.reason == "confusable_normalised"
 
     # 4. Pattern failed -> queue
-    r4 = evaluate_verify_routing("cap-4", confidence=0.96, is_expected=True, is_normalised=False, pattern_matched=False)
+    r4 = evaluate_verify_routing(
+        "cap-4", confidence=0.96, is_expected=True, is_normalised=False, pattern_matched=False
+    )
     assert r4.should_verify is True
     assert r4.reason == "class_pattern_failed"
 
@@ -188,7 +207,9 @@ def test_tc4_115_verify_routing_table():
             break
 
     assert sample_id is not None
-    r5 = evaluate_verify_routing(sample_id, confidence=0.98, is_expected=True, is_normalised=False, pattern_matched=True)
+    r5 = evaluate_verify_routing(
+        sample_id, confidence=0.98, is_expected=True, is_normalised=False, pattern_matched=True
+    )
     assert r5.should_verify is True
     assert r5.reason == "sample_10pct"
     assert r5.is_sample is True

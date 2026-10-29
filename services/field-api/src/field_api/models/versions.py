@@ -56,7 +56,10 @@ def publish_asset_model(
             if not row:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"error_code": "FIELD-MOD-404", "message": f"Asset model '{model_id}' not found"},
+                    detail={
+                        "error_code": "FIELD-MOD-404",
+                        "message": f"Asset model '{model_id}' not found",
+                    },
                 )
 
             eq_class, version, current_status, sha256_hex = row[1], row[2], row[3], row[4]
@@ -107,14 +110,16 @@ def publish_asset_model(
                     str(uuid.uuid4()),
                     tenant_id,
                     model_id,
-                    json.dumps({
-                        "model_id": model_id,
-                        "equipment_class": eq_class,
-                        "version": version,
-                        "sha256": sha256_hex,
-                        "balloons_assigned": assigned,
-                        "balloons_kept": kept,
-                    }),
+                    json.dumps(
+                        {
+                            "model_id": model_id,
+                            "equipment_class": eq_class,
+                            "version": version,
+                            "sha256": sha256_hex,
+                            "balloons_assigned": assigned,
+                            "balloons_kept": kept,
+                        }
+                    ),
                 ),
             )
             conn.commit()
@@ -142,7 +147,10 @@ def get_model_bom(tenant_id: str, model_id: str) -> dict[str, Any]:
             if not cur.fetchone():
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"error_code": "FIELD-MOD-404", "message": f"Asset model '{model_id}' not found"},
+                    detail={
+                        "error_code": "FIELD-MOD-404",
+                        "message": f"Asset model '{model_id}' not found",
+                    },
                 )
 
             cur.execute(
@@ -196,7 +204,10 @@ def update_model_bom(
             if not m_row:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"error_code": "FIELD-MOD-404", "message": f"Asset model '{model_id}' not found"},
+                    detail={
+                        "error_code": "FIELD-MOD-404",
+                        "message": f"Asset model '{model_id}' not found",
+                    },
                 )
 
             if m_row[0] == "published":
@@ -233,6 +244,7 @@ def pin_equipment_to_model_version(
     cur: Any | None = None,
 ) -> None:
     """Pin equipment installed record to a specific model version (FR4.054 / TC4.146)."""
+
     def _execute(c: Any) -> None:
         c.execute(
             """

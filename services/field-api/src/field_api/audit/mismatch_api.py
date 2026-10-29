@@ -79,7 +79,9 @@ def list_mismatches(
 
             if cursor:
                 try:
-                    cursor_created_at = datetime.fromisoformat(base64.b64decode(cursor).decode("utf-8"))
+                    cursor_created_at = datetime.fromisoformat(
+                        base64.b64decode(cursor).decode("utf-8")
+                    )
                     query += " AND af.created_at < %s"
                     params.append(cursor_created_at)
                 except Exception:
@@ -114,26 +116,30 @@ def list_mismatches(
                 s_code = r[14]
 
                 age_hours = max(0, int((now - created_at).total_seconds() / 3600))
-                crop_url = f"https://scmtips-evidence.s3.amazonaws.com/{crop_ref}" if crop_ref else None
+                crop_url = (
+                    f"https://scmtips-evidence.s3.amazonaws.com/{crop_ref}" if crop_ref else None
+                )
 
-                items.append({
-                    "id": f_id,
-                    "site_id": s_id,
-                    "site_code": s_code,
-                    "class": f_class,
-                    "expected_serial": exp_s,
-                    "found_serial": found_s,
-                    "status": f_status,
-                    "reason": reason,
-                    "verify_status": v_status,
-                    "crop_url": crop_url,
-                    "raw_ocr_text": raw_text,
-                    "confidence": conf,
-                    "material": mat,
-                    "equipment_class": eq_class,
-                    "age_h": age_hours,
-                    "created_at": created_at.isoformat(),
-                })
+                items.append(
+                    {
+                        "id": f_id,
+                        "site_id": s_id,
+                        "site_code": s_code,
+                        "class": f_class,
+                        "expected_serial": exp_s,
+                        "found_serial": found_s,
+                        "status": f_status,
+                        "reason": reason,
+                        "verify_status": v_status,
+                        "crop_url": crop_url,
+                        "raw_ocr_text": raw_text,
+                        "confidence": conf,
+                        "material": mat,
+                        "equipment_class": eq_class,
+                        "age_h": age_hours,
+                        "created_at": created_at.isoformat(),
+                    }
+                )
 
             next_cursor = None
             if has_more and fetch_rows:

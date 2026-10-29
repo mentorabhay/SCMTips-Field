@@ -40,9 +40,15 @@ def test_tc4_105_fl_mask_validation_20_codes():
     for code, expected_kind, expected_parent, expected_depth in VALID_CODES:
         res = validate_fl_code(code)
         assert res.is_valid, f"Expected {code} to be valid, got error: {res.error_reason}"
-        assert res.kind == expected_kind, f"Expected kind {expected_kind} for {code}, got {res.kind}"
-        assert res.parent_code == expected_parent, f"Expected parent {expected_parent} for {code}, got {res.parent_code}"
-        assert res.depth == expected_depth, f"Expected depth {expected_depth} for {code}, got {res.depth}"
+        assert res.kind == expected_kind, (
+            f"Expected kind {expected_kind} for {code}, got {res.kind}"
+        )
+        assert res.parent_code == expected_parent, (
+            f"Expected parent {expected_parent} for {code}, got {res.parent_code}"
+        )
+        assert res.depth == expected_depth, (
+            f"Expected depth {expected_depth} for {code}, got {res.depth}"
+        )
         assert res.error_segment is None
 
     # 2. 10 invalid codes rejected and flagged with offending segment

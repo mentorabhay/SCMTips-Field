@@ -58,9 +58,7 @@ def test_pr1_15_error_classification(status_code: int, msg: str) -> None:
 
 @pytest.mark.property
 @settings(max_examples=30)
-@given(
-    st.lists(st.integers(min_value=1, max_value=20), min_size=2, max_size=10, unique=True)
-)
+@given(st.lists(st.integers(min_value=1, max_value=20), min_size=2, max_size=10, unique=True))
 def test_pr1_15_queue_sequence_execution_order(seq_numbers: list[int]) -> None:
     """PR1.15: Jobs in a queue key must execute in strictly monotonic sequence order."""
     sorted_seqs = sorted(seq_numbers)

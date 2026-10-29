@@ -173,13 +173,15 @@ async def check_in(
                     (
                         tenant_id,
                         visit_id,
-                        json.dumps({
-                            "visit_id": visit_id,
-                            "site_id": site_id,
-                            "override_by": req.override_by,
-                            "reason": req.override_reason,
-                            "reported_accuracy_m": req.accuracy_m,
-                        }),
+                        json.dumps(
+                            {
+                                "visit_id": visit_id,
+                                "site_id": site_id,
+                                "override_by": req.override_by,
+                                "reason": req.override_reason,
+                                "reported_accuracy_m": req.accuracy_m,
+                            }
+                        ),
                     ),
                 )
 

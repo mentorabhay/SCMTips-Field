@@ -39,6 +39,7 @@ def is_queue_held(
     cur: Any | None = None,
 ) -> bool:
     """Check if a specific tower posting queue is currently held due to a conflict (PR4.12 / TC4.152)."""
+
     def _exec(c: Any) -> bool:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
@@ -140,18 +141,22 @@ def check_and_handle_replay_conflict(
                     tenant_id,
                     site_id,
                     dedupe_key,
-                    json.dumps({
-                        "equipment_no": equipment_no,
-                        "serial_no": serial_no,
-                        "tower_fl": tower_fl,
-                        "operation": operation,
-                    }),
-                    json.dumps({
-                        "reason": conflict_reason,
-                        "expected_fl": expected_precondition_fl,
-                        "erp_status": erp_status,
-                        "erp_location": erp_location,
-                    }),
+                    json.dumps(
+                        {
+                            "equipment_no": equipment_no,
+                            "serial_no": serial_no,
+                            "tower_fl": tower_fl,
+                            "operation": operation,
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "reason": conflict_reason,
+                            "expected_fl": expected_precondition_fl,
+                            "erp_status": erp_status,
+                            "erp_location": erp_location,
+                        }
+                    ),
                 ),
             )
             case_row = cur.fetchone()

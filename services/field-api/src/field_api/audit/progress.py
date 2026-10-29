@@ -99,7 +99,7 @@ def get_audit_progress(tenant_id: str, task_id: str) -> dict[str, Any]:
             for r in task_lines:
                 exp_s = r[1]
                 st = r[3]
-                if st in ('captured', 'done') and exp_s:
+                if st in ("captured", "done") and exp_s:
                     captured_serials.add(exp_s)
 
     # 4. Group expected items hierarchically
@@ -129,30 +129,36 @@ def get_audit_progress(tenant_id: str, task_id: str) -> dict[str, Any]:
         for sec_code, sec_serials in sorted(sectors_map.items()):
             tow_expected.update(sec_serials)
             sec_val, sec_empty = calculate_completeness(sec_serials, captured_serials)
-            sector_outputs.append({
-                "code": sec_code,
-                "value": round(sec_val, 3),
-                "expected_count": len(sec_serials),
-                "captured_count": len(sec_serials.intersection(captured_serials)),
-                "empty_scope": sec_empty,
-            })
+            sector_outputs.append(
+                {
+                    "code": sec_code,
+                    "value": round(sec_val, 3),
+                    "expected_count": len(sec_serials),
+                    "captured_count": len(sec_serials.intersection(captured_serials)),
+                    "empty_scope": sec_empty,
+                }
+            )
 
         tow_val, tow_empty = calculate_completeness(tow_expected, captured_serials)
-        tower_outputs.append({
-            "code": tow_code,
-            "value": round(tow_val, 3),
-            "empty_scope": tow_empty,
-            "sectors": sector_outputs,
-        })
+        tower_outputs.append(
+            {
+                "code": tow_code,
+                "value": round(tow_val, 3),
+                "empty_scope": tow_empty,
+                "sectors": sector_outputs,
+            }
+        )
 
     # Default if no lines
     if not tower_outputs:
-        tower_outputs.append({
-            "code": "T01",
-            "value": 1.0,
-            "empty_scope": True,
-            "sectors": [],
-        })
+        tower_outputs.append(
+            {
+                "code": "T01",
+                "value": 1.0,
+                "empty_scope": True,
+                "sectors": [],
+            }
+        )
 
     return {
         "site": round(site_val, 3),

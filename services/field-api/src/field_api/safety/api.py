@@ -32,14 +32,19 @@ router = APIRouter(tags=["Safety & Climb Sessions"])
 
 class SafetyEventItem(BaseModel):
     device_seq: int = Field(..., description="Monotonic per-device event sequence number")
-    type: str = Field(..., description="Event type: state_changed, harness_confirmed, checkpoint_reached, check_in, climb_safe_activated, etc.")
+    type: str = Field(
+        ...,
+        description="Event type: state_changed, harness_confirmed, checkpoint_reached, check_in, climb_safe_activated, etc.",
+    )
     altitude_m: float | None = Field(None, description="Current barometric altitude in meters")
     occurred_at: str = Field(..., description="ISO 8601 timestamp when event occurred")
     payload: dict[str, Any] | None = Field(default_factory=dict, description="Additional context")
 
 
 class ClimbEventsUploadRequest(BaseModel):
-    events: list[SafetyEventItem] = Field(..., min_length=1, description="List of safety events in device order")
+    events: list[SafetyEventItem] = Field(
+        ..., min_length=1, description="List of safety events in device order"
+    )
 
 
 class AcknowledgeRequest(BaseModel):
@@ -68,7 +73,10 @@ def upload_climb_session_events(
     if not idempotency_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error_code": "FIELD-SAFE-400-IDEMPOTENCY-REQUIRED", "message": "Idempotency-Key header is required for safety uploads"},
+            detail={
+                "error_code": "FIELD-SAFE-400-IDEMPOTENCY-REQUIRED",
+                "message": "Idempotency-Key header is required for safety uploads",
+            },
         )
 
     # Sort incoming events by device_seq
@@ -89,7 +97,10 @@ def upload_climb_session_events(
             if not v_row:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"error_code": "FIELD-VIS-404-NOT-FOUND", "message": f"Site visit '{visit_id}' not found"},
+                    detail={
+                        "error_code": "FIELD-VIS-404-NOT-FOUND",
+                        "message": f"Site visit '{visit_id}' not found",
+                    },
                 )
 
             # 2. Sequence gap check: ensure min device_seq <= max_existing_seq + 1
@@ -149,7 +160,12 @@ def upload_climb_session_events(
 
                 if evt.altitude_m is not None:
                     latest_alt = evt.altitude_m
-                if evt.type in ("check_in", "harness_confirmed", "checkpoint_reached", "state_changed"):
+                if evt.type in (
+                    "check_in",
+                    "harness_confirmed",
+                    "checkpoint_reached",
+                    "state_changed",
+                ):
                     has_activity = True
 
             # 4. Update visit heartbeat and altitude
@@ -291,22 +307,26 @@ def api_list_active_safety_visits(
         if is_escalated and not acked_at:
             has_escalation = True
 
-        visits.append({
-            "visit_id": v_id,
-            "site_id": str(r[1]),
-            "site_code": site_code,
-            "site_name": site_name,
-            "user_id": str(r[2]),
-            "status": status_val,
-            "tower_fl": tower_fl,
-            "last_altitude_m": last_alt,
-            "timer_interval_min": interval_min,
-            "timer_remaining_s": remaining_s,
-            "last_heartbeat_at": last_hb.isoformat(),
-            "is_escalated": is_escalated,
-            "is_acknowledged": acked_at is not None,
-            "escalation_message": f"Overdue check-in at {site_code} ({tower_fl}) - Last altitude: {last_alt}m [MSG4.10]" if is_escalated else None,
-        })
+        visits.append(
+            {
+                "visit_id": v_id,
+                "site_id": str(r[1]),
+                "site_code": site_code,
+                "site_name": site_name,
+                "user_id": str(r[2]),
+                "status": status_val,
+                "tower_fl": tower_fl,
+                "last_altitude_m": last_alt,
+                "timer_interval_min": interval_min,
+                "timer_remaining_s": remaining_s,
+                "last_heartbeat_at": last_hb.isoformat(),
+                "is_escalated": is_escalated,
+                "is_acknowledged": acked_at is not None,
+                "escalation_message": f"Overdue check-in at {site_code} ({tower_fl}) - Last altitude: {last_alt}m [MSG4.10]"
+                if is_escalated
+                else None,
+            }
+        )
 
     return {
         "visits": visits,
@@ -321,7 +341,9 @@ def api_list_active_safety_visits(
     status_code=status.HTTP_200_OK,
 )
 def api_trigger_lone_worker_sweep(
-    time_offset_min: int | None = Query(0, description="Virtual minute offset for testing time advance"),
+    time_offset_min: int | None = Query(
+        0, description="Virtual minute offset for testing time advance"
+    ),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """Execute sweep of active visits and escalate overdue workers (TC4.139)."""

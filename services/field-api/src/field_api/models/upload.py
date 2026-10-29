@@ -57,7 +57,10 @@ def validate_glb_binary(glb_bytes: bytes) -> tuple[str, int, dict[str, Any]]:
     if file_size < 20:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error_code": "FIELD-MOD-422-INVALID", "message": "File is too small to be a valid glTF binary"},
+            detail={
+                "error_code": "FIELD-MOD-422-INVALID",
+                "message": "File is too small to be a valid glTF binary",
+            },
         )
 
     # 1. Header parsing (12 bytes)
@@ -65,12 +68,18 @@ def validate_glb_binary(glb_bytes: bytes) -> tuple[str, int, dict[str, Any]]:
     if magic != GLTF_MAGIC:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error_code": "FIELD-MOD-422-INVALID", "message": f"Invalid glTF magic: 0x{magic:08x}"},
+            detail={
+                "error_code": "FIELD-MOD-422-INVALID",
+                "message": f"Invalid glTF magic: 0x{magic:08x}",
+            },
         )
     if version != 2:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error_code": "FIELD-MOD-422-INVALID", "message": f"Unsupported glTF version: {version}. Expected 2."},
+            detail={
+                "error_code": "FIELD-MOD-422-INVALID",
+                "message": f"Unsupported glTF version: {version}. Expected 2.",
+            },
         )
 
     # 2. Chunk 0 parsing (JSON chunk)
@@ -87,7 +96,10 @@ def validate_glb_binary(glb_bytes: bytes) -> tuple[str, int, dict[str, Any]]:
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error_code": "FIELD-MOD-422-INVALID", "message": f"Malformed glTF JSON chunk: {e}"},
+            detail={
+                "error_code": "FIELD-MOD-422-INVALID",
+                "message": f"Malformed glTF JSON chunk: {e}",
+            },
         )
 
     # 3. Check for forbidden external URIs (buffers and images)
@@ -195,19 +207,21 @@ def parse_and_validate_bom_csv(
         except ValueError:
             ev_x, ev_y, ev_z = 0.0, 0.0, 0.0
 
-        items.append({
-            "part_no": p_no,
-            "description": desc,
-            "qty": qty,
-            "is_serialised": is_serial,
-            "parent_part_no": parent_pno,
-            "node_path": n_path,
-            "node_names": n_names,
-            "explode_vector": [ev_x, ev_y, ev_z],
-            "explode_vector_x": ev_x,
-            "explode_vector_y": ev_y,
-            "explode_vector_z": ev_z,
-        })
+        items.append(
+            {
+                "part_no": p_no,
+                "description": desc,
+                "qty": qty,
+                "is_serialised": is_serial,
+                "parent_part_no": parent_pno,
+                "node_path": n_path,
+                "node_names": n_names,
+                "explode_vector": [ev_x, ev_y, ev_z],
+                "explode_vector_x": ev_x,
+                "explode_vector_y": ev_y,
+                "explode_vector_z": ev_z,
+            }
+        )
 
     # Enforce Top-Level BOM Quantity Rule (PR4.08 / FR4.057 / TC4.149)
     # Each top-level BOM item quantity must equal mapped node count,
@@ -297,8 +311,15 @@ def create_asset_model_draft(
                 );
                 """,
                 (
-                    model_id, tenant_id, equipment_class, version, initial_status,
-                    sha256_hex, len(glb_bytes), triangles, storage_path
+                    model_id,
+                    tenant_id,
+                    equipment_class,
+                    version,
+                    initial_status,
+                    sha256_hex,
+                    len(glb_bytes),
+                    triangles,
+                    storage_path,
                 ),
             )
 
@@ -317,9 +338,18 @@ def create_asset_model_draft(
                     );
                     """,
                     (
-                        tenant_id, model_id, it["part_no"], it["description"], it["qty"],
-                        it["is_serialised"], it["parent_part_no"], it["node_path"], it["node_names"],
-                        it["explode_vector_x"], it["explode_vector_y"], it["explode_vector_z"]
+                        tenant_id,
+                        model_id,
+                        it["part_no"],
+                        it["description"],
+                        it["qty"],
+                        it["is_serialised"],
+                        it["parent_part_no"],
+                        it["node_path"],
+                        it["node_names"],
+                        it["explode_vector_x"],
+                        it["explode_vector_y"],
+                        it["explode_vector_z"],
                     ),
                 )
             conn.commit()

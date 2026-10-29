@@ -97,23 +97,31 @@ async def get_installed_base(
     items = []
     for r in rows:
         since_val = r[13]
-        since_iso = since_val.isoformat() if isinstance(since_val, datetime) else str(since_val) if since_val else None
+        since_iso = (
+            since_val.isoformat()
+            if isinstance(since_val, datetime)
+            else str(since_val)
+            if since_val
+            else None
+        )
 
-        items.append({
-            "serial_no": r[0],
-            "erp_equipment_no": r[1] or "",
-            "material": r[2],
-            "equipment_class": r[3],
-            "pinned_model_version": r[4],
-            "site_id": str(r[5]) if r[5] else None,
-            "site_erp_ref": r[6] or "",
-            "site_name": r[7] or "",
-            "location_id": str(r[8]) if r[8] else None,
-            "sector_code": r[9],
-            "level_height_m": float(r[10]) if r[10] is not None else None,
-            "position_code": r[11],
-            "erp_ref": r[12] or "",
-            "since": since_iso,
-        })
+        items.append(
+            {
+                "serial_no": r[0],
+                "erp_equipment_no": r[1] or "",
+                "material": r[2],
+                "equipment_class": r[3],
+                "pinned_model_version": r[4],
+                "site_id": str(r[5]) if r[5] else None,
+                "site_erp_ref": r[6] or "",
+                "site_name": r[7] or "",
+                "location_id": str(r[8]) if r[8] else None,
+                "sector_code": r[9],
+                "level_height_m": float(r[10]) if r[10] is not None else None,
+                "position_code": r[11],
+                "erp_ref": r[12] or "",
+                "since": since_iso,
+            }
+        )
 
     return {"items": items}

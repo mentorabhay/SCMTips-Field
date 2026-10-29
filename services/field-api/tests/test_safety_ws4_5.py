@@ -61,7 +61,9 @@ class PyClimbDetector:
         if self.last_t is None:
             self.last_t = t_ms
             self.last_alt = alt_m
-            self.state = PyClimbState.GROUND if (alt_m - self.baseline_m <= 2.0) else PyClimbState.STATIONARY
+            self.state = (
+                PyClimbState.GROUND if (alt_m - self.baseline_m <= 2.0) else PyClimbState.STATIONARY
+            )
             return self.state
 
         dt_ms = t_ms - self.last_t
@@ -116,7 +118,8 @@ class PyPromptGate:
             return [], 0, None
 
         eligible = [
-            p for p in self.held
+            p
+            for p in self.held
             if not (on_structure and p["type"] == "task" and not is_harness_confirmed)
         ]
         if not eligible:
@@ -266,7 +269,9 @@ def active_site_visit(auth_context: dict[str, Any]) -> dict[str, Any]:
 # =========================================================================
 @settings(max_examples=1000, deadline=None)
 @given(
-    states=st.lists(st.sampled_from(["GROUND", "CLIMBING", "STATIONARY", "UNKNOWN"]), min_size=5, max_size=20),
+    states=st.lists(
+        st.sampled_from(["GROUND", "CLIMBING", "STATIONARY", "UNKNOWN"]), min_size=5, max_size=20
+    ),
     prompt_count=st.integers(min_value=1, max_value=8),
 )
 def test_pr4_04_no_prompts_while_climbing_hypothesis(states, prompt_count):
@@ -371,7 +376,7 @@ def test_tc4_133_climb_detection_on_traces():
     # 3. Gap trace (> 1.0s gap) -> UNKNOWN
     det_gap = PyClimbDetector(baseline_m=0.0)
     det_gap.on_sample(0, accel_z=0.0, alt_m=20.0)
-    st_gap = det_gap.on_sample(1500, accel_z=0.0, alt_m=20.0) # 1.5s gap
+    st_gap = det_gap.on_sample(1500, accel_z=0.0, alt_m=20.0)  # 1.5s gap
     assert st_gap == PyClimbState.UNKNOWN
 
 
@@ -387,15 +392,21 @@ def test_tc4_134_prompt_hold_and_release():
         gate.enqueue(f"p_{i}", "audio", 1000 * i)
 
     # Climbing at t=5000: nothing released
-    rel1, _, _ = gate.evaluate(PyClimbState.CLIMBING, is_harness_confirmed=True, on_structure=True, t_ms=5000)
+    rel1, _, _ = gate.evaluate(
+        PyClimbState.CLIMBING, is_harness_confirmed=True, on_structure=True, t_ms=5000
+    )
     assert len(rel1) == 0
 
     # Stop at t=6000 (1s stationary): still held (< 3s)
-    rel2, _, _ = gate.evaluate(PyClimbState.STATIONARY, is_harness_confirmed=True, on_structure=True, t_ms=6000)
+    rel2, _, _ = gate.evaluate(
+        PyClimbState.STATIONARY, is_harness_confirmed=True, on_structure=True, t_ms=6000
+    )
     assert len(rel2) == 0
 
     # Continue stationary to t=9000 (3s stationary): releases max 3 newest (p_3, p_4, p_5)
-    rel3, dropped, msg = gate.evaluate(PyClimbState.STATIONARY, is_harness_confirmed=True, on_structure=True, t_ms=9000)
+    rel3, dropped, msg = gate.evaluate(
+        PyClimbState.STATIONARY, is_harness_confirmed=True, on_structure=True, t_ms=9000
+    )
     assert len(rel3) == 3
     assert [p["id"] for p in rel3] == ["p_3", "p_4", "p_5"]
     assert dropped == 2
@@ -420,7 +431,7 @@ def test_tc4_136_harness_voice_only_or_tap_only():
     # Case 3: Both within 10s -> Confirmed
     h3 = PyHarnessCheck()
     h3.on_voice("harness clipped", 0.95, 1000)
-    h3.on_tap(5000, 25.0) # 4s delta
+    h3.on_tap(5000, 25.0)  # 4s delta
     assert h3.confirmed is True
 
 
@@ -430,7 +441,7 @@ def test_tc4_136_harness_voice_only_or_tap_only():
 def test_tc4_137_rest_platform_checkpoint():
     """TC4.137 / FR4.042: Rest platform at 20m detected when stationary at 20.5m (+-1.5m)."""
     platform_h = 20.0
-    measured_alt = 20.5 # within 1.5m
+    measured_alt = 20.5  # within 1.5m
 
     is_matched = abs(measured_alt - platform_h) <= 1.5
     assert is_matched is True
@@ -528,7 +539,9 @@ def test_tc4_141_automatic_climb_safe():
 # =========================================================================
 # API4.15: Climb Session Telemetry Upload & Sequence Gap Detection
 # =========================================================================
-def test_api4_15_climb_session_telemetry_and_seq_gap(auth_context: dict[str, Any], active_site_visit: dict[str, Any]):
+def test_api4_15_climb_session_telemetry_and_seq_gap(
+    auth_context: dict[str, Any], active_site_visit: dict[str, Any]
+):
     """API4.15 / FR4.067: Telemetry upload enforces sequence; gap returns 409 FIELD-SAFE-409-SEQ-GAP."""
     v_id = active_site_visit["visit_id"]
     headers = dict(auth_context["headers"])
@@ -541,9 +554,24 @@ def test_api4_15_climb_session_telemetry_and_seq_gap(auth_context: dict[str, Any
         f"/v1/climb-sessions/{v_id}/events",
         json={
             "events": [
-                {"device_seq": 1, "type": "climb_safe_activated", "altitude_m": 2.5, "occurred_at": (now + timedelta(seconds=1)).isoformat()},
-                {"device_seq": 2, "type": "checkpoint_reached", "altitude_m": 15.0, "occurred_at": (now + timedelta(seconds=10)).isoformat()},
-                {"device_seq": 3, "type": "harness_confirmed", "altitude_m": 15.0, "occurred_at": (now + timedelta(seconds=12)).isoformat()},
+                {
+                    "device_seq": 1,
+                    "type": "climb_safe_activated",
+                    "altitude_m": 2.5,
+                    "occurred_at": (now + timedelta(seconds=1)).isoformat(),
+                },
+                {
+                    "device_seq": 2,
+                    "type": "checkpoint_reached",
+                    "altitude_m": 15.0,
+                    "occurred_at": (now + timedelta(seconds=10)).isoformat(),
+                },
+                {
+                    "device_seq": 3,
+                    "type": "harness_confirmed",
+                    "altitude_m": 15.0,
+                    "occurred_at": (now + timedelta(seconds=12)).isoformat(),
+                },
             ]
         },
         headers=headers,
@@ -553,12 +581,17 @@ def test_api4_15_climb_session_telemetry_and_seq_gap(auth_context: dict[str, Any
     assert resp1.json()["duplicates"] == 0
 
     # 2. Upload duplicate event 3 -> Duplicates = 1
-    headers['Idempotency-Key'] = f'idem-telemetry-{uuid.uuid4().hex[:6]}'
+    headers["Idempotency-Key"] = f"idem-telemetry-{uuid.uuid4().hex[:6]}"
     resp_dupe = client.post(
         f"/v1/climb-sessions/{v_id}/events",
         json={
             "events": [
-                {"device_seq": 3, "type": "harness_confirmed", "altitude_m": 15.0, "occurred_at": (now + timedelta(seconds=12)).isoformat()},
+                {
+                    "device_seq": 3,
+                    "type": "harness_confirmed",
+                    "altitude_m": 15.0,
+                    "occurred_at": (now + timedelta(seconds=12)).isoformat(),
+                },
             ]
         },
         headers=headers,
@@ -572,7 +605,12 @@ def test_api4_15_climb_session_telemetry_and_seq_gap(auth_context: dict[str, Any
         f"/v1/climb-sessions/{v_id}/events",
         json={
             "events": [
-                {"device_seq": 6, "type": "check_in", "altitude_m": 20.0, "occurred_at": (now + timedelta(seconds=30)).isoformat()},
+                {
+                    "device_seq": 6,
+                    "type": "check_in",
+                    "altitude_m": 20.0,
+                    "occurred_at": (now + timedelta(seconds=30)).isoformat(),
+                },
             ]
         },
         headers=headers,
@@ -587,7 +625,9 @@ def test_api4_15_climb_session_telemetry_and_seq_gap(auth_context: dict[str, Any
 # =========================================================================
 # SCR4.13: Active Safety Visits Query and Supervisor Acknowledgment
 # =========================================================================
-def test_scr4_13_active_visits_and_ack(auth_context: dict[str, Any], active_site_visit: dict[str, Any]):
+def test_scr4_13_active_visits_and_ack(
+    auth_context: dict[str, Any], active_site_visit: dict[str, Any]
+):
     """SCR4.13 / FR4.044: Active visits monitor lists visits; supervisor acknowledge updates status and emits event."""
     v_id = active_site_visit["visit_id"]
     headers = auth_context["headers"]

@@ -147,7 +147,9 @@ async def get_site(
         with get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT set_config('app.tenant_id', %s, true);", (principal.tenant_id,))
-                cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (principal.tenant_id,))
+                cur.execute(
+                    "SELECT set_config('app.current_tenant_id', %s, true);", (principal.tenant_id,)
+                )
                 cur.execute("SELECT set_config('app.site_ids', '*', true);")
                 cur.execute(
                     """
@@ -172,8 +174,12 @@ async def get_site(
                         "erp_storage_locations": [],
                         "timezone": "UTC",
                         "version": 1,
-                        "created_at": row[7].isoformat() if row[7] else datetime.now(UTC).isoformat(),
-                        "updated_at": row[8].isoformat() if row[8] else datetime.now(UTC).isoformat(),
+                        "created_at": row[7].isoformat()
+                        if row[7]
+                        else datetime.now(UTC).isoformat(),
+                        "updated_at": row[8].isoformat()
+                        if row[8]
+                        else datetime.now(UTC).isoformat(),
                     }
     if not site:
         raise ERR_NOT_FOUND

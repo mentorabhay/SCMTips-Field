@@ -151,14 +151,16 @@ def release_quality_hold_to_unrestricted(
             "GoodsMovementCode": "04",
             "PostingDate": "2026-10-27",
         },
-        items=[{
-            "Material": material_code,
-            "Plant": plant,
-            "StorageLocation": storage_location,
-            "GoodsMovementType": "321",
-            "EntryQuantity": quantity,
-            "EntryUnit": "EA",
-        }],
+        items=[
+            {
+                "Material": material_code,
+                "Plant": plant,
+                "StorageLocation": storage_location,
+                "GoodsMovementType": "321",
+                "EntryQuantity": quantity,
+                "EntryUnit": "EA",
+            }
+        ],
         seq=1,
         ref_doc_no=hu_id,
         db_url=db_url,

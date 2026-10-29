@@ -37,8 +37,26 @@ def test_t3_013_list_posting_queues(auth_headers):
     q1 = f"IBD:Q1_{uuid.uuid4().hex[:6]}"
     q2 = f"OBD:Q2_{uuid.uuid4().hex[:6]}"
 
-    enqueue_posting_job(tenant_id=t_id, queue_key=q1, doc_family="GoodsReceipt", site_id="WH1", plant="1010", header_data={}, items=[], seq=1)
-    enqueue_posting_job(tenant_id=t_id, queue_key=q2, doc_family="GoodsIssue", site_id="WH1", plant="1010", header_data={}, items=[], seq=1)
+    enqueue_posting_job(
+        tenant_id=t_id,
+        queue_key=q1,
+        doc_family="GoodsReceipt",
+        site_id="WH1",
+        plant="1010",
+        header_data={},
+        items=[],
+        seq=1,
+    )
+    enqueue_posting_job(
+        tenant_id=t_id,
+        queue_key=q2,
+        doc_family="GoodsIssue",
+        site_id="WH1",
+        plant="1010",
+        header_data={},
+        items=[],
+        seq=1,
+    )
 
     res = client.get("/v1/posting-queues", headers=headers)
     assert res.status_code == 200, res.text
@@ -55,8 +73,26 @@ def test_t3_013_list_queue_jobs_order(auth_headers):
     headers = {"Authorization": auth_headers["Authorization"]}
     q = f"PID:Q_{uuid.uuid4().hex[:6]}"
 
-    enqueue_posting_job(tenant_id=t_id, queue_key=q, doc_family="PhysicalInventory", site_id="WH1", plant="1010", header_data={}, items=[], seq=2)
-    enqueue_posting_job(tenant_id=t_id, queue_key=q, doc_family="PhysicalInventory", site_id="WH1", plant="1010", header_data={}, items=[], seq=1)
+    enqueue_posting_job(
+        tenant_id=t_id,
+        queue_key=q,
+        doc_family="PhysicalInventory",
+        site_id="WH1",
+        plant="1010",
+        header_data={},
+        items=[],
+        seq=2,
+    )
+    enqueue_posting_job(
+        tenant_id=t_id,
+        queue_key=q,
+        doc_family="PhysicalInventory",
+        site_id="WH1",
+        plant="1010",
+        header_data={},
+        items=[],
+        seq=1,
+    )
 
     res = client.get(f"/v1/posting-queues/{q}/jobs", headers=headers)
     assert res.status_code == 200, res.text
@@ -73,7 +109,15 @@ def test_t3_013_retry_posting_job(auth_headers):
     t_id = auth_headers["tenant_id"]
     headers = {"Authorization": auth_headers["Authorization"]}
     q = f"IBD:RETRY_{uuid.uuid4().hex[:6]}"
-    job_id = enqueue_posting_job(tenant_id=t_id, queue_key=q, doc_family="GoodsReceipt", site_id="WH1", plant="1010", header_data={}, items=[])
+    job_id = enqueue_posting_job(
+        tenant_id=t_id,
+        queue_key=q,
+        doc_family="GoodsReceipt",
+        site_id="WH1",
+        plant="1010",
+        header_data={},
+        items=[],
+    )
 
     # Set to failed
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
@@ -100,9 +144,39 @@ def test_t3_013_cancel_posting_job_and_cascade_dependent_jobs(auth_headers):
     ref_doc = "800099999"
 
     # Enqueue 3 jobs: j1 (seq 1, ref 800099999), j2 (seq 2, ref 800099999 - dependent), j3 (seq 3, ref 700011111 - independent)
-    j1 = enqueue_posting_job(tenant_id=t_id, queue_key=q, doc_family="GoodsIssue", site_id="WH1", plant="1010", header_data={}, items=[], seq=1, ref_doc_no=ref_doc)
-    j2 = enqueue_posting_job(tenant_id=t_id, queue_key=q, doc_family="GoodsIssue", site_id="WH1", plant="1010", header_data={}, items=[], seq=2, ref_doc_no=ref_doc)
-    j3 = enqueue_posting_job(tenant_id=t_id, queue_key=q, doc_family="GoodsIssue", site_id="WH1", plant="1010", header_data={}, items=[], seq=3, ref_doc_no="700011111")
+    j1 = enqueue_posting_job(
+        tenant_id=t_id,
+        queue_key=q,
+        doc_family="GoodsIssue",
+        site_id="WH1",
+        plant="1010",
+        header_data={},
+        items=[],
+        seq=1,
+        ref_doc_no=ref_doc,
+    )
+    j2 = enqueue_posting_job(
+        tenant_id=t_id,
+        queue_key=q,
+        doc_family="GoodsIssue",
+        site_id="WH1",
+        plant="1010",
+        header_data={},
+        items=[],
+        seq=2,
+        ref_doc_no=ref_doc,
+    )
+    j3 = enqueue_posting_job(
+        tenant_id=t_id,
+        queue_key=q,
+        doc_family="GoodsIssue",
+        site_id="WH1",
+        plant="1010",
+        header_data={},
+        items=[],
+        seq=3,
+        ref_doc_no="700011111",
+    )
 
     # Cancel j1
     res = client.post(f"/v1/posting-jobs/{j1}/cancel", headers=headers)
@@ -115,8 +189,11 @@ def test_t3_013_cancel_posting_job_and_cascade_dependent_jobs(auth_headers):
     # Verify database statuses
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute(f"SET app.tenant_id = '{t_id}';")
-        cur.execute("SELECT id, status FROM field.posting_job WHERE tenant_id = %s AND queue_key = %s ORDER BY seq ASC;", (t_id, q))
+        cur.execute(
+            "SELECT id, status FROM field.posting_job WHERE tenant_id = %s AND queue_key = %s ORDER BY seq ASC;",
+            (t_id, q),
+        )
         rows = dict(cur.fetchall())
         assert rows[uuid.UUID(j1)] == "cancelled"
         assert rows[uuid.UUID(j2)] == "cancelled"  # Cascaded per BR3.14!
-        assert rows[uuid.UUID(j3)] == "pending"    # Independent remains pending!
+        assert rows[uuid.UUID(j3)] == "pending"  # Independent remains pending!

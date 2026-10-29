@@ -116,6 +116,7 @@ async def get_site_tree_endpoint(
     if auth_header and auth_header.startswith("Bearer "):
         try:
             from field_api.auth.jwt import verify_token
+
             principal = verify_token(auth_header.split(" ", 1)[1])
             resolved_tenant = principal.tenant_id
         except Exception:

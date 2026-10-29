@@ -56,8 +56,8 @@ def checkin_lone_worker(
 
         # Restore to on_structure if altitude > 2m, else checked_in
         new_status = current_status
-        if current_status in ('overdue', 'escalated'):
-            new_status = 'on_structure' if (altitude_m and altitude_m > 2.0) else 'checked_in'
+        if current_status in ("overdue", "escalated"):
+            new_status = "on_structure" if (altitude_m and altitude_m > 2.0) else "checked_in"
 
         alt_clause = ", last_altitude_m = %s" if altitude_m is not None else ""
         tower_clause = ", last_tower_fl = %s" if tower_fl is not None else ""
@@ -104,7 +104,9 @@ def checkin_lone_worker(
         return {
             "visit_id": str(upd_row[0]),
             "status": upd_row[1],
-            "last_heartbeat_at": upd_row[2].isoformat() if hasattr(upd_row[2], "isoformat") else str(upd_row[2]),
+            "last_heartbeat_at": upd_row[2].isoformat()
+            if hasattr(upd_row[2], "isoformat")
+            else str(upd_row[2]),
             "next_warning_in_s": max(0, (interval_min - 2) * 60),
             "timer_interval_min": interval_min,
         }
@@ -257,14 +259,16 @@ def run_lone_worker_escalation_sweep(
                         (str(uuid.uuid4()), tenant_id, v_id, json.dumps(esc_payload)),
                     )
 
-                    transitions.append({
-                        "visit_id": v_id,
-                        "site_code": site_code,
-                        "previous_status": status,
-                        "new_status": "escalated",
-                        "elapsed_min": round(elapsed_s / 60, 1),
-                        "last_altitude_m": last_alt,
-                    })
+                    transitions.append(
+                        {
+                            "visit_id": v_id,
+                            "site_code": site_code,
+                            "previous_status": status,
+                            "new_status": "escalated",
+                            "elapsed_min": round(elapsed_s / 60, 1),
+                            "last_altitude_m": last_alt,
+                        }
+                    )
 
             # Condition 2: Exceeded interval but within grace -> OVERDUE
             elif elapsed_s > interval_s and status not in ("overdue", "escalated"):
@@ -277,13 +281,15 @@ def run_lone_worker_escalation_sweep(
                         """,
                     (v_id,),
                 )
-                transitions.append({
-                    "visit_id": v_id,
-                    "site_code": site_code,
-                    "previous_status": status,
-                    "new_status": "overdue",
-                    "elapsed_min": round(elapsed_s / 60, 1),
-                })
+                transitions.append(
+                    {
+                        "visit_id": v_id,
+                        "site_code": site_code,
+                        "previous_status": status,
+                        "new_status": "overdue",
+                        "elapsed_min": round(elapsed_s / 60, 1),
+                    }
+                )
 
         return transitions
 

@@ -32,7 +32,9 @@ DATABASE_URL = (
     .replace("@localhost:", "@127.0.0.1:")
 )
 
-P13F_WEBHOOK_SECRET = os.getenv("FIELD_P13F_WEBHOOK_SECRET", "dev-p13f-webhook-secret-min32bytes-field")
+P13F_WEBHOOK_SECRET = os.getenv(
+    "FIELD_P13F_WEBHOOK_SECRET", "dev-p13f-webhook-secret-min32bytes-field"
+)
 
 
 def compute_webhook_signature(payload_bytes: bytes, secret: str = P13F_WEBHOOK_SECRET) -> str:

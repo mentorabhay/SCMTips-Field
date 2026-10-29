@@ -115,7 +115,9 @@ def test_tower_site(auth_context: dict[str, Any]) -> dict[str, Any]:
 # =========================================================================
 # PR4.01: DB Trigger Immutability on field.serial_event
 # =========================================================================
-def test_pr4_01_db_trigger_immutability(auth_context: dict[str, Any], test_tower_site: dict[str, Any]):
+def test_pr4_01_db_trigger_immutability(
+    auth_context: dict[str, Any], test_tower_site: dict[str, Any]
+):
     """PR4.01 / FR4.033: UPDATE and DELETE on field.serial_event are rejected by database trigger."""
     t_id = auth_context["tenant_id"]
     serial = f"SR-{uuid.uuid4().hex[:6]}"
@@ -164,7 +166,9 @@ def test_pr4_01_db_trigger_immutability(auth_context: dict[str, Any], test_tower
 # =========================================================================
 @settings(max_examples=30, deadline=None)
 @given(
-    event_types=st.lists(st.sampled_from(["install", "dismantle", "move", "replace"]), min_size=2, max_size=10),
+    event_types=st.lists(
+        st.sampled_from(["install", "dismantle", "move", "replace"]), min_size=2, max_size=10
+    ),
 )
 def test_pr4_02_monotonic_sequence_invariant(event_types):
     """PR4.02 / FR4.033: Sequential events on same serial strictly increment seq = 1, 2, ..., n."""
@@ -282,7 +286,10 @@ def test_pr4_13_invertibility_property(initial_status):
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (t_id,))
-            cur.execute("SELECT status, current_location_id FROM field.equipment WHERE tenant_id = %s AND serial_no = %s;", (t_id, serial))
+            cur.execute(
+                "SELECT status, current_location_id FROM field.equipment WHERE tenant_id = %s AND serial_no = %s;",
+                (t_id, serial),
+            )
             final_status, final_loc = cur.fetchone()
             assert final_status == initial_status
 
@@ -290,7 +297,9 @@ def test_pr4_13_invertibility_property(initial_status):
 # =========================================================================
 # TC4.125 & TC4.126: Install Operation & Single-Location Invariant Check
 # =========================================================================
-def test_tc4_125_and_tc4_126_install_and_single_location(auth_context: dict[str, Any], test_tower_site: dict[str, Any]):
+def test_tc4_125_and_tc4_126_install_and_single_location(
+    auth_context: dict[str, Any], test_tower_site: dict[str, Any]
+):
     """TC4.125 / TC4.126 / FR4.029 / FR4.034: Install succeeds; duplicate install elsewhere fails with 409."""
     serial = f"RRU-{uuid.uuid4().hex[:6].upper()}"
 
@@ -332,7 +341,9 @@ def test_tc4_125_and_tc4_126_install_and_single_location(auth_context: dict[str,
 # =========================================================================
 # TC4.127 & TC4.128: Dismantle and Replace Operations
 # =========================================================================
-def test_tc4_127_and_tc4_128_dismantle_and_replace(auth_context: dict[str, Any], test_tower_site: dict[str, Any]):
+def test_tc4_127_and_tc4_128_dismantle_and_replace(
+    auth_context: dict[str, Any], test_tower_site: dict[str, Any]
+):
     """TC4.127 / TC4.128: Dismantle clears location; replace staged swap dismantles old and installs new."""
     old_serial = f"RRU-OLD-{uuid.uuid4().hex[:4].upper()}"
     new_serial = f"RRU-NEW-{uuid.uuid4().hex[:4].upper()}"
@@ -367,12 +378,16 @@ def test_tc4_127_and_tc4_128_dismantle_and_replace(auth_context: dict[str, Any],
     assert resp_swap.json()["event_type"] == "replace"
 
     # Verify history of old_serial has dismantle
-    hist_old = client.get(f"/v1/equipment/{old_serial}/history", headers=auth_context["headers"]).json()
+    hist_old = client.get(
+        f"/v1/equipment/{old_serial}/history", headers=auth_context["headers"]
+    ).json()
     assert len(hist_old) == 2
     assert hist_old[-1]["event_type"] == "dismantle"
 
     # Verify history of new_serial has install
-    hist_new = client.get(f"/v1/equipment/{new_serial}/history", headers=auth_context["headers"]).json()
+    hist_new = client.get(
+        f"/v1/equipment/{new_serial}/history", headers=auth_context["headers"]
+    ).json()
     assert len(hist_new) == 1
     assert hist_new[0]["event_type"] == "install"
 
@@ -380,7 +395,9 @@ def test_tc4_127_and_tc4_128_dismantle_and_replace(auth_context: dict[str, Any],
 # =========================================================================
 # TC4.130: Reversal on Undo-After-Post & Second Reversal Blocked
 # =========================================================================
-def test_tc4_130_reversal_undo_and_double_reversal_blocked(auth_context: dict[str, Any], test_tower_site: dict[str, Any]):
+def test_tc4_130_reversal_undo_and_double_reversal_blocked(
+    auth_context: dict[str, Any], test_tower_site: dict[str, Any]
+):
     """TC4.130 / FR4.035: Reversing event undoes operation; second reversal returns 409."""
     serial = f"BBU-{uuid.uuid4().hex[:6].upper()}"
 
@@ -420,7 +437,9 @@ def test_tc4_130_reversal_undo_and_double_reversal_blocked(auth_context: dict[st
 # =========================================================================
 # TC4.131: Tower Equipment Posting Queue Backoff and Exhaustion
 # =========================================================================
-def test_tc4_131_tower_equipment_queue_exhaustion(auth_context: dict[str, Any], test_tower_site: dict[str, Any]):
+def test_tc4_131_tower_equipment_queue_exhaustion(
+    auth_context: dict[str, Any], test_tower_site: dict[str, Any]
+):
     """TC4.131 / FR4.036: Queue attempts with exponential backoff; exhaustion marks failed and opens S2 case."""
     t_id = auth_context["tenant_id"]
     site_id = test_tower_site["site_id"]

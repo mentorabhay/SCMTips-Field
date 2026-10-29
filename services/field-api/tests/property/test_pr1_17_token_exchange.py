@@ -17,7 +17,9 @@ client = TestClient(app)
     st.sampled_from(["field.operator", "field.supervisor", "field.admin"]),
     st.text(min_size=4, max_size=12, alphabet="abcdef0123456789"),
 )
-def test_pr1_17_token_exchange_acceptance_and_ttl(core_ttl: int, role: str, user_suffix: str) -> None:
+def test_pr1_17_token_exchange_acceptance_and_ttl(
+    core_ttl: int, role: str, user_suffix: str
+) -> None:
     """PR1.17: Token exchange succeeds for valid core tokens, TTL <= min(600, core_exp - now) (TC1.049, TC1.122)."""
     user_id = f"usr_{user_suffix}"
     tenant_id = "00000000-0000-0000-0000-000000000001"

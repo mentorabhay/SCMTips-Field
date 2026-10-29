@@ -23,7 +23,9 @@ class EquipmentAlreadyReversedError(Exception):
     """Raised when attempting to reverse an already reversed operation."""
 
     def __init__(self, doc_no: str):
-        super().__init__(f"Equipment event / document '{doc_no}' is already reversed [FIELD-EQ-409-ALREADY-REVERSED]")
+        super().__init__(
+            f"Equipment event / document '{doc_no}' is already reversed [FIELD-EQ-409-ALREADY-REVERSED]"
+        )
         self.code = "FIELD-EQ-409-ALREADY-REVERSED"
         self.doc_no = doc_no
 
@@ -55,13 +57,17 @@ def reverse_equipment_event(
             )
             doc_row = cur.fetchone()
             if not doc_row:
-                raise ValueError(f"Equipment event '{event_ref}' not found [FIELD-EQ-404-NOT-FOUND]")
+                raise ValueError(
+                    f"Equipment event '{event_ref}' not found [FIELD-EQ-404-NOT-FOUND]"
+                )
 
             doc_id, site_id, doc_type, doc_number, doc_status, raw_payload = doc_row
             if doc_status == "reversed":
                 raise EquipmentAlreadyReversedError(doc_number)
 
-            payload = raw_payload if isinstance(raw_payload, dict) else json.loads(raw_payload or "{}")
+            payload = (
+                raw_payload if isinstance(raw_payload, dict) else json.loads(raw_payload or "{}")
+            )
             serial_no = str(payload.get("serial_no") or "")
             location_id = payload.get("location_id") or payload.get("previous_location_id")
             old_serial_no = str(payload.get("old_serial_no") or "")

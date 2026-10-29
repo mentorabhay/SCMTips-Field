@@ -57,12 +57,14 @@ async def override_visit_geofence(
                 (
                     tenant_id,
                     visit_id,
-                    json.dumps({
-                        "visit_id": visit_id,
-                        "site_id": str(row[1]),
-                        "override_by": req.supervisor_id,
-                        "reason": req.reason,
-                    }),
+                    json.dumps(
+                        {
+                            "visit_id": visit_id,
+                            "site_id": str(row[1]),
+                            "override_by": req.supervisor_id,
+                            "reason": req.reason,
+                        }
+                    ),
                 ),
             )
             conn.commit()

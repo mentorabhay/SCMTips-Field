@@ -179,7 +179,9 @@ def test_pr4_11_mismatch_symmetry_hypothesis(set_a, set_b):
 # =========================================================================
 # TC4.122: Audit Sign-off Rule Enforcement
 # =========================================================================
-def test_tc4_122_signoff_blocked_until_explained_or_waived(auth_context: dict[str, Any], test_audit_site: dict[str, Any]):
+def test_tc4_122_signoff_blocked_until_explained_or_waived(
+    auth_context: dict[str, Any], test_audit_site: dict[str, Any]
+):
     """TC4.122 / FR4.028: Sign-off blocked with 409 and MSG4.21 count; waiver succeeds."""
     t_id = auth_context["tenant_id"]
     task_id = test_audit_site["task_id"]
@@ -209,7 +211,10 @@ def test_tc4_122_signoff_blocked_until_explained_or_waived(auth_context: dict[st
     # 3. Supervisor waiver with reason succeeds
     resp_waived = client.post(
         f"/v1/tasks/{task_id}/audit/signoff",
-        json={"supervisor_waiver": True, "waiver_reason": "Shelter locked by landlord - approved to close"},
+        json={
+            "supervisor_waiver": True,
+            "waiver_reason": "Shelter locked by landlord - approved to close",
+        },
         headers=auth_context["headers_super"],
     )
     assert resp_waived.status_code == 200
@@ -221,7 +226,9 @@ def test_tc4_122_signoff_blocked_until_explained_or_waived(auth_context: dict[st
 # =========================================================================
 # TC4.123: Update ERP Decision with Segregation of Duties (SoD)
 # =========================================================================
-def test_tc4_123_update_erp_decision_with_sod(auth_context: dict[str, Any], test_audit_site: dict[str, Any]):
+def test_tc4_123_update_erp_decision_with_sod(
+    auth_context: dict[str, Any], test_audit_site: dict[str, Any]
+):
     """TC4.123 / FR4.027 / FR4.067: Technician cannot decide on own capture (403 SoD); supervisor decision succeeds."""
     t_id = auth_context["tenant_id"]
     task_id = test_audit_site["task_id"]
@@ -258,7 +265,16 @@ def test_tc4_123_update_erp_decision_with_sod(auth_context: dict[str, Any], test
                     'open', %s
                 );
                 """,
-                (finding_id, t_id, task_id, site_id, test_audit_site["loc_id"], test_audit_site["loc_id"], capture_id, f"{site_id}:21A7K0093:serial_mismatch"),
+                (
+                    finding_id,
+                    t_id,
+                    task_id,
+                    site_id,
+                    test_audit_site["loc_id"],
+                    test_audit_site["loc_id"],
+                    capture_id,
+                    f"{site_id}:21A7K0093:serial_mismatch",
+                ),
             )
         conn.commit()
 
@@ -304,7 +320,9 @@ def test_tc4_123_update_erp_decision_with_sod(auth_context: dict[str, Any], test
 # =========================================================================
 # TC4.124: Exception Case Deduplication
 # =========================================================================
-def test_tc4_124_exception_deduplication(auth_context: dict[str, Any], test_audit_site: dict[str, Any]):
+def test_tc4_124_exception_deduplication(
+    auth_context: dict[str, Any], test_audit_site: dict[str, Any]
+):
     """TC4.124 / FR4.026: Reconciling same serial mismatch twice keeps exactly 1 open exception case."""
     t_id = auth_context["tenant_id"]
     task_id = test_audit_site["task_id"]
@@ -359,7 +377,9 @@ def test_tc4_124_exception_deduplication(auth_context: dict[str, Any], test_audi
 # =========================================================================
 # TC4.120 & TC4.121: Missing & Unknown Finding Endpoints
 # =========================================================================
-def test_tc4_120_and_tc4_121_findings_endpoints(auth_context: dict[str, Any], test_audit_site: dict[str, Any]):
+def test_tc4_120_and_tc4_121_findings_endpoints(
+    auth_context: dict[str, Any], test_audit_site: dict[str, Any]
+):
     """TC4.120 & TC4.121 / FR4.022, FR4.023: Mark missing creates erp_only; record unknown creates tower_only."""
     task_id = test_audit_site["task_id"]
 
@@ -409,7 +429,9 @@ def test_tc4_120_and_tc4_121_findings_endpoints(auth_context: dict[str, Any], te
 # =========================================================================
 # API Contract Tests: Progress (API4.07), Reconcile (API4.06), Mismatches (API4.16)
 # =========================================================================
-def test_api4_07_progress_and_api4_06_reconcile(auth_context: dict[str, Any], test_audit_site: dict[str, Any]):
+def test_api4_07_progress_and_api4_06_reconcile(
+    auth_context: dict[str, Any], test_audit_site: dict[str, Any]
+):
     """API4.06 & API4.07: Reconcile endpoint returns findings summary and progress returns completeness."""
     task_id = test_audit_site["task_id"]
 
@@ -441,7 +463,9 @@ def test_api4_07_progress_and_api4_06_reconcile(auth_context: dict[str, Any], te
     assert len(prog_data["towers"]) > 0
 
 
-def test_api4_16_mismatches_queue_query(auth_context: dict[str, Any], test_audit_site: dict[str, Any]):
+def test_api4_16_mismatches_queue_query(
+    auth_context: dict[str, Any], test_audit_site: dict[str, Any]
+):
     """API4.16: Query mismatch queue with filters and pagination."""
     resp = client.get(
         f"/v1/mismatches?site_id={test_audit_site['site_id']}&limit=10",

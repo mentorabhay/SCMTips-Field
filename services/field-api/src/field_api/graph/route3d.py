@@ -41,12 +41,18 @@ def dijkstra_3d(
     if from_id not in nodes:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error_code": "FIELD-GRAPH-404-NODE", "message": f"Source node '{from_id}' not found in site graph"},
+            detail={
+                "error_code": "FIELD-GRAPH-404-NODE",
+                "message": f"Source node '{from_id}' not found in site graph",
+            },
         )
     if to_id not in nodes:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error_code": "FIELD-GRAPH-404-NODE", "message": f"Target node '{to_id}' not found in site graph"},
+            detail={
+                "error_code": "FIELD-GRAPH-404-NODE",
+                "message": f"Target node '{to_id}' not found in site graph",
+            },
         )
 
     # Build adjacency list
@@ -90,7 +96,10 @@ def dijkstra_3d(
     if dist[to_id] == float("inf"):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error_code": "FIELD-GRAPH-422-NO-ROUTE", "message": f"No route exists between '{from_id}' and '{to_id}'"},
+            detail={
+                "error_code": "FIELD-GRAPH-422-NO-ROUTE",
+                "message": f"No route exists between '{from_id}' and '{to_id}'",
+            },
         )
 
     # Reconstruct path
@@ -202,12 +211,18 @@ def compute_3d_route(
     if not from_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error_code": "FIELD-GRAPH-404-NODE", "message": f"Source node '{from_ref}' not found in site graph"},
+            detail={
+                "error_code": "FIELD-GRAPH-404-NODE",
+                "message": f"Source node '{from_ref}' not found in site graph",
+            },
         )
     if not to_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error_code": "FIELD-GRAPH-404-NODE", "message": f"Target node '{to_ref}' not found in site graph"},
+            detail={
+                "error_code": "FIELD-GRAPH-404-NODE",
+                "message": f"Target node '{to_ref}' not found in site graph",
+            },
         )
 
     return dijkstra_3d(nodes, edges, from_id, to_id)

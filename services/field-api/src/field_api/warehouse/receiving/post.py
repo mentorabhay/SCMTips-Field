@@ -55,12 +55,14 @@ def stage_and_post_goods_receipt(
                 tenant_id,
                 site_id,
                 delivery_document,
-                json.dumps({
-                    "delivery_document": delivery_document,
-                    "plant": plant,
-                    "storage_location": storage_location,
-                    "items": items,
-                }),
+                json.dumps(
+                    {
+                        "delivery_document": delivery_document,
+                        "plant": plant,
+                        "storage_location": storage_location,
+                        "items": items,
+                    }
+                ),
             ),
         )
 
@@ -84,11 +86,13 @@ def stage_and_post_goods_receipt(
                 "delivery_document": delivery_document,
                 "item_no": item_no,
             },
-            items=[{
-                "item_no": item_no,
-                "ActualDeliveryQuantity": qty,
-                "StorageBin": bin_code,
-            }],
+            items=[
+                {
+                    "item_no": item_no,
+                    "ActualDeliveryQuantity": qty,
+                    "StorageBin": bin_code,
+                }
+            ],
             seq=current_seq,
             ref_doc_no=delivery_document,
             db_url=db_url,
