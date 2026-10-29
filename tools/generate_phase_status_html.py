@@ -1,6 +1,7 @@
 """Generates HTML status dashboards for Phases 1-4 from truth ledgers (Task R6)."""
 
 from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,7 +69,7 @@ def generate_html(phase: int) -> str:
   <title>SCMTips-Field — {PHASE_TITLES[phase]} Status Dashboard</title>
   <style>
     body {{
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: system-ui, -webkit-system-font, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: #0b0f19;
       color: #e2e8f0;
       margin: 0;
