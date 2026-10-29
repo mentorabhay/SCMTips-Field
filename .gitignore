@@ -34,6 +34,7 @@ out/
 build/
 dist/
 .eslintcache
+*.tsbuildinfo
 
 # Environment & Secrets (Explicit requirement T1.001)
 .env*

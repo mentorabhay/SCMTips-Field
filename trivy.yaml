@@ -1,0 +1,18 @@
+# SCMTIPS Field - Trivy Security Scan Configuration (Task R0.2 / Rule 2.1)
+exit-code: 1
+
+severity:
+  - CRITICAL
+  - HIGH
+
+scan:
+  scanners:
+    - vuln
+    - secret
+  skip-dirs:
+    - .venv
+    - venv
+    - node_modules
+    - .git
+    - .pytest_cache
+    - reports
