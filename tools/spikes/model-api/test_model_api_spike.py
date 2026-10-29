@@ -13,7 +13,7 @@ from harness import ModelApiHarness, run_and_save_all_spikes  # noqa: E402
 
 
 @pytest.mark.unit
-def test_harness_rejects_contributor_models():
+def test_harness_rejects_contributor_models() -> None:
     harness = ModelApiHarness()
     with pytest.raises(ValueError, match="forbidden substring '-contributor'"):
         harness.validate_model_id("muse-spark-1.3-contributor")
@@ -23,7 +23,7 @@ def test_harness_rejects_contributor_models():
 
 
 @pytest.mark.unit
-def test_harness_allows_non_contributor_models():
+def test_harness_allows_non_contributor_models() -> None:
     harness = ModelApiHarness()
     # Should not raise
     harness.validate_model_id("muse-spark-1.3")
@@ -31,7 +31,7 @@ def test_harness_allows_non_contributor_models():
 
 
 @pytest.mark.unit
-def test_harness_executes_spike_and_computes_percentiles(tmp_path: Path):
+def test_harness_executes_spike_and_computes_percentiles(tmp_path: Path) -> None:
     harness = ModelApiHarness()
     summary = harness.run_spike("muse-spark-1.3", {"prompt": "sample"}, num_calls=20)
 

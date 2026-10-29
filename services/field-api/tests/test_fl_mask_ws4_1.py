@@ -3,7 +3,6 @@
 import pytest
 from field_api.sites.fl_mask import validate_fl_code
 
-
 VALID_CODES = [
     ("IN01-TWR-0042", "tower_site", None, 1),
     ("IN01-TWR-0042-T01", "tower", "IN01-TWR-0042", 2),

@@ -56,7 +56,7 @@ def compute_dock_to_stock_metrics(
     if isinstance(records[0], (int, float)):
         durations = [float(x) for x in records]
     else:
-        for r in records:  # type: ignore[union-attr]
+        for r in records:
             d = compute_dock_to_stock_duration_minutes(r["dock_arrival"], r["stock_putaway"])
             durations.append(d)
 

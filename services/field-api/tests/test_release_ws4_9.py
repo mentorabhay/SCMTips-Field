@@ -12,16 +12,13 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
-from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
-
 from field_api.app import app
 from field_api.auth.jwt import create_dev_token
 from field_api.db import get_conn
 from field_api.installed_base.events import (
-    compute_webhook_signature,
     emit_installed_base_changed,
     verify_p13f_webhook_signature,
 )

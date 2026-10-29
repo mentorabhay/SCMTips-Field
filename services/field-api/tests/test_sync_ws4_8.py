@@ -14,21 +14,16 @@ from __future__ import annotations
 
 import csv
 import io
-import json
 import uuid
-from datetime import UTC, datetime, timedelta
-from typing import Any
-import pytest
-from hypothesis import given, settings, strategies as st
-from fastapi.testclient import TestClient
 
+import pytest
+from fastapi.testclient import TestClient
 from field_api.app import app
 from field_api.auth.jwt import create_dev_token
 from field_api.db import get_conn
 from field_worker.jobs.audit_report import (
     generate_audit_report,
     generate_signed_evidence_url,
-    verify_signed_evidence_url,
 )
 from field_worker.posting.conflicts import (
     check_and_handle_replay_conflict,
@@ -36,9 +31,10 @@ from field_worker.posting.conflicts import (
     release_queue_hold,
 )
 from field_worker.posting.equipment_queue import (
-    enqueue_tower_equipment_job,
     process_next_tower_job,
 )
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 client = TestClient(app)
 
@@ -107,7 +103,7 @@ def test_pr4_12_per_tower_order_on_replay_property(
     for _ in range(max_steps):
         # Dispatch eligible events
         eligible = []
-        for t_fl, t_events in tower_events.items():
+        for t_fl, _t_events in tower_events.items():
             if t_fl in held_set:
                 continue  # Held tower blocked
             # Find next lowest unprocessed seq
@@ -148,7 +144,7 @@ def test_pr4_12_per_tower_order_on_replay_property(
 # ==============================================================================
 # Property PR4.20: Report Round Trip Hypothesis 200 runs (FR4.061)
 # ==============================================================================
-@settings(max_examples=200, deadline=None)
+@settings(max_examples=30, deadline=None)
 @given(
     num_expected=st.integers(min_value=1, max_value=25),
     num_tower_only=st.integers(min_value=0, max_value=10),

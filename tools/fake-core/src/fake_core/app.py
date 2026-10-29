@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
@@ -27,7 +28,10 @@ KID = "fake-core-ed25519-v1"
 
 
 def get_jwk() -> dict[str, Any]:
-    raw_public = _PUBLIC_KEY.public_bytes_raw()
+    raw_public = _PUBLIC_KEY.public_bytes(
+        serialization.Encoding.Raw,  # type: ignore[arg-type]
+        serialization.PublicFormat.Raw,  # type: ignore[arg-type]
+    )
     x_b64 = base64.urlsafe_b64encode(raw_public).decode("utf-8").rstrip("=")
     return {
         "kty": "OKP",
@@ -88,7 +92,7 @@ def issue_token(req: TokenIssueRequest) -> dict[str, Any]:
 
     token = jwt.encode(
         claims,
-        _PRIVATE_KEY,
+        _PRIVATE_KEY,  # type: ignore[arg-type]
         algorithm="EdDSA",
         headers={"kid": KID},
     )

@@ -58,6 +58,7 @@ def downgrade() -> None:
         DROP INDEX IF EXISTS field.idx_posting_job_queue_seq;
 
         ALTER TABLE field.posting_job DROP CONSTRAINT IF EXISTS posting_job_status_check;
+        UPDATE field.posting_job SET status = 'failed' WHERE status NOT IN ('pending', 'running', 'completed', 'failed');
         ALTER TABLE field.posting_job ADD CONSTRAINT posting_job_status_check
             CHECK (status IN ('pending', 'running', 'completed', 'failed'));
 

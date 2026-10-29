@@ -9,6 +9,7 @@ import platform
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -39,7 +40,7 @@ def compute_percentiles(values: list[float]) -> tuple[float, float]:
     return round(sorted_v[p50_idx], 2), round(sorted_v[p95_idx], 2)
 
 
-def generate_baseline_data() -> dict:
+def generate_baseline_data() -> dict[str, Any]:
     # 1. Device segments (derived from Wearables Android LatencyTracker on sample runs)
     shutter_to_phone = [135.0, 142.0, 150.0, 160.0, 148.0, 155.0, 172.0, 140.0, 165.0, 158.0]
     barcode_detect = [18.0, 22.0, 25.0, 28.0, 19.0, 24.0, 31.0, 20.0, 26.0, 29.0]
@@ -143,7 +144,7 @@ def generate_baseline_data() -> dict:
     }
 
 
-def write_markdown_report(data: dict, out_file: Path) -> None:
+def write_markdown_report(data: dict[str, Any], out_file: Path) -> None:
     lines = [
         "# SCMTIPS Field Latency Baseline & Budget Report (Task T1.068 / FR1.059 / FR1.060)",
         "",

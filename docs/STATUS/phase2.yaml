@@ -75,6 +75,7 @@
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/auth/RevocationHandler.kt
   tests:
   - apps/field-android/tests/test_ws2_1.py::test_t2_006_device_revocation_lifecycle
+  - services/field-api/tests/test_ws2_6.py
   frs:
   - FR2.002
   verified_at: null
@@ -126,6 +127,7 @@
   evidence: []
   tests:
   - apps/field-android/tests/test_ws2_1.py::test_t2_010_consent_gate_and_indicator_check
+  - services/field-api/tests/test_ws2_6.py
   frs:
   - FR2.064
   verified_at: null
@@ -153,6 +155,7 @@
   evidence: []
   tests:
   - apps/field-android/tests/test_ws2_2.py::test_t2_012_pairing_flow_and_single_pairing_constraint
+  - services/field-api/tests/test_ws2_6.py
   frs:
   - FR2.003
   verified_at: null
@@ -284,6 +287,7 @@
   evidence: []
   tests:
   - apps/field-android/tests/test_ws2_3.py::test_t2_022_gs1_barcode_and_sscc_mod10_algorithm
+  - docs/SPEC/phase2/tests.json
   frs:
   - FR2.017
   - FR2.018
@@ -309,7 +313,9 @@
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/rank/Ranker.kt
   tests:
+  - apps/field-android/tests/test_ws2_3.py::test_pr2_06_deterministic_ranking_permutation_invariance
   - apps/field-android/tests/test_ws2_3.py::test_t2_024_capture_zone_ranking_math_and_weights
+  - docs/SPEC/phase2/tests.json
   frs:
   - FR2.023
   - FR2.024
@@ -353,6 +359,7 @@
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/quality/Readability.kt
   tests:
   - apps/field-android/tests/test_ws2_3.py::test_t2_027_readability_and_motion_factor
+  - docs/SPEC/phase2/tests.json
   frs:
   - FR2.020
   - FR2.021
@@ -367,6 +374,7 @@
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/privacy/FaceBlurStage.kt
   tests:
   - apps/field-android/tests/test_ws2_3.py::test_t2_028_face_blur_stage_privacy_guard
+  - docs/SPEC/phase2/tests.json
   frs:
   - FR2.022
   verified_at: null
@@ -422,6 +430,7 @@
   evidence: []
   tests:
   - apps/field-android/tests/test_ws2_4.py::test_t2_032_ptt_controller_and_audio_buffer_zeroing
+  - tests/test_ws2_9.py
   frs:
   - FR2.011
   - FR2.035
@@ -447,7 +456,9 @@
   status: stub
   evidence: []
   tests:
+  - apps/field-android/tests/test_ws2_4.py::test_pr2_09_confidence_floor_rejection
   - apps/field-android/tests/test_ws2_4.py::test_t2_034_voice_grammar_and_confidence_floor
+  - docs/SPEC/phase2/tests.json
   frs:
   - FR2.031
   - FR2.032
@@ -460,7 +471,10 @@
   status: stub
   evidence: []
   tests:
+  - apps/field-android/tests/test_ws2_4.py::test_pr2_10_number_parse_composite_words
+  - apps/field-android/tests/test_ws2_4.py::test_pr2_10_number_parse_digits_roundtrip
   - apps/field-android/tests/test_ws2_4.py::test_t2_035_number_parsing_and_locale_json
+  - docs/SPEC/phase2/tests.json
   frs:
   - FR2.034
   - FR2.036
@@ -474,7 +488,10 @@
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/ConfirmGate.kt
   tests:
+  - apps/field-android/tests/test_ws2_4.py::test_pr2_11_confirm_gate_timeout_cancels_post
+  - apps/field-android/tests/test_ws2_4.py::test_pr2_11_confirm_gate_within_10s_dispatches
   - apps/field-android/tests/test_ws2_4.py::test_t2_036_confirm_gate_lifecycle_and_corrections
+  - services/field-api/tests/test_ws2_6.py
   frs:
   - FR2.033
   - FR2.037
@@ -489,6 +506,7 @@
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/VoiceEventRecorder.kt
   tests:
   - apps/field-android/tests/test_ws2_4.py::test_t2_037_voice_event_recorder
+  - services/field-api/tests/test_ws2_6.py
   frs:
   - FR2.038
   verified_at: null
@@ -542,6 +560,9 @@
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/sync/SyncWorker.kt
   tests:
   - apps/field-android/tests/test_ws2_5.py::test_t2_041_sync_worker_and_ordered_drain
+  - apps/field-android/tests/test_ws2_5.py::test_t2_045_pr2_07_exactly_once_under_faults
+  - apps/field-android/tests/test_ws2_5.py::test_t2_045_pr2_08_per_task_fifo_order
+  - docs/SPEC/phase2/tests.json
   frs:
   - FR2.040
   - FR2.045
@@ -570,6 +591,8 @@
   - apps/field-android/feature-tasks/src/main/kotlin/com/scmtips/field/feature/tasks/OutboxScreen.kt
   tests:
   - apps/field-android/tests/test_ws2_5.py::test_t2_043_queue_capacity_and_outbox_screen
+  - apps/field-android/tests/test_ws2_5.py::test_t2_045_pr2_18_bounded_capacity_without_loss
+  - docs/SPEC/phase2/tests.json
   frs:
   - FR2.042
   verified_at: null
@@ -584,6 +607,7 @@
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/live/LiveClient.kt
   tests:
   - apps/field-android/tests/test_ws2_5.py::test_t2_044_live_channel_and_sse_fallback
+  - services/field-api/tests/test_ws2_6.py
   frs:
   - FR2.052
   verified_at: null
@@ -692,6 +716,8 @@
   status: stub
   evidence: []
   tests:
+  - apps/field-android/tests/test_ws2_4.py::test_pr2_11_confirm_gate_timeout_cancels_post
+  - apps/field-android/tests/test_ws2_4.py::test_pr2_11_confirm_gate_within_10s_dispatches
   - services/field-api/tests/test_ws2_6.py::test_t2_052_voice_count_and_post_gate
   frs:
   - FR2.038
@@ -761,6 +787,7 @@
   - services/field-worker/src/field_worker/verify/router.py
   tests:
   - services/field-worker/tests/test_verify_properties.py::test_t2_057_contributor_model_refused
+  - services/field-worker/tests/test_verify_properties.py::test_t2_060_pr2_16_verification_routing
   frs:
   - FR2.056
   - FR2.059

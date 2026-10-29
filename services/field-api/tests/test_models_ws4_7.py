@@ -21,10 +21,9 @@ import struct
 import uuid
 from pathlib import Path
 from typing import Any
-import pytest
-from hypothesis import given, settings, strategies as st
-from fastapi.testclient import TestClient
 
+import pytest
+from fastapi.testclient import TestClient
 from field_api.app import app
 from field_api.auth.jwt import create_dev_token
 from field_api.db import get_conn
@@ -33,13 +32,9 @@ from field_api.models.balloons import MemoryBalloonRegistry
 from field_api.models.upload import (
     MAX_GLB_BYTES,
     parse_and_validate_bom_csv,
-    validate_glb_binary,
 )
-from field_api.models.versions import (
-    get_model_bom,
-    pin_equipment_to_model_version,
-    publish_asset_model,
-)
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 client = TestClient(app)
 SAMPLE_MODELS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "tools" / "sample-models"
@@ -258,7 +253,7 @@ def test_pr4_10_balloon_stability_property(version_sequences: list[list[tuple[st
                 seen_in_history[key] = b_no
 
         # Mark parts dropped in this version as retired
-        current_active_numbers = set(ver_balloons)
+        set(ver_balloons)
         for prev_key, prev_bno in seen_in_history.items():
             if prev_key not in active_keys:
                 retired_numbers.add(prev_bno)
@@ -392,7 +387,7 @@ def test_tc4_146_published_version_immutable():
     # 5. Equipment installed and pinned to 1.3.0 keeps its pin
     site_id = str(uuid.uuid4())
     loc_id = str(uuid.uuid4())
-    equip_id = str(uuid.uuid4())
+    str(uuid.uuid4())
 
     with get_conn() as conn:
         with conn.cursor() as cur:

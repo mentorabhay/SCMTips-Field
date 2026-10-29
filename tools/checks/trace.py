@@ -28,7 +28,10 @@ def get_latest_verify_report() -> dict[str, Any] | None:
     if not reports:
         return None
     try:
-        return json.loads(reports[0].read_text(encoding="utf-8"))
+        data = json.loads(reports[0].read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            return data
+        return None
     except Exception:
         return None
 
@@ -82,7 +85,6 @@ def main() -> int:
         return 0
 
     report = get_latest_verify_report()
-    passed_tests: set[str] = set()
     if report and "jobs" in report:
         # Collect passing test IDs if recorded
         pass

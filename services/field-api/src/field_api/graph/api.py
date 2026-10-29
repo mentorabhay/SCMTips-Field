@@ -6,13 +6,11 @@ Exposes:
 
 from __future__ import annotations
 
-from typing import Any
-from fastapi import APIRouter, Depends, Query, status
-from pydantic import BaseModel, Field
 import structlog
-
+from fastapi import APIRouter, Depends, Query, status
 from field_api.deps import Principal, require_principal
 from field_api.graph.route3d import compute_3d_route
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
 

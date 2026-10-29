@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 from field_api.equipment.history import append_serial_event
 
@@ -31,8 +31,8 @@ class EquipmentAlreadyReversedError(Exception):
 def reverse_equipment_event(
     tenant_id: str,
     event_ref: str,  # event_id or doc_number
-    reversed_by: Optional[str] = None,
-    reason: Optional[str] = None,
+    reversed_by: str | None = None,
+    reason: str | None = None,
 ) -> dict[str, Any]:
     """Execute compensating operation to undo a previously posted equipment event (API4.09)."""
     now = datetime.now(UTC)
@@ -62,9 +62,9 @@ def reverse_equipment_event(
                 raise EquipmentAlreadyReversedError(doc_number)
 
             payload = raw_payload if isinstance(raw_payload, dict) else json.loads(raw_payload or "{}")
-            serial_no = payload.get("serial_no")
+            serial_no = str(payload.get("serial_no") or "")
             location_id = payload.get("location_id") or payload.get("previous_location_id")
-            old_serial_no = payload.get("old_serial_no")
+            old_serial_no = str(payload.get("old_serial_no") or "")
 
             compensating_doc_no = f"REV-{doc_number}"
             compensating_id = str(uuid.uuid4())

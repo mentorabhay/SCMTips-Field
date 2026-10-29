@@ -25,10 +25,10 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     for item in items:
         # Check current item markers
         existing_marker_names = {mark.name for mark in item.iter_markers()}
-        
+
         # If item already has a suite marker, don't overwrite
         has_suite_marker = bool(existing_marker_names & {"unit", "property", "contract", "compat"})
-        
+
         path_str = str(item.fspath).replace("\\", "/").lower()
         node_id_lower = item.nodeid.lower()
 

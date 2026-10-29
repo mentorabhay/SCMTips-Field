@@ -17,8 +17,7 @@ def get_collected_tests(cmd: list[str]) -> set[str]:
     res = subprocess.run(
         cmd,
         cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
     tests = set()

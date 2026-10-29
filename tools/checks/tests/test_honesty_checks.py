@@ -5,9 +5,11 @@ correctly detect violations on known failing fixtures and pass on valid code.
 """
 
 from pathlib import Path
+
 import pytest
+
+from tools.checks.conventions import validate_branch_name, validate_commit_message
 from tools.checks.no_fake_gates import check_file as check_fake_gates_file
-from tools.checks.conventions import validate_commit_message, validate_branch_name
 
 
 @pytest.mark.unit

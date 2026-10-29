@@ -9,8 +9,6 @@ from __future__ import annotations
 import itertools
 import re
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # Confusable character substitutions: (Letter, Digit)
 CONFUSABLE_PAIRS = [
@@ -21,7 +19,7 @@ CONFUSABLE_PAIRS = [
     ("Z", "2"),
 ]
 
-LETTER_TO_DIGIT = {letter: digit for letter, digit in CONFUSABLE_PAIRS}
+LETTER_TO_DIGIT = dict(CONFUSABLE_PAIRS)
 DIGIT_TO_LETTER = {digit: letter for letter, digit in CONFUSABLE_PAIRS}
 
 # Standard equipment class serial patterns
@@ -58,7 +56,7 @@ class NormalisationResult:
     pattern: str = DEFAULT_PATTERN
 
 
-def get_class_pattern(equipment_class: Optional[str] = None) -> str:
+def get_class_pattern(equipment_class: str | None = None) -> str:
     """Return regex pattern for the given equipment class."""
     if not equipment_class:
         return DEFAULT_PATTERN
@@ -67,8 +65,8 @@ def get_class_pattern(equipment_class: Optional[str] = None) -> str:
 
 def normalise_serial(
     raw_serial: str,
-    equipment_class: Optional[str] = None,
-    expected_pattern: Optional[str] = None,
+    equipment_class: str | None = None,
+    expected_pattern: str | None = None,
 ) -> NormalisationResult:
     """Normalise confusable characters in a raw OCR serial string per class pattern.
 
@@ -104,7 +102,7 @@ def normalise_serial(
             confusable_positions.append((idx, ch, options))
 
     # 3. Explore combinations ordered by fewest substitutions
-    best_candidate: Optional[str] = None
+    best_candidate: str | None = None
     best_subs: list[Substitution] = []
 
     for r in range(1, min(len(confusable_positions) + 1, 5)):

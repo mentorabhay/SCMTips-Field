@@ -6,12 +6,11 @@ database trigger immutability enforcement (PR4.01), and single-location invarian
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -20,7 +19,7 @@ logger = structlog.get_logger(__name__)
 class SingleLocationViolationError(Exception):
     """Raised when an active serial is already installed at a different location."""
 
-    def __init__(self, serial_no: str, current_location_id: str, current_fl: Optional[str] = None):
+    def __init__(self, serial_no: str, current_location_id: str, current_fl: str | None = None):
         fl_msg = f" ({current_fl})" if current_fl else ""
         super().__init__(
             f"Serial '{serial_no}' is already actively installed at location {current_location_id}{fl_msg} [FIELD-EQ-409-ALREADY-INSTALLED]"
@@ -35,15 +34,15 @@ def append_serial_event(
     tenant_id: str,
     serial_no: str,
     event_type: str,
-    location_id: Optional[str] = None,
-    equipment_id: Optional[str] = None,
-    details: Optional[dict[str, Any]] = None,
-    created_by: Optional[str] = None,
-    idempotency_key: Optional[str] = None,
-    source_plant: Optional[str] = None,
-    source_storage_location: Optional[str] = None,
-    occurred_at: Optional[datetime] = None,
-    cur: Optional[Any] = None,
+    location_id: str | None = None,
+    equipment_id: str | None = None,
+    details: dict[str, Any] | None = None,
+    created_by: str | None = None,
+    idempotency_key: str | None = None,
+    source_plant: str | None = None,
+    source_storage_location: str | None = None,
+    occurred_at: datetime | None = None,
+    cur: Any | None = None,
 ) -> dict[str, Any]:
     """Append a serial event with monotonic per-serial sequence (FR4.033 / PR4.02 / T4.029)."""
     def _execute_append(c: Any) -> dict[str, Any]:
@@ -189,14 +188,14 @@ def get_serial_history(tenant_id: str, serial_no: str) -> list[dict[str, Any]]:
 def check_single_location_invariant(
     tenant_id: str,
     serial_no: str,
-    target_location_id: Optional[str] = None,
-    cur: Optional[Any] = None,
-) -> tuple[bool, Optional[str], Optional[str]]:
+    target_location_id: str | None = None,
+    cur: Any | None = None,
+) -> tuple[bool, str | None, str | None]:
     """Verify that serial_no is not currently installed at any other location (PR4.01 / FR4.034).
 
     Returns (is_allowed, current_location_id, current_fl_code).
     """
-    def _execute_check(c: Any) -> tuple[bool, Optional[str], Optional[str]]:
+    def _execute_check(c: Any) -> tuple[bool, str | None, str | None]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.site_ids', '*', true);")

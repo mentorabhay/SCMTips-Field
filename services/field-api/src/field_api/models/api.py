@@ -10,15 +10,15 @@ Exposes:
 from __future__ import annotations
 
 import base64
-from typing import Any, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from pydantic import BaseModel, Field
-import structlog
+from typing import Any
 
+import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from field_api.auth.jwt import Principal
 from field_api.deps import require_principal
 from field_api.models.upload import create_asset_model_draft
 from field_api.models.versions import get_model_bom, publish_asset_model, update_model_bom
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
 
@@ -36,7 +36,7 @@ class BomPatchRequest(BaseModel):
 )
 async def api_upload_asset_model(
     request: Request,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """API4.12: Upload and validate .glb model and BOM CSV."""
@@ -65,7 +65,11 @@ async def api_upload_asset_model(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={"error_code": "FIELD-MOD-422-INVALID", "message": "Missing required multipart fields"},
             )
-        glb_data = await glb_field.read() if hasattr(glb_field, "read") else bytes(glb_field)
+        glb_data = (
+            await glb_field.read()
+            if hasattr(glb_field, "read")
+            else (glb_field.encode("utf-8") if isinstance(glb_field, str) else bytes(glb_field))
+        )
         csv_bytes = await bom_csv_field.read() if hasattr(bom_csv_field, "read") else bytes(bom_csv_field, "utf-8")
         csv_text = csv_bytes.decode("utf-8") if isinstance(csv_bytes, (bytes, bytearray)) else str(csv_bytes)
 
@@ -86,8 +90,8 @@ async def api_upload_asset_model(
 )
 def api_publish_asset_model(
     id: str,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
-    x_stepup_token: Optional[str] = Header(None, alias="X-Stepup-Token"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    x_stepup_token: str | None = Header(None, alias="X-Stepup-Token"),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """API4.13: Publish model version, allocate stable balloons, and emit outbox event."""

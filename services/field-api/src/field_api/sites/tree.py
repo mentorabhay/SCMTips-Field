@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
-from pydantic import BaseModel
+from typing import Any
+
+from fastapi import APIRouter, Header, HTTPException, Request, Response
 
 from field_api.db import get_conn
 
@@ -64,7 +64,7 @@ def build_site_tree(tenant_id: str, site_id: str) -> tuple[dict[str, Any], str]:
 
             # 4. Assemble tree
             nodes_by_id: dict[str, dict[str, Any]] = {}
-            children_by_parent: dict[Optional[str], list[dict[str, Any]]] = {}
+            children_by_parent: dict[str | None, list[dict[str, Any]]] = {}
 
             for r in loc_rows:
                 loc_id = str(r[0])
@@ -107,8 +107,8 @@ async def get_site_tree_endpoint(
     site_id: str,
     response: Response,
     request: Request,
-    tenant_id: Optional[str] = Header(None, alias="tenant_id"),
-    if_none_match: Optional[str] = Header(None, alias="if-none-match"),
+    tenant_id: str | None = Header(None, alias="tenant_id"),
+    if_none_match: str | None = Header(None, alias="if-none-match"),
 ) -> dict[str, Any]:
     """GET /v1/sites/{id}/tree returning nested hierarchy with height order and ETag."""
     auth_header = request.headers.get("Authorization")

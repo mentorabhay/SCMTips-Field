@@ -8,9 +8,9 @@ Maintains stable, unique balloon numbers per equipment class across semantic mod
 
 from __future__ import annotations
 
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -19,7 +19,7 @@ logger = structlog.get_logger(__name__)
 class MemoryBalloonRegistry:
     """In-memory balloon registry comparator for property-based hypothesis testing (PR4.10)."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # (equipment_class, part_no, node_path) -> balloon_no
         self.registry: dict[tuple[str, str, str], int] = {}
         # equipment_class -> highest_balloon_ever_allocated
@@ -30,7 +30,7 @@ class MemoryBalloonRegistry:
     def assign_balloons_for_version(
         self,
         equipment_class: str,
-        items: list[dict[str, str]],
+        items: list[dict[str, Any]],
     ) -> tuple[list[dict[str, Any]], int, int]:
         """Assign balloon numbers to a version's BOM items.
 
@@ -71,7 +71,7 @@ class MemoryBalloonRegistry:
 def assign_model_balloons_in_db(
     tenant_id: str,
     model_id: str,
-    cur: Optional[Any] = None,
+    cur: Any | None = None,
 ) -> tuple[int, int]:
     """Assign stable balloon numbers to a draft model's BOM items before publishing (FR4.052).
 

@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import json
 from collections import defaultdict
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 
@@ -108,7 +109,7 @@ async def sse_live_channel(
 ) -> StreamingResponse:
     """SSE fallback live channel (T2.053 / TC2.145)."""
 
-    async def event_generator():
+    async def event_generator() -> AsyncGenerator[str]:
         # Replay missed events
         sent_ids = set()
         if last_event_id:

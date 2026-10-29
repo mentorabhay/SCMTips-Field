@@ -8,6 +8,14 @@ from field_api.auth.jwt import Principal
 from field_api.auth.permissions import has_permission
 from field_api.errors import ERR_AUTH_FORBIDDEN, ERR_AUTH_UNAUTHORIZED
 
+__all__ = [
+    "Principal",
+    "get_principal",
+    "require_principal",
+    "require_permission",
+    "require_site_scope",
+]
+
 
 def get_principal(request: Request) -> Principal | None:
     """Extract optional principal from request state."""

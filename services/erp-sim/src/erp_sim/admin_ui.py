@@ -8,12 +8,19 @@ Provides HTML views at /_sim/ui without build steps:
 - /_sim/ui/faults: Active fault injection rules
 """
 
+from typing import Any
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
 from erp_sim.db import get_conn
 
 router = APIRouter(prefix="/_sim/ui", tags=["Simulator UI"])
+
+
+def _fetch_scalar(cur: Any) -> int:
+    row = cur.fetchone()
+    return int(row[0]) if row else 0
 
 HTML_HEAD = """
 <!DOCTYPE html>
@@ -81,22 +88,22 @@ async def admin_overview() -> str:
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT count(*) FROM erpsim.document;")
-            doc_count = cur.fetchone()[0]
+            doc_count = _fetch_scalar(cur)
 
             cur.execute("SELECT count(*) FROM erpsim.inbound_delivery;")
-            ibd_count = cur.fetchone()[0]
+            ibd_count = _fetch_scalar(cur)
 
             cur.execute("SELECT count(*) FROM erpsim.outbound_delivery;")
-            cur.fetchone()[0]
+            _fetch_scalar(cur)
 
             cur.execute("SELECT count(*) FROM erpsim.stock WHERE quantity > 0;")
-            stock_count = cur.fetchone()[0]
+            stock_count = _fetch_scalar(cur)
 
             cur.execute("SELECT count(*) FROM erpsim.enqueue_lock;")
-            cur.fetchone()[0]
+            _fetch_scalar(cur)
 
             cur.execute("SELECT count(*) FROM erpsim.fault_rule WHERE active = true;")
-            fault_count = cur.fetchone()[0]
+            fault_count = _fetch_scalar(cur)
 
             # Recent documents
             cur.execute(

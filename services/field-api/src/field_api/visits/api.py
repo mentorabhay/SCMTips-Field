@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 import math
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
+
 from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -36,17 +37,17 @@ def haversine_distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> 
 
 class CheckInRequest(BaseModel):
     user_id: str
-    device_id: Optional[str] = None
+    device_id: str | None = None
     permit_ref: str = Field(..., min_length=4, max_length=40)
     permit_valid_until: datetime
     lat: float
     lon: float
     accuracy_m: float
-    captured_at: Optional[datetime] = None
-    baro_baseline_hpa: Optional[float] = None
+    captured_at: datetime | None = None
+    baro_baseline_hpa: float | None = None
     timer_interval_min: int = 20
-    override_by: Optional[str] = None
-    override_reason: Optional[str] = None
+    override_by: str | None = None
+    override_reason: str | None = None
 
 
 class CheckOutRequest(BaseModel):
@@ -60,14 +61,14 @@ async def check_in(
     tenant_id: str = Header("e8eb2a80-d529-4bdd-b669-d21fe847cb74", alias="tenant_id"),
 ) -> dict[str, Any]:
     """Check in to a site validating geofence distance and permit validity window."""
-    now = req.captured_at or datetime.now(timezone.utc)
+    now = req.captured_at or datetime.now(UTC)
 
     # 1. Validate permit validity window
     # Ensure timezone aware comparison
     permit_expiry = req.permit_valid_until
     if permit_expiry.tzinfo is None:
-        permit_expiry = permit_expiry.replace(tzinfo=timezone.utc)
-    checkin_time = now if now.tzinfo is not None else now.replace(tzinfo=timezone.utc)
+        permit_expiry = permit_expiry.replace(tzinfo=UTC)
+    checkin_time = now if now.tzinfo is not None else now.replace(tzinfo=UTC)
 
     if permit_expiry < checkin_time:
         raise HTTPException(
@@ -154,6 +155,9 @@ async def check_in(
                 ),
             )
             v_res = cur.fetchone()
+            if not v_res:
+                raise HTTPException(status_code=500, detail="Failed to create visit record")
+            v_id, v_status, v_interval, v_checkin = v_res
 
             # 5. If overridden, emit audit event to outbox
             if is_overridden:
@@ -182,12 +186,12 @@ async def check_in(
             conn.commit()
 
             return {
-                "id": str(v_res[0]),
+                "id": str(v_id),
                 "site_id": site_id,
                 "user_id": req.user_id,
-                "status": v_res[1],
-                "timer_interval_min": v_res[2],
-                "checkin_at": v_res[3].isoformat(),
+                "status": v_status,
+                "timer_interval_min": v_interval,
+                "checkin_at": v_checkin.isoformat(),
                 "override": is_overridden,
             }
 

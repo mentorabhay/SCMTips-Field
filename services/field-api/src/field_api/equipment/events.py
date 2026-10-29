@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 from field_api.equipment.history import (
     SingleLocationViolationError,
@@ -27,19 +27,19 @@ def record_equipment_event(
     event_type: str,  # 'install', 'dismantle', 'replace', 'move', 'issue'
     serial_no: str,
     site_id: str,
-    location_id: Optional[str] = None,
-    material: Optional[str] = None,
-    old_serial_no: Optional[str] = None,
-    task_id: Optional[str] = None,
-    created_by: Optional[str] = None,
-    evidence_crop_ref: Optional[str] = None,
-    notes: Optional[str] = None,
-    idempotency_key: Optional[str] = None,
-    source_plant: Optional[str] = None,
-    source_storage_location: Optional[str] = None,
-    occurred_at: Optional[datetime] = None,
-    model_version_id: Optional[str] = None,
-    model_version: Optional[str] = None,
+    location_id: str | None = None,
+    material: str | None = None,
+    old_serial_no: str | None = None,
+    task_id: str | None = None,
+    created_by: str | None = None,
+    evidence_crop_ref: str | None = None,
+    notes: str | None = None,
+    idempotency_key: str | None = None,
+    source_plant: str | None = None,
+    source_storage_location: str | None = None,
+    occurred_at: datetime | None = None,
+    model_version_id: str | None = None,
+    model_version: str | None = None,
 ) -> dict[str, Any]:
     """Execute equipment lifecycle event with single-location invariant and staging flow."""
     now = datetime.now(UTC)
@@ -94,7 +94,8 @@ def record_equipment_event(
                     """,
                     (tenant_id, serial_no, mat_name, location_id, model_version_id, model_version),
                 )
-                eq_id = str(cur.fetchone()[0])
+                eq_row = cur.fetchone()
+                eq_id = str(eq_row[0]) if eq_row else str(uuid.uuid4())
 
                 # Append install serial_event
                 append_serial_event(
@@ -279,7 +280,8 @@ def record_equipment_event(
                     """,
                     (tenant_id, serial_no, mat_name, location_id),
                 )
-                new_eq_id = str(cur.fetchone()[0])
+                new_eq_row = cur.fetchone()
+                new_eq_id = str(new_eq_row[0]) if new_eq_row else str(uuid.uuid4())
 
                 append_serial_event(
                     tenant_id=tenant_id,
@@ -392,7 +394,8 @@ def record_equipment_event(
                     """,
                     (tenant_id, serial_no, mat_name, location_id),
                 )
-                eq_id = str(cur.fetchone()[0])
+                eq_row = cur.fetchone()
+                eq_id = str(eq_row[0]) if eq_row else str(uuid.uuid4())
 
                 append_serial_event(
                     tenant_id=tenant_id,

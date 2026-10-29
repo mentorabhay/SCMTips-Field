@@ -44,6 +44,7 @@ def check_file(file_path: Path, denylist: list[str]) -> list[str]:
             "build",
             "__pycache__",
             "reports",
+            "SPEC",
         )
     ):
         return violations

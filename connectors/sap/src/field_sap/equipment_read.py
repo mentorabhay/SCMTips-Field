@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any
+
 import httpx
 import structlog
 
@@ -20,14 +21,14 @@ DEFAULT_ERP_SIM_URL = os.environ.get("ERPSIM_URL", "http://127.0.0.1:8001")
 class EquipmentReader:
     """Reader for SAP S/4HANA API_EQUIPMENT OData service."""
 
-    def __init__(self, base_url: Optional[str] = None, client: Optional[httpx.Client] = None):
+    def __init__(self, base_url: str | None = None, client: httpx.Client | None = None):
         self.base_url = (base_url or DEFAULT_ERP_SIM_URL).rstrip("/")
         self.endpoint = f"{self.base_url}/sap/opu/odata/sap/API_EQUIPMENT/Equipment"
         self._client = client
 
     def read_equipment(
         self,
-        fl_prefix: Optional[str] = None,
+        fl_prefix: str | None = None,
         page_size: int = 1000,
         max_rows: int = 50000,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:

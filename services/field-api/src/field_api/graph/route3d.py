@@ -9,10 +9,10 @@ Vertical climb is penalized 3x relative to horizontal walking (FR4.047).
 from __future__ import annotations
 
 import heapq
-from typing import Any, Optional
-from fastapi import HTTPException, status
-import structlog
+from typing import Any
 
+import structlog
+from fastapi import HTTPException, status
 from field_api.db import get_conn
 from field_api.graph.guidance import generate_newcomer_guidance
 
@@ -69,7 +69,7 @@ def dijkstra_3d(
     dist: dict[str, float] = {nid: float("inf") for nid in nodes}
     dist[from_id] = 0.0
     # prev: node_id -> (prev_node_id, walk, climb)
-    prev: dict[str, Optional[tuple[str, float, float]]] = {nid: None for nid in nodes}
+    prev: dict[str, tuple[str, float, float] | None] = dict.fromkeys(nodes)
 
     heap: list[tuple[float, str]] = [(0.0, from_id)]
 
@@ -94,7 +94,7 @@ def dijkstra_3d(
         )
 
     # Reconstruct path
-    curr: Optional[str] = to_id
+    curr: str | None = to_id
     path_nodes: list[str] = []
     tot_walk = 0.0
     tot_climb = 0.0

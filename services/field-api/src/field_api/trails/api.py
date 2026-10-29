@@ -7,14 +7,13 @@ Retrieves chronological trail of locations for a serial number, ordered by occur
 
 from __future__ import annotations
 
-import json
-from typing import Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
-import structlog
+from typing import Any
 
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, status
 from field_api.db import get_conn
 from field_api.deps import Principal, require_principal
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
 
@@ -26,8 +25,8 @@ class TrailPoint(BaseModel):
     type: str = Field(..., description="Event type: issue, install, dismantle, move, etc.")
     label: str = Field(..., description="Human-readable location label (e.g. Plant 1100 / SL 0001 or IN01-TWR-0042 T01 Sector A L3 P02)")
     at: str = Field(..., description="ISO 8601 occurred_at timestamp")
-    location_id: Optional[str] = Field(None, description="Location UUID if bound to a structure location")
-    altitude_m: Optional[float] = Field(None, description="Height in meters if available")
+    location_id: str | None = Field(None, description="Location UUID if bound to a structure location")
+    altitude_m: float | None = Field(None, description="Height in meters if available")
 
 
 class EquipmentTrailResponse(BaseModel):
@@ -93,10 +92,10 @@ def get_equipment_trail(tenant_id: str, serial_no: str) -> dict[str, Any]:
         to_loc_id = str(r[5]) if r[5] else None
         from_loc_id = str(r[6]) if r[6] else None
         to_fl = r[7]
-        to_path = r[8]
+        r[8]
         to_height = float(r[9]) if r[9] is not None else None
         from_fl = r[10]
-        from_path = r[11]
+        r[11]
         to_site = r[12]
         from_site = r[13]
 
@@ -105,9 +104,7 @@ def get_equipment_trail(tenant_id: str, serial_no: str) -> dict[str, Any]:
         loc_id = to_loc_id or from_loc_id
         alt_m = to_height
 
-        if ev_type == "issue" and s_plant and s_sloc:
-            label = f"Plant {s_plant} / SL {s_sloc}"
-        elif s_plant and s_sloc and not to_fl:
+        if ev_type == "issue" and s_plant and s_sloc or s_plant and s_sloc and not to_fl:
             label = f"Plant {s_plant} / SL {s_sloc}"
         elif to_fl:
             # E.g. "IN01-TWR-0042 T01 Sector A L3 P02" or fl_code

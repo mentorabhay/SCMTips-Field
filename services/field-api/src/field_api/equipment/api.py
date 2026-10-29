@@ -8,10 +8,9 @@ Exposes:
 
 from __future__ import annotations
 
-from typing import Any, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from typing import Any
 
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from field_api.auth.jwt import Principal
 from field_api.deps import require_principal
 from field_api.equipment.events import record_equipment_event
@@ -23,6 +22,7 @@ from field_api.equipment.reverse import (
     EquipmentAlreadyReversedError,
     reverse_equipment_event,
 )
+from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["equipment", "equipment-events"])
 
@@ -31,27 +31,27 @@ class EquipmentEventRequest(BaseModel):
     event_type: str = Field(..., description="'install', 'dismantle', 'replace', 'move', or 'issue'")
     serial_no: str
     site_id: str
-    location_id: Optional[str] = None
-    material: Optional[str] = None
-    old_serial_no: Optional[str] = None
-    task_id: Optional[str] = None
-    evidence_crop_ref: Optional[str] = None
-    notes: Optional[str] = None
-    source_plant: Optional[str] = None
-    source_storage_location: Optional[str] = None
-    occurred_at: Optional[str] = None
-    model_version_id: Optional[str] = None
-    model_version: Optional[str] = None
+    location_id: str | None = None
+    material: str | None = None
+    old_serial_no: str | None = None
+    task_id: str | None = None
+    evidence_crop_ref: str | None = None
+    notes: str | None = None
+    source_plant: str | None = None
+    source_storage_location: str | None = None
+    occurred_at: str | None = None
+    model_version_id: str | None = None
+    model_version: str | None = None
 
 
 class ReverseEventRequest(BaseModel):
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 @router.post("/v1/equipment-events", response_model=dict[str, Any], status_code=status.HTTP_201_CREATED)
 def api_record_equipment_event(
     body: EquipmentEventRequest,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """API4.08: Execute equipment lifecycle event (install, dismantle, replace, move, issue)."""
@@ -91,7 +91,7 @@ def api_record_equipment_event(
 @router.post("/v1/equipment-events/{id}/reverse", response_model=dict[str, Any])
 def api_reverse_equipment_event(
     id: str,
-    body: Optional[ReverseEventRequest] = None,
+    body: ReverseEventRequest | None = None,
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """API4.09: Reverse a posted equipment event with compensating operation and ref_doc_no."""

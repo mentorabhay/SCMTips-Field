@@ -7,6 +7,7 @@ Enforces:
 2. Every .py file lives in a recognized package, script, or test directory, and is imported or tested.
 """
 
+import contextlib
 import re
 import sys
 from pathlib import Path
@@ -79,18 +80,16 @@ def check_kotlin_orphans() -> list[str]:
 
 def check_python_orphans() -> list[str]:
     violations: list[str] = []
-    
+
     # Collect all python imports across the codebase
     all_content: list[str] = []
     py_files = [p for p in ROOT.rglob("*.py") if not any(part in p.parts for part in EXCLUDED_PARTS)]
     for p in py_files:
-        try:
+        with contextlib.suppress(Exception):
             all_content.append(p.read_text(encoding="utf-8", errors="ignore"))
-        except Exception:
-            pass
     corpus = "\n".join(all_content)
 
-    recognized_roots = [
+    [
         ROOT / "services",
         ROOT / "apps",
         ROOT / "packages",
@@ -106,7 +105,7 @@ def check_python_orphans() -> list[str]:
         if len(rel.parts) == 1:
             continue
         # Tests and scripts are valid entrypoints
-        if "tests" in rel.parts or rel.parts[0] in ("scripts", "tools", "compat"):
+        if "tests" in rel.parts or rel.parts[0] in ("scripts", "tools", "compat") or "scripts" in rel.parts:
             continue
         # Alembic migration versions are entrypoints loaded dynamically
         if "alembic" in rel.parts or "versions" in rel.parts:

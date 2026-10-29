@@ -13,10 +13,9 @@ Exposes:
 
 from __future__ import annotations
 
-from typing import Any, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from typing import Any
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from field_api.audit.decisions import (
     MismatchAlreadyResolvedError,
     SoDViolationError,
@@ -30,17 +29,18 @@ from field_api.audit.reconcile import run_audit_reconciliation
 from field_api.audit.signoff import AuditSignoffConflict, sign_off_audit_task
 from field_api.auth.jwt import Principal
 from field_api.deps import require_principal
+from pydantic import BaseModel
 
 router = APIRouter(tags=["audits", "reconciliation", "mismatches"])
 
 
 # Request models
 class ReconcileRequest(BaseModel):
-    tower_location_id: Optional[str] = None
+    tower_location_id: str | None = None
 
 
 class SignoffRequest(BaseModel):
-    waiver_reason: Optional[str] = None
+    waiver_reason: str | None = None
     supervisor_waiver: bool = False
 
 
@@ -48,20 +48,20 @@ class MissingFindingRequest(BaseModel):
     expected_serial: str
     equipment_class: str
     reason: str
-    location_id: Optional[str] = None
+    location_id: str | None = None
 
 
 class UnknownFindingRequest(BaseModel):
     found_serial: str
     equipment_class: str
-    location_id: Optional[str] = None
-    crop_ref: Optional[str] = None
+    location_id: str | None = None
+    crop_ref: str | None = None
 
 
 class MismatchDecisionRequest(BaseModel):
     decision: str
-    note: Optional[str] = None
-    capturing_technician_id: Optional[str] = None
+    note: str | None = None
+    capturing_technician_id: str | None = None
 
 
 @router.get("/v1/audits/{task_id}/progress", response_model=dict[str, Any])
@@ -81,7 +81,7 @@ def api_get_audit_progress(
 @router.post("/v1/tasks/{id}/audit/reconcile", response_model=dict[str, Any])
 def api_reconcile_audit(
     id: str,
-    body: Optional[ReconcileRequest] = None,
+    body: ReconcileRequest | None = None,
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """API4.06: Run reconciliation for a tower or whole audit task."""
@@ -172,12 +172,12 @@ def api_record_unknown_finding(
 
 @router.get("/v1/mismatches", response_model=dict[str, Any])
 def api_list_mismatches(
-    site_id: Optional[str] = Query(None),
-    finding_class: Optional[str] = Query(None, alias="class"),
-    verify_status: Optional[str] = Query(None),
-    min_age_h: Optional[int] = Query(None),
+    site_id: str | None = Query(None),
+    finding_class: str | None = Query(None, alias="class"),
+    verify_status: str | None = Query(None),
+    min_age_h: int | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
-    cursor: Optional[str] = Query(None),
+    cursor: str | None = Query(None),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """API4.16: Mismatch queue with filters and cursor pagination (FR4.064)."""

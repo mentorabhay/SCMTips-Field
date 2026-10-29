@@ -42,6 +42,7 @@ dist/
 *.key
 *.cert
 *.pfx
+.dev_pgdata/
 
 # Reports & Temporary
 reports/tmp/
@@ -57,3 +58,7 @@ Thumbs.db
 
 # Docker
 *.docker.log
+
+# Gradle
+.gradle/
+build/

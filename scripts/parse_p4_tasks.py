@@ -1,12 +1,12 @@
-import re
 import json
+import re
 from pathlib import Path
 
 ROOT = Path("<repo>")
 SPEC = ROOT / "Plan" / "scmtips-field-spec.html"
 OUT = ROOT / "docs" / "reports" / "phase4_tasks.json"
 
-with open(SPEC, "r", encoding="utf-8") as f:
+with open(SPEC, encoding="utf-8") as f:
     text = f.read()
 
 tasks = []

@@ -15,10 +15,10 @@ import json
 import os
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
+
 import psycopg
 import structlog
-
 from field_common.uuid7 import uuid7_str
 
 logger = structlog.get_logger(__name__)
@@ -62,10 +62,10 @@ def emit_installed_base_changed(
     tenant_id: str,
     serial_no: str,
     change_type: str,  # 'installed', 'dismantled', 'moved', 'reversed'
-    erp_equipment_no: Optional[str] = None,
-    site_id: Optional[str] = None,
-    fl_code: Optional[str] = None,
-    effective_at: Optional[datetime] = None,
+    erp_equipment_no: str | None = None,
+    site_id: str | None = None,
+    fl_code: str | None = None,
+    effective_at: datetime | None = None,
     db_url: str = DATABASE_URL,
 ) -> dict[str, Any]:
     """Emit installed_base.changed into field.outbox and format signed P13f webhook delivery (TC4.158)."""

@@ -7,7 +7,7 @@ install history kept in equipment_install; installing installed equipment fails 
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, cast
 
 from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel
@@ -25,18 +25,20 @@ def load_equipment_fixtures() -> list[dict[str, Any]]:
         alt_path = Path("services/erp-sim/src/erp_sim/fixtures/towers.json")
         if alt_path.exists():
             with open(alt_path, encoding="utf-8") as f:
-                return json.load(f).get("equipment", [])
+                data = json.load(f)
+                return cast(list[dict[str, Any]], data.get("equipment", []))
         return []
     with open(FIXTURE_PATH, encoding="utf-8") as f:
-        return json.load(f).get("equipment", [])
+        data = json.load(f)
+        return cast(list[dict[str, Any]], data.get("equipment", []))
 
 
 @router.get("/Equipment")
 @router.get("/A_Equipment")
 async def list_equipment(
-    filter_expr: Optional[str] = Query(None, alias="$filter"),
-    top: Optional[int] = Query(1000, alias="$top"),
-    skip: Optional[int] = Query(0, alias="$skip"),
+    filter_expr: str | None = Query(None, alias="$filter"),
+    top: int | None = Query(1000, alias="$top"),
+    skip: int | None = Query(0, alias="$skip"),
     sap_client: str = Header("100", alias="sap-client"),
 ) -> dict[str, Any]:
     """OData v2 endpoint to list installed equipment with details."""
@@ -101,15 +103,15 @@ class EquipmentCreate(BaseModel):
 
 
 class InstallRequest(BaseModel):
-    FunctionalLocation: Optional[str] = None
-    Equipment: Optional[str] = None
-    LongText: Optional[str] = None
+    FunctionalLocation: str | None = None
+    Equipment: str | None = None
+    LongText: str | None = None
 
 
 class DismantleRequest(BaseModel):
-    Equipment: Optional[str] = None
-    FunctionalLocation: Optional[str] = None
-    LongText: Optional[str] = None
+    Equipment: str | None = None
+    FunctionalLocation: str | None = None
+    LongText: str | None = None
 
 
 @router.get("/Equipment('{equipment}')/TimeSegments")
@@ -134,7 +136,7 @@ async def get_equipment_time_segments(
             rows = cur.fetchall()
 
             segments: list[dict[str, Any]] = []
-            curr_segment: Optional[dict[str, Any]] = None
+            curr_segment: dict[str, Any] | None = None
 
             for r in rows:
                 func_loc, action, ts, change_doc = r[0], r[1], r[2], r[3]
@@ -224,11 +226,11 @@ async def create_equipment(
 @router.post("/Equipment('{equipment}')/Install")
 @router.post("/A_Equipment('{equipment}')/Install")
 async def install_equipment(
-    equipment: Optional[str] = None,
-    Equipment: Optional[str] = Query(None),
-    body: Optional[InstallRequest] = None,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
-    sim_fault_profile: Optional[str] = Header(None, alias="X-Sim-Fault-Profile"),
+    equipment: str | None = None,
+    Equipment: str | None = Query(None),
+    body: InstallRequest | None = None,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    sim_fault_profile: str | None = Header(None, alias="X-Sim-Fault-Profile"),
     sap_client: str = Header("100", alias="sap-client"),
 ) -> dict[str, Any]:
     """Install equipment at functional location with change document, dedupe, and fault checks (T4.020)."""
@@ -261,9 +263,6 @@ async def install_equipment(
         with conn.cursor() as cur:
             # Fault injection check
             from erp_sim.faults import evaluate_faults
-            from erp_sim.faults.warehouse import evaluate_warehouse_fault_header
-            if sim_fault_profile:
-                evaluate_warehouse_fault_header(sim_fault_profile, "API_EQUIPMENT", "Install")
             await evaluate_faults(cur, sap_client, "API_EQUIPMENT", "Install", eq_target)
 
             # Dedupe check
@@ -343,11 +342,11 @@ async def install_equipment(
 @router.post("/Equipment('{equipment}')/Dismantle")
 @router.post("/A_Equipment('{equipment}')/Dismantle")
 async def dismantle_equipment(
-    equipment: Optional[str] = None,
-    Equipment: Optional[str] = Query(None),
-    body: Optional[DismantleRequest] = None,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
-    sim_fault_profile: Optional[str] = Header(None, alias="X-Sim-Fault-Profile"),
+    equipment: str | None = None,
+    Equipment: str | None = Query(None),
+    body: DismantleRequest | None = None,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    sim_fault_profile: str | None = Header(None, alias="X-Sim-Fault-Profile"),
     sap_client: str = Header("100", alias="sap-client"),
 ) -> dict[str, Any]:
     """Dismantle equipment from functional location with change document and dedupe (T4.020)."""
@@ -372,9 +371,6 @@ async def dismantle_equipment(
     with get_conn() as conn:
         with conn.cursor() as cur:
             from erp_sim.faults import evaluate_faults
-            from erp_sim.faults.warehouse import evaluate_warehouse_fault_header
-            if sim_fault_profile:
-                evaluate_warehouse_fault_header(sim_fault_profile, "API_EQUIPMENT", "Dismantle")
             await evaluate_faults(cur, sap_client, "API_EQUIPMENT", "Dismantle", eq_target)
 
             if idem_key:

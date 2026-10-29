@@ -57,6 +57,9 @@ def downgrade() -> None:
         ALTER TABLE field.approval_request
             DROP CONSTRAINT IF EXISTS approval_request_approval_type_check;
 
+        DELETE FROM field.approval_request
+            WHERE approval_type NOT IN ('pi_variance', 'short_pick', 'damage_writeoff', 'manual_reversal');
+
         ALTER TABLE field.approval_request
             ADD CONSTRAINT approval_request_approval_type_check
             CHECK (approval_type IN ('pi_variance', 'short_pick', 'damage_writeoff', 'manual_reversal'));
@@ -70,6 +73,10 @@ def downgrade() -> None:
 
         ALTER TABLE field.capture
             DROP CONSTRAINT IF EXISTS capture_verify_status_check;
+
+        UPDATE field.capture
+            SET verify_status = 'unverified'
+            WHERE verify_status NOT IN ('unverified', 'verified', 'mismatch', 'failed');
 
         ALTER TABLE field.capture
             ADD CONSTRAINT capture_verify_status_check

@@ -11,6 +11,7 @@ Covers:
 - T3.009: X-Sim-Fault-Profile header injection and production rejection
 """
 
+import json
 import os
 from pathlib import Path
 
@@ -29,6 +30,17 @@ CASSETTES_DIR = ROOT / "compat" / "sap_parity" / "cassettes"
 
 client = TestClient(app)
 adapter = SapWarehouseAdapter(http_client=client)
+
+
+@pytest.fixture(autouse=True)
+def reset_inbound_sample() -> None:
+    from erp_sim.db import get_conn
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE erpsim.inbound_delivery SET status = 'open' WHERE delivery_document = '180000123';")
+        conn.commit()
+    yield
 
 
 @pytest.mark.contract
@@ -230,11 +242,29 @@ def test_t3_007_adapter_error_classification_and_golden_payload():
 
 @pytest.mark.contract
 def test_t3_008_sap_vcr_cassettes_parity():
-    """T3.008 / PR3.15, TC3.135: Runs VCR cassettes if present, skips gracefully with UNVERIFIED if absent."""
+    """T3.008 / PR3.15, TC3.135: Validates SAP VCR cassette fixture parity against S/4 contract."""
     cassette_file = CASSETTES_DIR / "inbound_gr_sample.yaml"
-    if not cassette_file.exists():
-        pytest.skip("UNVERIFIED: SAP VCR cassette fixture not present in offline test harness")
-    assert cassette_file.exists()
+    assert cassette_file.exists(), "SAP VCR cassette fixture must be present for contract parity"
+
+    with open(cassette_file, encoding="utf-8") as f:
+        cassette_data = yaml.safe_load(f)
+
+    interactions = cassette_data.get("interactions", [])
+    assert len(interactions) > 0, "Cassette must contain recorded interactions"
+
+    interaction = interactions[0]
+    resp = interaction.get("response", {})
+    assert resp.get("status", {}).get("code") == 200
+
+    body_str = resp.get("body", {}).get("string", "{}")
+    body_data = json.loads(body_str)
+    assert "d" in body_data, "Response must follow SAP OData v2 {'d': ...} envelope"
+
+    d = body_data["d"]
+    assert "MaterialDocument" in d
+    assert int(d["MaterialDocument"]) >= 4900000000
+    assert d["DeliveryDocument"] == "180000123"
+    assert d["OverallGoodsMovementStatus"] == "C"
 
 
 @pytest.mark.contract

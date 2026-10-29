@@ -67,7 +67,8 @@ def cmd_grant(args: argparse.Namespace) -> int:
                 """,
                     (grant_id, tenant_id, user_id, role, site_ids, granted_by),
                 )
-                actual_id = cur.fetchone()[0]
+                row = cur.fetchone()
+                actual_id = row[0] if row else grant_id
 
                 # Audit record in field.outbox
                 outbox_payload = {

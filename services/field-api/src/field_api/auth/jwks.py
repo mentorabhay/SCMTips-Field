@@ -54,7 +54,8 @@ class JwksCache:
     async def refresh(self) -> None:
         """Fetch and parse JWKS from endpoint."""
         try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
+            timeout_s = float(os.getenv("FIELD_JWKS_TIMEOUT_S", "0.2"))
+            async with httpx.AsyncClient(timeout=timeout_s) as client:
                 resp = await client.get(self.jwks_url)
                 resp.raise_for_status()
                 data = resp.json()
@@ -78,6 +79,8 @@ class JwksCache:
             self._last_fetched = time.time()
             logger.info("jwks_cache_refreshed", key_count=len(keys))
         except Exception as e:
+            # Set negative TTL backoff so offline core doesn't retry on every single token check
+            self._last_fetched = time.time() - self.ttl + 5.0
             logger.warning("jwks_fetch_failed", url=self.jwks_url, error=str(e))
 
 

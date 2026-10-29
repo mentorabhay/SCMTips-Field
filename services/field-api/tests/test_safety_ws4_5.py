@@ -19,18 +19,17 @@ import json
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
-from hypothesis import given, settings, strategies as st
-
 from field_api.app import app
 from field_api.auth.jwt import create_dev_token
 from field_api.db import get_conn
 from field_api.safety.lone_worker import (
-    acknowledge_lone_worker_escalation,
-    checkin_lone_worker,
     run_lone_worker_escalation_sweep,
 )
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 client = TestClient(app)
 
@@ -435,7 +434,7 @@ def test_tc4_137_rest_platform_checkpoint():
 
     is_matched = abs(measured_alt - platform_h) <= 1.5
     assert is_matched is True
-    msg = f"Rest platform L2. Clip in before you continue. [MSG4.08]"
+    msg = "Rest platform L2. Clip in before you continue. [MSG4.08]"
     assert "Rest platform L2" in msg
 
 

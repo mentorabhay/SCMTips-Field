@@ -7,7 +7,7 @@ Blocks apply when rejected rows exceed 20% of the total batch unless step-up app
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Set
+from typing import Any
 
 from field_api.sites.fl_mask import validate_fl_code
 
@@ -25,7 +25,7 @@ class ValidationSummary:
 
 def validate_import_staging_rows(
     rows: list[dict[str, Any]],
-    known_parent_codes: Optional[Set[str]] = None,
+    known_parent_codes: set[str] | None = None,
     allow_step_up: bool = False,
 ) -> ValidationSummary:
     """Perform topological validation on staged functional location rows.
@@ -54,7 +54,7 @@ def validate_import_staging_rows(
     all_batch_codes = {r["fl_code"] for r in rows if r.get("fl_code")}
 
     # Build parent graph
-    parent_map: dict[str, Optional[str]] = {}
+    parent_map: dict[str, str | None] = {}
     for r in rows:
         code = r.get("fl_code")
         parent = r.get("parent_fl_code")
@@ -113,15 +113,14 @@ def validate_import_staging_rows(
 
         # 3. Orphan detection
         # If parent is specified, it must either be in the batch or in known DB parents
-        if parent:
-            if parent not in all_batch_codes and parent not in known_parents:
-                rejected_rows.append({
-                    "fl_code": code,
-                    "reason": f"Parent location '{parent}' does not exist in batch or database",
-                    "error_type": "FIELD-LOC-422-ORPHAN",
-                    "row": r,
-                })
-                continue
+        if parent and parent not in all_batch_codes and parent not in known_parents:
+            rejected_rows.append({
+                "fl_code": code,
+                "reason": f"Parent location '{parent}' does not exist in batch or database",
+                "error_type": "FIELD-LOC-422-ORPHAN",
+                "row": r,
+            })
+            continue
 
         # Row is valid
         enriched_row = dict(r)

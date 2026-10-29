@@ -1,0 +1,26 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+      sap-client:
+      - '100'
+      x-csrf-token:
+      - dev-csrf-token-12345
+    method: POST
+    uri: https://s4-test-system.corp.internal/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/PostGoodsReceipt?DeliveryDocument=180000123
+  response:
+    body:
+      string: '{"d":{"MaterialDocument":"4900000001","MaterialDocumentYear":"2026","DeliveryDocument":"180000123","OverallGoodsMovementStatus":"C"}}'
+    headers:
+      content-type:
+      - application/json; charset=utf-8
+      dataserviceversion:
+      - '2.0'
+    status:
+      code: 200
+      message: OK
+version: 1

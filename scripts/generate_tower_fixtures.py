@@ -45,7 +45,7 @@ functional_locations = []
 equipment_list = []
 eq_id_counter = 10001001
 
-for site_idx, site in enumerate(SITES_CONFIG):
+for _site_idx, site in enumerate(SITES_CONFIG):
     s_code = site["code"]
     # Site Root
     functional_locations.append({
@@ -148,7 +148,7 @@ for site_idx, site in enumerate(SITES_CONFIG):
                     functional_locations.append({
                         "FunctionalLocation": pos_code,
                         "SuperiorFunctionalLocation": lvl_code,
-                        "FunctionalLocationName": f"Position P01",
+                        "FunctionalLocationName": "Position P01",
                         "MaintenancePlant": site["plant"],
                         "Kind": "position",
                         "SectorCode": s_char[-1],

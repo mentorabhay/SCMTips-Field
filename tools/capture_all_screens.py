@@ -11,13 +11,12 @@ Automates:
 
 from __future__ import annotations
 
-import os
-import shutil
+import contextlib
 import time
 from pathlib import Path
-from playwright.sync_api import sync_playwright
 
 from field_api.auth.jwt import create_dev_token
+from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 SCREENSHOTS_DIR = ROOT / "docs" / "screenshots"
@@ -40,7 +39,7 @@ TOKEN = create_dev_token(
 )
 
 
-def run_simulation_and_capture():
+def run_simulation_and_capture() -> None:
     print("=" * 70)
     print("Starting SCMTIPS Field End-to-End Simulation & Screenshot Capture")
     print(f"Output directory: {SCREENSHOTS_DIR}")
@@ -94,28 +93,24 @@ def run_simulation_and_capture():
             ("16_console_live_camera_captures.png", "http://localhost:3000/captures", "Live Camera Frames & OCR Ingestion Stream (SCR1.03)"),
         ]
 
-        def save_screenshot(img_bytes: bytes, filename: str, label: str):
+        def save_screenshot(img_bytes: bytes, filename: str, label: str) -> None:
             out_path = SCREENSHOTS_DIR / filename
-            for attempt in range(5):
+            for _attempt in range(5):
                 try:
                     if out_path.exists():
-                        try:
+                        with contextlib.suppress(Exception):
                             out_path.unlink()
-                        except Exception:
-                            pass
                     out_path.write_bytes(img_bytes)
                     break
                 except Exception:
                     time.sleep(0.3)
 
             artifact_copy = ARTIFACT_DIR / filename
-            for attempt in range(5):
+            for _attempt in range(5):
                 try:
                     if artifact_copy.exists():
-                        try:
+                        with contextlib.suppress(Exception):
                             artifact_copy.unlink()
-                        except Exception:
-                            pass
                     artifact_copy.write_bytes(img_bytes)
                     break
                 except Exception:
@@ -229,14 +224,14 @@ def run_simulation_and_capture():
         "| ID | Filename | Description | Resolution |",
         "| :--- | :--- | :--- | :---: |",
     ]
-    for idx, (fn, label, path, _) in enumerate(captured_files, 1):
+    for idx, (fn, label, _path, _) in enumerate(captured_files, 1):
         res = "1920x1080" if "console" in fn else "412x915" if "mobile" in fn else "1280x720"
         lines.append(f"| {idx:02d} | `{fn}` | {label} | {res} |")
 
     lines.append("")
     lines.append("---")
     lines.append("")
-    for idx, (fn, label, path, _) in enumerate(captured_files, 1):
+    for idx, (fn, label, _path, _) in enumerate(captured_files, 1):
         lines.append(f"### {idx:02d}. {label} (`{fn}`)")
         lines.append(f"![{label}]({fn})")
         lines.append("")

@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)

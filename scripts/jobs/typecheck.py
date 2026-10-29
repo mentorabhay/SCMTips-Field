@@ -16,16 +16,21 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def get_tsc_command() -> list[str]:
-    # Check local node_modules first
+    local_tsc_js = ROOT / "node_modules" / "typescript" / "bin" / "tsc"
+    if local_tsc_js.exists():
+        node_bin = shutil.which("node") or "node"
+        return [node_bin, str(local_tsc_js)]
+
+    # Check local node_modules .bin
     if os.name == "nt":
-        local_cmd = ROOT / "node_modules" / ".bin" / "tsc.CMD"
+        local_cmd = ROOT / "node_modules" / ".bin" / "tsc.cmd"
         if local_cmd.exists():
             return [str(local_cmd)]
     else:
         local_sh = ROOT / "node_modules" / ".bin" / "tsc"
         if local_sh.exists():
             return [str(local_sh)]
-    
+
     # Fallback to npx
     npx_bin = shutil.which("npx")
     if npx_bin:

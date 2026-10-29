@@ -62,7 +62,7 @@
   - services/erp-sim/src/erp_sim/services/matdoc.py
   tests:
   - compat/sap_parity/test_sap_parity.py::test_t3_005_material_document_cancel_and_409_reversal
-  - services/erp-sim/tests/test_erpsim_properties.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_110_and_pr3_01_undo_goods_receipt_reversal
   frs:
   - FR3.011
   - FR3.015
@@ -103,6 +103,7 @@
   - compat/sap_parity/
   tests:
   - compat/sap_parity/test_sap_parity.py::test_t3_008_sap_vcr_cassettes_parity
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.043
   verified_at: null
@@ -220,7 +221,7 @@
   evidence:
   - services/field-worker/src/field_worker/warehouse/ibd_import.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_101_and_tc3_103_ibd_polling_and_conflict
   frs:
   - FR3.001
   - FR3.003
@@ -235,7 +236,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/csv_import.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_102_csv_import_with_match_ladder
   frs:
   - FR3.002
   verified_at: null
@@ -249,7 +250,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/sscc.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_104_and_pr3_12_sscc_validation_and_duplicate
   frs:
   - FR3.004
   verified_at: null
@@ -263,7 +264,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/counting.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_105_and_pr3_02_counting_hierarchy_and_line_qty
   frs:
   - FR3.005
   - FR3.006
@@ -278,7 +279,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/tolerance.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_106_and_tc3_107_delivery_tolerances
   frs:
   - FR3.007
   - FR3.008
@@ -293,7 +294,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/damage.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_108_damaged_carton_handling
   frs:
   - FR3.009
   verified_at: null
@@ -307,7 +308,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/post.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_109_stage_and_post_goods_receipt
   frs:
   - FR3.010
   verified_at: null
@@ -321,7 +322,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/reverse.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_110_and_pr3_01_undo_goods_receipt_reversal
   frs:
   - FR3.011
   verified_at: null
@@ -335,7 +336,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/quality.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_111_quality_hold_and_321_release
   frs:
   - FR3.012
   - FR3.015
@@ -364,7 +365,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/putaway.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_112_putaway_proposal_and_scan
   frs:
   - FR3.013
   - FR3.014
@@ -379,7 +380,7 @@
   evidence:
   - services/field-api/src/field_api/warehouse/metrics.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_113_dock_to_stock_duration_metrics
   frs:
   - FR3.016
   verified_at: null
@@ -453,7 +454,8 @@
   role: Backend
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_104_and_pr3_12_sscc_validation_and_duplicate
   frs:
   - FR3.022
   verified_at: null
@@ -464,7 +466,8 @@
   role: Backend
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.023
   - FR3.024
@@ -510,7 +513,8 @@
   role: Security
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.029
   verified_at: null
@@ -522,7 +526,8 @@
   status: stub
   evidence:
   - services/field-api/src/field_api/warehouse/counting.py
-  tests: []
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_105_and_pr3_02_counting_hierarchy_and_line_qty
   frs:
   - FR3.030
   verified_at: null
@@ -534,7 +539,8 @@
   role: Backend
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.031
   - FR3.032
@@ -547,7 +553,8 @@
   role: Backend
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.032
   verified_at: null
@@ -558,7 +565,8 @@
   role: Backend
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.035
   verified_at: null
@@ -580,7 +588,8 @@
   role: Backend
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.034
   verified_at: null
@@ -605,7 +614,8 @@
   role: Backend
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.046
   verified_at: null
@@ -654,7 +664,8 @@
   role: Android
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.049
   verified_at: null
@@ -665,7 +676,8 @@
   role: Backend
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.050
   verified_at: null
@@ -676,7 +688,8 @@
   role: Android
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.052
   verified_at: null
@@ -732,7 +745,8 @@
   role: Console
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_106_and_tc3_107_delivery_tolerances
   frs:
   - FR3.055
   verified_at: null
@@ -777,7 +791,8 @@
   role: Backend
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - docs/SPEC/phase3/tests.json
   frs:
   - FR3.058
   - FR3.060
@@ -858,7 +873,8 @@
   role: QA
   status: missing
   evidence: []
-  tests: []
+  tests:
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_110_and_pr3_01_undo_goods_receipt_reversal
   frs: []
   verified_at: null
   note: Deliverable missing; no feature commits exist in git history (Finding F-09)

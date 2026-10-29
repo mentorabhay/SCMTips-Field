@@ -6,12 +6,12 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def client():
+def client() -> TestClient:
     return TestClient(app)
 
 
 @pytest.mark.unit
-def test_jwks_endpoint(client):
+def test_jwks_endpoint(client: TestClient) -> None:
     resp = client.get("/.well-known/jwks.json")
     assert resp.status_code == 200
     data = resp.json()
@@ -25,7 +25,7 @@ def test_jwks_endpoint(client):
 
 
 @pytest.mark.unit
-def test_issue_token_and_device_status(client):
+def test_issue_token_and_device_status(client: TestClient) -> None:
     resp = client.post(
         "/api/v1/auth/token",
         json={

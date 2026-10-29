@@ -9,15 +9,21 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from field_api.audit.api import router as audit_router
+from field_api.audits.reports import router as audit_reports_router
+from field_api.equipment.api import router as equipment_router
 from field_api.errors import (
     ERR_NOT_FOUND,
     FieldError,
     problem_json_response,
 )
+from field_api.graph.api import router as graph_router
+from field_api.installed_base.api import router as installed_base_router
 from field_api.logging import configure_logging
 from field_api.middleware.auth import AuthMiddleware
 from field_api.middleware.idempotency import IdempotencyMiddleware
 from field_api.middleware.request_id import RequestIdMiddleware
+from field_api.models.api import router as models_router
 from field_api.posting.routes import router as posting_router
 from field_api.routes.auth import router as auth_router
 from field_api.routes.captures import router as captures_router
@@ -32,19 +38,13 @@ from field_api.routes.me import router as me_router
 from field_api.routes.sites import router as sites_router
 from field_api.routes.status import router as status_router
 from field_api.routes.voice import router as voice_router
+from field_api.safety.api import router as safety_router
+from field_api.sitepack.api import router as sitepack_router
 from field_api.sites.tree import router as site_tree_router
+from field_api.trails.api import router as trails_router
 from field_api.visits.api import router as visits_router
 from field_api.visits.override import router as visits_override_router
 from field_api.warehouse.receiving.routes import router as warehouse_router
-from field_api.audit.api import router as audit_router
-from field_api.equipment.api import router as equipment_router
-from field_api.safety.api import router as safety_router
-from field_api.trails.api import router as trails_router
-from field_api.graph.api import router as graph_router
-from field_api.models.api import router as models_router
-from field_api.audits.reports import router as audit_reports_router
-from field_api.sitepack.api import router as sitepack_router
-from field_api.installed_base.api import router as installed_base_router
 
 logger = structlog.get_logger(__name__)
 

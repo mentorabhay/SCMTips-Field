@@ -76,7 +76,7 @@ async def create_pi_doc(
         items_raw = doc_in.to_PhysicalInventoryDocItem
         items_list: list[PiItemCreate] = []
         if isinstance(items_raw, dict) and "results" in items_raw:
-            items_list = [PiItemCreate(**i) for i in items_raw["results"]]
+            items_list = [i if isinstance(i, PiItemCreate) else PiItemCreate(**i) for i in items_raw["results"]]
         elif isinstance(items_raw, list):
             items_list = items_raw
 

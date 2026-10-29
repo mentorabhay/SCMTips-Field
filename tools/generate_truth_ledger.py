@@ -6,7 +6,8 @@ Generates docs/STATUS/phase{1..4}.yaml with all tasks initialized to status: unv
 
 import json
 from pathlib import Path
-import yaml
+
+import yaml  # type: ignore[import-untyped]
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS_SPEC = ROOT / "docs" / "SPEC"

@@ -7,9 +7,9 @@ per site, tower, sector, and level. If expected is empty, completeness is 1.0 wi
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)

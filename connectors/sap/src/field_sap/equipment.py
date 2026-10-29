@@ -10,7 +10,8 @@ Gated by FIELD_SAP_EQUIPMENT_LIVE environment variable (UNVERIFIED for live SAP)
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any
+
 import httpx
 import structlog
 
@@ -23,29 +24,29 @@ FIELD_SAP_EQUIPMENT_LIVE = os.environ.get("FIELD_SAP_EQUIPMENT_LIVE", "false").l
 class SAPEquipmentError(Exception):
     """Base exception for SAP equipment operations."""
 
-    def __init__(self, message: str, code: str = "FIELD-EQ-500-SAP-ERROR", raw_error: Optional[dict[str, Any]] = None):
+    def __init__(self, message: str, code: str = "FIELD-EQ-500-SAP-ERROR", raw_error: dict[str, Any] | None = None):
         super().__init__(message)
         self.code = code
         self.raw_error = raw_error or {}
 
 
 class SAPEquipmentNotFoundError(SAPEquipmentError):
-    def __init__(self, message: str, raw_error: Optional[dict[str, Any]] = None):
+    def __init__(self, message: str, raw_error: dict[str, Any] | None = None):
         super().__init__(message, code="FIELD-EQ-404-NOT-FOUND", raw_error=raw_error)
 
 
 class SAPEquipmentAlreadyInstalledError(SAPEquipmentError):
-    def __init__(self, message: str, raw_error: Optional[dict[str, Any]] = None):
+    def __init__(self, message: str, raw_error: dict[str, Any] | None = None):
         super().__init__(message, code="FIELD-EQ-409-ALREADY-INSTALLED", raw_error=raw_error)
 
 
 class SAPEquipmentNotInstalledError(SAPEquipmentError):
-    def __init__(self, message: str, raw_error: Optional[dict[str, Any]] = None):
+    def __init__(self, message: str, raw_error: dict[str, Any] | None = None):
         super().__init__(message, code="FIELD-EQ-400-NOT-INSTALLED", raw_error=raw_error)
 
 
 class SAPIdempotencyConflictError(SAPEquipmentError):
-    def __init__(self, message: str, raw_error: Optional[dict[str, Any]] = None):
+    def __init__(self, message: str, raw_error: dict[str, Any] | None = None):
         super().__init__(message, code="FIELD-IDEM-422-KEY-REUSED", raw_error=raw_error)
 
 
@@ -77,9 +78,9 @@ class SAPEquipmentAdapter:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        client: Optional[httpx.Client] = None,
-        live_mode: Optional[bool] = None,
+        base_url: str | None = None,
+        client: httpx.Client | None = None,
+        live_mode: bool | None = None,
         sap_client: str = "100",
     ):
         self.base_url = (base_url or DEFAULT_ERP_SIM_URL).rstrip("/")
@@ -100,7 +101,7 @@ class SAPEquipmentAdapter:
         self,
         material: str,
         serial_no: str,
-        func_loc: Optional[str] = None,
+        func_loc: str | None = None,
     ) -> dict[str, Any]:
         """Create new equipment master in SAP (A_Equipment)."""
         payload = {
@@ -137,7 +138,7 @@ class SAPEquipmentAdapter:
         self,
         equipment_no: str,
         func_loc: str,
-        idempotency_key: Optional[str] = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         """Install equipment at functional location with long-text idempotency marker."""
         long_text = f"[IDEM:{idempotency_key}]" if idempotency_key else None
@@ -182,7 +183,7 @@ class SAPEquipmentAdapter:
     def dismantle_equipment(
         self,
         equipment_no: str,
-        idempotency_key: Optional[str] = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         """Dismantle equipment from its current functional location."""
         long_text = f"[IDEM:{idempotency_key}]" if idempotency_key else None

@@ -1,5 +1,6 @@
 """JWT Verification with JWKS Caching and Claims Parsing (Task T1.036 / PR1.17)."""
 
+import os
 from datetime import UTC, datetime
 from typing import Any
 
@@ -12,8 +13,10 @@ from field_api.errors import ERR_AUTH_UNAUTHORIZED
 
 logger = structlog.get_logger(__name__)
 
-# Development secret for local test tokens when JWKS is not spun up
-DEV_SECRET = "dev-core-secret-key-minimum-32-characters-for-hs256"
+
+def get_jwt_secret() -> str:
+    """Resolve JWT secret key from environment or fallback development configuration."""
+    return os.getenv("JWT_SECRET_KEY") or os.getenv("FIELD_JWT_SECRET") or "dev-core-secret-key-minimum-32-characters-for-hs256"
 
 
 class Principal(BaseModel):
@@ -49,7 +52,7 @@ def create_dev_token(
         "nbf": now - 10,
         "exp": now + exp_seconds,
     }
-    encoded = jwt.encode(payload, DEV_SECRET, algorithm="HS256")
+    encoded = jwt.encode(payload, get_jwt_secret(), algorithm="HS256")
     return str(encoded)
 
 
@@ -58,7 +61,7 @@ def verify_token(token: str) -> Principal:
     try:
         claims: dict[str, Any] = jwt.decode(
             token,
-            DEV_SECRET,
+            get_jwt_secret(),
             algorithms=["HS256", "RS256"],
             audience="scmtips-field",
             issuer="scmtips-core",

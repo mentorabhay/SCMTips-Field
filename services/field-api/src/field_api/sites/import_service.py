@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, Optional
+from typing import Any
+
 import structlog
 
 from field_api.db import get_conn
@@ -21,10 +22,10 @@ def stage_fl_import(
     tenant_id: str,
     filter_prefix: str,
     fl_rows: list[dict[str, Any]],
-    equipment_rows: Optional[list[dict[str, Any]]] = None,
-    connection_id: Optional[str] = None,
+    equipment_rows: list[dict[str, Any]] | None = None,
+    connection_id: str | None = None,
     mode: str = "full",
-    watermark_from: Optional[str] = None,
+    watermark_from: str | None = None,
     allow_step_up: bool = False,
 ) -> dict[str, Any]:
     """Validate incoming SAP FL/Equipment rows, compute diff preview, and store staging job."""
@@ -66,7 +67,6 @@ def stage_fl_import(
                     new_rows.append(code)
                 else:
                     curr = existing_locs[code]
-                    is_changed = False
                     is_moved = False
 
                     # Check parent move
@@ -136,9 +136,12 @@ def stage_fl_import(
             res = cur.fetchone()
             conn.commit()
 
+            job_id_val = str(res[0]) if res else str(job_id)
+            job_status_val = res[1] if res else "preview"
+
             return {
-                "job_id": str(res[0]),
-                "status": res[1],
+                "job_id": job_id_val,
+                "status": job_status_val,
                 "counts": counts,
                 "diff_preview": diff_preview,
                 "blocked": val_summary.blocked,
@@ -262,7 +265,8 @@ def apply_fl_import_job(
                             fl,
                         ),
                     )
-                    inserted_id = str(cur.fetchone()[0])
+                    loc_res = cur.fetchone()
+                    inserted_id = str(loc_res[0]) if loc_res else str(uuid.uuid4())
                     code_to_id[fl] = inserted_id
                     applied_loc_count += 1
 

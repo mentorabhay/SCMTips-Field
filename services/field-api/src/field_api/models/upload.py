@@ -14,10 +14,10 @@ import io
 import json
 import struct
 import uuid
-from typing import Any, Optional
-from fastapi import HTTPException, status
-import structlog
+from typing import Any
 
+import structlog
+from fastapi import HTTPException, status
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -31,7 +31,7 @@ JSON_CHUNK_TYPE = 0x4E4F534A  # 'JSON' in little-endian ASCII
 class ModelValidationError(Exception):
     """Raised when glTF or BOM validation fails."""
 
-    def __init__(self, code: str, message: str, issues: Optional[list[str]] = None):
+    def __init__(self, code: str, message: str, issues: list[str] | None = None):
         super().__init__(message)
         self.code = code
         self.message = message
@@ -145,7 +145,7 @@ def validate_glb_binary(glb_bytes: bytes) -> tuple[str, int, dict[str, Any]]:
 
 def parse_and_validate_bom_csv(
     bom_csv_text: str,
-    gltf_node_names: Optional[set[str]] = None,
+    gltf_node_names: set[str] | None = None,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Parse BOM CSV and enforce top-level quantity and hierarchy rules (PR4.08 / TC4.149).
 
@@ -245,7 +245,7 @@ def create_asset_model_draft(
     version: str,
     glb_bytes: bytes,
     bom_csv_text: str,
-    created_by: Optional[str] = None,
+    created_by: str | None = None,
 ) -> dict[str, Any]:
     """Validate and upload draft asset model and BOM (API4.12)."""
     # 1. Validate glb

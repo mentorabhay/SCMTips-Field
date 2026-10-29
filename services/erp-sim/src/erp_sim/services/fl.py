@@ -6,7 +6,7 @@ reading from seeded tower fixtures (towers.json).
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, cast
 
 from fastapi import APIRouter, Header, Query
 
@@ -21,19 +21,21 @@ def load_fl_fixtures() -> list[dict[str, Any]]:
         alt_path = Path("services/erp-sim/src/erp_sim/fixtures/towers.json")
         if alt_path.exists():
             with open(alt_path, encoding="utf-8") as f:
-                return json.load(f).get("functional_locations", [])
+                data = json.load(f)
+                return cast(list[dict[str, Any]], data.get("functional_locations", []))
         return []
 
     with open(FIXTURE_PATH, encoding="utf-8") as f:
-        return json.load(f).get("functional_locations", [])
+        data = json.load(f)
+        return cast(list[dict[str, Any]], data.get("functional_locations", []))
 
 
 @router.get("/FunctionalLocation")
 @router.get("/A_FunctionalLocation")
 async def get_functional_locations(
-    filter_expr: Optional[str] = Query(None, alias="$filter"),
-    top: Optional[int] = Query(1000, alias="$top"),
-    skip: Optional[int] = Query(0, alias="$skip"),
+    filter_expr: str | None = Query(None, alias="$filter"),
+    top: int | None = Query(1000, alias="$top"),
+    skip: int | None = Query(0, alias="$skip"),
     sap_client: str = Header("100", alias="sap-client"),
 ) -> dict[str, Any]:
     """OData v2 endpoint to list functional locations with prefix and change date filtering."""

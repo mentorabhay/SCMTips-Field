@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -25,8 +25,8 @@ def mark_item_missing(
     expected_serial: str,
     equipment_class: str,
     reason: str,
-    location_id: Optional[str] = None,
-    reported_by: Optional[str] = None,
+    location_id: str | None = None,
+    reported_by: str | None = None,
 ) -> dict[str, Any]:
     """Record missing expected equipment finding (FR4.023 / TC4.121)."""
     if reason not in ALLOWED_MISSING_REASONS:
@@ -98,7 +98,8 @@ def mark_item_missing(
                     dedupe_key,
                 ),
             )
-            actual_finding_id = cur.fetchone()[0]
+            f_row = cur.fetchone()
+            actual_finding_id = f_row[0] if f_row else finding_id
 
             # 4. Update task_line status
             if task_line_id:
@@ -124,9 +125,9 @@ def record_unknown_equipment(
     task_id: str,
     found_serial: str,
     equipment_class: str,
-    location_id: Optional[str] = None,
-    crop_ref: Optional[str] = None,
-    reported_by: Optional[str] = None,
+    location_id: str | None = None,
+    crop_ref: str | None = None,
+    reported_by: str | None = None,
 ) -> dict[str, Any]:
     """Record unknown equipment found on tower as tower_only finding (FR4.022 / TC4.120)."""
     finding_id = str(uuid.uuid4())
@@ -219,7 +220,8 @@ def record_unknown_equipment(
                     dedupe_key,
                 ),
             )
-            actual_finding_id = cur.fetchone()[0]
+            f_row = cur.fetchone()
+            actual_finding_id = f_row[0] if f_row else finding_id
 
         conn.commit()
 

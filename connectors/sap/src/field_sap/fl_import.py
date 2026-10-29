@@ -8,7 +8,8 @@ Service status: UNVERIFIED (Phase 4).
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any
+
 import httpx
 import structlog
 
@@ -20,15 +21,15 @@ DEFAULT_ERP_SIM_URL = os.environ.get("ERPSIM_URL", "http://127.0.0.1:8001")
 class FunctionalLocationReader:
     """Reader for SAP S/4HANA API_FUNCTIONALLOCATION OData service."""
 
-    def __init__(self, base_url: Optional[str] = None, client: Optional[httpx.Client] = None):
+    def __init__(self, base_url: str | None = None, client: httpx.Client | None = None):
         self.base_url = (base_url or DEFAULT_ERP_SIM_URL).rstrip("/")
         self.endpoint = f"{self.base_url}/sap/opu/odata/sap/API_FUNCTIONALLOCATION/FunctionalLocation"
         self._client = client
 
     def read_functional_locations(
         self,
-        prefix: Optional[str] = None,
-        watermark_from: Optional[str] = None,
+        prefix: str | None = None,
+        watermark_from: str | None = None,
         page_size: int = 1000,
         max_rows: int = 50000,
     ) -> list[dict[str, Any]]:

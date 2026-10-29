@@ -109,6 +109,12 @@ def downgrade() -> None:
             DROP COLUMN IF EXISTS height_m;
 
         ALTER TABLE field.location DROP CONSTRAINT IF EXISTS chk_location_kind;
+
+        UPDATE field.location
+            SET kind = 'position', depth = LEAST(depth, 6)
+            WHERE kind NOT IN ('zone', 'aisle', 'rack', 'level', 'position', 'tower', 'sector')
+               OR depth > 6;
+
         ALTER TABLE field.location
             ADD CONSTRAINT chk_location_kind
             CHECK (kind IN ('zone', 'aisle', 'rack', 'level', 'position', 'tower', 'sector'));

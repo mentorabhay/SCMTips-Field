@@ -11,11 +11,11 @@ import hashlib
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
+
 from field_worker.verify.router import FieldContributorModelConfig
 
 logger = structlog.get_logger(__name__)
@@ -109,10 +109,10 @@ class NameplateVerifyService:
         is_expected: bool,
         is_normalised: bool,
         pattern_matched: bool,
-        crop_ref: Optional[str] = None,
-        mock_ai_verdict: Optional[str] = None,
-        mock_actual_serial: Optional[str] = None,
-        requested_model: Optional[str] = None,
+        crop_ref: str | None = None,
+        mock_ai_verdict: str | None = None,
+        mock_actual_serial: str | None = None,
+        requested_model: str | None = None,
     ) -> dict[str, Any]:
         """Process a capture through the nameplate verify pipeline."""
         model_to_use = requested_model or self.default_model

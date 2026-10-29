@@ -11,17 +11,17 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, Optional
-from fastapi import HTTPException, status
-import structlog
+from typing import Any
 
+import structlog
+from fastapi import HTTPException, status
 from field_api.db import get_conn
 from field_api.models.balloons import assign_model_balloons_in_db
 
 logger = structlog.get_logger(__name__)
 
 
-def _to_uuid(val: Optional[str]) -> Optional[str]:
+def _to_uuid(val: str | None) -> str | None:
     if not val:
         return None
     try:
@@ -230,7 +230,7 @@ def pin_equipment_to_model_version(
     tenant_id: str,
     equipment_serial_no: str,
     model_version_id: str,
-    cur: Optional[Any] = None,
+    cur: Any | None = None,
 ) -> None:
     """Pin equipment installed record to a specific model version (FR4.054 / TC4.146)."""
     def _execute(c: Any) -> None:

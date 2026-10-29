@@ -170,6 +170,7 @@ def run_job(name: str, desc: str, cmd: list[str]) -> dict[str, Any]:
             "error": output,
         }
 
+    timeout_sec = 600 if name in ("property", "unit", "alembic") else 300
     try:
         proc = subprocess.run(
             cmd,
@@ -178,17 +179,17 @@ def run_job(name: str, desc: str, cmd: list[str]) -> dict[str, Any]:
             stderr=subprocess.STDOUT,
             encoding="utf-8",
             errors="replace",
-            timeout=300,
+            timeout=timeout_sec,
         )
         duration = time.time() - start
         status = "PASS" if proc.returncode == 0 else "FAIL"
         output = proc.stdout or ""
         exit_code = proc.returncode
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as e:
         duration = time.time() - start
         status = "FAIL"
         exit_code = 124
-        output = f"Job {name} timed out after 300s"
+        output = f"Job {name} timed out after {timeout_sec}s\n\nPartial output:\n{e.stdout or ''}"
     except Exception as e:
         duration = time.time() - start
         status = "FAIL"

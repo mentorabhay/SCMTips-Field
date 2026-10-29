@@ -70,8 +70,7 @@ def check_git_history(max_commits: int = 15) -> list[str]:
     res_b = subprocess.run(
         ["git", "branch", "--show-current"],
         cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
     branch = res_b.stdout.strip()
@@ -84,11 +83,10 @@ def check_git_history(max_commits: int = 15) -> list[str]:
     res_c = subprocess.run(
         ["git", "log", f"-n{max_commits}", "--pretty=format:%H%x00%B%x00"],
         cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
-    
+
     entries = res_c.stdout.split("\x00\x00")
     for entry in entries:
         if not entry.strip():

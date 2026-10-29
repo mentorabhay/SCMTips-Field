@@ -2,6 +2,8 @@
  * Console Property and UI Test Suite for Phase 4 (Task T4.070 / PR4.09, SCR4.08-SCR4.13, TC4.164).
  */
 
+import { describe, expect, test } from "vitest";
+
 describe("Phase 4 3D Viewer & Console Explorer Properties", () => {
   /**
    * PR4.09: Exploded View offsets are strictly linear: p(t) = p0 + t * v for all t in [0, 1].

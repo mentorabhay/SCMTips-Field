@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any
+
 import psycopg
+
 from field_api.config import settings
 
 DATABASE_URL = (
@@ -14,7 +16,7 @@ DATABASE_URL = (
 )
 
 
-def get_conn(db_url: Optional[str] = None) -> psycopg.Connection[Any]:
+def get_conn(db_url: str | None = None) -> psycopg.Connection[Any]:
     """Return a psycopg3 database connection with autocommit disabled."""
     url = (db_url or DATABASE_URL).replace("postgresql+psycopg://", "postgresql://").replace("@localhost:", "@127.0.0.1:")
     return psycopg.connect(url, autocommit=False)

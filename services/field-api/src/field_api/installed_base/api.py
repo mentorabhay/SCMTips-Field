@@ -12,11 +12,11 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Any, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from typing import Any
+
 import psycopg
 import structlog
-
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from field_api.deps import Principal, require_principal
 
 logger = structlog.get_logger(__name__)
@@ -36,10 +36,10 @@ DATABASE_URL = (
 @router.get("", response_model=dict[str, Any])
 async def get_installed_base(
     request: Request,
-    serial: Optional[str] = Query(None, description="Equipment serial number filter"),
-    site_id: Optional[str] = Query(None, description="Site UUID filter"),
+    serial: str | None = Query(None, description="Equipment serial number filter"),
+    site_id: str | None = Query(None, description="Site UUID filter"),
     principal: Principal = Depends(require_principal),
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
     """GET /v1/installed-base: Query installed base by serial or site_id (API4.18)."""
     # Validate filter requirement: serial or site_id required

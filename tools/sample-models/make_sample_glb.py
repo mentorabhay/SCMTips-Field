@@ -9,10 +9,11 @@ from __future__ import annotations
 import json
 import struct
 from pathlib import Path
+from typing import Any
 
 
 def create_glb_binary(
-    nodes: list[dict[str, any]],
+    nodes: list[dict[str, Any]],
     triangle_count: int = 12,
     has_external_uri: bool = False,
 ) -> bytes:
@@ -41,7 +42,7 @@ def create_glb_binary(
         })
         scene_nodes.append(idx)
 
-    buffer_dict = {
+    buffer_dict: dict[str, Any] = {
         "byteLength": len(bin_data),
     }
     if has_external_uri:

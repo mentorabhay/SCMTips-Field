@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -33,7 +33,7 @@ def sign_off_audit_task(
     tenant_id: str,
     task_id: str,
     signed_by: str,
-    waiver_reason: Optional[str] = None,
+    waiver_reason: str | None = None,
     supervisor_waiver: bool = False,
 ) -> dict[str, Any]:
     """Execute audit task sign-off if all lines are satisfied or waived."""

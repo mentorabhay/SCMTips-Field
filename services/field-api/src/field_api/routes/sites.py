@@ -9,9 +9,9 @@ from pydantic import BaseModel, Field
 
 from field_api.auth.jwt import Principal
 from field_api.common import InProcessStore
+from field_api.db import get_conn
 from field_api.deps import require_permission, require_principal
 from field_api.errors import ERR_NOT_FOUND
-from field_api.db import get_conn
 from field_api.http.etag import generate_etag, verify_if_match
 from field_api.http.pagination import PaginatedResponse, encode_cursor, get_page_params
 

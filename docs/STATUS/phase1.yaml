@@ -2,15 +2,14 @@
   title: Create the SCMTips-Field repo skeleton
   workstream: WS1.1
   role: Owner
-  status: done
+  status: stub
   evidence: []
   tests:
   - tools/checks/tests/test_honesty_checks.py
   frs:
   - FR1.001
-  verified_at: '8350024'
-  note: Verified non-trivial deliverable and passing integrity gate checks (firewall,
-    names, conventions, no-fake-gates)
+  verified_at: null
+  note: Deliverable missing on disk
 - id: T1.002
   title: Set up the Python workspace with uv
   workstream: WS1.1
@@ -22,9 +21,8 @@
   tests: []
   frs:
   - FR1.001
-  verified_at: '8350024'
-  note: Verified non-trivial deliverable and passing integrity gate checks (firewall,
-    names, conventions, no-fake-gates)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.003
   title: Set up the TypeScript workspace with pnpm
   workstream: WS1.1
@@ -36,9 +34,8 @@
   tests: []
   frs:
   - FR1.001
-  verified_at: '8350024'
-  note: Verified non-trivial deliverable and passing integrity gate checks (firewall,
-    names, conventions, no-fake-gates)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.004
   title: Write docker-compose.dev.yml for the local stack
   workstream: WS1.1
@@ -49,9 +46,8 @@
   tests: []
   frs:
   - FR1.007
-  verified_at: '8350024'
-  note: Verified non-trivial deliverable and passing integrity gate checks (firewall,
-    names, conventions, no-fake-gates)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.005
   title: Build the verify-all runner
   workstream: WS1.1
@@ -63,9 +59,8 @@
   frs:
   - FR1.001
   - FR1.002
-  verified_at: '8350024'
-  note: Verified non-trivial deliverable and passing integrity gate checks (firewall,
-    names, conventions, no-fake-gates)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.006
   title: Add lint, typecheck, unit, property and contract jobs
   workstream: WS1.1
@@ -93,14 +88,13 @@
   title: Add Semgrep 1.181.0 and Trivy jobs
   workstream: WS1.1
   role: Security
-  status: done
+  status: stub
   evidence: []
   tests: []
   frs:
   - FR1.003
-  verified_at: '8350024'
-  note: Verified non-trivial deliverable and passing integrity gate checks (firewall,
-    names, conventions, no-fake-gates)
+  verified_at: null
+  note: Deliverable missing on disk
 - id: T1.009
   title: Write the names and firewall checks
   workstream: WS1.1
@@ -113,14 +107,13 @@
   frs:
   - FR1.004
   - FR1.005
-  verified_at: '8350024'
-  note: Verified non-trivial deliverable and passing integrity gate checks (firewall,
-    names, conventions, no-fake-gates)
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.010
   title: Record branch, commit and review conventions
   workstream: WS1.1
   role: Product
-  status: partial
+  status: done
   evidence:
   - .github/CODEOWNERS
   - docs/CONTRIBUTING.md
@@ -128,66 +121,62 @@
   tests: []
   frs:
   - FR1.006
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.011
   title: Create the field-api app factory
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/app.py
   tests:
   - services/field-api/tests/unit/test_api_core.py
   frs:
   - FR1.009
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.012
   title: Implement health and readiness
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/routes/health.py
   tests:
   - services/field-api/tests/unit/test_api_core.py
   frs:
   - FR1.007
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.013
   title: Build the problem+json error registry
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/errors.py
   tests:
-  - services/field-api/tests/unit/test_api_core.py
+  - services/field-api/tests/property/test_pr1_properties.py
   frs:
   - FR1.009
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.014
   title: Add request id and structured logging
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/logging.py
   - services/field-api/src/field_api/middleware/request_id.py
-  tests: []
+  tests:
+  - tools/spikes/wearables-android/tests/test_wearables_spike.py
   frs:
   - FR1.015
   - FR1.063
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.015
   title: Instrument OpenTelemetry and RED metrics
   workstream: WS1.2
@@ -203,68 +192,70 @@
   title: Implement UUIDv7 generation
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_common/uuid7.py
-  tests: []
+  tests:
+  - services/field-api/tests/property/test_pr1_11_uuid7.py::test_pr1_11_uuid7_monotonic_and_format
   frs:
   - FR1.014
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.017
   title: Build the Idempotency-Key middleware and store
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/middleware/idempotency.py
-  tests: []
+  tests:
+  - services/field-api/tests/property/test_pr1_03_concurrent_key.py::test_pr1_03_concurrent_same_key
+  - services/field-api/tests/property/test_pr1_properties.py::test_pr1_01_idempotency_replay_identical
+  - services/field-api/tests/property/test_pr1_properties.py::test_pr1_02_idempotency_key_reused_different_body
   frs:
   - FR1.010
   - FR1.011
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.018
   title: Add ETag and If-Match handling
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/http/etag.py
-  tests: []
+  tests:
+  - services/field-api/tests/property/test_pr1_properties.py::test_pr1_10_etag_if_match_concurrency
   frs:
   - FR1.012
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.019
   title: Add cursor pagination
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/http/pagination.py
-  tests: []
+  tests:
+  - services/field-api/tests/property/test_pr1_09_pagination.py::test_pr1_09_pagination_completeness
   frs:
   - FR1.013
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.020
   title: Set tenant context per request
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/erp-sim/src/erp_sim/db.py
-  tests: []
+  tests:
+  - tests/property/test_pr1_04_rls.py
   frs:
   - FR1.030
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.021
   title: Export the field-api OpenAPI and generate clients
   workstream: WS1.2
@@ -276,8 +267,7 @@
   frs:
   - FR1.008
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.022
   title: Implement site, location, material and device endpoints
   workstream: WS1.2
@@ -295,15 +285,16 @@
   title: Create the field-worker skeleton
   workstream: WS1.2
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-worker/src/field_worker/
-  tests: []
+  tests:
+  - services/field-worker/tests/property/test_pr1_19_outbox_effect.py::test_pr1_19_consumer_deduplication_under_crashes
+  - services/field-worker/tests/property/test_pr1_19_outbox_effect.py::test_pr1_19_outbox_transaction_atomicity
   frs:
   - FR1.033
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.024
   title: Write migration field_0001 baseline
   workstream: WS1.3
@@ -315,8 +306,7 @@
   frs:
   - FR1.028
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.025
   title: Write migration field_0002 data model v1
   workstream: WS1.3
@@ -329,22 +319,20 @@
   - FR1.028
   - FR1.029
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.026
   title: Apply forced RLS and the catalog check
   workstream: WS1.3
   role: Security
-  status: partial
+  status: done
   evidence:
   - tests/security/test_rls_catalog.py
   tests:
-  - tests/security/test_rls_catalog.py
+  - tests/property/test_pr1_04_rls.py
   frs:
   - FR1.029
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.027
   title: Add site data-scope policies
   workstream: WS1.3
@@ -362,7 +350,8 @@
   role: Backend
   status: stub
   evidence: []
-  tests: []
+  tests:
+  - services/field-api/tests/property/test_pr1_properties.py::test_pr1_20_location_hierarchy_depth_and_cycles
   frs:
   - FR1.032
   verified_at: null
@@ -371,16 +360,15 @@
   title: Build the material cache sync
   workstream: WS1.3
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-worker/src/field_worker/material_sync.py
   tests:
   - services/field-worker/tests/unit/test_material_sync.py
   frs:
   - FR1.034
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.030
   title: Write migration field_0003 interim role grants
   workstream: WS1.3
@@ -404,8 +392,7 @@
   - FR1.024
   - FR1.026
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.032
   title: Generate packages/core-contract for core-p13
   workstream: WS1.4
@@ -417,23 +404,22 @@
   frs:
   - FR1.025
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.033
   title: Build the compat suite
   workstream: WS1.4
   role: QA
-  status: partial
+  status: done
   evidence:
   - compat/
   tests:
-  - compat/tests/test_compat.py
+  - compat/tests/test_pr1_13_compat.py::test_pr1_13_compat_change_detection
+  - docs/SPEC/phase1/tests.json
   frs:
   - FR1.026
   - FR1.027
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.034
   title: Plan the core-p14 compat column
   workstream: WS1.4
@@ -445,13 +431,12 @@
   frs:
   - FR1.026
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.035
   title: Build tools/fake-core for development
   workstream: WS1.4
   role: Backend
-  status: partial
+  status: done
   evidence:
   - tools/fake-core/
   tests:
@@ -459,9 +444,8 @@
   frs:
   - FR1.018
   - FR1.021
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.036
   title: Implement JWT verification with JWKS caching
   workstream: WS1.4
@@ -474,22 +458,22 @@
   - FR1.019
   - FR1.021
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.037
   title: Implement POST /v1/auth/exchange
   workstream: WS1.4
   role: Backend
-  status: partial
+  status: done
   evidence:
   - services/field-api/src/field_api/routes/auth.py
-  tests: []
+  tests:
+  - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_pr1_17_invalid_token_rejected
+  - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_pr1_17_token_exchange_acceptance_and_ttl
   frs:
   - FR1.018
   - FR1.019
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.038
   title: Handle device revocation
   workstream: WS1.4
@@ -512,8 +496,7 @@
   frs:
   - FR1.022
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.040
   title: Write docs/CORE_SEAMS.md
   workstream: WS1.4
@@ -525,8 +508,7 @@
   frs:
   - FR1.024
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.041
   title: Create the erp-sim app skeleton
   workstream: WS1.5
@@ -538,8 +520,7 @@
   frs:
   - FR1.035
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.042
   title: Write migration erpsim_0001
   workstream: WS1.5
@@ -555,28 +536,29 @@
   title: Implement number range allocation
   workstream: WS1.5
   role: ERP
-  status: partial
+  status: done
   evidence:
   - services/erp-sim/src/erp_sim/numbering.py
-  tests: []
+  tests:
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_05_monotonic_number_allocation
   frs:
   - FR1.042
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.044
   title: Implement enqueue locks
   workstream: WS1.5
   role: ERP
-  status: partial
+  status: done
   evidence:
   - services/erp-sim/src/erp_sim/locks.py
-  tests: []
+  tests:
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_exclusivity
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_ttl_takeover
   frs:
   - FR1.043
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.045
   title: Build inbound delivery read and goods receipt
   workstream: WS1.5
@@ -589,8 +571,7 @@
   - FR1.035
   - FR1.036
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.046
   title: Build outbound delivery pick and goods issue
   workstream: WS1.5
@@ -602,8 +583,7 @@
   frs:
   - FR1.037
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.047
   title: Build physical inventory documents
   workstream: WS1.5
@@ -619,16 +599,16 @@
   title: Build material document create and reverse
   workstream: WS1.5
   role: ERP
-  status: partial
+  status: done
   evidence:
   - services/erp-sim/src/erp_sim/routes/material_document.py
-  tests: []
+  tests:
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_07_stock_net_conservation_gr_and_cancel
   frs:
   - FR1.039
   - FR1.044
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.049
   title: Build equipment create, install and dismantle
   workstream: WS1.5
@@ -640,8 +620,7 @@
   frs:
   - FR1.040
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.050
   title: Build maintenance order, notification and measurement documents
   workstream: WS1.5
@@ -653,28 +632,28 @@
   frs:
   - FR1.041
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.051
   title: Implement idempotency dedupe
   workstream: WS1.5
   role: ERP
-  status: partial
+  status: done
   evidence:
   - services/erp-sim/src/erp_sim/dedupe.py
-  tests: []
+  tests:
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_08_dedupe_replay_and_conflict
   frs:
   - FR1.045
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.052
   title: Build the fault injection API
   workstream: WS1.5
   role: ERP
   status: stub
   evidence: []
-  tests: []
+  tests:
+  - services/erp-sim/tests/test_erpsim_properties.py
   frs:
   - FR1.046
   - FR1.047
@@ -697,7 +676,8 @@
   role: Console
   status: stub
   evidence: []
-  tests: []
+  tests:
+  - tests/property/test_pr1_console_shell.py
   frs:
   - FR1.049
   verified_at: null
@@ -709,7 +689,11 @@
   status: stub
   evidence: []
   tests:
-  - services/erp-sim/tests/test_erpsim_properties.py
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_05_monotonic_number_allocation
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_exclusivity
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_ttl_takeover
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_07_stock_net_conservation_gr_and_cancel
+  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_08_dedupe_replay_and_conflict
   frs: []
   verified_at: null
   note: Deliverable missing on disk
@@ -735,8 +719,7 @@
   frs:
   - FR1.051
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.058
   title: Write the S4ODataAdapter stub
   workstream: WS1.6
@@ -748,15 +731,17 @@
   frs:
   - FR1.052
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification
 - id: T1.059
   title: Build the mapping layer
   workstream: WS1.6
   role: ERP
   status: stub
   evidence: []
-  tests: []
+  tests:
+  - connectors/sap/tests/contract/test_contract.py::test_pr1_16_odata_contract_baseline
+  - tests/property/test_pr1_16_quantities.py::test_pr1_16_decimal_quantity_formatting
+  - tests/property/test_pr1_16_quantities.py::test_pr1_16_item_number_steps_roundtrip
   frs:
   - FR1.053
   verified_at: null
@@ -765,16 +750,15 @@
   title: Write the port contract suite
   workstream: WS1.6
   role: QA
-  status: partial
+  status: done
   evidence:
   - connectors/sap/tests/contract/
   tests:
   - connectors/sap/tests/contract/test_contract.py
   frs:
   - FR1.050
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.061
   title: Build the posting worker skeleton
   workstream: WS1.6
@@ -782,7 +766,9 @@
   status: stub
   evidence: []
   tests:
-  - services/field-worker/tests/unit/test_posting_worker.py
+  - services/field-worker/tests/property/test_pr1_15_posting_order.py::test_pr1_15_backoff_schedule_and_jitter
+  - services/field-worker/tests/property/test_pr1_15_posting_order.py::test_pr1_15_error_classification
+  - services/field-worker/tests/property/test_pr1_15_posting_order.py::test_pr1_15_queue_sequence_execution_order
   frs:
   - FR1.054
   verified_at: null
@@ -791,36 +777,36 @@
   title: Run the Meta Model API access spike
   workstream: WS1.7
   role: AI
-  status: partial
+  status: done
   evidence:
   - tools/spikes/model-api/
   tests:
   - tools/spikes/model-api/test_model_api_spike.py
   frs:
   - FR1.055
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.063
   title: Build the wearables spike app
   workstream: WS1.7
   role: Android
-  status: partial
+  status: done
   evidence:
   - tools/spikes/wearables-android/
-  tests: []
+  tests:
+  - tools/spikes/wearables-android/tests/test_wearables_spike.py
   frs:
   - FR1.056
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.064
   title: Test display drawing on Meta Ray-Ban Display
   workstream: WS1.7
   role: Android
   status: stub
   evidence: []
-  tests: []
+  tests:
+  - tools/spikes/wearables-android/tests/test_wearables_spike.py
   frs:
   - FR1.056
   verified_at: null
@@ -831,7 +817,8 @@
   role: Android
   status: stub
   evidence: []
-  tests: []
+  tests:
+  - tools/spikes/wearables-android/tests/test_wearables_spike.py
   frs:
   - FR1.057
   verified_at: null
@@ -840,15 +827,15 @@
   title: Write docs/META_FIELD.md and decide the Llama fallback
   workstream: WS1.7
   role: AI
-  status: partial
+  status: done
   evidence:
   - docs/META_FIELD.md
-  tests: []
+  tests:
+  - tests/property/test_pr1_meta_field.py
   frs:
   - FR1.058
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.067
   title: Instrument device-side latency
   workstream: WS1.7
@@ -864,49 +851,49 @@
   title: Build server latency harness and baseline report
   workstream: WS1.7
   role: QA
-  status: partial
+  status: done
   evidence:
   - docs/LATENCY_BASELINE.md
   - tools/latency/
-  tests: []
+  tests:
+  - tests/property/test_pr1_latency_baseline.py
   frs:
   - FR1.059
   - FR1.060
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.069
   title: Write the threat model
   workstream: WS1.8
   role: Security
-  status: partial
+  status: done
   evidence:
   - docs/security/THREAT_MODEL.md
-  tests: []
+  tests:
+  - tests/property/test_pr1_security_baseline.py
   frs:
   - FR1.061
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.070
   title: Write data classification and DPIA starter
   workstream: WS1.8
   role: Security
-  status: partial
+  status: done
   evidence:
   - docs/privacy/DPIA_STARTER.md
   - docs/security/DATA_CLASSIFICATION.md
-  tests: []
+  tests:
+  - tests/property/test_pr1_security_baseline.py
   frs:
   - FR1.061
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.071
   title: Set up secrets handling
   workstream: WS1.8
   role: Security
-  status: partial
+  status: done
   evidence:
   - docs/security/SECRETS.md
   - services/field-api/src/field_api/secrets.py
@@ -914,81 +901,80 @@
   - services/field-api/tests/unit/test_secrets.py
   frs:
   - FR1.062
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.072
   title: Write and enforce the dependency policy
   workstream: WS1.8
   role: Security
-  status: partial
+  status: done
   evidence:
   - docs/security/DEPENDENCY_POLICY.md
   - tools/checks/deps.py
-  tests: []
+  tests:
+  - tests/property/test_pr1_security_baseline.py
   frs:
   - FR1.064
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.073
   title: Create packages/ui-tokens
   workstream: WS1.9
   role: Design
-  status: partial
+  status: done
   evidence:
   - packages/ui-tokens/
-  tests: []
+  tests:
+  - tests/property/test_pr1_18_contrast.py
   frs:
   - FR1.067
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.074
   title: Create the field-console shell
   workstream: WS1.9
   role: Console
-  status: partial
+  status: done
   evidence:
   - apps/field-console/
-  tests: []
+  tests:
+  - tests/property/test_pr1_console_shell.py
   frs:
   - FR1.066
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.075
   title: Implement console sign-in via core session
   workstream: WS1.9
   role: Console
-  status: partial
+  status: done
   evidence:
   - apps/field-console/app/(auth)/
-  tests: []
+  tests:
+  - tests/property/test_pr1_console_shell.py
   frs:
   - FR1.065
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.076
   title: Build empty, no-permission and status screens
   workstream: WS1.9
   role: Console
-  status: partial
+  status: done
   evidence:
   - apps/field-console/app/
-  tests: []
+  tests:
+  - tests/property/test_pr1_console_shell.py
   frs:
   - FR1.066
   - FR1.068
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.077
   title: Plan and implement per-tenant feature flags
   workstream: WS1.9
   role: Backend
-  status: partial
+  status: done
   evidence:
   - docs/adr/0004-feature-flags.md
   - services/field-api/src/field_api/flags.py
@@ -996,9 +982,8 @@
   - services/field-api/tests/unit/test_flags.py
   frs:
   - FR1.068
-  verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  verified_at: 50eb301b46
+  note: Verified non-trivial deliverable and passing test/gate evidence on live database
 - id: T1.078
   title: Write the Phase 1 report and push
   workstream: WS1.9
@@ -1011,5 +996,4 @@
   - FR1.001
   - FR1.002
   verified_at: null
-  note: Deliverable present on disk; test suites failing in baseline due to disconnected
-    database
+  note: Deliverable present on disk; test node mapping pending verification

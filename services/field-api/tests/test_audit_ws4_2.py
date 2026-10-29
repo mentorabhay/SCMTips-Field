@@ -17,21 +17,20 @@ Covers:
 """
 
 import hashlib
-import json
 import uuid
-from datetime import UTC, datetime
-import pytest
-from hypothesis import given, settings, strategies as st
 
-from field_api.db import get_conn
+import pytest
 from field_api.audit.generate import generate_audit_task
-from field_api.serials import normalise_serial, get_class_pattern
+from field_api.db import get_conn
+from field_api.serials import normalise_serial
 from field_worker.jobs.nameplate_verify import (
+    NameplateVerifyService,
     evaluate_verify_routing,
     validate_model_name,
-    NameplateVerifyService,
 )
 from field_worker.verify.router import FieldContributorModelConfig
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 
 @pytest.fixture

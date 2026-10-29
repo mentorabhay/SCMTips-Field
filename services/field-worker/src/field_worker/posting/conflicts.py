@@ -14,10 +14,10 @@ import json
 import os
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
+
 import psycopg
 import structlog
-
 from field_common.uuid7 import uuid7_str
 
 logger = structlog.get_logger(__name__)
@@ -36,7 +36,7 @@ def is_queue_held(
     tenant_id: str,
     queue_key: str,
     db_url: str = DATABASE_URL,
-    cur: Optional[Any] = None,
+    cur: Any | None = None,
 ) -> bool:
     """Check if a specific tower posting queue is currently held due to a conflict (PR4.12 / TC4.152)."""
     def _exec(c: Any) -> bool:
@@ -68,7 +68,7 @@ def check_and_handle_replay_conflict(
     equipment_no: str,
     serial_no: str,
     operation: str,
-    expected_precondition_fl: Optional[str],
+    expected_precondition_fl: str | None,
     current_erp_state: dict[str, Any],
     db_url: str = DATABASE_URL,
 ) -> dict[str, Any]:
@@ -154,7 +154,8 @@ def check_and_handle_replay_conflict(
                     }),
                 ),
             )
-            actual_case_id = str(cur.fetchone()[0])
+            case_row = cur.fetchone()
+            actual_case_id = str(case_row[0]) if case_row else str(case_id)
 
             # 2. Hold tower queue in field.queue_hold
             cur.execute(

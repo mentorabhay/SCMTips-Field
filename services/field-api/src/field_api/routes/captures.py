@@ -310,7 +310,7 @@ async def get_capture(
         raise ERR_NOT_FOUND
 
     ev = EVIDENCE_STORE.get(principal.tenant_id, capture_id)
-    s3_uri = ev.get("crop_s3_uri") if ev else "s3://field-crops/placeholder.jpg"
+    s3_uri = str(ev.get("crop_s3_uri")) if ev and ev.get("crop_s3_uri") else "s3://field-crops/placeholder.jpg"
 
     return CaptureResponse(
         id=rec["id"],

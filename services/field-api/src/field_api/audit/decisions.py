@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -40,8 +40,8 @@ def submit_mismatch_decision(
     finding_id: str,
     decider_id: str,
     decision: str,
-    note: Optional[str] = None,
-    capturing_technician_id: Optional[str] = None,
+    note: str | None = None,
+    capturing_technician_id: str | None = None,
 ) -> dict[str, Any]:
     """Submit a decision for an unresolved audit finding with SoD and approval rules (API4.16)."""
     if decision not in ALLOWED_DECISIONS:
@@ -82,8 +82,8 @@ def submit_mismatch_decision(
             site_id = finding_row[2]
             current_status = finding_row[3]
             f_class = finding_row[4]
-            exp_serial = finding_row[5]
-            found_serial = finding_row[6]
+            finding_row[5]
+            finding_row[6]
 
             if current_status == "resolved":
                 raise MismatchAlreadyResolvedError()
@@ -91,7 +91,7 @@ def submit_mismatch_decision(
             # 2. Check if decision requires approval (update_erp, record_move)
             requires_approval = decision in ("update_erp", "record_move")
             new_status = "awaiting_approval" if requires_approval else "resolved"
-            approval_id: Optional[str] = None
+            approval_id: str | None = None
 
             if requires_approval:
                 approval_id = str(uuid.uuid4())
@@ -202,7 +202,7 @@ def approve_mismatch_decision(
             if not appr_row:
                 raise ValueError(f"FIELD-APPR-404: Approval {approval_id} not found or not pending")
 
-            task_id = str(appr_row[0])
+            str(appr_row[0])
 
             # 2. Update linked audit finding to resolved
             cur.execute(

@@ -186,7 +186,8 @@ async def poll_and_import_inbound_deliveries(
                         "SELECT count(*) FROM field.capture WHERE tenant_id = %s AND task_line_id = %s;",
                         (tenant_id, line_id),
                     )
-                    capture_count = cur.fetchone()[0]
+                    cnt_row = cur.fetchone()
+                    capture_count = int(cnt_row[0]) if cnt_row else 0
 
                     if capture_count > 0 or captured_qty > 0 or counted_qty > 0:
                         # Conflict! Line already has captures; do NOT overwrite!

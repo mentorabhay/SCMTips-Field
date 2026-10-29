@@ -66,7 +66,7 @@ def parse_tasks(text: str) -> dict[int, list[dict[str, Any]]]:
         days_str = m.group(11).strip()
         deliverable = clean_html(m.group(12))
         done_when_raw = m.group(13)
-        
+
         # Extract referenced FRs from done_when
         frs = re.findall(r"FR[1-4]\.\d{3}", done_when_raw)
         done_when = clean_html(done_when_raw)
@@ -87,7 +87,7 @@ def parse_tasks(text: str) -> dict[int, list[dict[str, Any]]]:
             "estimate_days": days,
             "deliverable": deliverable,
             "done_when": done_when,
-            "frs": sorted(list(set(frs))),
+            "frs": sorted(set(frs)),
         }
         tasks_by_phase[phase].append(task_obj)
 

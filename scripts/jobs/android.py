@@ -42,7 +42,7 @@ def run_gradle_build() -> int:
 
     targets = ["assembleDebug", "testDebugUnitTest", "lintDebug"]
     print(f"Executing Gradle build targets: {' '.join(targets)}")
-    
+
     cmd = [str(gradlew_path)] + targets
     proc = subprocess.run(
         cmd,

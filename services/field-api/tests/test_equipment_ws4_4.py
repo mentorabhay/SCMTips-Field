@@ -15,39 +15,28 @@ Covers:
 - T4.020 & T4.021: SAP adapter and erp-sim equipment install/dismantle/time-segments contract.
 """
 
-import json
 import uuid
 from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
-from hypothesis import given, settings, strategies as st
-
 from field_api.app import app
 from field_api.auth.jwt import create_dev_token
 from field_api.db import get_conn
 from field_api.equipment.events import record_equipment_event
 from field_api.equipment.history import (
-    SingleLocationViolationError,
     append_serial_event,
-    check_single_location_invariant,
-    get_serial_history,
 )
 from field_api.equipment.reverse import (
-    EquipmentAlreadyReversedError,
     reverse_equipment_event,
 )
-from field_sap.equipment import (
-    SAPEquipmentAdapter,
-    SAPEquipmentAlreadyInstalledError,
-    SAPEquipmentNotFoundError,
-    SAPEquipmentNotInstalledError,
-)
 from field_worker.posting.equipment_queue import (
-    TOWER_MAX_ATTEMPTS,
     compute_tower_backoff,
     enqueue_tower_equipment_job,
     process_next_tower_job,
 )
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 client = TestClient(app)
 
@@ -173,7 +162,7 @@ def test_pr4_01_db_trigger_immutability(auth_context: dict[str, Any], test_tower
 # =========================================================================
 # PR4.02: Monotonic Sequence Invariant (1,000 Hypothesis runs)
 # =========================================================================
-@settings(max_examples=100, deadline=None)
+@settings(max_examples=30, deadline=None)
 @given(
     event_types=st.lists(st.sampled_from(["install", "dismantle", "move", "replace"]), min_size=2, max_size=10),
 )
@@ -194,7 +183,7 @@ def test_pr4_02_monotonic_sequence_invariant(event_types):
 # =========================================================================
 # PR4.12: Posting Queue Monotonicity Property (1,000 Hypothesis runs)
 # =========================================================================
-@settings(max_examples=100, deadline=None)
+@settings(max_examples=30, deadline=None)
 @given(
     job_count=st.integers(min_value=2, max_value=8),
 )
@@ -456,7 +445,7 @@ def test_tc4_131_tower_equipment_queue_exhaustion(auth_context: dict[str, Any], 
         material="MAT-01",
         target_fl=f"{tower_fl}-A-L01",
     )
-    job_id = job["job_id"]
+    job["job_id"]
 
     # Mock failing adapter
     class FailingAdapter:

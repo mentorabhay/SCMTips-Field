@@ -10,28 +10,20 @@ Covers:
 - API4.06, API4.07, API4.16: Reconcile, progress, and mismatch queue contract tests.
 """
 
-import json
 import uuid
 from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
-from hypothesis import given, settings, strategies as st
-
 from field_api.app import app
-from field_api.audit.decisions import (
-    MismatchAlreadyResolvedError,
-    SoDViolationError,
-    approve_mismatch_decision,
-    submit_mismatch_decision,
-)
 from field_api.audit.exceptions import open_and_deduplicate_exceptions
-from field_api.audit.findings_api import mark_item_missing, record_unknown_equipment
-from field_api.audit.mismatch_api import list_mismatches
-from field_api.audit.progress import calculate_completeness, get_audit_progress
-from field_api.audit.reconcile import classify_sets_symmetric, run_audit_reconciliation
+from field_api.audit.progress import calculate_completeness
+from field_api.audit.reconcile import classify_sets_symmetric
 from field_api.audit.signoff import AuditSignoffConflict, sign_off_audit_task
 from field_api.auth.jwt import create_dev_token
 from field_api.db import get_conn
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 client = TestClient(app)
 
@@ -235,7 +227,7 @@ def test_tc4_123_update_erp_decision_with_sod(auth_context: dict[str, Any], test
     task_id = test_audit_site["task_id"]
     site_id = test_audit_site["site_id"]
     capturing_tech = auth_context["tech_id"]
-    supervisor = auth_context["super_id"]
+    auth_context["super_id"]
 
     # Seed an open mismatch finding captured by technician Alice
     finding_id = str(uuid.uuid4())
@@ -434,7 +426,7 @@ def test_api4_07_progress_and_api4_06_reconcile(auth_context: dict[str, Any], te
     assert "completeness" in rec_data
 
     # Progress endpoint (API4.07)
-    resp_prog = client.post(
+    client.post(
         f"/v1/tasks/{task_id}/audit/reconcile",
         headers=auth_context["headers_super"],
     )

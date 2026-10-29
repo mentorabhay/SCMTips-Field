@@ -13,10 +13,10 @@ Seeds:
 
 from __future__ import annotations
 
-import json
 import os
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+
 import psycopg
 
 DATABASE_URL = (
@@ -38,7 +38,7 @@ CASE_1_ID = "018f4a10-0006-7000-8000-000000000006"
 CASE_2_ID = "018f4a10-0007-7000-8000-000000000007"
 
 
-def seed_all():
+def seed_all() -> None:
     print(f"Connecting to database to seed comprehensive demo data for tenant {TENANT_ID}...")
     with psycopg.connect(DATABASE_URL) as conn:
         with conn.cursor() as cur:

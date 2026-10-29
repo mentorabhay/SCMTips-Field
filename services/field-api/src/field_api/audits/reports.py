@@ -9,11 +9,10 @@ Exposes:
 
 from __future__ import annotations
 
-from typing import Any, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
-from pydantic import BaseModel, Field
-import structlog
+from typing import Any
 
+import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from field_api.auth.jwt import Principal
 from field_api.db import get_conn
 from field_api.deps import get_principal, require_principal
@@ -21,6 +20,7 @@ from field_worker.jobs.audit_report import (
     generate_audit_report,
     verify_signed_evidence_url,
 )
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
 
@@ -38,8 +38,8 @@ class AuditReportRequest(BaseModel):
 )
 def api_request_audit_report(
     task_id: str,
-    body: Optional[AuditReportRequest] = None,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    body: AuditReportRequest | None = None,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """API4.17: Generate audit findings report with authenticated evidence links."""
@@ -110,10 +110,10 @@ def api_get_audit_report_metadata(
 )
 def api_access_evidence(
     id: str,
-    tenant: Optional[str] = Query(None),
-    exp: Optional[int] = Query(None),
-    sig: Optional[str] = Query(None),
-    principal: Optional[Principal] = Depends(get_principal),
+    tenant: str | None = Query(None),
+    exp: int | None = Query(None),
+    sig: str | None = Query(None),
+    principal: Principal | None = Depends(get_principal),
 ) -> Response:
     """TC4.153: Evidence access gate. Requires either valid tenant bearer session OR valid HMAC signature."""
     # Case 1: Authenticated via bearer session

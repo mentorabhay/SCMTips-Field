@@ -7,11 +7,10 @@ with cursor pagination, crop URLs, OCR text, and ERP record linkage.
 from __future__ import annotations
 
 import base64
-import json
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -19,12 +18,12 @@ logger = structlog.get_logger(__name__)
 
 def list_mismatches(
     tenant_id: str,
-    site_id: Optional[str] = None,
-    finding_class: Optional[str] = None,
-    verify_status: Optional[str] = None,
-    min_age_h: Optional[int] = None,
+    site_id: str | None = None,
+    finding_class: str | None = None,
+    verify_status: str | None = None,
+    min_age_h: int | None = None,
     limit: int = 50,
-    cursor: Optional[str] = None,
+    cursor: str | None = None,
 ) -> dict[str, Any]:
     """List mismatch queue findings with filtering and cursor pagination (API4.16)."""
     with get_conn() as conn:

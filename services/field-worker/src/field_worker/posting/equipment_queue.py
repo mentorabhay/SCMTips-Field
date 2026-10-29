@@ -14,10 +14,10 @@ import json
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
+from typing import Any
+
 import psycopg
 import structlog
-
 from field_common.uuid7 import uuid7_str
 
 logger = structlog.get_logger(__name__)
@@ -50,8 +50,8 @@ def enqueue_tower_equipment_job(
     serial_no: str,
     material: str,
     target_fl: str,
-    idempotency_key: Optional[str] = None,
-    explicit_seq: Optional[int] = None,
+    idempotency_key: str | None = None,
+    explicit_seq: int | None = None,
     db_url: str = DATABASE_URL,
 ) -> dict[str, Any]:
     """Enqueue an ordered equipment posting job in field.posting_job (API4.08 / T4.022)."""
@@ -88,7 +88,8 @@ def enqueue_tower_equipment_job(
                     """,
                     (tenant_id, queue_key),
                 )
-                seq = cur.fetchone()[0]
+                seq_row = cur.fetchone()
+                seq = seq_row[0] if seq_row else 1
 
             cur.execute(
                 """
@@ -115,9 +116,9 @@ def enqueue_tower_equipment_job(
         conn.commit()
 
     return {
-        "job_id": str(row[0]),
+        "job_id": str(row[0]) if row else str(job_id),
         "queue_key": queue_key,
-        "seq": row[1],
+        "seq": row[1] if row else seq,
         "idempotency_key": idem_key,
         "status": "pending",
     }
@@ -129,7 +130,7 @@ def process_next_tower_job(
     adapter: Any = None,
     db_url: str = DATABASE_URL,
     ignore_backoff: bool = True,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Process the single next pending job in sequence order for the tower queue (PR4.12)."""
     now = datetime.now(UTC)
 

@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
-import structlog
+from datetime import UTC, datetime
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -27,9 +27,9 @@ def checkin_lone_worker(
     tenant_id: str,
     visit_id: str,
     user_id: str,
-    altitude_m: Optional[float] = None,
-    tower_fl: Optional[str] = None,
-    cur: Optional[Any] = None,
+    altitude_m: float | None = None,
+    tower_fl: str | None = None,
+    cur: Any | None = None,
 ) -> dict[str, Any]:
     """Record a lone-worker check-in, restarting the countdown timer (FR4.043 / PR4.19)."""
     now = datetime.now(UTC)
@@ -123,8 +123,8 @@ def acknowledge_lone_worker_escalation(
     tenant_id: str,
     visit_id: str,
     acknowledged_by: str,
-    notes: Optional[str] = None,
-    cur: Optional[Any] = None,
+    notes: str | None = None,
+    cur: Any | None = None,
 ) -> dict[str, Any]:
     """Acknowledge an escalated lone-worker visit from the supervisor console (SCR4.13 / FR4.044)."""
     now = datetime.now(UTC)
@@ -183,8 +183,8 @@ def acknowledge_lone_worker_escalation(
 
 def run_lone_worker_escalation_sweep(
     tenant_id: str,
-    current_time: Optional[datetime] = None,
-    cur: Optional[Any] = None,
+    current_time: datetime | None = None,
+    cur: Any | None = None,
 ) -> list[dict[str, Any]]:
     """Sweep active visits and transition to 'overdue' or 'escalated' (TC4.139 / FR4.044 / PR4.19)."""
     now = current_time or datetime.now(UTC)
@@ -267,24 +267,23 @@ def run_lone_worker_escalation_sweep(
                     })
 
             # Condition 2: Exceeded interval but within grace -> OVERDUE
-            elif elapsed_s > interval_s:
-                if status not in ("overdue", "escalated"):
-                    c.execute(
-                        """
+            elif elapsed_s > interval_s and status not in ("overdue", "escalated"):
+                c.execute(
+                    """
                         UPDATE field.site_visit
                         SET status = 'overdue',
                             updated_at = NOW()
                         WHERE id = %s;
                         """,
-                        (v_id,),
-                    )
-                    transitions.append({
-                        "visit_id": v_id,
-                        "site_code": site_code,
-                        "previous_status": status,
-                        "new_status": "overdue",
-                        "elapsed_min": round(elapsed_s / 60, 1),
-                    })
+                    (v_id,),
+                )
+                transitions.append({
+                    "visit_id": v_id,
+                    "site_code": site_code,
+                    "previous_status": status,
+                    "new_status": "overdue",
+                    "elapsed_min": round(elapsed_s / 60, 1),
+                })
 
         return transitions
 

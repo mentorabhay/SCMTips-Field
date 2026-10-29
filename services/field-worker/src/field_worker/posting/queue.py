@@ -165,7 +165,8 @@ def claim_next_job(
         # Attempt transactional advisory lock on queue_key
         lock_key_text = f"{tenant_id}:{q_key}"
         cur.execute("SELECT pg_try_advisory_xact_lock(hashtext(%s));", (lock_key_text,))
-        got_lock = cur.fetchone()[0]
+        lock_row = cur.fetchone()
+        got_lock = bool(lock_row[0]) if lock_row else False
         if not got_lock:
             continue
 

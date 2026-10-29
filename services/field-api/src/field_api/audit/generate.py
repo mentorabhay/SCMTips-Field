@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
-import structlog
+from typing import Any
 
+import structlog
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -20,9 +20,9 @@ logger = structlog.get_logger(__name__)
 def generate_audit_task(
     tenant_id: str,
     site_id: str,
-    assigned_to: Optional[str] = None,
-    due_at: Optional[datetime] = None,
-    snapshot_version: Optional[str] = None,
+    assigned_to: str | None = None,
+    due_at: datetime | None = None,
+    snapshot_version: str | None = None,
 ) -> dict[str, Any]:
     """Generate an audit task with task_line per installed equipment at the site."""
     task_id = str(uuid.uuid4())

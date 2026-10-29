@@ -148,9 +148,9 @@ def parse_and_preview_csv(
     auto_count = 0
     review_count = 0
 
-    for idx, r in enumerate(reader, start=1):
+    for idx, row_dict in enumerate(reader, start=1):
         # Case-insensitive column lookup
-        norm_r = {k.strip().lower(): v.strip() for k, v in r.items() if k}
+        norm_r = {k.strip().lower(): v.strip() for k, v in row_dict.items() if k}
 
         deliv = norm_r.get(col_map.delivery_document.lower(), f"CSV-{idx:04d}")
         item_no = int(norm_r.get(col_map.item_no.lower(), idx * 10))

@@ -11,13 +11,11 @@ Provides:
 from __future__ import annotations
 
 import json
-import uuid
-from datetime import UTC, datetime
-from typing import Any, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from pydantic import BaseModel, Field
-import structlog
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
+import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from field_api.db import get_conn
 from field_api.deps import Principal, require_principal
 from field_api.safety.lone_worker import (
@@ -25,6 +23,7 @@ from field_api.safety.lone_worker import (
     checkin_lone_worker,
     run_lone_worker_escalation_sweep,
 )
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
 
@@ -34,9 +33,9 @@ router = APIRouter(tags=["Safety & Climb Sessions"])
 class SafetyEventItem(BaseModel):
     device_seq: int = Field(..., description="Monotonic per-device event sequence number")
     type: str = Field(..., description="Event type: state_changed, harness_confirmed, checkpoint_reached, check_in, climb_safe_activated, etc.")
-    altitude_m: Optional[float] = Field(None, description="Current barometric altitude in meters")
+    altitude_m: float | None = Field(None, description="Current barometric altitude in meters")
     occurred_at: str = Field(..., description="ISO 8601 timestamp when event occurred")
-    payload: Optional[dict[str, Any]] = Field(default_factory=dict, description="Additional context")
+    payload: dict[str, Any] | None = Field(default_factory=dict, description="Additional context")
 
 
 class ClimbEventsUploadRequest(BaseModel):
@@ -44,12 +43,12 @@ class ClimbEventsUploadRequest(BaseModel):
 
 
 class AcknowledgeRequest(BaseModel):
-    notes: Optional[str] = Field(None, description="Optional supervisor acknowledgment notes")
+    notes: str | None = Field(None, description="Optional supervisor acknowledgment notes")
 
 
 class CheckInRequest(BaseModel):
-    altitude_m: Optional[float] = Field(None, description="Current altitude in meters")
-    tower_fl: Optional[str] = Field(None, description="Current tower functional location code")
+    altitude_m: float | None = Field(None, description="Current altitude in meters")
+    tower_fl: str | None = Field(None, description="Current tower functional location code")
 
 
 @router.post(
@@ -60,7 +59,7 @@ class CheckInRequest(BaseModel):
 def upload_climb_session_events(
     visit_id: str,
     req: ClimbEventsUploadRequest,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """Upload summarized climb safety events enforcing strict device sequence (API4.15 / FR4.067)."""
@@ -98,7 +97,8 @@ def upload_climb_session_events(
                 "SELECT COALESCE(MAX(device_seq), 0) FROM field.climb_safety_event WHERE tenant_id = %s AND visit_id = %s;",
                 (t_id, visit_id),
             )
-            max_existing_seq = cur.fetchone()[0]
+            row = cur.fetchone()
+            max_existing_seq = int(row[0]) if row else 0
 
             min_incoming_seq = sorted_events[0].device_seq
             if min_incoming_seq > (max_existing_seq + 1):
@@ -321,7 +321,7 @@ def api_list_active_safety_visits(
     status_code=status.HTTP_200_OK,
 )
 def api_trigger_lone_worker_sweep(
-    time_offset_min: Optional[int] = Query(0, description="Virtual minute offset for testing time advance"),
+    time_offset_min: int | None = Query(0, description="Virtual minute offset for testing time advance"),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
     """Execute sweep of active visits and escalate overdue workers (TC4.139)."""

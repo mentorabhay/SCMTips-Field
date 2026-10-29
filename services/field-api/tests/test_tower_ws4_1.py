@@ -17,24 +17,20 @@ Covers:
 """
 
 import json
-import math
 import uuid
-import httpx
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import httpx
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
-
 from field_api.app import app
 from field_api.auth.jwt import create_dev_token
-from field_api.sites.fl_mask import validate_fl_code
 from field_api.sites.import_service import apply_fl_import_job, stage_fl_import
 from field_api.sites.import_validate import validate_import_staging_rows
 from field_api.visits.api import haversine_distance_m
 from field_sap.equipment_read import EquipmentReader
-from field_sap.fl_import import FunctionalLocationReader
 from field_worker.jobs.fl_import import run_fl_delta_import
 
 DATABASE_URL = "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field"
@@ -381,7 +377,7 @@ def test_tc4_107_checkin_inside_geofence(auth_headers):
     payload = {
         "user_id": str(uuid.uuid4()),
         "permit_ref": "PERMIT-VALID-2026-001",
-        "permit_valid_until": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+        "permit_valid_until": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
         "lat": 12.9719,
         "lon": 77.5946,
         "accuracy_m": 12.0,
@@ -415,7 +411,7 @@ def test_tc4_108_checkin_expired_permit(auth_headers):
         "user_id": str(uuid.uuid4()),
         "permit_ref": "PERMIT-EXPIRED-2026",
         # Expired yesterday
-        "permit_valid_until": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+        "permit_valid_until": (datetime.now(UTC) - timedelta(days=1)).isoformat(),
         "lat": 12.9716,
         "lon": 77.5946,
         "accuracy_m": 10.0,
@@ -447,7 +443,7 @@ def test_tc4_109_supervisor_geofence_override(auth_headers):
     bad_payload = {
         "user_id": str(uuid.uuid4()),
         "permit_ref": "PERMIT-VALID-2026-002",
-        "permit_valid_until": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+        "permit_valid_until": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
         "lat": 12.9752,
         "lon": 77.5946,
         "accuracy_m": 15.0,
@@ -509,7 +505,7 @@ def test_tc4_110_checkout_with_unsynced_items(auth_headers):
     checkin_payload = {
         "user_id": str(uuid.uuid4()),
         "permit_ref": "PERMIT-VALID-2026-003",
-        "permit_valid_until": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+        "permit_valid_until": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
         "lat": 12.9716,
         "lon": 77.5946,
         "accuracy_m": 10.0,

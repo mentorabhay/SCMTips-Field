@@ -121,7 +121,7 @@ async def create_material_document(
         items_raw = doc_in.to_MaterialDocumentItem
         items_list: list[MaterialDocumentItemIn] = []
         if isinstance(items_raw, dict) and "results" in items_raw:
-            items_list = [MaterialDocumentItemIn(**i) for i in items_raw["results"]]
+            items_list = [i if isinstance(i, MaterialDocumentItemIn) else MaterialDocumentItemIn(**i) for i in items_raw["results"]]
         elif isinstance(items_raw, list):
             items_list = items_raw
 

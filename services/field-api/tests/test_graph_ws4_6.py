@@ -13,19 +13,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
-import pytest
-from hypothesis import given, settings, strategies as st
-from fastapi.testclient import TestClient
 
+import pytest
+from fastapi.testclient import TestClient
 from field_api.app import app
 from field_api.auth.jwt import create_dev_token
 from field_api.db import get_conn
-from field_api.equipment.events import record_equipment_event
 from field_api.equipment.history import append_serial_event
 from field_api.graph.guidance import generate_newcomer_guidance
 from field_api.graph.route3d import dijkstra_3d
-from field_api.trails.api import get_equipment_trail
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 client = TestClient(app)
 

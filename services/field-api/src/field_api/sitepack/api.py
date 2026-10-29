@@ -13,10 +13,10 @@ import hashlib
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
-import structlog
+from typing import Any
 
+import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from field_api.auth.jwt import Principal
 from field_api.db import get_conn
 from field_api.deps import require_principal
@@ -39,7 +39,7 @@ def _compute_sha256(data: bytes) -> str:
 )
 def api_get_site_pack(
     id: str,
-    if_none_match: Optional[str] = Header(None, alias="If-None-Match"),
+    if_none_match: str | None = Header(None, alias="If-None-Match"),
     principal: Principal = Depends(require_principal),
 ) -> Any:
     """API4.05: Generate signed offline site pack manifest with delta ETag support."""
@@ -235,7 +235,7 @@ def api_get_site_pack(
         },
     ]
 
-    total_size = sum(c["size_bytes"] for c in chunks)
+    total_size = sum(int(str(c["size_bytes"])) for c in chunks)
     # Enforce TC4.150: pack <= 60 MB
     if total_size > MAX_PACK_BYTES:
         raise HTTPException(

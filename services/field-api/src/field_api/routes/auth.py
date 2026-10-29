@@ -6,16 +6,19 @@ device binding fingerprint, device status and revocation; issues a field token
 roles and permissions.
 """
 
+import contextlib
+import os
 from datetime import UTC, datetime
 from typing import Any
 
 import httpx
+import jwt
 import structlog
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from field_api.auth.jwks import verify_core_jwt
-from field_api.auth.jwt import create_dev_token, verify_token
+from field_api.auth.jwt import create_dev_token
 from field_api.auth.permissions import expand_permissions
 from field_api.errors import (
     ERR_AUTH_UNAUTHORIZED,
@@ -51,23 +54,25 @@ async def exchange_token(request: ExchangeRequest) -> ExchangeResponse:
     now = int(datetime.now(UTC).timestamp())
     claims: dict[str, Any] = {}
 
-    # 1. Attempt JWKS verification first (T1.036)
-    try:
-        claims = await verify_core_jwt(request.device_token)
-    except Exception as e_jwks:
-        # Fallback to dev secret token verification (dev/offline mode)
+    # 1. Attempt JWKS verification if configured, otherwise fallback to local dev secret
+    if os.getenv("FIELD_CORE_JWKS_URL"):
+        with contextlib.suppress(Exception):
+            claims = await verify_core_jwt(request.device_token)
+
+    if not claims:
         try:
-            principal = verify_token(request.device_token)
-            claims = {
-                "sub": principal.id,
-                "tid": principal.tenant_id,
-                "roles": principal.roles,
-                "sites": principal.site_ids,
-                "did": principal.device_id,
-                "exp": now + 3600,
-            }
-        except Exception:
-            logger.warning("exchange_token_failed", error=str(e_jwks))
+            from field_api.auth.jwt import get_jwt_secret
+
+            claims = jwt.decode(
+                request.device_token,
+                get_jwt_secret(),
+                algorithms=["HS256", "RS256"],
+                audience="scmtips-field",
+                issuer="scmtips-core",
+                options={"verify_exp": True},
+            )
+        except Exception as e_dec:
+            logger.warning("exchange_token_failed", error=str(e_dec))
             raise ERR_AUTH_UNAUTHORIZED from None
 
     principal_id = str(claims.get("sub", ""))
@@ -78,11 +83,12 @@ async def exchange_token(request: ExchangeRequest) -> ExchangeResponse:
     core_exp = int(claims.get("exp", now + 600))
 
     # 2. Check Device Status & Revocation (T1.038)
-    if device_id:
+    core_url = os.getenv("CORE_API_URL")
+    if device_id and core_url:
         try:
-            # Query fake-core / core device status endpoint if available
-            async with httpx.AsyncClient(timeout=1.0) as client:
-                res = await client.get(f"http://127.0.0.1:8001/api/v1/devices/{device_id}/status")
+            # Query fake-core / core device status endpoint if configured
+            async with httpx.AsyncClient(timeout=0.2) as client:
+                res = await client.get(f"{core_url.rstrip('/')}/api/v1/devices/{device_id}/status")
                 if res.status_code == 200:
                     status_data = res.json()
                     if status_data.get("status") == "revoked":

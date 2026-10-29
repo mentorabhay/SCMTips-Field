@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from typing import Any, Optional
-import structlog
+from typing import Any
 
-from field_api.db import get_conn
+import structlog
 from field_api.audit.progress import calculate_completeness
+from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
 
@@ -22,10 +21,10 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class ReconcileItem:
     serial_no: str
-    location_id: Optional[str] = None
+    location_id: str | None = None
     equipment_class: str = "UNKNOWN"
-    capture_id: Optional[str] = None
-    reason: Optional[str] = None
+    capture_id: str | None = None
+    reason: str | None = None
 
 
 @dataclass
@@ -61,7 +60,7 @@ def classify_sets_symmetric(
 def run_audit_reconciliation(
     tenant_id: str,
     task_id: str,
-    tower_location_id: Optional[str] = None,
+    tower_location_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute reconciliation for a task, persist audit findings, and return API4.06 summary."""
     with get_conn() as conn:

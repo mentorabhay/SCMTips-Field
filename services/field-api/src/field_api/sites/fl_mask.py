@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 DEFAULT_MASK = os.environ.get("FIELD_FL_MASK", "IN01-TWR-nnnn[-Tnn[-Sx[-Lnn[-Pnn]]]]")
 
@@ -28,18 +27,18 @@ RE_RACK_SLOT = re.compile(r"^(?:S|SL)\d{2}$")
 class FlValidationResult:
     is_valid: bool
     code: str
-    kind: Optional[str] = None
-    parent_code: Optional[str] = None
-    short_code: Optional[str] = None
-    site_code: Optional[str] = None
-    sector_code: Optional[str] = None
-    level_num: Optional[int] = None
+    kind: str | None = None
+    parent_code: str | None = None
+    short_code: str | None = None
+    site_code: str | None = None
+    sector_code: str | None = None
+    level_num: int | None = None
     depth: int = 1
-    error_segment: Optional[str] = None
-    error_reason: Optional[str] = None
+    error_segment: str | None = None
+    error_reason: str | None = None
 
 
-def validate_fl_code(code: str, mask: Optional[str] = None) -> FlValidationResult:
+def validate_fl_code(code: str, mask: str | None = None) -> FlValidationResult:
     """Validate a functional location code and derive kind, parent, and attributes.
 
     Returns FlValidationResult with is_valid=True on success, or is_valid=False with
@@ -89,7 +88,6 @@ def validate_fl_code(code: str, mask: Optional[str] = None) -> FlValidationResul
 
     # Sub-elements
     remaining = segments[3:]
-    parent_code = site_part
 
     # Check if branch is Shelter or Tower
     first_sub = remaining[0]

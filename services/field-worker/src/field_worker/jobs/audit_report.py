@@ -17,13 +17,12 @@ import hmac
 import io
 import json
 import os
-import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
-from fastapi import HTTPException, status
+from typing import Any
+
 import psycopg
 import structlog
-
+from fastapi import HTTPException, status
 from field_common.uuid7 import uuid7_str
 
 logger = structlog.get_logger(__name__)
@@ -48,7 +47,7 @@ def generate_signed_evidence_url(
 ) -> str:
     """Generate tamper-proof signed evidence link scoped to tenant (TC4.153)."""
     expires_at = int((datetime.now(UTC) + timedelta(hours=expires_in_hours)).timestamp())
-    signature_payload = f"{tenant_id}:{evidence_id}:{expires_at}".encode("utf-8")
+    signature_payload = f"{tenant_id}:{evidence_id}:{expires_at}".encode()
     sig = hmac.new(EVIDENCE_HMAC_SECRET.encode("utf-8"), signature_payload, hashlib.sha256).hexdigest()
     return f"{base_url}/v1/evidence/{evidence_id}?tenant={tenant_id}&exp={expires_at}&sig={sig}"
 
@@ -65,7 +64,7 @@ def verify_signed_evidence_url(
     if now_ts > expires_at_timestamp:
         return False
 
-    signature_payload = f"{tenant_id}:{evidence_id}:{expires_at_timestamp}".encode("utf-8")
+    signature_payload = f"{tenant_id}:{evidence_id}:{expires_at_timestamp}".encode()
     expected_sig = hmac.new(EVIDENCE_HMAC_SECRET.encode("utf-8"), signature_payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected_sig, provided_signature)
 
@@ -74,7 +73,7 @@ def generate_audit_report(
     tenant_id: str,
     task_id: str,
     report_format: str = "csv",
-    created_by: Optional[str] = None,
+    created_by: str | None = None,
     db_url: str = DATABASE_URL,
 ) -> dict[str, Any]:
     """Generate audit report in CSV or PDF with authenticated evidence links (API4.17)."""
@@ -199,7 +198,7 @@ def generate_audit_report(
     elif report_format == "pdf":
         # Structured PDF document text representation
         pdf_lines = [
-            f"%PDF-1.4 - SCMTIPS FIELD AUDIT REPORT",
+            "%PDF-1.4 - SCMTIPS FIELD AUDIT REPORT",
             f"Task: {task_id} ({task_title}) | Site: {site_id}",
             f"Generated: {now.isoformat()} | Findings: {len(report_rows)}",
             "-" * 80,

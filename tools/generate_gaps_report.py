@@ -5,11 +5,12 @@ Reads docs/STATUS/phase{1..4}.yaml and docs/SPEC/phase{1..4}/*.json
 and generates docs/STATUS/GAPS.md.
 """
 
-from datetime import UTC, datetime
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-import yaml
+
+import yaml  # type: ignore[import-untyped]
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS_SPEC = ROOT / "docs" / "SPEC"
@@ -132,7 +133,7 @@ def main() -> int:
             st = entry["status"]
             if st == "done":
                 continue
-            t_spec = p["tasks_dict"].get(entry["id"], {})
+            p["tasks_dict"].get(entry["id"], {})
             fr_str = ", ".join(entry["frs"]) if entry["frs"] else "-"
             note = entry.get("note") or "Implementation incomplete against specification."
             md_lines.append(

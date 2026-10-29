@@ -181,6 +181,7 @@ def upgrade() -> None:
             storage_location text NOT NULL,
             status text NOT NULL DEFAULT 'open',
             header_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+            last_change_date_time timestamptz NOT NULL DEFAULT NOW(),
             created_at timestamptz NOT NULL DEFAULT NOW(),
             PRIMARY KEY (client, delivery_document)
         );
@@ -206,6 +207,7 @@ def upgrade() -> None:
             storage_location text NOT NULL,
             status text NOT NULL DEFAULT 'open',
             header_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+            last_change_date_time timestamptz NOT NULL DEFAULT NOW(),
             created_at timestamptz NOT NULL DEFAULT NOW(),
             PRIMARY KEY (client, delivery_document)
         );
