@@ -15,6 +15,7 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.types.Permission
 import com.meta.wearable.dat.core.types.PermissionStatus
+import com.scmtips.field.app.ui.CrashScreen
 import com.scmtips.field.app.ui.SliceActions
 import com.scmtips.field.app.ui.SliceApp
 import com.scmtips.field.app.ui.theme.SCMTipsFieldTheme
@@ -25,13 +26,16 @@ import kotlinx.coroutines.launch
  * an inbound delivery by glasses photo + voice, hear the ERP result.
  */
 class MainActivity : ComponentActivity() {
-    private val controller: SliceController get() = (application as FieldApplication).controller
+    private val app: FieldApplication get() = application as FieldApplication
+    private val controller: SliceController get() = app.controller
 
     private val androidPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        if (granted[Manifest.permission.BLUETOOTH_CONNECT] == true) {
-            Wearables.initialize(this)
-                .onSuccess { controller.glasses.startMonitoring() }
-                .onFailure { e, _ -> showToast("Glasses toolkit: ${e.description}") }
+        // The toolkit itself is initialised in FieldApplication.onCreate; here only start watching it.
+        val datError = app.datInitError
+        when {
+            datError != null -> showToast("Glasses toolkit: $datError")
+            granted[Manifest.permission.BLUETOOTH_CONNECT] == true -> controller.glasses.startMonitoring()
+            else -> showToast("Bluetooth permission is needed for the glasses")
         }
     }
 
@@ -43,7 +47,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Wearables.handleIntent(intent) { _ -> }
+        // A crash on the previous run: show it (copyable) instead of starting, so it can be reported
+        // without a USB cable or adb.
+        app.crashLog.read()?.let { report ->
+            setContent { SCMTipsFieldTheme { CrashScreen(report, onDismiss = { app.crashLog.clear(); recreate() }) } }
+            return
+        }
+        if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
         androidPermissions.launch(
             arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS),
         )
@@ -70,7 +80,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // Registration callback from the Meta AI app (scmtipsfield://...)
-        Wearables.handleIntent(intent) { _ -> }
+        if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
     }
 
     /** Glasses camera and microphone access are granted in the Meta AI app, one at a time. */

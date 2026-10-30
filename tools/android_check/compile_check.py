@@ -52,7 +52,7 @@ ROOTS = [  # the app's direct dependencies (versions as in gradle/libs.versions.
 ]
 APP = "app/src/main/kotlin/com/scmtips/field/app"
 SOURCES = [f"{APP}/{p}" for p in ("MainActivity.kt", "FieldApplication.kt", "SliceController.kt", "device/DeviceIo.kt",
-                                   "ui/SliceScreens.kt", "ui/theme/Theme.kt", "ui/theme/Color.kt",
+                                   "ui/SliceScreens.kt", "ui/CrashScreen.kt", "CrashLog.kt", "ui/theme/Theme.kt", "ui/theme/Color.kt",
                                    "glasses/DatGlasses.kt", "net/FieldHttp.kt", "slice/ReceiveFlow.kt",
                                    "slice/Pairing.kt")]
 MODULES = ("core-common", "core-voice", "core-wearables")

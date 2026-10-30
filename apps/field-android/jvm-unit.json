@@ -30,6 +30,7 @@
     "app/src/main/kotlin/com/scmtips/field/app/pairing/GlassesPairingManager.kt": "uses the Retrofit FieldApiService",
     "app/src/main/kotlin/com/scmtips/field/app/session/CaptureSessionService.kt": "android, androidx",
     "app/src/main/kotlin/com/scmtips/field/app/session/PowerGovernor.kt": "uses SessionController from RevocationHandler.kt",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/CrashScreen.kt": "androidx.compose, android.content",
     "app/src/main/kotlin/com/scmtips/field/app/ui/SliceScreens.kt": "androidx.compose",
     "app/src/main/kotlin/com/scmtips/field/app/ui/theme/Color.kt": "androidx",
     "app/src/main/kotlin/com/scmtips/field/app/ui/theme/Theme.kt": "androidx",

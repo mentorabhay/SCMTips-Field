@@ -211,6 +211,36 @@ jobs:
         working-directory: .
         run: scripts/ci/publish_logs.sh android "${{ job.status }}"
 
+  android-launch:
+    # Installs the APK on an Android 14 emulator and fails if the app does not stay up (first device
+    # test, 2026-10-31: the APK closed immediately on launch). Logcat + screenshot go to ci-logs.
+    needs: android
+    if: always() && needs.android.result != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: field-debug-apk
+          path: apk/
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Launch the APK on an emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d  # v2.38.0 (tag resolved via git ls-remote 2026-10-31)
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: scripts/ci/logged.sh launch-check bash scripts/ci/launch_check.sh apk/app-debug.apk
+      - name: Publish logs to ci-logs branch (agent-readable)
+        if: always()
+        run: scripts/ci/publish_logs.sh android-launch "${{ job.status }}"
+
   trace:
     needs: [backend, android]
     if: always()
