@@ -19,6 +19,13 @@ import pytest
 for _name in ("FIELD_JWT_SECRET", "FIELD_CURSOR_HMAC_SECRET", "FIELD_P13F_WEBHOOK_SECRET", "FIELD_EVIDENCE_SECRET"):
     os.environ.setdefault(_name, secrets.token_hex(32))
 
+# Same database roles locally as in CI (.github/workflows/ci.yml): the app and the tests that use
+# FIELD_DATABASE_URL connect as the NOBYPASSRLS application role, so RLS really applies. Without this a
+# local run fell back to the superuser in 15 test files and in 8 modules and hid RLS bugs that CI found.
+os.environ.setdefault("FIELD_DATABASE_URL", "postgresql://field_app:devpassword@127.0.0.1:5450/field")
+os.environ.setdefault("FIELD_WORKER_DATABASE_URL", "postgresql://field_worker:devpassword@127.0.0.1:5450/field")
+os.environ.setdefault("FIELD_ADMIN_DATABASE_URL", "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field")
+
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "unit: Unit tests (FR / basic logic / isolation)")

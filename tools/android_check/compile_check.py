@@ -4,7 +4,9 @@ Android 15 framework classes (Robolectric's android-all jar). No Android SDK lic
 
 What it proves: the Kotlin sources compile against the exact APIs (e.g. the DAT calls in DatGlasses.kt).
 What it does NOT prove: resources, manifest merge, dexing, lint, packaging or runtime behaviour - only a
-Gradle build (scripts/jobs/android.py, CI) does. Artifacts are cached in ~/.cache/scmtips-android-check.
+Gradle build (scripts/jobs/android.py, CI) does. It also compiles every source against ONE classpath, so
+a module that exposes a library type through `implementation` instead of `api` passes here and fails in
+Gradle (CI run 41096609521: core-outbox's retrofit2.Response was invisible to :app). Artifacts are cached in ~/.cache/scmtips-android-check.
 
     uv run python -m tools.android_check.compile_check          # the M1 slice
     uv run python -m tools.android_check.compile_check --all    # every module

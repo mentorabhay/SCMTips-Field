@@ -49,21 +49,40 @@ TEST_CLASS_RE = re.compile(r"^(?:internal\s+)?class\s+(\w+)", re.M)
 PACKAGE_RE = re.compile(r"^package\s+([\w.]+)", re.M)
 
 
+def _has_all_jars(lib: Path) -> bool:
+    return all(_jar_hits(lib, stem) for stem in {*COMPILER_JARS, *CLASSPATH_JARS})
+
+
 def gradle_lib() -> Path:
+    """The lib/ of a Gradle 8.x distribution that ships every jar this job needs.
+
+    Gradle 9 no longer bundles trove4j, and CI runners have a Gradle 9 on PATH next to the 8.14.3
+    that gradle/actions/setup-gradle installs, so the first gradle on PATH is not good enough: every
+    candidate is checked and the first complete one wins (it is printed in the log).
+    """
     env = os.environ.get("GRADLE_HOME")
     candidates = [Path(env) / "lib"] if env else []
     exe = shutil.which("gradle")
     if exe:
         candidates.append(Path(exe).resolve().parent.parent / "lib")
+    home = Path.home()
+    for pattern in ("gradle-installations/installs/gradle-8*/lib", ".gradle/wrapper/dists/gradle-8*-bin/*/gradle-8*/lib"):
+        candidates += sorted(home.glob(pattern), reverse=True)
+    candidates += sorted(Path("/opt").glob("gradle*/lib"), reverse=True)
     for c in candidates:
-        if (c / "plugins").is_dir() or any(c.glob("kotlin-compiler-embeddable-*.jar")):
+        if c.is_dir() and _has_all_jars(c):
             return c
-    raise SystemExit("[FAIL] no Gradle distribution found (set GRADLE_HOME or put gradle on PATH)")
+    tried = ", ".join(str(c) for c in candidates) or "none"
+    raise SystemExit(f"[FAIL] no Gradle distribution with kotlinc, trove4j and JUnit 4 jars (tried: {tried})")
+
+
+def _jar_hits(lib: Path, stem: str) -> list[Path]:
+    pat = re.compile(rf"^{re.escape(stem)}-\d[\w.\-]*\.jar$")
+    return sorted(p for d in (lib, lib / "plugins") if d.is_dir() for p in d.iterdir() if pat.match(p.name))
 
 
 def find_jar(lib: Path, stem: str) -> Path:
-    pat = re.compile(rf"^{re.escape(stem)}-\d[\w.\-]*\.jar$")
-    hits = sorted(p for d in (lib, lib / "plugins") if d.is_dir() for p in d.iterdir() if pat.match(p.name))
+    hits = _jar_hits(lib, stem)
     if not hits:
         raise SystemExit(f"[FAIL] {stem}-*.jar not found under {lib}")
     return hits[-1]
@@ -132,7 +151,7 @@ def main() -> int:
     if not classes:
         print("[FAIL] no JUnit test classes found")
         return 1
-    print(f"tool: kotlinc from {find_jar(lib, 'kotlin-compiler-embeddable').name}; {find_jar(lib, 'junit').name}")
+    print(f"tool: kotlinc from {find_jar(lib, 'kotlin-compiler-embeddable').name}; {find_jar(lib, 'junit').name} (gradle lib {lib})")
     subprocess.run([java, "-cp", compiler_cp, "org.jetbrains.kotlin.cli.jvm.K2JVMCompiler", "-version"], cwd=ROOT)
     print(f"sources: {len(main_src)} main, {len(test_src)} test; test classes: {len(classes)}")
     with tempfile.TemporaryDirectory() as tmp:

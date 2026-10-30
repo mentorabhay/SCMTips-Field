@@ -26,7 +26,7 @@ dependencies {
     implementation(libs.sqlcipher.android)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
-    implementation(libs.retrofit)
+    api(libs.retrofit) // FieldApiService returns retrofit2.Response, so consumers (app) need it on their compile classpath
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)

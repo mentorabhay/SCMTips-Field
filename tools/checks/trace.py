@@ -33,12 +33,14 @@ import glob
 import json
 import re
 import sys
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+# junit XML comes from CI artifacts: parse without external entities or XML bombs (semgrep XXE rule)
+from defusedxml.ElementTree import parse as safe_xml_parse
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 VALID = {"done", "partial", "stub", "missing", "deferred", "unverified"}
@@ -93,7 +95,10 @@ def load_evidence(root: Path, junit_globs: list[str]) -> Evidence:
     py_cache: dict[str, dict[str, tuple[str, bool]]] = {}
     kt_files = {p.stem: p for p in root.glob("apps/field-android/**/src/test/kotlin/**/*.kt")}
     for f in files:
-        for tc in ET.parse(f).getroot().iter("testcase"):
+        xml_root = safe_xml_parse(f).getroot()
+        if xml_root is None:
+            continue
+        for tc in xml_root.iter("testcase"):
             if any(child.tag in ("failure", "error", "skipped") for child in tc):
                 continue
             cls, name = tc.attrib.get("classname", ""), tc.attrib.get("name", "")

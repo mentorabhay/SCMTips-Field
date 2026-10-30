@@ -67,6 +67,7 @@ async def test_material_cache_sync_three_missed_cycles():
 
     # Check MAT-B is active
     with psycopg.connect(DATABASE_URL) as conn, conn.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true), set_config('app.site_ids', '*', true)", (tenant_id,))
         cur.execute(
             "SELECT deleted_in_erp_at FROM field.material WHERE tenant_id = %s AND erp_material_no = 'MAT-B';",
             (tenant_id,),
@@ -88,6 +89,7 @@ async def test_material_cache_sync_three_missed_cycles():
 
     # Verify in DB
     with psycopg.connect(DATABASE_URL) as conn, conn.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true), set_config('app.site_ids', '*', true)", (tenant_id,))
         cur.execute(
             "SELECT status, deleted_in_erp_at FROM field.material WHERE tenant_id = %s AND erp_material_no = 'MAT-B';",
             (tenant_id,),

@@ -44,6 +44,8 @@ dev = [
     "types-pyyaml>=6.0.12.20261030",
     "qrcode>=7.4",
     "types-qrcode>=8.2.0.20260518",
+    "defusedxml>=0.7.1",
+    "types-defusedxml>=0.7.0.20260504",
 ]
 
 [tool.uv.workspace]

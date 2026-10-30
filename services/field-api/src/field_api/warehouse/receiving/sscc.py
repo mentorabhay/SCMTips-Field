@@ -8,21 +8,14 @@ Validates:
 4. Attaches handling_unit to task_line.
 """
 
-import os
 from typing import Any
 
 import psycopg
+
+# The application role (NOBYPASSRLS), as every field-api module: RLS really applies.
+from field_api.db import DATABASE_URL  # noqa: E402
 from field_api.errors import FieldError
 from field_common.uuid7 import uuid7_str
-
-DATABASE_URL = (
-    os.getenv(
-        "FIELD_DATABASE_URL",
-        "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field",
-    )
-    .replace("postgresql+psycopg://", "postgresql://")
-    .replace("@localhost:", "@127.0.0.1:")
-)
 
 ERR_SSCC_INVALID_FORMAT = FieldError(
     status=400,

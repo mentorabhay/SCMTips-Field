@@ -22,11 +22,9 @@ from field_common.uuid7 import uuid7_str
 
 logger = structlog.get_logger(__name__)
 
+# The worker role (NOBYPASSRLS), as posting/queue.py: RLS really applies. (Was the superuser.)
 DATABASE_URL = (
-    os.getenv(
-        "FIELD_DATABASE_URL",
-        "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field",
-    )
+    os.getenv("FIELD_WORKER_DATABASE_URL", "postgresql://field_worker:devpassword@127.0.0.1:5450/field")
     .replace("postgresql+psycopg://", "postgresql://")
     .replace("@localhost:", "@127.0.0.1:")
 )

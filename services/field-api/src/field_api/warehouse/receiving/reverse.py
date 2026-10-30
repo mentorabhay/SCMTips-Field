@@ -8,21 +8,14 @@ Supports:
 """
 
 import json
-import os
 from typing import Any
 
 import psycopg
+
+# The application role (NOBYPASSRLS), as every field-api module: RLS really applies.
+from field_api.db import DATABASE_URL  # noqa: E402
 from field_common.uuid7 import uuid7_str
 from field_worker.posting import enqueue_posting_job
-
-DATABASE_URL = (
-    os.getenv(
-        "FIELD_DATABASE_URL",
-        "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field",
-    )
-    .replace("postgresql+psycopg://", "postgresql://")
-    .replace("@localhost:", "@127.0.0.1:")
-)
 
 
 def stage_goods_receipt_reversal(
@@ -49,7 +42,7 @@ def stage_goods_receipt_reversal(
     }
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
+        cur.execute("SELECT set_config('app.tenant_id', %s, false), set_config('app.site_ids', %s, false)", (str(tenant_id), str(site_id)))
 
         cur.execute(
             """
