@@ -266,34 +266,39 @@ def process_next_tower_job(
                         (str(uuid.uuid4()), tenant_id, str(job_id), json.dumps(err_event)),
                     )
 
-                    # Open S2 exception case
+                    # Open S2 exception case. In a savepoint: if it cannot be opened (e.g. the site was
+                    # deleted), the job must still end as failed instead of retrying forever.
                     if site_id:
-                        dedupe_key = f"{site_id}:{queue_key}:posting_exhausted"
-                        case_id = str(uuid.uuid4())
-                        subject_data = {"queue_key": queue_key, "job_id": str(job_id), "seq": seq}
-                        fact_data = {"error": str(e), "attempts": new_attempts}
+                        try:
+                            with conn.transaction():
+                                dedupe_key = f"{site_id}:{queue_key}:posting_exhausted"
+                                case_id = str(uuid.uuid4())
+                                subject_data = {"queue_key": queue_key, "job_id": str(job_id), "seq": seq}
+                                fact_data = {"error": str(e), "attempts": new_attempts}
 
-                        cur.execute(
-                            """
-                            INSERT INTO field.exception_case (
-                                id, tenant_id, site_id, type, dedupe_key,
-                                status, severity, subject, facts, rule_id, version
-                            ) VALUES (
-                                %s, %s, %s, 'tower_posting_failed', %s,
-                                'open', 'S2', %s, %s, 'RULE-EQUIP-QUEUE-001', 1
-                            )
-                            ON CONFLICT (tenant_id, dedupe_key) WHERE status <> 'closed'
-                            DO NOTHING;
-                            """,
-                            (
-                                case_id,
-                                tenant_id,
-                                site_id,
-                                dedupe_key,
-                                json.dumps(subject_data),
-                                json.dumps(fact_data),
-                            ),
-                        )
+                                cur.execute(
+                                    """
+                                    INSERT INTO field.exception_case (
+                                        id, tenant_id, site_id, type, dedupe_key,
+                                        status, severity, subject, facts, rule_id, version
+                                    ) VALUES (
+                                        %s, %s, %s, 'tower_posting_failed', %s,
+                                        'open', 'S2', %s, %s, 'RULE-EQUIP-QUEUE-001', 1
+                                    )
+                                    ON CONFLICT (tenant_id, dedupe_key) WHERE status <> 'closed'
+                                    DO NOTHING;
+                                    """,
+                                    (
+                                        case_id,
+                                        tenant_id,
+                                        site_id,
+                                        dedupe_key,
+                                        json.dumps(subject_data),
+                                        json.dumps(fact_data),
+                                    ),
+                                )
+                        except psycopg.Error:
+                            logger.exception("tower_exception_case_failed", job_id=str(job_id), site_id=str(site_id))
                     conn.commit()
 
                     return {
