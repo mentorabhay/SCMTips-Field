@@ -34,6 +34,8 @@ jobs:
       FIELD_ADMIN_DATABASE_URL: postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20   # conventions checks the last 10 commits
       - uses: astral-sh/setup-uv@v6
       - name: Init databases and roles
         run: psql -h 127.0.0.1 -p 5450 -U postgres -v ON_ERROR_STOP=1 -f tools/initdb/01-init.sql
@@ -58,6 +60,22 @@ jobs:
           uv run python tools/checks/firewall.py
           uv run python tools/checks/no_inmemory_stores.py
           uv run python tools/checks/test_exercises_prod.py
+          uv run python tools/checks/names.py
+          uv run python tools/checks/test_collection.py
+      - name: Conventions (branch + last 10 commits)
+        if: success() || failure()
+        run: uv run python tools/checks/conventions.py
+      - name: Semgrep (same rule packs as verify-all)
+        if: success() || failure()
+        run: uvx semgrep==1.181.0 --config p/python --config p/javascript --config p/typescript --config p/java --config p/secrets --error
+      - name: Trivy filesystem scan (trivy.yaml)
+        if: success() || failure()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0 (tag resolved via git ls-remote 2026-10-30)
+        with:
+          scan-type: fs
+          scan-ref: .
+          trivy-config: trivy.yaml
+          exit-code: "1"
       - name: Tests (all collected)
         if: always()
         run: uv run pytest -p no:cacheprovider --junitxml=reports/junit.xml
