@@ -9,6 +9,9 @@
     <!-- Only for the phone-microphone fallback; glasses speech needs the DAT MICROPHONE permission instead -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Tower check-in: the platform LocationManager (GPS + network), asked for at the check-in step -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <queries>
         <intent>

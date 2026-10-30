@@ -716,8 +716,10 @@
   frs:
   - FR4.045
   verified_at: null
-  note: TC4.141 logic passes on JVM; climb-safe is not wired into :app. Android module has never been built by Gradle (no
-    Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
+  note: 'TC4.141 logic passes on JVM; climb-safe is not wired into :app. Android module has never been built by Gradle (no Android SDK build has
+    run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py). M2 (2026-10-31): the app''s
+    climb-safe screen (dark, back disabled, screen kept on; climb_safe_activated / climb_safe_released events) starts from the ''Start climb''
+    button after the checklist, not from altitude: FR4.045 is not met by the app, and core-safety ClimbSafe is not wired.'
 - id: T4.044
   title: Build climb session telemetry API
   workstream: WS4.5

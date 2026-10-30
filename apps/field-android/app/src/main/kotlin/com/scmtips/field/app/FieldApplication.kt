@@ -6,7 +6,7 @@ import android.util.Log
 import com.meta.wearable.dat.core.Wearables
 import java.io.File
 
-/** Holds the single [SliceController] for the process (field-test slice; no DI framework needed). */
+/** Holds the single [FieldController] for the process (no DI framework needed). */
 class FieldApplication : Application() {
     val crashLog: CrashLog by lazy { CrashLog(File(filesDir, "last-crash.txt")) }
 
@@ -14,7 +14,7 @@ class FieldApplication : Application() {
     @Volatile var datInitError: String? = null
         private set
 
-    val controller: SliceController by lazy { SliceController(this) }
+    val controller: FieldController by lazy { FieldController(this) { datInitError } }
 
     override fun onCreate() {
         super.onCreate()

@@ -1,10 +1,10 @@
-"""Run the Android app's own HTTP client + receive flow (Kotlin, compiled for the JVM) against the
+"""Run the Android app's own HTTP client + job runner (Kotlin, compiled for the JVM) on a receive job against the
 live field-test stack: proves the phone's code path end to end without a phone or glasses.
 
     uv run python -m tools.dev_stack.stack up
     uv run python -m tools.android_check.drive_backend
 
-Compiles app/net/FieldHttp.kt, app/slice/*.kt, core-common, core-voice, core-wearables and the
+Compiles app/net/FieldHttp.kt, app/slice/*.kt, app/jobs/*.kt, core-common, core-voice, core-wearables, core-safety and the
 driver app/src/test/.../slice/BackendDriver.kt with Kotlin 2.2.21 against real OkHttp/kotlinx jars,
 creates a fresh inbound delivery in erp-sim, pairs like the QR does, and requires "RESULT: PASS"
 (the erp.posted live event for the posted goods receipt).
@@ -38,6 +38,7 @@ RUNTIME = [
 APP = ANDROID / "app" / "src"
 SOURCES = [APP / "main/kotlin/com/scmtips/field/app/net/FieldHttp.kt",
            *sorted((APP / "main/kotlin/com/scmtips/field/app/slice").glob("*.kt")),
+           *sorted((APP / "main/kotlin/com/scmtips/field/app/jobs").glob("*.kt")),
            APP / "test/kotlin/com/scmtips/field/app/slice/BackendDriver.kt"]
 
 
@@ -49,7 +50,7 @@ def main() -> int:
         return 1
     stdlib, coroutines = compiler[1], compiler[-1]
     srcs = [str(p) for p in SOURCES]
-    for m in ("core-common", "core-voice", "core-wearables"):
+    for m in ("core-common", "core-voice", "core-wearables", "core-safety"):
         srcs += [str(p) for p in sorted((ANDROID / m / "src/main/kotlin").rglob("*.kt"))]
     load_env()
     state = ensure_demo_site(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
@@ -72,7 +73,7 @@ def main() -> int:
     ok = "RESULT: PASS" in res.stdout
     if not ok:
         print(res.stderr[-2000:])
-    print(f"[{'PASS' if ok else 'FAIL'}] app HTTP client + receive flow against the live stack (delivery {deliv})")
+    print(f"[{'PASS' if ok else 'FAIL'}] app HTTP client + job runner (receive) against the live stack (delivery {deliv})")
     return 0 if ok else 1
 
 

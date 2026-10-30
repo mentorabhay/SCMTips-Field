@@ -1,25 +1,19 @@
 package com.scmtips.field.app.navigation
 
+/**
+ * The phone app's places (design Main.dc.html): connect once, then three tabs (Today, Scan, Me), and the
+ * one job runner drawn over them while a job is open. The crash report screen replaces all of them after
+ * a crash (MainActivity).
+ */
 sealed class Screen(val route: String, val title: String) {
-    object SignIn : Screen("sign-in", "Sign In")
-    object Permissions : Screen("permissions", "Permissions")
-    object Consent : Screen("consent", "Site Consent")
-    object Pair : Screen("pair", "Pair Glasses")
-    object Tasks : Screen("tasks", "Tasks")
-    object Session : Screen("session", "Capture Session")
-    object Outbox : Screen("outbox", "Outbox Queue")
-    object Settings : Screen("settings", "Settings")
+    object Connect : Screen("connect", "Connect")
+    object Today : Screen("today", "Today")
+    object Scan : Screen("scan", "Scan")
+    object Me : Screen("me", "Me")
+    object Job : Screen("job", "Job")
 
     companion object {
-        val allScreens = listOf(
-            SignIn,
-            Permissions,
-            Consent,
-            Pair,
-            Tasks,
-            Session,
-            Outbox,
-            Settings
-        )
+        val tabs: List<Screen> = listOf(Today, Scan, Me)
+        val allScreens: List<Screen> = listOf(Connect, Today, Scan, Me, Job)
     }
 }

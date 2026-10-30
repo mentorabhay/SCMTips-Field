@@ -14,7 +14,7 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import com.scmtips.field.app.slice.Speaker
+import com.scmtips.field.app.jobs.Speaker
 import com.scmtips.field.core.wearables.EarconCue
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Locale

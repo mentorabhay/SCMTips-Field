@@ -964,14 +964,29 @@
   title: Implement phone screens for warehouse tasks
   workstream: WS3.8
   role: Android
-  status: missing
-  evidence: []
-  tests: []
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/JobScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/TodayScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/ScanScreen.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::receive_touchFlowFollowsTheDesignSevenStepsAndPostsWithTouchConfirmation
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::putaway_scanPalletGoToBinWrongBinRefusedLocallyThenBinConfirmation
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::pick_stopsInOrderBinThenProductThenQuantityAndAShortPickIsFlagged
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::count_isBlind_wrongBinRefused_differenceGoesForApproval_fr3_029
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::recount_showsTheReasonAndCanBeLeftForLater
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::practice_runsTheReceiveJobLocallyWithTheBannerOnEveryStep
   frs:
   - FR3.061
   - FR3.062
   verified_at: null
-  note: No apps/field-android/feature/warehouse/phone module; no Maestro flow has run.
+  note: 'M2 (2026-10-31, owner choice Warehouse + Tower): the warehouse phone screens are the design''s one job runner (Main.dc.html) instead
+    of separate SCR3.02/SCR3.05/SCR3.07 screens in a feature/warehouse/phone module: receive, put-away, pick, count and recount run in app/jobs/JobRunner.kt
+    and render through ui/JobScreen.kt; Today lists the tasks. JobRunnerTest covers each step sequence, wrong-bin handling, the staged hash and
+    the request bodies on the JVM. Not done: no Gradle build of this code, no Maestro flow, no device run, never run against the M2 backend (confirmations,
+    the comma status filter and touch confirmation did not exist in field-api when written); pack/ship, reason pickers and wayfinding are not
+    built; FR3.062 offline staging is not implemented (no outbox: a failed call says ''cannot reach the PC''; a post retry reuses its Idempotency-Key).'
 - id: T3.065
   title: Implement offline behaviour for warehouse tasks
   workstream: WS3.8

@@ -20,13 +20,18 @@
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/navigation/Screen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/AppRoot.kt
   tests:
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/permissions/PermissionManagerTest.kt::fr2_006_permanentDenialOfCameraOrMicShowsMsg2_05AndSurvivesRefresh
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/permissions/PermissionManagerTest.kt::fr2_006_requestsTheSpecPermissions
   frs:
   - FR2.006
   verified_at: null
-  note: No Espresso navigation test and no cold-start measurement; app never built.
+  note: 'No Espresso navigation test and no cold-start measurement; app never built. M2 (2026-10-31): the M1 slice UI (SliceController, SliceScreens)
+    is replaced by the M2 design: Connect (3 numbered steps), Today / Scan / Me tabs and one job screen drawn over them (ui/AppRoot.kt, FieldController.kt);
+    navigation/Screen.kt now lists these places. tools/android_check/compile_check passes; no Gradle build of this code yet, no device run, no
+    Espresso test.'
 - id: T2.003
   title: Generate the Kotlin API client with interceptors
   workstream: WS2.1
@@ -162,13 +167,18 @@
   status: partial
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/pairing/GlassesPairingManager.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/ConnectScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/glasses/GlassesStatus.kt
   tests:
   - services/field-api/tests/test_ws2_6.py::test_t2_047_device_registration_and_pairing
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/home/TodayModelTest.kt::glassesHelpIsPlainEnglishWithOneNextStep
   frs:
   - FR2.003
   verified_at: null
-  note: 'Server pairing rules proven (test_ws2_6: second pairing needs replace=true). TC2.103 with Mock Device Kit
-    not run; GlassesPairingManager is Retrofit-bound and untested; DAT UNVERIFIED.'
+  note: 'Server pairing rules proven (test_ws2_6: second pairing needs replace=true). TC2.103 with Mock Device Kit not run; GlassesPairingManager
+    is Retrofit-bound and untested; DAT UNVERIFIED. M2 (2026-10-31): the Connect screen (double-click START FIELD TEST, wait for the code, scan
+    it) feeds the existing PairingPayload / FieldSession.registerPhone; Me shows the glasses state in plain English with one next step (GlassesHelp,
+    e.g. DAT ''No eligible device available'' -> ''Linked, but not awake ...''). Not run on a device.'
 - id: T2.013
   title: Handle disconnects and reconnects
   workstream: WS2.2
@@ -224,14 +234,19 @@
   status: partial
   evidence:
   - apps/field-android/core-wearables/src/main/kotlin/com/scmtips/field/core/wearables/audio/Readback.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/device/DeviceIo.kt
   tests:
   - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/AudioFeedbackTest.kt::fr2_012_readbackSpeaksStagedCountAndPushToTalkFlushesIt
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::receive_touchFlowFollowsTheDesignSevenStepsAndPostsWithTouchConfirmation
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::receive_nextSelectsTheNextUncountedLineAndRepeatAndWhatIsThisSpeak
   frs:
   - FR2.012
   verified_at: null
-  note: Readback/PTT flush logic proven (FR2.012). TC2.112 (device, 300 ms) not run; DAT UNVERIFIED. Gradle Android
-    build (the build of record, rule 2.1) has never run, so the module is not proven to compile or link as an Android
-    library.
+  note: 'Readback/PTT flush logic proven (FR2.012). TC2.112 (device, 300 ms) not run; DAT UNVERIFIED. Gradle Android build (the build of record,
+    rule 2.1) has never run, so the module is not proven to compile or link as an Android library. M2 (2026-10-31): every job step''s short prompt
+    (Glasses.dc.html) is spoken through the Speaker interface (TtsSpeaker on the phone; Bluetooth audio to the glasses); JobRunnerTest pins the
+    prompts. Never heard on real glasses.'
 - id: T2.017
   title: Build the Mock Device Kit test harness
   workstream: WS2.2
@@ -258,8 +273,9 @@
   frs:
   - FR2.008
   verified_at: null
-  note: CameraXSource returned a fake 2048-byte JPEG until C5; it now requires an injected still capture and contains
-    no CameraX code. TC2.165 not run.
+  note: 'CameraXSource returned a fake 2048-byte JPEG until C5; it now requires an injected still capture and contains no CameraX code. TC2.165
+    not run. M2 (2026-10-31): the app''s phone-camera scanner is Google''s code scanner (GmsBarcodeScanning in MainActivity.scanWithCamera, no
+    camera permission), not CameraX; this task''s CameraX source stays a stub.'
 - id: T2.019
   title: Run the owner hardware session
   workstream: WS2.2
@@ -638,14 +654,17 @@
   status: partial
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/VoiceEventRecorder.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRequests.kt
   tests:
   - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/VoiceEventRecorderTest.kt::fr2_038_everyUtteranceIsRecordedInOrderWithAllFields
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::receive_voiceFlowPostsOnlyAfterPostThenYesWithBothVoiceIds_fr2_033
   frs:
   - FR2.038
   verified_at: null
-  note: Recorder ordering proven (FR2.038). TC2.139 (Schemathesis contract run) has never been run. Gradle Android
-    build (the build of record, rule 2.1) has never run, so the module is not proven to compile or link as an Android
-    library.
+  note: 'Recorder ordering proven (FR2.038). TC2.139 (Schemathesis contract run) has never been run. Gradle Android build (the build of record,
+    rule 2.1) has never run, so the module is not proven to compile or link as an Android library. M2 (2026-10-31): the job runner records a voice
+    event (intent count / post / confirm) before each spoken count and both posting turns. JVM test only.'
 - id: T2.038
   title: Write voice property tests
   workstream: WS2.4

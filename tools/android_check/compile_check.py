@@ -1,4 +1,4 @@
-"""Type-check the M1 Android slice with the real Kotlin 2.2.21 compiler + Compose plugin against the real
+"""Type-check the Android app with the real Kotlin 2.2.21 compiler + Compose plugin against the real
 class files of every library it uses (Meta DAT 1.0.1, AndroidX, Compose, ML Kit, OkHttp...) and the
 Android 15 framework classes (Robolectric's android-all jar). No Android SDK licence is involved.
 
@@ -8,7 +8,7 @@ Gradle build (scripts/jobs/android.py, CI) does. It also compiles every source a
 a module that exposes a library type through `implementation` instead of `api` passes here and fails in
 Gradle (CI run 41096609521: core-outbox's retrofit2.Response was invisible to :app). Artifacts are cached in ~/.cache/scmtips-android-check.
 
-    uv run python -m tools.android_check.compile_check          # the M1 slice
+    uv run python -m tools.android_check.compile_check          # the app module and the modules it uses
     uv run python -m tools.android_check.compile_check --all    # every module
 """
 
@@ -51,10 +51,14 @@ ROOTS = [  # the app's direct dependencies (versions as in gradle/libs.versions.
     "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.9.0",
 ]
 APP = "app/src/main/kotlin/com/scmtips/field/app"
-SOURCES = [f"{APP}/{p}" for p in ("MainActivity.kt", "FieldApplication.kt", "SliceController.kt", "device/DeviceIo.kt",
-                                   "ui/SliceScreens.kt", "ui/CrashScreen.kt", "CrashLog.kt", "ui/theme/Theme.kt", "ui/theme/Color.kt",
-                                   "glasses/DatGlasses.kt", "net/FieldHttp.kt", "slice/ReceiveFlow.kt",
-                                   "slice/Pairing.kt")]
+SOURCES = [f"{APP}/{p}" for p in (
+    "MainActivity.kt", "FieldApplication.kt", "FieldController.kt", "CrashLog.kt",
+    "device/DeviceIo.kt", "device/PhoneLocation.kt", "glasses/DatGlasses.kt", "glasses/GlassesStatus.kt",
+    "net/FieldHttp.kt", "slice/Pairing.kt", "navigation/Screen.kt", "scan/WedgeBuffer.kt", "home/TodayModel.kt",
+    "jobs/JobModel.kt", "jobs/JobRequests.kt", "jobs/JobGrammar.kt", "jobs/JobRunner.kt", "jobs/Practice.kt", "jobs/ScanLookup.kt",
+    "ui/AppRoot.kt", "ui/Components.kt", "ui/ConnectScreen.kt", "ui/TodayScreen.kt", "ui/ScanScreen.kt", "ui/MeScreen.kt",
+    "ui/JobScreen.kt", "ui/CrashScreen.kt", "ui/theme/Theme.kt", "ui/theme/Color.kt",
+)]
 MODULES = ("core-common", "core-voice", "core-wearables", "core-safety")
 # --all: every module's main sources (the whole Gradle project, minus code generation such as Room/KSP)
 ALL_ROOTS = [
@@ -158,7 +162,7 @@ def main() -> int:
                "-d", str(Path(tmp) / "out"), *srcs, str(bc)]
         print(f"kotlinc {KOTLIN} + compose plugin; {len(libs)} library jars; {len(srcs)} sources")
         rc = subprocess.run(cmd, cwd=ROOT).returncode
-    what = "all modules" if everything else "M1 slice"
+    what = "all modules" if everything else "app"
     print(f"[{'PASS' if rc == 0 else 'FAIL'}] Android compile check, {what} (not a Gradle build)")
     return rc
 
