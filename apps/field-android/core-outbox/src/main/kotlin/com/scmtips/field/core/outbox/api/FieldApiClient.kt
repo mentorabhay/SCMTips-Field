@@ -14,6 +14,8 @@ import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.Path
 import java.util.concurrent.TimeUnit
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 interface FieldApiService {
 
@@ -132,11 +134,11 @@ class FieldApiClient(
             .addFormDataPart(
                 "metadata",
                 null,
-                metadataJson.toByteArray().let { okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), it) }
+                metadataJson.toByteArray().toRequestBody("application/json".toMediaTypeOrNull())
             )
 
         if (cropBytes != null) {
-            val imagePart = okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), cropBytes)
+            val imagePart = cropBytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
             requestBody.addFormDataPart("crop", "$idempotencyKey.jpg", imagePart)
         }
 
@@ -148,7 +150,7 @@ class FieldApiClient(
 
         return try {
             httpClient.newCall(request).execute().use { response ->
-                Pair(response.code(), response.body()?.string())
+                Pair(response.code, response.body?.string())
             }
         } catch (e: Exception) {
             Pair(0, e.message)
