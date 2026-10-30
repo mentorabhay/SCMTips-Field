@@ -1,221 +1,176 @@
-"""Voice Events, Count Records, and Confirmed Post Request Endpoints (Task T2.052 / FR2.038, FR2.050, FR2.055, TC2.133, TC2.162)."""
+"""Voice events, count records and the voice confirm gate (API2.12-2.14 / FR2.038, FR2.050, FR2.055).
 
-from datetime import UTC, datetime
-from typing import Any
+BRIEF §1.3: the system never posts on speech alone. A post request is accepted only when an accepted
+``post`` voice event is followed, on the same device and task, by an accepted ``confirm`` voice event
+within FIELD_CONFIRM_TIMEOUT_S (10 s), and the client's ``staged_hash`` equals the server's hash of
+exactly the lines being posted (so the operator confirmed what is posted). The posting itself is the
+same atomic staging as API3.06.
 
+staged_hash = sha256("|".join(sorted(f"{line_id}:{qty:.3f}"))) over the lines in the request, where
+qty is the line's counted (receive) or picked (pick) quantity on the server.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import os
+from datetime import datetime
+from decimal import Decimal
+from typing import Any, Literal
+
+import psycopg
 from fastapi import APIRouter, Depends, Header
-from field_common.uuid7 import uuid7_str
 from pydantic import BaseModel, Field
 
 from field_api.auth.jwt import Principal
-from field_api.common import InProcessStore
-from field_api.deps import require_principal
+from field_api.db import principal_tx
+from field_api.deps import require_permission
 from field_api.errors import FieldError
-from field_api.routes.live import emit_device_tick
+from field_api.tasks.api import ConfirmIn, CountIn, confirm_task, record_count
 
-router = APIRouter(prefix="/v1", tags=["Voice and Posting"])
+router = APIRouter(prefix="/v1", tags=["Voice and posting"])
 
-# In-memory stores
-VOICE_EVENTS_STORE: InProcessStore[dict[str, Any]] = InProcessStore[dict[str, Any]]()
-COUNT_RECORDS_STORE: InProcessStore[dict[str, Any]] = InProcessStore[dict[str, Any]]()
-POSTING_REQUESTS_STORE: InProcessStore[dict[str, Any]] = InProcessStore[dict[str, Any]]()
+VOICE_FLOOR = float(os.getenv("FIELD_VOICE_CONF_FLOOR", "0.80"))
+CONFIRM_TIMEOUT_S = float(os.getenv("FIELD_CONFIRM_TIMEOUT_S", "10"))
+ERR_NO_CONFIRM = FieldError(status=422, code="FIELD-POST-422-NO-CONFIRM", title="Confirm turn missing or invalid")
 
-ERR_CONFIRM_GATE_VIOLATION = FieldError(
-    status=400,
-    code="FIELD-POST-400-CONFIRM-REQUIRED",
-    title="Confirmation Gate Violation",
-    detail="Posting request rejected: requires an accepted 'confirm' voice event following 'post' within 10 seconds.",
-)
+
+def staged_hash(lines: list[tuple[str, Decimal]]) -> str:
+    return hashlib.sha256("|".join(sorted(f"{lid}:{Decimal(q):.3f}" for lid, q in lines)).encode()).hexdigest()
 
 
 class VoiceEventRequest(BaseModel):
     device_id: str
     task_id: str | None = None
     capture_id: str | None = None
-    transcript: str
+    transcript: str = Field(min_length=1, max_length=500)
     confidence: float = Field(..., ge=0.0, le=1.0)
-    intent: str
+    intent: str = Field(min_length=1, max_length=32)
     is_accepted: bool = True
-    locale: str = "en-US"
-    client_timestamp: str | None = None
+    locale: str = "en"
+    client_timestamp: datetime | None = None
 
 
-class VoiceEventResponse(BaseModel):
-    id: str
-    tenant_id: str
-    device_id: str
-    intent: str
-    is_accepted: bool
-    created_at: str
+@router.post("/voice-events", status_code=201)
+async def record_voice_event(
+    req: VoiceEventRequest,
+    principal: Principal = Depends(require_permission("field.capture.create")),
+) -> dict[str, Any]:
+    if principal.device_id and principal.device_id != req.device_id:
+        raise FieldError(status=403, code="FIELD-AUTH-401-BINDING", title="Device binding mismatch")
+    if req.is_accepted and req.confidence < VOICE_FLOOR:
+        raise FieldError(status=422, code="FIELD-VOICE-422-ACCEPTED-BELOW-FLOOR",
+                         title=f"Accepted voice event below {VOICE_FLOOR:.2f} confidence")
+    with principal_tx(principal) as cur:
+        cur.execute(
+            """
+            INSERT INTO field.voice_event (tenant_id, device_id, task_id, capture_id, transcript, confidence, intent,
+                   is_accepted, locale, client_timestamp)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, NOW())) RETURNING id, created_at
+            """,
+            (principal.tenant_id, req.device_id, req.task_id, req.capture_id, req.transcript, req.confidence,
+             req.intent, req.is_accepted, req.locale, req.client_timestamp),
+        )
+        row = cur.fetchone()
+    return {"id": str(row[0]), "created_at": row[1].isoformat()}
 
 
 class CountRecordRequest(BaseModel):
-    task_id: str
-    task_line_id: str | None = None
+    task_line_id: str
     capture_id: str | None = None
-    voice_event_id: str | None = None
-    quantity: float
-    unit: str = "EA"
-    is_reversal: bool = False
-
-
-class CountRecordResponse(BaseModel):
-    id: str
-    tenant_id: str
-    task_id: str
-    task_line_id: str | None = None
-    quantity: float
+    kind: Literal["count"] = "count"
+    value: Decimal = Field(ge=0)
     unit: str
-    is_reversal: bool
-    created_at: str
+    voice_event_id: str | None = None
+    source: Literal["voice", "scan", "manual"] = "voice"
 
 
-class PostRequestIn(BaseModel):
-    device_id: str
-    staged_payload: dict[str, Any]
+@router.post("/count-records", status_code=201)
+async def create_count_record(
+    req: CountRecordRequest,
+    principal: Principal = Depends(require_permission("field.count.create")),
+) -> dict[str, Any]:
+    if req.source == "voice" and req.value > 9999:
+        raise FieldError(status=422, code="FIELD-COUNT-422-RANGE", title="Voice count outside 0-9999")
+    confidence = None
+    with principal_tx(principal) as cur:
+        cur.execute("SELECT task_id FROM field.task_line WHERE id = %s::uuid", (req.task_line_id,))
+        row = cur.fetchone()
+        if not row:
+            raise FieldError(status=404, code="FIELD-HTTP-404-NOT-FOUND", title="Task line not found")
+        task_id = str(row[0])
+        cur.execute("SELECT status FROM field.task WHERE id = %s::uuid", (task_id,))
+        if (cur.fetchone() or ["completed"])[0] in ("completed", "cancelled"):
+            raise FieldError(status=410, code="FIELD-CAP-410-TASK-CLOSED", title="Task closed")
+        if req.voice_event_id:
+            cur.execute("SELECT confidence FROM field.voice_event WHERE id = %s::uuid AND is_accepted",
+                        (req.voice_event_id,))
+            v = cur.fetchone()
+            confidence = float(v[0]) if v else 0.0
+    out = record_count(
+        task_id, req.task_line_id,
+        CountIn(qty=req.value, uom=req.unit, source=req.source, confidence=confidence,
+                voice_event_id=req.voice_event_id, capture_id=req.capture_id),
+        principal,
+    )
+    return {"id": out["line_id"], **out}
+
+
+class PostRequest(BaseModel):
+    operation: Literal["post"] = "post"
+    lines: list[str] = Field(min_length=1)
+    staged_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     post_voice_event_id: str
     confirm_voice_event_id: str
-    is_reversal: bool = False
 
 
-class PostRequestResponse(BaseModel):
-    id: str
-    tenant_id: str
-    task_id: str
-    status: str
-    is_reversal: bool
-    created_at: str
-
-
-@router.post("/voice-events", response_model=VoiceEventResponse, status_code=201)
-async def record_voice_event(
-    req: VoiceEventRequest,
-    principal: Principal = Depends(require_principal),
-) -> VoiceEventResponse:
-    """Record recognized voice utterance without persisting audio (T2.052 / FR2.038)."""
-    event_id = uuid7_str()
-    now_iso = datetime.now(UTC).isoformat()
-
-    record = {
-        "id": event_id,
-        "tenant_id": principal.tenant_id,
-        "device_id": req.device_id,
-        "task_id": req.task_id,
-        "capture_id": req.capture_id,
-        "transcript": req.transcript,
-        "confidence": req.confidence,
-        "intent": req.intent,
-        "is_accepted": req.is_accepted,
-        "locale": req.locale,
-        "client_timestamp": req.client_timestamp or now_iso,
-        "created_at": now_iso,
-    }
-    VOICE_EVENTS_STORE.insert(principal.tenant_id, event_id, record)
-
-    return VoiceEventResponse(
-        id=event_id,
-        tenant_id=principal.tenant_id,
-        device_id=req.device_id,
-        intent=req.intent,
-        is_accepted=req.is_accepted,
-        created_at=now_iso,
-    )
-
-
-@router.post("/count-records", response_model=CountRecordResponse, status_code=201)
-async def record_count(
-    req: CountRecordRequest,
-    principal: Principal = Depends(require_principal),
-) -> CountRecordResponse:
-    """Record counted or read quantity linked to task line / capture (T2.052 / FR2.050, TC2.162)."""
-    count_id = uuid7_str()
-    now_iso = datetime.now(UTC).isoformat()
-
-    record = {
-        "id": count_id,
-        "tenant_id": principal.tenant_id,
-        "task_id": req.task_id,
-        "task_line_id": req.task_line_id,
-        "capture_id": req.capture_id,
-        "voice_event_id": req.voice_event_id,
-        "quantity": req.quantity,
-        "unit": req.unit,
-        "is_reversal": req.is_reversal,
-        "created_at": now_iso,
-    }
-    COUNT_RECORDS_STORE.insert(principal.tenant_id, count_id, record)
-
-    return CountRecordResponse(
-        id=count_id,
-        tenant_id=principal.tenant_id,
-        task_id=req.task_id,
-        task_line_id=req.task_line_id,
-        quantity=req.quantity,
-        unit=req.unit,
-        is_reversal=req.is_reversal,
-        created_at=now_iso,
-    )
-
-
-@router.post("/tasks/{task_id}/post-requests", response_model=PostRequestResponse, status_code=202)
+@router.post("/tasks/{task_id}/post-requests", status_code=202)
 async def submit_post_request(
     task_id: str,
-    req: PostRequestIn,
-    idempotency_key: str = Header(None, alias="Idempotency-Key"),
-    principal: Principal = Depends(require_principal),
-) -> PostRequestResponse:
-    """Submit confirmed posting request to ERP, strictly validating confirm turn (T2.052 / FR2.055, TC2.133, PR2.11)."""
-    post_ev = VOICE_EVENTS_STORE.get(principal.tenant_id, req.post_voice_event_id)
-    confirm_ev = VOICE_EVENTS_STORE.get(principal.tenant_id, req.confirm_voice_event_id)
-
-    # Validate confirm turn (10 second window)
-    if not post_ev or not confirm_ev:
-        raise ERR_CONFIRM_GATE_VIOLATION
-
-    if not post_ev.get("is_accepted") or not confirm_ev.get("is_accepted"):
-        raise ERR_CONFIRM_GATE_VIOLATION
-
-    if post_ev.get("intent") != "post" or confirm_ev.get("intent") != "confirm":
-        raise ERR_CONFIRM_GATE_VIOLATION
-
-    t_post = datetime.fromisoformat(post_ev["created_at"])
-    t_confirm = datetime.fromisoformat(confirm_ev["created_at"])
-    delta_sec = (t_confirm - t_post).total_seconds()
-
-    if delta_sec < 0 or delta_sec > 10.0:
-        raise ERR_CONFIRM_GATE_VIOLATION
-
-    post_req_id = idempotency_key or uuid7_str()
-    now_iso = datetime.now(UTC).isoformat()
-
-    record = {
-        "id": post_req_id,
-        "tenant_id": principal.tenant_id,
-        "task_id": task_id,
-        "device_id": req.device_id,
-        "staged_payload": req.staged_payload,
-        "post_voice_event_id": req.post_voice_event_id,
-        "confirm_voice_event_id": req.confirm_voice_event_id,
-        "status": "pending_erp",
-        "is_reversal": req.is_reversal,
-        "created_at": now_iso,
-    }
-    POSTING_REQUESTS_STORE.insert(principal.tenant_id, post_req_id, record)
-
-    # Push Live Channel tick
-    emit_device_tick(
-        tenant_id=principal.tenant_id,
-        device_id=req.device_id,
-        tick_type="posted",
-        task_id=task_id,
-        detail=f"Posting requested for task {task_id} (reversal={req.is_reversal})",
-    )
-
-    return PostRequestResponse(
-        id=post_req_id,
-        tenant_id=principal.tenant_id,
-        task_id=task_id,
-        status="pending_erp",
-        is_reversal=req.is_reversal,
-        created_at=now_iso,
-    )
+    req: PostRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    principal: Principal = Depends(require_permission("field.post.request")),
+) -> dict[str, Any]:
+    with principal_tx(principal) as cur:
+        cur.execute(
+            "SELECT id, device_id, task_id, intent, is_accepted, confidence, client_timestamp"
+            " FROM field.voice_event WHERE id = ANY(%s::uuid[])",
+            ([req.post_voice_event_id, req.confirm_voice_event_id],),
+        )
+        evs = {str(r[0]): r for r in cur.fetchall()}
+        post, conf = evs.get(req.post_voice_event_id), evs.get(req.confirm_voice_event_id)
+        if not post or not conf:
+            raise ERR_NO_CONFIRM
+        if not (post[3] == "post" and conf[3] == "confirm" and post[4] and conf[4]):
+            raise ERR_NO_CONFIRM
+        if post[1] != conf[1] or str(post[2]) != task_id or str(conf[2]) != task_id:
+            raise ERR_NO_CONFIRM
+        if principal.device_id and str(post[1]) != principal.device_id:
+            raise ERR_NO_CONFIRM
+        delta = (conf[6] - post[6]).total_seconds()
+        if not 0 <= delta <= CONFIRM_TIMEOUT_S:
+            raise ERR_NO_CONFIRM
+        cur.execute("SELECT 1 FROM field.erp_document WHERE payload->>'post_voice_event_id' = %s",
+                    (req.post_voice_event_id,))
+        if cur.fetchone():
+            raise FieldError(status=409, code="FIELD-POST-409-ALREADY-REQUESTED", title="Already requested")
+        cur.execute(
+            """
+            SELECT l.id, CASE WHEN t.type = 'pick' THEN l.picked_qty ELSE l.counted_qty END
+              FROM field.task_line l JOIN field.task t ON t.id = l.task_id
+             WHERE l.task_id = %s::uuid AND l.id = ANY(%s::uuid[])
+            """,
+            (task_id, req.lines),
+        )
+        rows = [(str(r[0]), Decimal(r[1])) for r in cur.fetchall()]
+        if len(rows) != len(set(req.lines)) or staged_hash(rows) != req.staged_hash:
+            raise FieldError(status=422, code="FIELD-POST-422-NO-CONFIRM", title="Staged lines changed",
+                             detail="staged_hash does not match the server's lines; re-read and confirm again")
+    try:
+        out = confirm_task(task_id, ConfirmIn(lines=req.lines), idempotency_key, principal,
+                           extra_payload={"post_voice_event_id": req.post_voice_event_id,
+                                          "confirm_voice_event_id": req.confirm_voice_event_id})
+    except psycopg.errors.UniqueViolation as e:  # concurrent request for the same voice turn
+        raise FieldError(status=409, code="FIELD-POST-409-ALREADY-REQUESTED", title="Already requested") from e
+    return {"posting_request_id": out["erp_document_id"], "status": "queued", "event": "posting.requested",
+            "queue_key": out["queue_key"]}

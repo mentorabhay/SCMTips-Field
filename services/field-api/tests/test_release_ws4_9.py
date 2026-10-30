@@ -34,7 +34,7 @@ def _auth_headers(
     token = create_dev_token(
         principal_id=user_id,
         tenant_id=tenant_id,
-        roles=roles or ["technician", "supervisor", "lead"],
+        roles=roles or ["field.technician", "field.supervisor"],  # real roles (old names granted nothing)
         site_ids=["*"],
     )
     return {

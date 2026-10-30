@@ -1,6 +1,7 @@
 """JWT Verification with JWKS Caching and Claims Parsing (Task T1.036 / PR1.17)."""
 
 import os
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -80,6 +81,7 @@ def verify_token(token: str) -> Principal:
 
         if not principal_id or not tenant_id:
             raise ERR_AUTH_UNAUTHORIZED
+        uuid.UUID(tenant_id)  # tenants are UUIDs (RLS casts app.tenant_id to uuid); anything else is refused
 
         permissions = expand_permissions(roles)
 

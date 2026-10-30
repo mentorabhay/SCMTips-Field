@@ -1,333 +1,267 @@
-"""Capture Ingest, Upload Presigning, Deduplication, and Task Line Matching (Tasks T2.049 - T2.051 / FR2.046, FR2.048, FR2.049, FR2.051)."""
+"""Capture ingest (API2.08-2.11 / T2.049-T2.051) on Postgres + a real crop store (C4).
+
+Replaces in-process stores, a fake S3 presign URL, a fabricated KMS key ARN, placeholder crop bytes
+and a test-only task-line dictionary.
+
+Flow: POST /v1/captures/uploads -> PUT /v1/captures/uploads/{id} (crop bytes, sha256 verified,
+<= 1 MB, 300 s) -> POST /v1/captures (metadata + crop_upload_id), or one multipart POST with the
+crop. Gates: device binding, site consent (FR2.064), on-device blur (FR2.022), duplicate per
+(task, code type, code) -> 409 with duplicate_of (FR2.048). Server-side association to a task line by
+SSCC, GTIN (GS1 AI 01), material number or expected serial (FR2.049). Emits capture.created to the
+outbox and a ``received`` live tick, in the same transaction.
+"""
+
+from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
-from field_common.uuid7 import uuid7_str
-from pydantic import BaseModel, Field
+from fastapi.responses import Response as RawResponse
+from psycopg.types.json import Jsonb
+from pydantic import BaseModel, Field, ValidationError
 
 from field_api.auth.jwt import Principal
-from field_api.common import InProcessStore
-from field_api.deps import require_principal
-from field_api.errors import ERR_NOT_FOUND, FieldError
+from field_api.crops import MAX_CROP_BYTES, CropStoreError, crop_store
+from field_api.db import principal_tx
+from field_api.deps import require_permission
+from field_api.errors import FieldError
 from field_api.routes.consents import has_active_consent
 from field_api.routes.live import emit_device_tick
+from field_api.rows import fetch_dict
 
 router = APIRouter(prefix="/v1/captures", tags=["Captures"])
 
-# Stores
-CAPTURES_STORE: InProcessStore[dict[str, Any]] = InProcessStore[dict[str, Any]]()
-EVIDENCE_STORE: InProcessStore[dict[str, Any]] = InProcessStore[dict[str, Any]]()
-UPLOADS_STORE: InProcessStore[dict[str, Any]] = InProcessStore[dict[str, Any]]()
-OUTBOX_EVENTS_STORE: list[dict[str, Any]] = []
-
-# Mock Task Lines Store for server-side matching (FR2.049)
-TASK_LINES_MOCK_STORE: dict[str, list[dict[str, Any]]] = {}
-
-# Custom Field Errors
-ERR_NO_CONSENT = FieldError(
-    status=403,
-    code="FIELD-CAP-403-NO-CONSENT",
-    title="Privacy Consent Required",
-    detail="Capture rejected: Site privacy and bystander consent has not been granted or was withdrawn.",
-)
-
-ERR_NO_BLUR = FieldError(
-    status=422,
-    code="FIELD-CAP-422-NO-BLUR",
-    title="Face Blur Required",
-    detail="Capture rejected: Images cannot be stored without on-device face blur applied.",
-)
-
-ERR_UPLOAD_EXPIRED = FieldError(
-    status=410,
-    code="FIELD-UPL-410-EXPIRED",
-    title="Upload Presign Expired",
-    detail="The presigned upload session has expired (> 300 s). Request a new upload session.",
-)
+UPLOAD_TTL = timedelta(seconds=300)
+RETENTION = timedelta(days=90)
+ERR_NO_CONSENT = FieldError(status=403, code="FIELD-CAP-403-NO-CONSENT", title="Privacy consent required")
+ERR_NO_BLUR = FieldError(status=422, code="FIELD-CAP-422-BLUR-MISSING", title="Face blur required")
+ERR_UPLOAD_EXPIRED = FieldError(status=410, code="FIELD-UPL-410-EXPIRED", title="Upload session expired")
+ERR_TOO_LARGE = FieldError(status=413, code="FIELD-CAP-413-CROP-TOO-LARGE", title="Crop above 1 MB")
+ERR_SHA = FieldError(status=422, code="FIELD-CAP-422-SHA256", title="Crop sha256 mismatch")
+ERR_CAP_404 = FieldError(status=404, code="FIELD-CAP-404", title="Capture not found or out of scope")
+ERR_UPL_404 = FieldError(status=404, code="FIELD-UPL-404", title="Upload not found")
+ERR_DEVICE = FieldError(status=403, code="FIELD-AUTH-401-BINDING", title="Device binding mismatch")
+GTIN_RE = re.compile(r"(?:^|\(01\)|^01)(\d{14})")
 
 
-class PresignUploadRequest(BaseModel):
+class UploadRequest(BaseModel):
     device_id: str
-    file_size_bytes: int = Field(..., gt=0, le=10 * 1024 * 1024)
-    sha256_hash: str
-
-
-class PresignUploadResponse(BaseModel):
-    crop_upload_id: str
-    upload_url: str
-    s3_key: str
-    expires_at: str
-    expires_in_seconds: int = 300
+    sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+    bytes: int = Field(gt=0)
+    content_type: str = Field("image/jpeg", pattern=r"^image/(jpeg|png|webp)$")
 
 
 class CaptureMetadata(BaseModel):
     device_id: str
-    task_id: str
+    task_id: str | None = None
     site_id: str
-    user_id: str = "user_default"
-    shutter_timestamp: int
-    blur_applied: bool = True
-    bystander_count: int = 0
-    code_type: str = "GS1_128"
-    code_value: str
-    readability: float = 0.95
-    rank_score: float = 0.88
+    shutter_timestamp: int = Field(ge=0)
+    blur_applied: bool
+    bystander_count: int = Field(0, ge=0)
+    code_type: str = Field(max_length=32)
+    code_value: str = Field(min_length=1, max_length=256)
+    object_class: str | None = Field(None, max_length=32)
+    confidence: float | None = Field(None, ge=0, le=1)
+    readability: float = Field(0.0, ge=0, le=1)
+    rank_score: float = Field(0.0, ge=0, le=1)
+    client_seq: int | None = None
+    look_id: str | None = None
+    location_id: str | None = None
     crop_upload_id: str | None = None
 
 
-class CaptureResponse(BaseModel):
-    id: str
-    tenant_id: str
-    task_id: str
-    device_id: str
-    code_type: str
-    code_value: str
-    task_line_id: str | None = None
-    on_task: bool
-    status: str
-    readability: float
-    rank_score: float
-    evidence_s3_uri: str
-    created_at: str
+def _bound_device(principal: Principal, device_id: str) -> None:
+    if principal.device_id and principal.device_id != device_id:
+        raise ERR_DEVICE
 
 
-@router.post("/uploads", response_model=PresignUploadResponse, status_code=201)
-async def create_presigned_upload(
-    req: PresignUploadRequest,
-    principal: Principal = Depends(require_principal),
-) -> PresignUploadResponse:
-    """Create presigned upload slot with 300 s expiry (T2.049 / FR2.046, TC2.140)."""
-    upload_id = uuid7_str()
-    now = datetime.now(UTC)
-    expires_at = now + timedelta(seconds=300)
-    s3_key = f"uploads/{principal.tenant_id}/{upload_id}.jpg"
+@router.post("/uploads", status_code=201)
+async def create_upload(
+    req: UploadRequest,
+    principal: Principal = Depends(require_permission("field.capture.create")),
+) -> dict[str, Any]:
+    _bound_device(principal, req.device_id)
+    if req.bytes > MAX_CROP_BYTES:
+        raise ERR_TOO_LARGE
+    expires = datetime.now(UTC) + UPLOAD_TTL
+    with principal_tx(principal) as cur:
+        cur.execute(
+            "INSERT INTO field.capture_upload (tenant_id, device_id, s3_key, expires_at, status)"
+            " VALUES (%s, %s, %s, %s, 'pending') RETURNING id",
+            (principal.tenant_id, req.device_id, f"pending:{req.sha256.lower()}", expires),
+        )
+        upload_id = str(cur.fetchone()[0])
+    return {"upload_id": upload_id, "put_url": f"/v1/captures/uploads/{upload_id}", "method": "PUT",
+            "expires_at": expires.isoformat()}
 
-    record = {
-        "id": upload_id,
-        "tenant_id": principal.tenant_id,
-        "device_id": req.device_id,
-        "s3_key": s3_key,
-        "expires_at": expires_at.isoformat(),
-        "status": "pending",
-        "created_at": now.isoformat(),
-    }
-    UPLOADS_STORE.insert(principal.tenant_id, upload_id, record)
 
-    return PresignUploadResponse(
-        crop_upload_id=upload_id,
-        upload_url=f"https://s3.amazonaws.com/field-crops/{s3_key}?signature=mock-presigned",
-        s3_key=s3_key,
-        expires_at=expires_at.isoformat(),
-        expires_in_seconds=300,
+@router.put("/uploads/{upload_id}", status_code=204)
+async def put_upload(
+    upload_id: str,
+    request: Request,
+    principal: Principal = Depends(require_permission("field.capture.create")),
+) -> RawResponse:
+    data = await request.body()
+    if len(data) > MAX_CROP_BYTES:
+        raise ERR_TOO_LARGE
+    with principal_tx(principal) as cur:
+        cur.execute("SELECT s3_key, expires_at, status, device_id FROM field.capture_upload WHERE id = %s::uuid"
+                    " FOR UPDATE", (upload_id,))
+        row = cur.fetchone()
+        if not row:
+            raise ERR_UPL_404
+        key, expires, status, device_id = row
+        _bound_device(principal, str(device_id))
+        if datetime.now(UTC) > expires:
+            raise ERR_UPLOAD_EXPIRED
+        try:
+            uri = crop_store().put(principal.tenant_id, data, key.removeprefix("pending:") if status == "pending" else None)
+        except CropStoreError as e:
+            raise ERR_SHA if str(e) == "sha256_mismatch" else ERR_TOO_LARGE from e
+        cur.execute("UPDATE field.capture_upload SET s3_key = %s, status = 'completed', uploaded_at = NOW()"
+                    " WHERE id = %s::uuid", (uri, upload_id))
+    return RawResponse(status_code=204)
+
+
+def _match_line(cur: Any, task_id: str | None, code: str) -> str | None:
+    if not task_id:
+        return None
+    gtin = GTIN_RE.search(code)
+    cur.execute(
+        """
+        SELECT l.id FROM field.task_line l LEFT JOIN field.material m ON m.id = l.material_id
+         WHERE l.task_id = %s::uuid AND l.status NOT IN ('posted', 'cancelled')
+           AND (l.sscc = %s OR m.erp_material_no = %s OR l.expected_serial = %s OR (%s::text IS NOT NULL AND m.gtin = %s))
+         ORDER BY l.line_no LIMIT 1
+        """,
+        (task_id, code, code, code, gtin.group(1) if gtin else None, gtin.group(1) if gtin else None),
     )
+    row = cur.fetchone()
+    return str(row[0]) if row else None
 
 
-@router.post("", response_model=CaptureResponse, status_code=201)
+CAP_COLS = ("id, tenant_id, site_id, device_id, task_id, task_line_id, code_type, code_value, on_task, status,"
+            " readability, rank_score, verify_status, blur_applied, bystander_count, shutter_timestamp, created_at")
+
+
+@router.post("", status_code=201)
 async def ingest_capture(
     request: Request,
-    response: Response,
-    metadata: str = Form(None),
-    crop: UploadFile = File(None),
-    principal: Principal = Depends(require_principal),
-) -> CaptureResponse:
-    """Ingest capture via multipart or JSON with crop_upload_id (T2.049 - T2.051 / FR2.046, FR2.048, FR2.049)."""
-    # Parse metadata from Form or JSON Body
-    if metadata:
-        meta_dict = json.loads(metadata)
-        meta = CaptureMetadata.model_validate(meta_dict)
-    else:
-        body_bytes = await request.body()
-        meta_dict = json.loads(body_bytes.decode("utf-8"))
-        meta = CaptureMetadata.model_validate(meta_dict)
-
-    # 1. Privacy Consent Gate (T2.048 / FR2.064, TC2.154)
-    # Check if consent is granted for (tenant, site, user, device)
-    # In dev/test environments without prior consent setup, check store
-    has_consent = has_active_consent(
-        principal.tenant_id, meta.site_id, meta.user_id, meta.device_id
-    )
-    if not has_consent:
-        # Check if consent was explicitly registered for this site
-        # If no consent at all is recorded, return 403 FIELD-CAP-403-NO-CONSENT
-        raise ERR_NO_CONSENT
-
-    # 2. Face Blur Verification (T2.049 / FR2.022)
+    metadata: str | None = Form(None),
+    crop: UploadFile | None = File(None),
+    principal: Principal = Depends(require_permission("field.capture.create")),
+) -> dict[str, Any]:
+    try:
+        raw = json.loads(metadata) if metadata else json.loads((await request.body()) or b"{}")
+        meta = CaptureMetadata.model_validate(raw)
+    except (ValueError, ValidationError) as e:
+        raise FieldError(status=422, code="FIELD-HTTP-422-VALIDATION", title="Invalid capture metadata",
+                         detail=str(e)[:500]) from e
+    _bound_device(principal, meta.device_id)
     if not meta.blur_applied:
         raise ERR_NO_BLUR
-
-    # 3. Duplicate Detection (T2.051 / FR2.048, TC2.141)
-    existing_captures = CAPTURES_STORE.list(principal.tenant_id)
-    for existing in existing_captures:
-        if (
-            existing.get("task_id") == meta.task_id
-            and existing.get("code_type") == meta.code_type
-            and existing.get("code_value") == meta.code_value
-            and existing.get("superseded_by") is None
-        ):
-            # Duplicate found -> 409 Conflict with duplicate_of
-            raise FieldError(
-                status=409,
-                code="FIELD-CAP-409-DUPLICATE",
-                title="Duplicate Capture",
-                detail=f"Item already captured in task {meta.task_id} as capture {existing['id']}",
-                errors=[{"duplicate_of": existing["id"]}],
+    crop_bytes = await crop.read() if crop else None
+    with principal_tx(principal) as cur:
+        if not has_active_consent(cur, meta.site_id, principal.id, meta.device_id):
+            raise ERR_NO_CONSENT
+        if meta.task_id:
+            cur.execute(
+                "SELECT id FROM field.capture WHERE task_id = %s::uuid AND code_type = %s AND code_value = %s"
+                " AND superseded_by IS NULL LIMIT 1",
+                (meta.task_id, meta.code_type, meta.code_value),
             )
-
-    # 4. Handle crop bytes / presigned upload (T2.049 / TC2.140)
-    crop_bytes = b""
-    if crop:
-        crop_bytes = await crop.read()
-    elif meta.crop_upload_id:
-        upload_rec = UPLOADS_STORE.get(principal.tenant_id, meta.crop_upload_id)
-        if not upload_rec:
-            raise ERR_NOT_FOUND
-        exp_dt = datetime.fromisoformat(upload_rec["expires_at"])
-        if datetime.now(UTC) > exp_dt:
-            raise ERR_UPLOAD_EXPIRED
-        crop_bytes = b"mock-crop-data-from-s3"
-
-    # 5. Server-side Task Line Association (T2.051 / FR2.049, TC2.142)
-    task_lines = TASK_LINES_MOCK_STORE.get(meta.task_id, [])
-    matched_line_id = None
-    on_task = False
-
-    for line in task_lines:
-        expected_code = line.get("expected_code")
-        if expected_code and (
-            expected_code == meta.code_value or meta.code_value.endswith(expected_code)
-        ):
-            matched_line_id = line.get("id")
-            on_task = True
-            break
-
-    # If no mock lines are registered for task, treat code matching standard conventions
-    if not task_lines:
-        on_task = not meta.code_value.startswith("OFF-TASK")
-
-    # 6. S3 Storage Path and SSE-KMS (T2.049, T2.054 / FR2.051, TC2.143)
-    capture_id = request.headers.get("Idempotency-Key") or uuid7_str()
-    now = datetime.now(UTC)
-    s3_path = f"s3://field-crops/{principal.tenant_id}/{meta.site_id}/{now.year}/{now.month:02d}/{now.day:02d}/{capture_id}.jpg"
-    retention_until = now + timedelta(days=90)
-    sha256 = hashlib.sha256(crop_bytes).hexdigest()
-
-    evidence_record = {
-        "id": uuid7_str(),
-        "tenant_id": principal.tenant_id,
-        "capture_id": capture_id,
-        "crop_s3_uri": s3_path,
-        "file_size_bytes": len(crop_bytes),
-        "sha256_hash": sha256,
-        "sse_kms_key_id": "arn:aws:kms:us-east-1:123456789012:key/field-crops-key",
-        "retention_until": retention_until.isoformat(),
-        "is_legal_hold": False,
-        "created_at": now.isoformat(),
-    }
-    EVIDENCE_STORE.insert(principal.tenant_id, capture_id, evidence_record)
-
-    # 7. Insert Capture Record
-    capture_record = {
-        "id": capture_id,
-        "tenant_id": principal.tenant_id,
-        "site_id": meta.site_id,
-        "device_id": meta.device_id,
-        "task_id": meta.task_id,
-        "shutter_timestamp": meta.shutter_timestamp,
-        "blur_applied": meta.blur_applied,
-        "bystander_count": meta.bystander_count,
-        "code_type": meta.code_type,
-        "code_value": meta.code_value,
-        "readability": meta.readability,
-        "rank_score": meta.rank_score,
-        "task_line_id": matched_line_id,
-        "on_task": on_task,
-        "superseded_by": None,
-        "verify_status": "unverified",
-        "verify_reason": None,
-        "status": "created",
-        "created_at": now.isoformat(),
-    }
-    CAPTURES_STORE.insert(principal.tenant_id, capture_id, capture_record)
-
-    # 8. Emit capture.created CloudEvents envelope into outbox (T2.049 / TC2.146)
-    event_envelope = {
-        "id": uuid7_str(),
-        "type": "capture.created",
-        "tenant_id": principal.tenant_id,
-        "occurred_at": now.isoformat(),
-        "subject": f"capture/{capture_id}",
-        "data": {
-            "capture_id": capture_id,
-            "task_id": meta.task_id,
-            "code_type": meta.code_type,
-            "code_value": meta.code_value,
-            "on_task": on_task,
-            "readability": meta.readability,
-        },
-        "trace_id": request.headers.get("traceparent", uuid7_str()),
-    }
-    OUTBOX_EVENTS_STORE.append(event_envelope)
-
-    # 9. Push Live Channel tick (T2.053 / FR2.052)
-    emit_device_tick(
-        tenant_id=principal.tenant_id,
-        device_id=meta.device_id,
-        tick_type="received",
-        capture_id=capture_id,
-        task_id=meta.task_id,
-        detail=f"Capture received: {meta.code_value}",
-    )
-
-    return CaptureResponse(
-        id=capture_id,
-        tenant_id=principal.tenant_id,
-        task_id=meta.task_id,
-        device_id=meta.device_id,
-        code_type=meta.code_type,
-        code_value=meta.code_value,
-        task_line_id=matched_line_id,
-        on_task=on_task,
-        status="created",
-        readability=meta.readability,
-        rank_score=meta.rank_score,
-        evidence_s3_uri=s3_path,
-        created_at=now.isoformat(),
-    )
+            dup = cur.fetchone()
+            if dup:
+                raise FieldError(status=409, code="FIELD-CAP-409-DUPLICATE", title="Duplicate capture",
+                                 detail=f"already captured as {dup[0]}", errors=[{"duplicate_of": str(dup[0])}])
+        uri: str | None = None
+        if crop_bytes is not None:
+            try:
+                uri = crop_store().put(principal.tenant_id, crop_bytes)
+            except CropStoreError as e:
+                raise ERR_TOO_LARGE from e
+        elif meta.crop_upload_id:
+            cur.execute("SELECT s3_key, status, expires_at FROM field.capture_upload WHERE id = %s::uuid",
+                        (meta.crop_upload_id,))
+            up = cur.fetchone()
+            if not up:
+                raise ERR_UPL_404
+            if up[1] != "completed":
+                raise ERR_UPLOAD_EXPIRED if datetime.now(UTC) > up[2] else FieldError(
+                    status=409, code="FIELD-UPL-409-NOT-UPLOADED", title="Crop bytes not uploaded yet")
+            uri = up[0]
+        line_id = _match_line(cur, meta.task_id, meta.code_value)
+        on_task = line_id is not None if meta.task_id else False
+        cur.execute(
+            f"""
+            INSERT INTO field.capture (tenant_id, site_id, device_id, task_id, task_line_id, code_type, code_value,
+                   on_task, status, readability, rank_score, confidence, verify_status, blur_applied, bystander_count,
+                   shutter_timestamp, location_id, parsed_data)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'received', %s, %s, %s, 'not_needed', %s, %s, %s, %s, %s)
+            RETURNING {CAP_COLS}
+            """,  # noqa: S608
+            (principal.tenant_id, meta.site_id, meta.device_id, meta.task_id, line_id, meta.code_type,
+             meta.code_value, on_task, meta.readability, meta.rank_score,
+             meta.confidence if meta.confidence is not None else meta.readability, meta.blur_applied,
+             meta.bystander_count, meta.shutter_timestamp, meta.location_id,
+             Jsonb({"object_class": meta.object_class, "client_seq": meta.client_seq, "look_id": meta.look_id})),
+        )
+        cap = fetch_dict(cur) or {}
+        if uri:
+            data = crop_bytes if crop_bytes is not None else crop_store().get(uri)
+            cur.execute(
+                "INSERT INTO field.capture_evidence (tenant_id, capture_id, crop_s3_uri, file_size_bytes, sha256_hash,"
+                " retention_until, consent_ref) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (principal.tenant_id, cap["id"], uri, len(data), hashlib.sha256(data).hexdigest(),
+                 datetime.now(UTC) + RETENTION, "consent:latest"),
+            )
+        cur.execute(
+            "INSERT INTO field.outbox (tenant_id, event_type, aggregate_id, payload) VALUES (%s, 'capture.created', %s, %s)",
+            (principal.tenant_id, cap["id"], Jsonb({"type": "capture.created", "subject": f"capture/{cap['id']}",
+                                                     "data": {"capture_id": cap["id"], "task_id": meta.task_id,
+                                                              "task_line_id": line_id, "on_task": on_task},
+                                                     "trace": request.headers.get("traceparent")})),
+        )
+        emit_device_tick(cur, principal.tenant_id, meta.device_id, "received",
+                         {"subject_id": cap["id"], "task_line_id": line_id, "on_task": on_task})
+    return {"id": cap["id"], "task_line_id": line_id, "on_task": on_task, "verify_status": "not_needed",
+            "received_at": cap["created_at"], "evidence_uri": uri}
 
 
-@router.get("/{capture_id}", response_model=CaptureResponse)
+@router.get("/{capture_id}")
 async def get_capture(
     capture_id: str,
-    principal: Principal = Depends(require_principal),
-) -> CaptureResponse:
-    """Retrieve capture details by ID (T2.063 / FR2.068)."""
-    rec = CAPTURES_STORE.get(principal.tenant_id, capture_id)
-    if not rec:
-        raise ERR_NOT_FOUND
+    principal: Principal = Depends(require_permission("field.capture.read")),
+) -> dict[str, Any]:
+    with principal_tx(principal) as cur:
+        cur.execute(f"SELECT {CAP_COLS} FROM field.capture WHERE id = %s::uuid", (capture_id,))  # noqa: S608
+        cap = fetch_dict(cur)
+        if not cap:
+            raise ERR_CAP_404
+        cur.execute("SELECT id, transcript, confidence, intent, is_accepted FROM field.voice_event"
+                    " WHERE capture_id = %s::uuid ORDER BY created_at", (capture_id,))
+        voice = [{"id": str(r[0]), "transcript": r[1], "confidence": float(r[2]), "intent": r[3], "accepted": r[4]}
+                 for r in cur.fetchall()]
+    return {**cap, "code": cap["code_value"], "voice_events": voice}
 
-    ev = EVIDENCE_STORE.get(principal.tenant_id, capture_id)
-    s3_uri = (
-        str(ev.get("crop_s3_uri"))
-        if ev and ev.get("crop_s3_uri")
-        else "s3://field-crops/placeholder.jpg"
-    )
 
-    return CaptureResponse(
-        id=rec["id"],
-        tenant_id=rec["tenant_id"],
-        task_id=rec["task_id"],
-        device_id=rec["device_id"],
-        code_type=rec["code_type"],
-        code_value=rec["code_value"],
-        task_line_id=rec.get("task_line_id"),
-        on_task=rec.get("on_task", True),
-        status=rec.get("status", "created"),
-        readability=float(rec.get("readability", 0.95)),
-        rank_score=float(rec.get("rank_score", 0.88)),
-        evidence_s3_uri=s3_uri,
-        created_at=rec["created_at"],
-    )
+@router.get("/{capture_id}/crop")
+async def get_crop(
+    capture_id: str,
+    principal: Principal = Depends(require_permission("field.evidence.read")),
+) -> Response:
+    with principal_tx(principal) as cur:
+        cur.execute("SELECT crop_s3_uri, retention_until, is_legal_hold FROM field.capture_evidence"
+                    " WHERE capture_id = %s::uuid ORDER BY created_at DESC LIMIT 1", (capture_id,))
+        ev = cur.fetchone()
+    if not ev:
+        raise FieldError(status=404, code="FIELD-CAP-404-CROP-WITHHELD", title="No crop for this capture")
+    uri, until, hold = ev
+    store = crop_store()
+    if (datetime.now(UTC) > until and not hold) or not store.exists(uri):
+        raise FieldError(status=410, code="FIELD-CAP-410-CROP-EXPIRED", title="Crop deleted by retention")
+    return Response(content=store.get(uri), media_type="image/jpeg", headers={"Cache-Control": "private, no-store"})

@@ -259,12 +259,23 @@ class ConfirmIn(BaseModel):
 
 
 @router.post("/v1/tasks/{task_id}/confirm")
-def confirm_task(
+def confirm_task_route(
     task_id: str,
     body: ConfirmIn,
     idempotency_key: str = Header(..., alias="Idempotency-Key"),
     principal: Principal = Depends(require_permission("field.post.confirm")),
 ) -> dict[str, Any]:
+    return confirm_task(task_id, body, idempotency_key, principal)
+
+
+def confirm_task(
+    task_id: str,
+    body: ConfirmIn,
+    idempotency_key: str,
+    principal: Principal,
+    extra_payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Stage the confirmed lines of a task (shared by API3.06 and the voice gate API2.14)."""
     with principal_tx(principal) as cur:
         cur.execute(
             "SELECT id, site_id, type, status, ref_doc_no FROM field.task WHERE id = %s::uuid FOR UPDATE",
@@ -354,7 +365,8 @@ def confirm_task(
         staged: StagedDocument | None = None
         if not over_where:
             staged = _stage_confirm(cur, principal, task_id, str(site_id), doc_type, mvt, queue_key,
-                                    ref_doc, plant, idempotency_key, job_specs, [str(r[0]) for r in lines])
+                                    ref_doc, plant, idempotency_key, job_specs, [str(r[0]) for r in lines],
+                                    extra_payload or {})
     if staged is None:
         raise _OverTolerance(over_where or "")
     return {"erp_document_id": staged.erp_document_id, "queue_key": staged.queue_key,
@@ -364,14 +376,14 @@ def confirm_task(
 def _stage_confirm(
     cur: Any, principal: Principal, task_id: str, site_id: str, doc_type: str, mvt: str,
     queue_key: str, ref_doc: str, plant: str, idempotency_key: str,
-    job_specs: list[JobSpec], line_ids: list[str],
+    job_specs: list[JobSpec], line_ids: list[str], extra_payload: dict[str, Any],
 ) -> StagedDocument:
     staged = stage_document(
         cur,
         tenant_id=principal.tenant_id, site_id=site_id, doc_type=doc_type, movement_type=mvt,
         queue_key=queue_key, ref_doc_no=ref_doc, plant=plant, idempotency_key=idempotency_key,
         payload={"task_id": task_id, "line_ids": line_ids, "requested_by": principal.id,
-                 "requested_at": datetime.now(UTC).isoformat(), "delivery_document": ref_doc},
+                 "requested_at": datetime.now(UTC).isoformat(), "delivery_document": ref_doc, **extra_payload},
         jobs=job_specs,
     )
     cur.execute(

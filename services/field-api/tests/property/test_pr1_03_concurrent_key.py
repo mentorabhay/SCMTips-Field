@@ -1,5 +1,6 @@
 """Property Test PR1.03: Concurrent Same Key Invariants (Hypothesis)."""
 
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import hypothesis.strategies as st
@@ -10,13 +11,15 @@ from field_api.auth.jwt import create_dev_token
 from field_common.uuid7 import uuid7_str
 from hypothesis import given, settings
 
+TENANT = str(uuid.uuid4())  # fresh per run: rows persist in Postgres
+
 client = TestClient(app)
 
 
 def make_headers(idem_key: str) -> dict[str, str]:
     token = create_dev_token(
         principal_id="test-concurrent-user",
-        tenant_id="00000000-0000-0000-0000-000000000001",
+        tenant_id=TENANT,
         roles=["field.admin"],
         site_ids=["*"],
     )
@@ -37,7 +40,7 @@ def test_pr1_03_concurrent_same_key(concurrency: int, key_suffix: str) -> None:
     idem_key = f"concurrent-{key_suffix}-{uuid7_str()}"
     headers = make_headers(idem_key)
     payload = {
-        "code": f"SITE-CONC-{key_suffix}",
+        "code": f"SITE-CONC-{key_suffix}-{uuid.uuid4().hex[:6].upper()}",  # unique per example
         "name": f"Concurrent Site {key_suffix}",
         "kind": "warehouse",
     }

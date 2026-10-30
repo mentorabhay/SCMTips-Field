@@ -1,585 +1,253 @@
-"""Unit, integration, and property tests for WS2.6 field-api Capture Ingest & Live Channel (Tasks T2.046 - T2.055).
+"""WS2.6 device, consent, capture, voice and confirm-gate APIs on Postgres (T2.047-T2.055).
 
-Covers:
-- T2.046: Database migrations field_0020 - field_0028 verified with RLS
-- T2.047: Device registration, pairing, heartbeat, config, and revoke (TC2.102, TC2.103, TC2.163)
-- T2.048: Consent gate, record, and withdraw (TC2.154 / FR2.064)
-- T2.049: Capture ingest, presigned uploads, blur gate, CloudEvents outbox envelope (TC2.139, TC2.140, TC2.146)
-- T2.050: Idempotency middleware 24h replay & mismatch detection (PR2.15 / FR2.047)
-- T2.051: Server-side duplicate detection & task line association (PR2.04, TC2.141, TC2.142 / FR2.048, FR2.049)
-- T2.052: Voice events, count records, and confirmed post request turn (PR2.11, TC2.133, TC2.162 / FR2.038, FR2.050, FR2.055)
-- T2.053: Live channel WebSocket & SSE tick delivery with resume (TC2.144, TC2.145 / FR2.052)
-- T2.054: Crop evidence retention and legal hold (TC2.143 / FR2.051)
-- T2.055: Tenant and site isolation RLS (TC2.160 / FR2.053)
+C4 rewrite: the previous file drove in-process stores (and mutated them directly). These tests use
+the real tables with RLS, a real crop store (tmp dir), device-bound tokens and the live channel.
 """
 
-from datetime import UTC, datetime, timedelta
+from __future__ import annotations
 
+import hashlib
+import json
+import os
+import uuid
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from typing import Any
+
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from field_api.app import create_app
 from field_api.auth.jwt import create_dev_token
-from field_api.routes.captures import (
-    OUTBOX_EVENTS_STORE,
-    TASK_LINES_MOCK_STORE,
-    UPLOADS_STORE,
-)
-from field_common.uuid7 import uuid7_str
+from field_api.routes.voice import staged_hash
 from field_worker.retention.job import RetentionCleanerJob
+
+pytestmark = pytest.mark.unit
+ADMIN = os.getenv("FIELD_ADMIN_DATABASE_URL", "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field")
+JPEG = b"\xff\xd8\xff\xe0" + b"SCMTIPS-test-crop" * 20 + b"\xff\xd9"
+
+
+@pytest.fixture(autouse=True)
+def _crop_dir(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FIELD_CROP_DIR", str(tmp_path / "crops"))
 
 
 @pytest.fixture
-def client():
-    app = create_app()
-    return TestClient(app)
+def client() -> TestClient:
+    return TestClient(create_app())
 
 
-def auth_headers(
-    tenant_id: str = "tenant-test-1",
-    principal_id: str = "user-alice",
-    roles: list[str] | None = None,
-    site_ids: list[str] | None = None,
-) -> dict[str, str]:
-    token = create_dev_token(
-        principal_id=principal_id,
-        tenant_id=tenant_id,
-        roles=roles or ["field.operator", "field.supervisor", "field.admin"],
-        site_ids=site_ids or ["site-1", "site-2"],
-    )
-    return {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
+@pytest.fixture
+def env() -> dict[str, Any]:
+    tenant, site, task, line = (str(uuid.uuid4()) for _ in range(4))
+    with psycopg.connect(ADMIN, autocommit=True) as c, c.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant,))
+        cur.execute("INSERT INTO field.site (id, tenant_id, code, name, kind, status) VALUES (%s,%s,'WS26','DC','warehouse','active')",
+                    (site, tenant))
+        cur.execute("INSERT INTO field.material (id, tenant_id, erp_material_no, plant, description, base_uom, gtin)"
+                    " VALUES (%s, %s, 'MAT-26', '1000', 'carton', 'EA', '09506000134352')", (str(uuid.uuid4()), tenant))
+        cur.execute("INSERT INTO field.task (id, tenant_id, site_id, type, status, title, ref_doc_no)"
+                    " VALUES (%s, %s, %s, 'receive', 'pending', 'IBD', '180000999')", (task, tenant, site))
+        cur.execute("INSERT INTO field.task_line (id, tenant_id, site_id, task_id, line_no, material_id, expected_qty, uom, sscc)"
+                    " SELECT %s, %s, %s, %s, 10, id, 12, 'EA', '003012345678901232' FROM field.material WHERE tenant_id = %s",
+                    (line, tenant, site, task, tenant))
+    return {"tenant": tenant, "site": site, "task": task, "line": line}
 
 
-# -----------------------------------------------------------------------------
-# T2.047: Device APIs (TC2.102, TC2.103, TC2.163)
-# -----------------------------------------------------------------------------
-@pytest.mark.unit
-def test_t2_047_device_registration_and_pairing(client):
-    """TC2.103: Register phone and pair glasses with paired_with."""
-    headers = auth_headers()
-
-    # 1. Register phone
-    resp_phone = client.post(
-        "/v1/devices",
-        headers=headers,
-        json={"kind": "phone", "serial_no": "PH-001", "model": "Pixel 8 Pro"},
-    )
-    assert resp_phone.status_code == 201
-    phone_id = resp_phone.json()["id"]
-
-    # 2. Register glasses paired with phone
-    resp_glasses = client.post(
-        "/v1/devices",
-        headers=headers,
-        json={
-            "kind": "glasses",
-            "serial_no": "GL-001",
-            "model": "Ray-Ban Meta Gen 2",
-            "paired_with": phone_id,
-        },
-    )
-    assert resp_glasses.status_code == 201
-    glasses_data = resp_glasses.json()
-    assert glasses_data["paired_with"] == phone_id
-    assert glasses_data["glasses_state"] == "connected"
+def _user(env: dict[str, Any], roles: list[str], device: str | None = None, sub: str = "op-26") -> dict[str, str]:
+    tok = create_dev_token(sub, env["tenant"], roles, site_ids=[env["site"]], device_id=device)
+    return {"Authorization": f"Bearer {tok}"}
 
 
-@pytest.mark.unit
-def test_t2_047_device_heartbeat_and_config(client):
-    """TC2.163: Heartbeat updates metrics and config endpoint returns settings with ETag."""
-    headers = auth_headers()
-    reg = client.post(
-        "/v1/devices",
-        headers=headers,
-        json={"kind": "phone", "serial_no": f"PH-HB-{uuid7_str()}", "model": "Pixel 9"},
-    ).json()
-    dev_id = reg["id"]
-
-    # Send heartbeat
-    hb_resp = client.post(
-        f"/v1/devices/{dev_id}/heartbeat",
-        headers=headers,
-        json={"battery_pct": 82, "thermal_status": "moderate", "queue_depth": 5},
-    )
-    assert hb_resp.status_code == 200
-    assert hb_resp.json()["battery_pct"] == 82
-    assert hb_resp.json()["queue_depth"] == 5
-
-    # Fetch effective config
-    cfg_resp = client.get(f"/v1/devices/{dev_id}/config", headers=headers)
-    assert cfg_resp.status_code == 200
-    assert "ETag" in cfg_resp.headers
-    assert cfg_resp.json()["settings"]["max_outbox_items"] == "2000"
+def _phone_and_glasses(client: TestClient, env: dict[str, Any]) -> tuple[str, str, dict[str, str]]:
+    admin = _user(env, ["field.operator"])
+    phone = client.post("/v1/devices", json={"kind": "phone", "serial_no": f"P-{uuid.uuid4()}", "model": "Pixel"},
+                        headers=admin).json()["id"]
+    r = client.post("/v1/devices", json={"kind": "glasses", "serial_no": f"G-{uuid.uuid4()}",
+                                         "model": "ray-ban-meta-gen2", "paired_with": phone}, headers=admin)
+    assert r.status_code == 201, r.text
+    return phone, r.json()["id"], _user(env, ["field.operator"], device=phone)
 
 
-@pytest.mark.unit
-def test_t2_047_device_revocation_stops_session(client):
-    """TC2.102: Revoking device sets revoked_at, blocks heartbeats, and emits live tick."""
-    headers = auth_headers()
-    reg = client.post(
-        "/v1/devices",
-        headers=headers,
-        json={"kind": "phone", "serial_no": f"PH-REV-{uuid7_str()}", "model": "Pixel 8"},
-    )
-    assert reg.status_code == 201
-    dev_id = reg.json()["id"]
-
-    # Revoke with If-Match from registration header
-    etag = reg.headers["ETag"]
-    rev_resp = client.post(
-        f"/v1/devices/{dev_id}/revoke",
-        headers={**headers, "If-Match": etag},
-    )
-    assert rev_resp.status_code == 200
-    assert rev_resp.json()["status"] == "revoked"
-    assert rev_resp.json()["revoked_at"] is not None
-
-    # Subsequent heartbeat rejected with 401 FIELD-AUTH-401-REVOKED
-    hb_resp = client.post(
-        f"/v1/devices/{dev_id}/heartbeat",
-        headers=headers,
-        json={"battery_pct": 50},
-    )
-    assert hb_resp.status_code == 401
-    assert hb_resp.json()["code"] == "FIELD-AUTH-401-REVOKED"
+def test_t2_047_device_registration_and_pairing(client: TestClient, env: dict[str, Any]) -> None:
+    """TC2.103: register phone, pair glasses; a second pairing needs replace=true."""
+    phone, glasses, dev = _phone_and_glasses(client, env)
+    r = client.get(f"/v1/devices/{glasses}", headers=dev)
+    assert r.status_code == 200 and r.json()["paired_with"] == phone and r.json()["status"] == "active"
+    op = _user(env, ["field.operator"])
+    body = {"kind": "glasses", "serial_no": f"G-{uuid.uuid4()}", "model": "ray-ban-meta-gen2", "paired_with": phone}
+    assert client.post("/v1/devices", json=body, headers=op).status_code == 409
+    r = client.post("/v1/devices", json={**body, "replace": True}, headers=op)
+    assert r.status_code == 201 and r.json()["pairing_id"]
+    assert client.post("/v1/devices", json={"kind": "phone", "serial_no": "x", "model": "m"},
+                       headers=_user(env, ["field.viewer"])).status_code == 403
 
 
-# -----------------------------------------------------------------------------
-# T2.048: Consent Gate (TC2.154 / FR2.064)
-# -----------------------------------------------------------------------------
-@pytest.mark.unit
-def test_t2_048_consent_gate_and_withdrawal(client):
-    """TC2.154: Ingest refused without consent (403), allowed after consent, refused after withdrawal."""
-    headers = auth_headers()
-    site_id = "site-consent-test"
-    user_id = f"user-{uuid7_str()}"
-    device_id = f"dev-{uuid7_str()}"
-    task_id = "task-consent-1"
-
-    # Attempt capture without consent -> 403 FIELD-CAP-403-NO-CONSENT
-    no_consent_resp = client.post(
-        "/v1/captures",
-        headers={**headers, "Idempotency-Key": uuid7_str()},
-        json={
-            "device_id": device_id,
-            "site_id": site_id,
-            "user_id": user_id,
-            "task_id": task_id,
-            "shutter_timestamp": 1000,
-            "blur_applied": True,
-            "code_value": "SSCC-100",
-        },
-    )
-    assert no_consent_resp.status_code == 403
-    assert no_consent_resp.json()["code"] == "FIELD-CAP-403-NO-CONSENT"
-
-    # Grant consent
-    grant_resp = client.post(
-        "/v1/consents",
-        headers=headers,
-        json={
-            "site_id": site_id,
-            "user_id": user_id,
-            "device_id": device_id,
-            "granted": True,
-        },
-    )
-    assert grant_resp.status_code == 201
-
-    # Now capture succeeds
-    ok_resp = client.post(
-        "/v1/captures",
-        headers={**headers, "Idempotency-Key": uuid7_str()},
-        json={
-            "device_id": device_id,
-            "site_id": site_id,
-            "user_id": user_id,
-            "task_id": task_id,
-            "shutter_timestamp": 1001,
-            "blur_applied": True,
-            "code_value": "SSCC-100",
-        },
-    )
-    assert ok_resp.status_code == 201
-
-    # Withdraw consent
-    withdraw_resp = client.post(
-        "/v1/consents",
-        headers=headers,
-        json={
-            "site_id": site_id,
-            "user_id": user_id,
-            "device_id": device_id,
-            "granted": False,
-        },
-    )
-    assert withdraw_resp.status_code == 201
-
-    # Subsequent capture refused
-    blocked_resp = client.post(
-        "/v1/captures",
-        headers={**headers, "Idempotency-Key": uuid7_str()},
-        json={
-            "device_id": device_id,
-            "site_id": site_id,
-            "user_id": user_id,
-            "task_id": task_id,
-            "shutter_timestamp": 1002,
-            "blur_applied": True,
-            "code_value": "SSCC-101",
-        },
-    )
-    assert blocked_resp.status_code == 403
+def test_t2_047_device_heartbeat_and_config(client: TestClient, env: dict[str, Any]) -> None:
+    """TC2.163: heartbeat stores metrics; config has ETag and answers 304 on If-None-Match."""
+    phone, _g, dev = _phone_and_glasses(client, env)
+    r = client.post(f"/v1/devices/{phone}/heartbeat", json={"battery_pct": 64, "queue_depth": 3,
+                                                            "glasses_state": "connected"}, headers=dev)
+    assert r.status_code == 200 and r.json()["config_version"] >= 1
+    d = client.get(f"/v1/devices/{phone}", headers=dev).json()
+    assert d["battery_pct"] == 64 and d["queue_depth"] == 3 and d["is_stale"] is False
+    c1 = client.get(f"/v1/devices/{phone}/config", headers=dev)
+    assert c1.status_code == 200 and c1.json()["audio_only_prompts"] is True and c1.json()["voice_conf_floor"] == 0.8
+    c2 = client.get(f"/v1/devices/{phone}/config", headers={**dev, "If-None-Match": c1.headers["ETag"]})
+    assert c2.status_code == 304
 
 
-# -----------------------------------------------------------------------------
-# T2.049: Capture Ingest & Presigned Uploads (TC2.140, TC2.146)
-# -----------------------------------------------------------------------------
-@pytest.mark.unit
-def test_t2_049_presigned_upload_and_cloudevents_outbox(client):
-    """TC2.140, TC2.146: Presigned upload slot generation, expiration (410), and CloudEvents envelope."""
-    headers = auth_headers()
-    dev_id = "dev-upload-test"
-    site_id = "site-upload-test"
-    user_id = "user-upload-test"
-
-    # Pre-grant consent
-    client.post(
-        "/v1/consents",
-        headers=headers,
-        json={"site_id": site_id, "user_id": user_id, "device_id": dev_id, "granted": True},
-    )
-
-    # Create presigned upload
-    presign_resp = client.post(
-        "/v1/captures/uploads",
-        headers=headers,
-        json={"device_id": dev_id, "file_size_bytes": 40960, "sha256_hash": "a" * 64},
-    )
-    assert presign_resp.status_code == 201
-    upload_data = presign_resp.json()
-    upload_id = upload_data["crop_upload_id"]
-    assert "upload_url" in upload_data
-
-    # Test expired upload (> 300 s)
-    UPLOADS_STORE.get("tenant-test-1", upload_id)["expires_at"] = (
-        datetime.now(UTC) - timedelta(seconds=10)
-    ).isoformat()
-
-    expired_resp = client.post(
-        "/v1/captures",
-        headers={**headers, "Idempotency-Key": uuid7_str()},
-        json={
-            "device_id": dev_id,
-            "site_id": site_id,
-            "user_id": user_id,
-            "task_id": "task-upl-1",
-            "shutter_timestamp": 2000,
-            "blur_applied": True,
-            "code_value": "SSCC-EXP",
-            "crop_upload_id": upload_id,
-        },
-    )
-    assert expired_resp.status_code == 410
-    assert expired_resp.json()["code"] == "FIELD-UPL-410-EXPIRED"
-
-    # Successful capture via valid upload
-    fresh_presign = client.post(
-        "/v1/captures/uploads",
-        headers=headers,
-        json={"device_id": dev_id, "file_size_bytes": 1024, "sha256_hash": "b" * 64},
-    ).json()
-
-    cap_id = uuid7_str()
-    cap_resp = client.post(
-        "/v1/captures",
-        headers={**headers, "Idempotency-Key": cap_id},
-        json={
-            "device_id": dev_id,
-            "site_id": site_id,
-            "user_id": user_id,
-            "task_id": "task-upl-2",
-            "shutter_timestamp": 2001,
-            "blur_applied": True,
-            "code_value": "SSCC-OK",
-            "crop_upload_id": fresh_presign["crop_upload_id"],
-        },
-    )
-    assert cap_resp.status_code == 201
-
-    # Verify TC2.146: CloudEvents envelope fields
-    latest_event = OUTBOX_EVENTS_STORE[-1]
-    assert latest_event["type"] == "capture.created"
-    assert latest_event["tenant_id"] == "tenant-test-1"
-    assert "occurred_at" in latest_event
-    assert latest_event["subject"] == f"capture/{cap_id}"
-    assert latest_event["data"]["capture_id"] == cap_id
-    assert "trace_id" in latest_event
+def test_t2_047_device_revocation_stops_session(client: TestClient, env: dict[str, Any]) -> None:
+    """TC2.102 / T1.038: revoke needs If-Match; afterwards the device token is refused everywhere."""
+    phone, _g, dev = _phone_and_glasses(client, env)
+    sup = _user(env, ["field.supervisor"], sub="sup-26")
+    etag = client.get(f"/v1/devices/{phone}", headers=sup).headers["ETag"]
+    assert client.post(f"/v1/devices/{phone}/revoke", json={"reason": "lost"}, headers=sup).status_code == 428
+    r = client.post(f"/v1/devices/{phone}/revoke", json={"reason": "lost"}, headers={**sup, "If-Match": etag})
+    assert r.status_code == 200 and r.json()["status"] == "revoked" and r.json()["revoked_at"]
+    assert client.post(f"/v1/devices/{phone}/heartbeat", json={}, headers=dev).status_code == 403
+    assert client.get("/v1/tasks", headers=dev).status_code == 403  # FIELD-AUTH-403-DEVICE-REVOKED
+    with psycopg.connect(ADMIN) as c, c.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (env["tenant"],))
+        cur.execute("SELECT tick_type FROM field.device_notification WHERE device_id = %s", (phone,))
+        assert ("device.revoked",) in cur.fetchall()
 
 
-# -----------------------------------------------------------------------------
-# T2.051: Server-Side Deduplication & Task Line Matching (PR2.04, TC2.141, TC2.142)
-# -----------------------------------------------------------------------------
-@pytest.mark.unit
-def test_t2_051_server_duplicates_and_task_matching(client):
-    """TC2.141, TC2.142: Exact duplicate code returns 409; on-task/off-task matching verified."""
-    headers = auth_headers()
-    site_id = "site-match-test"
-    user_id = "user-match-test"
-    dev_id = "dev-match-test"
-    task_id = "task-matching-101"
-
-    client.post(
-        "/v1/consents",
-        headers=headers,
-        json={"site_id": site_id, "user_id": user_id, "device_id": dev_id, "granted": True},
-    )
-
-    # Configure mock task line
-    TASK_LINES_MOCK_STORE[task_id] = [{"id": "line-item-99", "expected_code": "001234567890123456"}]
-
-    # Ingest on-task code
-    cap1_id = uuid7_str()
-    resp1 = client.post(
-        "/v1/captures",
-        headers={**headers, "Idempotency-Key": cap1_id},
-        json={
-            "device_id": dev_id,
-            "site_id": site_id,
-            "user_id": user_id,
-            "task_id": task_id,
-            "shutter_timestamp": 3001,
-            "blur_applied": True,
-            "code_type": "GS1_128",
-            "code_value": "001234567890123456",
-        },
-    )
-    assert resp1.status_code == 201
-    assert resp1.json()["on_task"] is True
-    assert resp1.json()["task_line_id"] == "line-item-99"
-
-    # TC2.141 / PR2.04: Ingest same code with new idempotency key -> 409 Conflict with duplicate_of
-    cap2_id = uuid7_str()
-    resp_dup = client.post(
-        "/v1/captures",
-        headers={**headers, "Idempotency-Key": cap2_id},
-        json={
-            "device_id": dev_id,
-            "site_id": site_id,
-            "user_id": user_id,
-            "task_id": task_id,
-            "shutter_timestamp": 3002,
-            "blur_applied": True,
-            "code_type": "GS1_128",
-            "code_value": "001234567890123456",
-        },
-    )
-    assert resp_dup.status_code == 409
-    dup_body = resp_dup.json()
-    assert dup_body["code"] == "FIELD-CAP-409-DUPLICATE"
-    assert dup_body["errors"][0]["duplicate_of"] == cap1_id
-
-    # Off-task code ingest
-    resp_off = client.post(
-        "/v1/captures",
-        headers={**headers, "Idempotency-Key": uuid7_str()},
-        json={
-            "device_id": dev_id,
-            "site_id": site_id,
-            "user_id": user_id,
-            "task_id": task_id,
-            "shutter_timestamp": 3003,
-            "blur_applied": True,
-            "code_type": "GS1_128",
-            "code_value": "009999999999999999",  # not on task
-        },
-    )
-    assert resp_off.status_code == 201
-    assert resp_off.json()["on_task"] is False
-    assert resp_off.json()["task_line_id"] is None
+def _capture(env: dict[str, Any], device: str, code: str, **kw: Any) -> dict[str, Any]:
+    return {"device_id": device, "task_id": env["task"], "site_id": env["site"], "shutter_timestamp": 1,
+            "blur_applied": True, "code_type": "sscc", "code_value": code, "readability": 0.9, **kw}
 
 
-# -----------------------------------------------------------------------------
-# T2.052: Voice, Count & Confirmed Post Gate (PR2.11, TC2.133, TC2.162)
-# -----------------------------------------------------------------------------
-@pytest.mark.unit
-def test_t2_052_voice_count_and_post_gate(client):
-    """PR2.11, TC2.133, TC2.162: Count records, undo handling, and confirmed posting turn."""
-    headers = auth_headers()
-    dev_id = "dev-voice-test"
-    task_id = "task-voice-1"
-
-    # 1. Voice event: "count 12"
-    v1_resp = client.post(
-        "/v1/voice-events",
-        headers=headers,
-        json={
-            "device_id": dev_id,
-            "task_id": task_id,
-            "transcript": "count twelve",
-            "confidence": 0.95,
-            "intent": "count",
-            "is_accepted": True,
-        },
-    )
-    assert v1_resp.status_code == 201
-    v1_id = v1_resp.json()["id"]
-
-    # 2. Count record: 12 EA linked to voice event
-    cnt_resp = client.post(
-        "/v1/count-records",
-        headers=headers,
-        json={
-            "task_id": task_id,
-            "task_line_id": "line-1",
-            "voice_event_id": v1_id,
-            "quantity": 12.0,
-            "unit": "EA",
-        },
-    )
-    assert cnt_resp.status_code == 201
-    assert cnt_resp.json()["quantity"] == 12.0
-
-    # 3. Post request: Say post, then confirm
-    v_post = client.post(
-        "/v1/voice-events",
-        headers=headers,
-        json={
-            "device_id": dev_id,
-            "task_id": task_id,
-            "transcript": "post",
-            "confidence": 0.98,
-            "intent": "post",
-        },
-    ).json()["id"]
-
-    v_confirm = client.post(
-        "/v1/voice-events",
-        headers=headers,
-        json={
-            "device_id": dev_id,
-            "task_id": task_id,
-            "transcript": "confirm",
-            "confidence": 0.99,
-            "intent": "confirm",
-        },
-    ).json()["id"]
-
-    # Post request submitted within 10s
-    post_req_resp = client.post(
-        f"/v1/tasks/{task_id}/post-requests",
-        headers=headers,
-        json={
-            "device_id": dev_id,
-            "staged_payload": {"line": "line-1", "qty": 12},
-            "post_voice_event_id": v_post,
-            "confirm_voice_event_id": v_confirm,
-            "is_reversal": False,
-        },
-    )
-    assert post_req_resp.status_code == 202
-    assert post_req_resp.json()["status"] == "pending_erp"
-
-    # TC2.133: Post reversal ("undo" after post)
-    v_post_rev = client.post(
-        "/v1/voice-events",
-        headers=headers,
-        json={
-            "device_id": dev_id,
-            "task_id": task_id,
-            "transcript": "post",
-            "confidence": 0.98,
-            "intent": "post",
-        },
-    ).json()["id"]
-
-    v_confirm_rev = client.post(
-        "/v1/voice-events",
-        headers=headers,
-        json={
-            "device_id": dev_id,
-            "task_id": task_id,
-            "transcript": "confirm",
-            "confidence": 0.99,
-            "intent": "confirm",
-        },
-    ).json()["id"]
-
-    reversal_resp = client.post(
-        f"/v1/tasks/{task_id}/post-requests",
-        headers=headers,
-        json={
-            "device_id": dev_id,
-            "staged_payload": {"line": "line-1", "qty": -12},
-            "post_voice_event_id": v_post_rev,
-            "confirm_voice_event_id": v_confirm_rev,
-            "is_reversal": True,
-        },
-    )
-    assert reversal_resp.status_code == 202
-    assert reversal_resp.json()["is_reversal"] is True
+def test_t2_048_consent_gate_and_withdrawal(client: TestClient, env: dict[str, Any]) -> None:
+    """TC2.154: ingest refused without consent (403), allowed after consent, refused after withdrawal."""
+    phone, _g, dev = _phone_and_glasses(client, env)
+    assert client.post("/v1/captures", json=_capture(env, phone, "A1"), headers=dev).status_code == 403
+    assert client.post("/v1/consents", json={"site_id": env["site"], "device_id": phone, "consent_version": "nope"},
+                       headers=dev).status_code == 422
+    r = client.post("/v1/consents", json={"site_id": env["site"], "device_id": phone}, headers=dev)
+    assert r.status_code == 201 and r.json()["user_id"] == "op-26"  # from the token, not the body
+    assert client.post("/v1/captures", json=_capture(env, phone, "A1"), headers=dev).status_code == 201
+    client.post("/v1/consents", json={"site_id": env["site"], "device_id": phone, "granted": False}, headers=dev)
+    assert client.post("/v1/captures", json=_capture(env, phone, "A2"), headers=dev).status_code == 403
+    assert client.post("/v1/captures", json=_capture(env, phone, "A3", blur_applied=False),
+                       headers=dev).status_code == 422
 
 
-# -----------------------------------------------------------------------------
-# T2.054: Retention and Legal Hold Cleaner Job (TC2.143 / FR2.051)
-# -----------------------------------------------------------------------------
-@pytest.mark.unit
-def test_t2_054_crop_retention_and_legal_hold():
+def _consented(client: TestClient, env: dict[str, Any]) -> tuple[str, dict[str, str]]:
+    phone, _g, dev = _phone_and_glasses(client, env)
+    client.post("/v1/consents", json={"site_id": env["site"], "device_id": phone}, headers=dev)
+    return phone, dev
+
+
+def test_t2_049_upload_put_and_crop_roundtrip(client: TestClient, env: dict[str, Any]) -> None:
+    """TC2.140, TC2.146: upload slot -> PUT bytes (sha256 verified) -> capture -> crop served; outbox event."""
+    phone, dev = _consented(client, env)
+    sha = hashlib.sha256(JPEG).hexdigest()
+    big = client.post("/v1/captures/uploads", json={"device_id": phone, "sha256": sha, "bytes": 2_000_000},
+                      headers=dev)
+    assert big.status_code == 413
+    up = client.post("/v1/captures/uploads", json={"device_id": phone, "sha256": sha, "bytes": len(JPEG)},
+                     headers=dev).json()
+    assert client.put(up["put_url"], content=JPEG[:-1], headers=dev).status_code == 422  # sha mismatch
+    assert client.put(up["put_url"], content=JPEG, headers=dev).status_code == 204
+    r = client.post("/v1/captures", json=_capture(env, phone, "003012345678901232", crop_upload_id=up["upload_id"]),
+                    headers=dev)
+    assert r.status_code == 201, r.text
+    cap = r.json()
+    assert cap["on_task"] is True and cap["task_line_id"] == env["line"]  # matched by SSCC (TC2.142)
+    reader = _user(env, ["field.supervisor"], sub="sup-26")
+    crop = client.get(f"/v1/captures/{cap['id']}/crop", headers=reader)
+    assert crop.status_code == 200 and crop.content == JPEG
+    assert client.get(f"/v1/captures/{cap['id']}/crop", headers=dev).status_code == 403  # operators lack evidence.read
+    with psycopg.connect(ADMIN) as c, c.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (env["tenant"],))
+        cur.execute("SELECT payload FROM field.outbox WHERE aggregate_id = %s AND event_type = 'capture.created'",
+                    (cap["id"],))
+        assert cur.fetchone()[0]["data"]["task_line_id"] == env["line"]  # type: ignore[index]
+        cur.execute("SELECT sha256_hash FROM field.capture_evidence WHERE capture_id = %s", (cap["id"],))
+        assert cur.fetchone()[0] == sha  # type: ignore[index]
+
+
+def test_t2_051_server_duplicates_and_task_matching(client: TestClient, env: dict[str, Any]) -> None:
+    """TC2.141, TC2.142: exact duplicate -> 409 duplicate_of; GTIN in a GS1 string matches the line material."""
+    phone, dev = _consented(client, env)
+    r1 = client.post("/v1/captures", json=_capture(env, phone, "(01)09506000134352(17)270101", code_type="gs1"),
+                     headers=dev)
+    assert r1.status_code == 201 and r1.json()["on_task"] is True
+    r2 = client.post("/v1/captures", json=_capture(env, phone, "(01)09506000134352(17)270101", code_type="gs1"),
+                     headers=dev)
+    assert r2.status_code == 409 and r2.json()["errors"][0]["duplicate_of"] == r1.json()["id"]
+    r3 = client.post("/v1/captures", json=_capture(env, phone, "SOMETHING-ELSE"), headers=dev)
+    assert r3.status_code == 201 and r3.json()["on_task"] is False and r3.json()["task_line_id"] is None
+
+
+def _voice(client: TestClient, env: dict[str, Any], phone: str, dev: dict[str, str], intent: str,
+           at: datetime, conf: float = 0.93, accepted: bool = True) -> Any:
+    return client.post("/v1/voice-events", json={"device_id": phone, "task_id": env["task"], "transcript": intent,
+                                                 "confidence": conf, "intent": intent, "is_accepted": accepted,
+                                                 "client_timestamp": at.isoformat()}, headers=dev)
+
+
+def test_t2_052_voice_count_and_post_gate(client: TestClient, env: dict[str, Any]) -> None:
+    """PR2.11, TC2.133, TC2.162: count by voice, then post only after a confirm turn within 10 s."""
+    phone, dev = _consented(client, env)
+    t0 = datetime.now(UTC)
+    assert _voice(client, env, phone, dev, "count", t0, conf=0.79).status_code == 422  # accepted below floor
+    v = _voice(client, env, phone, dev, "count", t0).json()["id"]
+    r = client.post("/v1/count-records", json={"task_line_id": env["line"], "value": 12, "unit": "EA",
+                                               "voice_event_id": v}, headers=dev)
+    assert r.status_code == 201 and r.json()["counted_qty"] == 12
+    good = staged_hash([(env["line"], Decimal(12))])
+    post = _voice(client, env, phone, dev, "post", t0 + timedelta(seconds=1)).json()["id"]
+    late = _voice(client, env, phone, dev, "confirm", t0 + timedelta(seconds=12)).json()["id"]
+    body = {"lines": [env["line"]], "staged_hash": good, "post_voice_event_id": post, "confirm_voice_event_id": late}
+    url = f"/v1/tasks/{env['task']}/post-requests"
+    assert client.post(url, json=body, headers=dev).status_code == 422  # confirm > 10 s after post
+    conf = _voice(client, env, phone, dev, "confirm", t0 + timedelta(seconds=4)).json()["id"]
+    body["confirm_voice_event_id"] = conf
+    assert client.post(url, json={**body, "staged_hash": "0" * 64}, headers=dev).status_code == 422  # wrong lines
+    r = client.post(url, json=body, headers=dev)
+    assert r.status_code == 202, r.text
+    assert r.json()["status"] == "queued" and r.json()["queue_key"] == "IBD:180000999"
+    assert client.post(url, json=body, headers=dev).status_code == 409  # one posting per confirm turn
+
+
+def test_t2_053_live_channel_requires_auth_and_replays(client: TestClient, env: dict[str, Any]) -> None:
+    """TC2.144/TC2.145: SSE needs a token, a device reads only its own channel, events replay from the DB."""
+    phone, dev = _consented(client, env)
+    client.post("/v1/captures", json=_capture(env, phone, "LIVE-1"), headers=dev)
+    assert client.get(f"/v1/devices/{phone}/events?once=true").status_code == 401
+    other, _g, _ = _phone_and_glasses(client, env)
+    assert client.get(f"/v1/devices/{other}/events?once=true", headers=dev).status_code == 403
+    r = client.get(f"/v1/devices/{phone}/events?once=true", headers=dev)
+    assert r.status_code == 200
+    events = [json.loads(line[6:]) for line in r.text.splitlines() if line.startswith("data: ")]
+    assert any(e["kind"] == "received" for e in events)
+    last = events[-1]["id"]
+    r2 = client.get(f"/v1/devices/{phone}/events?once=true&last_event_id={last}", headers=dev)
+    assert not [ln for ln in r2.text.splitlines() if ln.startswith("data: ")]
+
+
+def test_t2_054_crop_retention_and_legal_hold() -> None:
     """TC2.143: 90-day retention deletes expired items unless is_legal_hold is true."""
     cleaner = RetentionCleanerJob(default_retention_days=90)
     now = datetime(2026, 10, 27, 12, 0, 0, tzinfo=UTC)
-
     records = [
-        # Expired (91 days ago), not on hold -> delete
-        {
-            "crop_s3_uri": "s3://field-crops/t1/site1/crop1.jpg",
-            "retention_until": (now - timedelta(days=1)).isoformat(),
-            "is_legal_hold": False,
-        },
-        # Expired (91 days ago), ON LEGAL HOLD -> keep unconditionally
-        {
-            "crop_s3_uri": "s3://field-crops/t1/site1/crop2_hold.jpg",
-            "retention_until": (now - timedelta(days=1)).isoformat(),
-            "is_legal_hold": True,
-        },
-        # Active (expires in 30 days) -> keep
-        {
-            "crop_s3_uri": "s3://field-crops/t1/site1/crop3_active.jpg",
-            "retention_until": (now + timedelta(days=30)).isoformat(),
-            "is_legal_hold": False,
-        },
+        {"crop_s3_uri": "file://t1/a.jpg", "retention_until": (now - timedelta(days=1)).isoformat(), "is_legal_hold": False},
+        {"crop_s3_uri": "file://t1/b.jpg", "retention_until": (now - timedelta(days=1)).isoformat(), "is_legal_hold": True},
+        {"crop_s3_uri": "file://t1/c.jpg", "retention_until": (now + timedelta(days=30)).isoformat(), "is_legal_hold": False},
     ]
-
-    deleted_uris = []
-    audit = cleaner.sweep_evidence(
-        records, now=now, s3_delete_fn=lambda uri: deleted_uris.append(uri)
-    )
-
-    assert audit["deleted_count"] == 1
-    assert audit["preserved_hold_count"] == 1
-    assert audit["active_count"] == 1
-    assert deleted_uris == ["s3://field-crops/t1/site1/crop1.jpg"]
+    deleted: list[str] = []
+    audit = cleaner.sweep_evidence(records, now=now, s3_delete_fn=deleted.append)
+    assert (audit["deleted_count"], audit["preserved_hold_count"], audit["active_count"]) == (1, 1, 1)
+    assert deleted == ["file://t1/a.jpg"]
 
 
-# -----------------------------------------------------------------------------
-# T2.055: Security - Tenant and Site Isolation (TC2.160 / FR2.053)
-# -----------------------------------------------------------------------------
-@pytest.mark.unit
-def test_t2_055_tenant_isolation(client):
-    """TC2.160: Device and capture reads across tenants return 404."""
-    # Tenant Alpha creates device
-    headers_a = auth_headers(tenant_id="tenant-alpha")
-    dev_resp = client.post(
-        "/v1/devices",
-        headers=headers_a,
-        json={"kind": "phone", "serial_no": "PH-ALPHA", "model": "Pixel 9"},
-    )
-    dev_id = dev_resp.json()["id"]
-
-    # Tenant Beta attempts to read Tenant Alpha's device -> 404
-    headers_b = auth_headers(tenant_id="tenant-beta")
-    read_resp = client.get(f"/v1/devices/{dev_id}", headers=headers_b)
-    assert read_resp.status_code == 404
-    assert "404" in read_resp.json()["code"]
+def test_t2_055_tenant_isolation(client: TestClient, env: dict[str, Any]) -> None:
+    """TC2.160: device and capture reads across tenants return 404 (RLS)."""
+    phone, dev = _consented(client, env)
+    cap = client.post("/v1/captures", json=_capture(env, phone, "ISO-1"), headers=dev).json()["id"]
+    stranger = {"Authorization": "Bearer " + create_dev_token("x", str(uuid.uuid4()), ["field.supervisor"],
+                                                              site_ids=["*"])}
+    assert client.get(f"/v1/devices/{phone}", headers=stranger).status_code == 404
+    assert client.get(f"/v1/captures/{cap}", headers=stranger).status_code == 404

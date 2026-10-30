@@ -1,5 +1,7 @@
 """Property Tests PR1.01, PR1.02, PR1.10, PR1.12, PR1.20 (Hypothesis)."""
 
+import uuid
+
 import hypothesis.strategies as st
 import pytest
 from fastapi.testclient import TestClient
@@ -9,12 +11,14 @@ from field_common.uuid7 import uuid7_str
 from hypothesis import given, settings
 
 client = TestClient(app)
+# A fresh tenant per test run: rows persist in Postgres, so fixed codes would collide on re-runs.
+TENANT = str(uuid.uuid4())
 
 
 def make_headers(idem_key: str | None = None, etag: str | None = None) -> dict[str, str]:
     token = create_dev_token(
         principal_id="test-prop-user",
-        tenant_id="00000000-0000-0000-0000-000000000001",
+        tenant_id=TENANT,
         roles=["field.admin"],
         site_ids=["*"],
     )
@@ -118,7 +122,10 @@ def test_pr1_10_etag_if_match_concurrency() -> None:
 def test_pr1_20_location_hierarchy_depth_and_cycles() -> None:
     """PR1.20: Enforces hierarchy depth <= 6 and rejects cycles with FIELD-LOC-422-CYCLE."""
     h = make_headers()
-    site_id = "018f0000-0000-7000-8000-000000000001"
+    rs = client.post("/v1/sites", json={"code": f"PR120-{uuid.uuid4().hex[:6].upper()}", "name": "PR1.20",
+                                        "kind": "warehouse"}, headers=make_headers())
+    assert rs.status_code == 201, rs.text
+    site_id = rs.json()["id"]
 
     # Create root zone (depth 1)
     r1 = client.post(

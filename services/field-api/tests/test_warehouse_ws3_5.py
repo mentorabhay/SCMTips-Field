@@ -50,7 +50,7 @@ def client():
 def auth_headers(role: str = "field.operator") -> dict[str, str]:
     token = create_dev_token(
         principal_id="user-op-2",
-        tenant_id="tenant-test-1",
+        tenant_id="11111111-1111-4111-8111-111111111111",
         roles=[role],
         site_ids=["site-1"],
     )

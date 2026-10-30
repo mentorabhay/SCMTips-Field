@@ -27,7 +27,7 @@ def client():
 
 
 def auth_headers(roles: list[str]) -> dict[str, str]:
-    token = create_dev_token("test-sup", "tenant-test", roles)
+    token = create_dev_token("test-sup", "11111111-1111-4111-8111-111111111112", roles)
     return {"Authorization": f"Bearer {token}"}
 
 

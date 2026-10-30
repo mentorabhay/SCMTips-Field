@@ -42,3 +42,34 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         elif not has_suite_marker:
             # Default safety net: every unassigned test belongs to unit suite
             item.add_marker(pytest.mark.unit)
+
+
+# --- Test harness: behave like a real client and send an Idempotency-Key on every POST -------------
+# The API requires Idempotency-Key on POST (FIELD-IDEM-400-MISSING-KEY). Tests that do not set one get a
+# fresh key per request, exactly as the phone/console clients do. A test that needs to exercise the
+# missing-key path sets the header "X-Test-Omit-Idempotency-Key: 1".
+def _install_idempotency_key_default() -> None:
+    import uuid as _uuid
+
+    from starlette.testclient import TestClient
+
+    original = TestClient.request
+    if getattr(original, "_scmtips_idem_default", False):
+        return
+
+    def request(self, method, url, *args, **kwargs):  # type: ignore[no-untyped-def]
+        if str(method).upper() == "POST":
+            headers = dict(kwargs.get("headers") or {})
+            lower = {k.lower() for k in headers}
+            if "x-test-omit-idempotency-key" in lower:
+                headers = {k: v for k, v in headers.items() if k.lower() != "x-test-omit-idempotency-key"}
+            elif "idempotency-key" not in lower:
+                headers["Idempotency-Key"] = str(_uuid.uuid4())
+            kwargs["headers"] = headers
+        return original(self, method, url, *args, **kwargs)
+
+    request._scmtips_idem_default = True  # type: ignore[attr-defined]
+    TestClient.request = request  # type: ignore[method-assign]
+
+
+_install_idempotency_key_default()

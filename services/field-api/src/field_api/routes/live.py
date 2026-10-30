@@ -1,61 +1,85 @@
-"""Live Tick Channel Hub: WebSocket and SSE Streams (Task T2.053 / FR2.052, TC2.144, TC2.145)."""
+"""Device live channel (API2.15 / T2.053) backed by field.device_notification (C4).
+
+Previously: an unauthenticated WebSocket and SSE stream over a process-local buffer, so any
+caller could read any device's events across tenants, and events were lost on restart or on a
+second worker. Now:
+- the token is required (``access_token`` query parameter for WebSocket, Authorization header or
+  ``access_token`` for SSE); invalid or revoked -> close 4401 / HTTP 401
+- a device token may only read its own channel; other principals need field.device.read
+- events are rows in field.device_notification (24 h replay via last_event_id), polled per
+  connection, so every worker serves the same stream
+- a second WebSocket for the same device closes the older one (4409), tracked on app.state
+"""
+
+from __future__ import annotations
 
 import asyncio
 import contextlib
 import json
-from collections import defaultdict
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from field_common.uuid7 import uuid7_str
+from psycopg.types.json import Jsonb
+
+from field_api.auth.jwt import Principal, verify_token
+from field_api.auth.permissions import has_permission
+from field_api.db import tenant_tx
+from field_api.deps import device_is_revoked
+from field_api.errors import ERR_AUTH_FORBIDDEN, ERR_AUTH_UNAUTHORIZED, FieldError
 
 router = APIRouter(prefix="/v1/devices", tags=["Live"])
 
-# In-memory notification buffer per device for 24h replay
-_NOTIFICATION_BUFFER: dict[str, list[dict[str, Any]]] = defaultdict(list)
-# Active WebSocket connections per device
-_ACTIVE_WEBSOCKETS: dict[str, set[WebSocket]] = defaultdict(set)
+POLL_S = 1.0
+PING_S = 20.0
+REPLAY_HOURS = 24
 
 
-def emit_device_tick(
-    tenant_id: str,
-    device_id: str,
-    tick_type: str,
-    capture_id: str | None = None,
-    task_id: str | None = None,
-    detail: str | None = None,
-) -> dict[str, Any]:
-    """Emit a live tick to the device, storing in the 24h buffer and broadcasting to active connections (T2.053)."""
+def emit_device_tick(cur: Any, tenant_id: str, device_id: str, tick_type: str, payload: dict[str, Any]) -> str:
+    """Queue a live event for a device inside the caller's transaction; returns the event id."""
     event_id = uuid7_str()
-    now_iso = datetime.now(UTC).isoformat()
-    tick_payload: dict[str, Any] = {
-        "event_id": event_id,
-        "id": event_id,
-        "tenant_id": tenant_id,
-        "device_id": device_id,
-        "tick": tick_type,
-        "type": tick_type,
-        "capture_id": capture_id,
-        "task_id": task_id,
-        "detail": detail,
-        "timestamp": now_iso,
-    }
+    cur.execute(
+        """
+        INSERT INTO field.device_notification (tenant_id, device_id, event_id, tick_type, payload, expires_at)
+        VALUES (%s, %s, %s, %s, %s, NOW() + INTERVAL '24 hours')
+        """,
+        (tenant_id, device_id, event_id, tick_type, Jsonb(payload)),
+    )
+    return event_id
 
-    # Store in replay buffer
-    _NOTIFICATION_BUFFER[device_id].append(tick_payload)
-    if len(_NOTIFICATION_BUFFER[device_id]) > 1000:
-        _NOTIFICATION_BUFFER[device_id].pop(0)
 
-    # Broadcast to active WebSockets
-    payload_str = json.dumps(tick_payload)
-    for ws in list(_ACTIVE_WEBSOCKETS[device_id]):
-        with contextlib.suppress(Exception):
-            asyncio.create_task(ws.send_text(payload_str))
+def _authorise(token: str | None, device_id: str) -> Principal:
+    if not token:
+        raise ERR_AUTH_UNAUTHORIZED
+    principal = verify_token(token)
+    if principal.device_id:
+        if principal.device_id != device_id:
+            raise ERR_AUTH_FORBIDDEN
+        if device_is_revoked(principal):
+            raise ERR_AUTH_UNAUTHORIZED
+    elif not has_permission(principal.permissions, "field.device.read"):
+        raise ERR_AUTH_FORBIDDEN
+    return principal
 
-    return tick_payload
+
+def _fetch(principal: Principal, device_id: str, after: str | None) -> list[dict[str, Any]]:
+    with tenant_tx(principal.tenant_id, principal.site_ids) as cur:
+        cur.execute(
+            """
+            SELECT event_id, tick_type, payload, created_at FROM field.device_notification
+             WHERE device_id::text = %s AND expires_at > NOW()
+               AND created_at > NOW() - make_interval(hours => %s)
+               AND (%s::text IS NULL OR event_id > %s)
+             ORDER BY event_id LIMIT 200
+            """,
+            (device_id, REPLAY_HOURS, after, after),
+        )
+        rows = cur.fetchall()
+    return [{"id": r[0], "kind": r[1], "payload": r[2] or {}, "subject_id": (r[2] or {}).get("subject_id"),
+             "created_at": r[3].isoformat()} for r in rows]
 
 
 @router.websocket("/{device_id}/live")
@@ -63,77 +87,66 @@ async def websocket_live_channel(
     websocket: WebSocket,
     device_id: str,
     last_event_id: str | None = Query(None),
+    access_token: str | None = Query(None),
 ) -> None:
-    """Live WebSocket channel pushing received, verified, mismatch, posted ticks (T2.053 / TC2.144)."""
-    await websocket.accept()
-    _ACTIVE_WEBSOCKETS[device_id].add(websocket)
-
+    token = access_token or (websocket.headers.get("authorization") or "").removeprefix("Bearer ").strip() or None
     try:
-        # Replay missed events if last_event_id is provided
-        if last_event_id:
-            buffer = _NOTIFICATION_BUFFER[device_id]
-            found_idx = -1
-            for idx, item in enumerate(buffer):
-                if item["event_id"] == last_event_id or item.get("id") == last_event_id:
-                    found_idx = idx
-                    break
-
-            # Send all events after last_event_id
-            start_idx = found_idx + 1 if found_idx != -1 else 0
-            for item in buffer[start_idx:]:
-                await websocket.send_text(json.dumps(item))
-
-        # Heartbeat ping loop every 20 seconds (D2.02)
-        while True:
+        principal = _authorise(token, device_id)
+    except FieldError:
+        await websocket.close(code=4401)
+        return
+    await websocket.accept()
+    registry: dict[str, WebSocket] = websocket.app.state.__dict__.setdefault("live_sockets", {})
+    key = f"{principal.tenant_id}:{device_id}"
+    older = registry.get(key)
+    registry[key] = websocket
+    if older is not None:
+        with contextlib.suppress(Exception):
+            await older.close(code=4409)
+    cursor = last_event_id
+    last_ping = datetime.now(UTC)
+    try:
+        while registry.get(key) is websocket:
+            for ev in await asyncio.to_thread(_fetch, principal, device_id, cursor):
+                await websocket.send_text(json.dumps(ev))
+                cursor = ev["id"]
+            if (datetime.now(UTC) - last_ping).total_seconds() >= PING_S:
+                await websocket.send_text(json.dumps({"kind": "ping", "at": datetime.now(UTC).isoformat()}))
+                last_ping = datetime.now(UTC)
             try:
-                # Wait for client message or timeout for ping
-                msg = await asyncio.wait_for(websocket.receive_text(), timeout=20.0)
-                # Client may send pongs or commands
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=POLL_S)
                 if msg == "ping":
-                    await websocket.send_text(json.dumps({"type": "pong"}))
+                    await websocket.send_text(json.dumps({"kind": "pong"}))
             except TimeoutError:
-                # Send server ping
-                await websocket.send_text(
-                    json.dumps({"type": "ping", "timestamp": datetime.now(UTC).isoformat()})
-                )
+                pass
     except WebSocketDisconnect:
         pass
     finally:
-        _ACTIVE_WEBSOCKETS[device_id].discard(websocket)
+        if registry.get(key) is websocket:
+            registry.pop(key, None)
 
 
 @router.get("/{device_id}/events")
 async def sse_live_channel(
+    request: Request,
     device_id: str,
     last_event_id: str | None = Query(None),
+    access_token: str | None = Query(None),
+    once: bool = Query(False, description="return pending events and close (polling / tests)"),
 ) -> StreamingResponse:
-    """SSE fallback live channel (T2.053 / TC2.145)."""
+    header = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+    principal = _authorise(header or access_token, device_id)
+    start = request.headers.get("last-event-id") or last_event_id
 
-    async def event_generator() -> AsyncGenerator[str]:
-        # Replay missed events
-        sent_ids = set()
-        if last_event_id:
-            buffer = _NOTIFICATION_BUFFER[device_id]
-            found = False
-            for item in buffer:
-                if found:
-                    sent_ids.add(item["event_id"])
-                    yield f"id: {item['event_id']}\ndata: {json.dumps(item)}\n\n"
-                elif item["event_id"] == last_event_id or item.get("id") == last_event_id:
-                    found = True
-
-        # Live loop
-        last_checked = len(_NOTIFICATION_BUFFER[device_id])
+    async def gen() -> AsyncGenerator[str]:
+        cursor = start
         while True:
-            buffer = _NOTIFICATION_BUFFER[device_id]
-            if len(buffer) > last_checked:
-                for item in buffer[last_checked:]:
-                    if item["event_id"] not in sent_ids:
-                        sent_ids.add(item["event_id"])
-                        yield f"id: {item['event_id']}\ndata: {json.dumps(item)}\n\n"
-                last_checked = len(buffer)
+            for ev in await asyncio.to_thread(_fetch, principal, device_id, cursor):
+                cursor = ev["id"]
+                yield f"id: {ev['id']}\nevent: {ev['kind']}\ndata: {json.dumps(ev)}\n\n"
+            if once or await request.is_disconnected():
+                return
+            yield ": keepalive\n\n"
+            await asyncio.sleep(POLL_S)
 
-            # Send SSE keepalive comment every 15s
-            await asyncio.sleep(1.0)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(gen(), media_type="text/event-stream")

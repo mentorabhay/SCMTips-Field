@@ -1,15 +1,19 @@
-"""Cached ERP Material Master Search Endpoints (API1.10)."""
+"""Cached ERP material master search (API1.10) on Postgres with RLS (C4; was an in-process store).
 
-from datetime import UTC, datetime
-from typing import Any
+Rows are written by the worker's material sync (field_worker.material_sync); deleted-in-ERP rows
+are excluded.
+"""
+
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from field_api.auth.jwt import Principal
-from field_api.common import InProcessStore
+from field_api.db import principal_tx
 from field_api.deps import require_permission
 from field_api.http.pagination import PaginatedResponse, encode_cursor, get_page_params
+from field_api.rows import fetch_dicts
 
 router = APIRouter(prefix="/v1/materials", tags=["Materials"])
 
@@ -30,74 +34,33 @@ class MaterialRecord(BaseModel):
     updated_at: str
 
 
-_DEFAULT_MATERIALS: list[dict[str, Any]] = [
-    {
-        "id": "018f0000-0000-7000-8000-000000000101",
-        "tenant_id": "00000000-0000-0000-0000-000000000001",
-        "erp_material_no": "SAMPLE-MAT-0001",
-        "plant": "1010",
-        "description": "5G Remote Radio Unit RRU 32T32R",
-        "base_uom": "EA",
-        "batch_managed": False,
-        "serial_profile": "SER-5G",
-        "gtin": "00012345678905",
-        "status": "active",
-        "version": 1,
-        "created_at": datetime.now(UTC).isoformat(),
-        "updated_at": datetime.now(UTC).isoformat(),
-    },
-    {
-        "id": "018f0000-0000-7000-8000-000000000102",
-        "tenant_id": "00000000-0000-0000-0000-000000000001",
-        "erp_material_no": "SAMPLE-MAT-0002",
-        "plant": "1010",
-        "description": "Baseband Unit BBU Subrack Chassis",
-        "base_uom": "EA",
-        "batch_managed": False,
-        "serial_profile": "SER-5G",
-        "gtin": "00012345678912",
-        "status": "active",
-        "version": 1,
-        "created_at": datetime.now(UTC).isoformat(),
-        "updated_at": datetime.now(UTC).isoformat(),
-    },
-]
-
-MATERIALS_STORE: InProcessStore[dict[str, Any]] = InProcessStore[dict[str, Any]](
-    seed=_DEFAULT_MATERIALS
-)
-
-
 @router.get("", response_model=PaginatedResponse)
 async def search_materials(
     plant: str | None = Query(None, description="Plant filter e.g. 1010"),
-    q: str | None = Query(None, description="Search term for material no or description"),
+    q: str | None = Query(None, max_length=64, description="Material number or description contains"),
     pagination: tuple[str | None, int] = Depends(get_page_params),
     principal: Principal = Depends(require_permission("field.material.read")),
 ) -> PaginatedResponse:
-    """Search cached materials by plant, number or description with cursor pagination."""
     last_id, limit = pagination
-    all_mats = MATERIALS_STORE.list(principal.tenant_id)
-
-    if plant:
-        all_mats = [m for m in all_mats if m["plant"] == plant]
-    if q:
-        query_lower = q.lower()
-        all_mats = [
-            m
-            for m in all_mats
-            if query_lower in str(m["erp_material_no"]).lower()
-            or query_lower in str(m["description"]).lower()
-        ]
-
-    if last_id:
-        all_mats = [m for m in all_mats if m["id"] > last_id]
-
-    page_items = all_mats[:limit]
-    next_cursor = encode_cursor(page_items[-1]["id"]) if len(all_mats) > limit else None
-
+    like = f"%{q.replace('%', r'\%').replace('_', r'\_')}%" if q else None
+    with principal_tx(principal) as cur:
+        cur.execute(
+            """
+            SELECT id, tenant_id, erp_material_no, plant, description, base_uom, batch_managed, serial_profile,
+                   gtin, status, version, created_at, updated_at
+              FROM field.material
+             WHERE deleted_in_erp_at IS NULL
+               AND (%s::text IS NULL OR plant = %s)
+               AND (%s::text IS NULL OR erp_material_no ILIKE %s OR description ILIKE %s)
+               AND (%s::uuid IS NULL OR id > %s::uuid)
+             ORDER BY id LIMIT %s
+            """,
+            (plant, plant, like, like, like, last_id, last_id, limit + 1),
+        )
+        rows = fetch_dicts(cur)
+    page = rows[:limit]
     return PaginatedResponse(
-        items=[MaterialRecord.model_validate(m).model_dump() for m in page_items],
-        next_cursor=next_cursor,
-        total_in_page=len(page_items),
+        items=[MaterialRecord.model_validate({**r, "status": r.get("status") or "active"}).model_dump() for r in page],
+        next_cursor=encode_cursor(page[-1]["id"]) if len(rows) > limit and page else None,
+        total_in_page=len(page),
     )
