@@ -2,19 +2,20 @@
   title: Write tower location migrations
   workstream: WS4.1
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/alembic/versions/field_0041_tower_locations.py
   - services/field-api/alembic/versions/field_0042_site_visit.py
   tests:
-  - services/field-api/tests/test_tower_ws4_1.py
+  - services/field-api/tests/test_tower_ws4_1.py::test_tc4_106_site_tree_api
   frs:
   - FR4.001
   - FR4.002
   - FR4.003
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Migrations exist and the verify-all alembic job round-trips them on an empty DB; cross-tenant isolation of location/equipment
+    is shown by test_tc4_159. Missing: no upgrade/downgrade on a seeded DB, and no test dedicated to RLS on the 0041/0042
+    tables.'
 - id: T4.002
   title: Build site tree service and API
   workstream: WS4.1
@@ -28,9 +29,9 @@
   - FR4.001
   - FR4.002
   - FR4.003
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''Contract test TC4.106 passes; level order follows height_m'' — test_tc4_106 asserts levels ordered 10/20/30
+    m, ETag and 304; API4.02 in OpenAPI.'
 - id: T4.003
   title: Implement functional location mask validator
   workstream: WS4.1
@@ -42,23 +43,22 @@
   - services/field-api/tests/test_fl_mask_ws4_1.py::test_tc4_105_fl_mask_validation_20_codes
   frs:
   - FR4.008
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.105 passes for 20 SAMPLE valid and invalid codes'' — 10 valid + 10 invalid codes with kind/parent/depth
+    checked.'
 - id: T4.004
   title: Build SAP functional location reader
   workstream: WS4.1
   role: ERP
-  status: done
+  status: partial
   evidence:
-  - services/field-worker/src/field_worker/jobs/fl_import.py
-  tests:
-  - services/field-api/tests/test_tower_ws4_1.py
+  - connectors/sap/src/field_sap/fl_import.py
+  tests: []
   frs:
   - FR4.004
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: FunctionalLocationReader pages with $top/$skip, but no test reads the 3 SAMPLE sites from erp-sim and no test pages
+    over 1000 rows.
 - id: T4.005
   title: Build SAP installed equipment reader
   workstream: WS4.1
@@ -70,40 +70,41 @@
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_102_equipment_import_fields_and_duplicates
   frs:
   - FR4.005
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.102 passes; serial duplicates are reported'' — reader maps the 6 fields and reports RRU-SN-0001 on 10001001/10001003
+    (OData response via httpx.MockTransport, not erp-sim).'
 - id: T4.006
   title: Implement import job staging, preview and apply
   workstream: WS4.1
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/sites/import_service.py
   tests:
-  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_101_fl_import_preview_and_apply
+  - services/field-api/tests/test_tower_ws4_1.py::test_tc4_103_delta_import_watermark
+  - services/field-api/tests/test_tower_ws4_1.py::test_tc4_104_orphan_and_cycle_rejection
   frs:
   - FR4.004
   - FR4.006
   - FR4.007
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Staging/preview/apply proven by TC4.101 (31 rows). Missing: PR4.16 has no generator-based test (the test is a fixed
+    example), and API4.01 POST /v1/sites/import is not a route (absent from OpenAPI).'
 - id: T4.007
   title: Add delta import and schedule
   workstream: WS4.1
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/jobs/fl_import.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_103_delta_import_watermark
   frs:
   - FR4.006
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.103 passes (watermark; repeat run zero changes). Missing: the nightly schedule — FieldWorker.tick never runs
+    run_fl_delta_import.'
 - id: T4.008
   title: Report rejected import rows
   workstream: WS4.1
@@ -115,41 +116,38 @@
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_104_orphan_and_cycle_rejection
   frs:
   - FR4.007
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.104 passes'' — orphan and cycle rows rejected with FIELD-LOC-422-ORPHAN/CYCLE and import blocked.'
 - id: T4.009
   title: Create erp-sim tower fixtures
   workstream: WS4.1
   role: ERP
-  status: done
+  status: partial
   evidence:
   - services/erp-sim/fixtures/towers.json
-  tests:
-  - services/field-api/tests/test_tower_ws4_1.py
+  tests: []
   frs:
   - FR4.005
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: Fixture file exists and erp-sim reads it, but no test loads it and asserts the 3 sites / 48 equipment / 3 mismatch
+    counts.
 - id: T4.010
   title: Implement site check-in API
   workstream: WS4.1
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/visits/api.py
   tests:
-  - docs/SPEC/phase4/tests.json
-  - services/field-api/tests/test_tower_ws4_1.py::test_pr4_17_geofence_invariant_property
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_107_checkin_inside_geofence
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_108_checkin_expired_permit
+  - services/field-api/tests/test_tower_ws4_1.py::test_pr4_17_geofence_invariant_property
   frs:
   - FR4.009
   - FR4.010
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.107 and TC4.108 pass via the API. Missing: PR4.17 is a fixed-example test, not a generator (spec: Hypothesis,
+    1000 runs).'
 - id: T4.011
   title: Add geofence override with audit
   workstream: WS4.1
@@ -158,13 +156,15 @@
   evidence:
   - services/field-api/src/field_api/visits/override.py
   tests:
+  - services/field-api/tests/test_audit_ws4_3.py::test_tc4_123_update_erp_decision_with_sod
+  - services/field-api/tests/test_safety_ws4_5.py::test_api4_15_climb_session_telemetry_and_seq_gap
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_109_supervisor_geofence_override
   frs:
   - FR4.011
   - FR4.067
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.109 passes'' — geofence fail 422, supervisor override 201 with audit row field.visit.override carrying
+    override_by and reason.'
 - id: T4.012
   title: Implement check-out
   workstream: WS4.1
@@ -176,39 +176,37 @@
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_110_checkout_with_unsynced_items
   frs:
   - FR4.012
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.110 passes'' — checkout returns checked_out, unsynced_count 3 and MSG4.18 warning.'
 - id: T4.013
   title: Generate audit tasks from installed base
   workstream: WS4.2
   role: Backend
   status: done
   evidence:
-  - services/field-api/src/field_api/sitegraph/generate.py
+  - services/field-api/src/field_api/audit/generate.py
   tests:
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_112_audit_task_generation
   frs:
   - FR4.014
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.112 passes for SAMPLE site with 24 lines'' — 24 lines ordered by sector then height, snapshot_version
+    erp-*. (Old evidence path sitegraph/generate.py was deleted in C4.)'
 - id: T4.014
   title: Implement audit completeness service
   workstream: WS4.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/audit/progress.py
   tests:
-  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_03_completeness_bounded_hypothesis
   frs:
   - FR4.024
   - FR4.063
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'PR4.03 passes (Hypothesis, 1000 runs) against calculate_completeness. Missing: FR4.063 (console progress board, TC4.155)
+    has no test; per-tower cache invalidation on capture sync is untested.'
 - id: T4.015
   title: Build reconciliation engine
   workstream: WS4.3
@@ -217,13 +215,11 @@
   evidence:
   - services/field-api/src/field_api/audit/reconcile.py
   tests:
-  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_11_mismatch_symmetry_hypothesis
   frs:
   - FR4.025
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''PR4.11 passes with 500 runs'' — Hypothesis 1000 runs on classify_sets_symmetric.'
 - id: T4.016
   title: Open and deduplicate exception cases
   workstream: WS4.3
@@ -232,12 +228,12 @@
   evidence:
   - services/field-api/src/field_api/audit/exceptions.py
   tests:
+  - services/field-api/tests/test_audit_ws4_2.py::test_tc4_116_ai_mismatch_opens_exception_no_erp
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_124_exception_deduplication
   frs:
   - FR4.026
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.124 passes'' — second reconcile of the same mismatch opens no new case; exception.opened goes to the outbox.'
 - id: T4.017
   title: Implement mismatch queue API
   workstream: WS4.3
@@ -249,7 +245,7 @@
   frs:
   - FR4.064
   verified_at: null
-  note: Phase 4 deliverable verified on disk; integration verification pending
+  note: GET /v1/mismatches exists (API4.16 in OpenAPI) but no contract test or data-scope test exists.
 - id: T4.018
   title: Enforce audit sign-off rule
   workstream: WS4.3
@@ -261,166 +257,172 @@
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_122_signoff_blocked_until_explained_or_waived
   frs:
   - FR4.028
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.122 passes'' — sign-off blocked until every line is captured, explained or waived.'
 - id: T4.019
   title: Add missing and unknown finding endpoints
   workstream: WS4.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/audit/findings_api.py
   tests:
-  - services/field-api/tests/test_audit_ws4_2.py
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::tc4_120_unknownEquipmentIsTowerOnlyFindingWithEvidence
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::tc4_121_markMissingCreatesErpOnlyWithReason
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_120_and_tc4_121_findings_endpoints
-  - services/field-api/tests/test_tower_audit_features_ws4_2.py::test_tc4_120_record_unknown_equipment
-  - services/field-api/tests/test_tower_audit_features_ws4_2.py::test_tc4_121_mark_missing
   frs:
   - FR4.022
   - FR4.023
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.120/TC4.121 pass via the API. Defect: tower_only findings write capture_evidence with a fabricated sha256 ''sha256_placeholder''
+    and size 1024 (findings_api.py:185).'
 - id: T4.020
   title: Extend erp-sim with functional locations and equipment install/dismantle
   workstream: WS4.4
   role: ERP
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/routes/equipment.py
+  - services/erp-sim/src/erp_sim/services/fl.py
   tests:
-  - services/field-api/tests/test_equipment_ws4_4.py
+  - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_125_and_tc4_126_install_and_single_location
   frs:
   - FR4.029
   - FR4.030
   verified_at: null
-  note: Deliverable missing on disk
+  note: 'erp-sim has FL and equipment routes with time segments and install. Missing: SCR4.14 (console) not shown; no erp-sim
+    equipment contract test.'
 - id: T4.021
   title: Implement SAP adapter equipment operations
   workstream: WS4.4
   role: ERP
-  status: done
+  status: partial
   evidence:
-  - services/erp-sim/src/erp_sim/routes/equipment.py
+  - connectors/sap/src/field_sap/equipment.py
   tests:
-  - services/field-api/tests/test_equipment_ws4_4.py
+  - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_125_and_tc4_126_install_and_single_location
   frs:
   - FR4.029
   - FR4.030
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'SAPEquipmentAdapter exists and the tower queue uses it. Missing: no contract test runs it against erp-sim; live SAP
+    UNVERIFIED (rule 2.4).'
 - id: T4.022
   title: Configure posting queue per tower
   workstream: WS4.4
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/posting/equipment_queue.py
   tests:
-  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr412PerTowerReplayIsolationProperty
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_131_tower_equipment_queue_exhaustion
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_per_tower_order_on_replay_property
   frs:
   - FR4.036
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.131 passes; the PR4.12 Hypothesis test only checks seq allocation 1..N on enqueue (30 examples), not replay order
+    under interruptions (spec: 500 runs).'
 - id: T4.023
   title: Build equipment events API
   workstream: WS4.4
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/visits/api.py
+  - services/field-api/src/field_api/equipment/api.py
+  - services/field-api/src/field_api/equipment/events.py
   tests:
-  - docs/SPEC/phase4/tests.json
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_031_replaceStagesDismantleThenInstallConsecutiveSameQueue
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_031_installWithoutOldSerialIsOneEvent
+  - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_01_db_trigger_immutability
+  - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_02_monotonic_sequence_invariant
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_125_and_tc4_126_install_and_single_location
   frs:
   - FR4.029
   - FR4.030
   - FR4.031
   - FR4.033
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.125/TC4.126 pass (install, single location). Missing: PR4.14 (idempotent events) and PR4.15 (replace atomicity)
+    have no generator tests; TC4.127–TC4.129 not all evidenced.'
 - id: T4.024
   title: Implement reversal on undo-after-post
   workstream: WS4.4
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/warehouse/receiving/reverse.py
+  - services/field-api/src/field_api/equipment/reverse.py
   tests:
-  - docs/SPEC/phase4/tests.json
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_035_undoAfterPostCompensatesWithRefDocNoAndMsg4_19
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_035_undoBeforePostRemovesStagedEvents
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_13_invertibility_property
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_130_reversal_undo_and_double_reversal_blocked
   frs:
   - FR4.035
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.130 passes. PR4.13 test draws only an initial status from two values (50 examples), not random posted sequences
+    reversed in order (spec: 300 runs).'
 - id: T4.025
   title: Implement serial_event history and single-location invariant
   workstream: WS4.4
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/equipment/history.py
+  - services/field-api/alembic/versions/field_0043_serial_event.py
   tests:
-  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_01_db_trigger_immutability
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_02_monotonic_sequence_invariant
+  - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_125_and_tc4_126_install_and_single_location
   frs:
   - FR4.033
   - FR4.034
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Immutability trigger proven by a fixed test; seq monotonic proven by Hypothesis. Missing: PR4.01 (install-then-dismantle)
+    is not generator-based; PR4.02 as specified (one active location under concurrent installs) is not what the test checks.'
 - id: T4.026
   title: Implement mismatch decisions with core approvals
   workstream: WS4.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/audit/decisions.py
   tests:
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_123_update_erp_decision_with_sod
+  - services/field-api/tests/test_safety_ws4_5.py::test_api4_15_climb_session_telemetry_and_seq_gap
   frs:
   - FR4.027
   - FR4.067
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: TC4.123 passes incl. 403 FIELD-EXC-403-SOD. The approval is a local field.approval_request, not a core approval (core
+    P13 UNVERIFIED, rule 2.4).
 - id: T4.027
   title: Build installed-base read model and API
   workstream: WS4.9
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/visits/api.py
+  - services/field-api/src/field_api/installed_base/api.py
   tests:
   - services/field-api/tests/test_release_ws4_9.py::test_tc4_157_installed_base_query_and_validation
   frs:
   - FR4.065
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.157 passes against the field DB view. Missing: done_when requires ''against erp-sim''; no erp-sim comparison
+    is made.'
 - id: T4.028
   title: Emit installed_base.changed and publish via P13f
   workstream: WS4.9
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-worker/src/field_worker/posting/events.py
+  - services/field-api/src/field_api/installed_base/events.py
   tests:
   - services/field-api/tests/test_release_ws4_9.py::test_tc4_158_installed_base_changed_webhook
   frs:
   - FR4.066
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.158 signed-webhook test passes locally. Missing: publisher registration in core P13f (UNVERIFIED, rule 2.4).'
 - id: T4.029
   title: Record store source on install
   workstream: WS4.6
@@ -432,151 +434,190 @@
   - services/field-api/tests/test_graph_ws4_6.py::test_tc4_132_trail_from_store
   frs:
   - FR4.037
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.132 passes'' — trail from store shows ''Plant 1100 / SL 0001'' issue then install.'
 - id: T4.030
   title: Build Android tower audit feature module
   workstream: WS4.2
   role: Android
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - apps/field-android/feature-tower-audit/src/main/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditScreen.kt
   tests:
-  - services/field-api/tests/test_audit_ws4_2.py
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/NameplateReaderTest.kt::fr4_017_confidenceReadabilityCropRefAndPositionArePassedThrough
+  - services/field-api/tests/test_audit_ws4_2.py::test_tc4_112_audit_task_generation
   frs:
   - FR4.014
   - FR4.017
   verified_at: null
-  note: Deliverable missing on disk
+  note: 'TowerAuditScreen.kt is a plain-Kotlin controller with no UI. Missing: Maestro flow tower_audit.yaml has never run.
+    Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is
+    proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.031
   title: Render lens sector checklist
   workstream: WS4.2
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/feature-tower-audit/src/main/kotlin/com/scmtips/field/feature/towerAudit/lens/SectorChecklist.kt
   tests:
-  - services/field-api/tests/test_audit_ws4_2.py
-  - services/field-api/tests/test_tower_audit_features_ws4_2.py::test_tc4_113_lens_sector_checklist
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::tc4_113_sectorChecklistShowsCountsAndAtMostFourMissing
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::fr4_015_noMissingClasses
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::fr4_015_checklistHeldWhileClimbing
   frs:
   - FR4.015
   - FR4.068
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.113 logic passes on JVM. Missing: ''<= 400 ms after capture'' is a device measurement never made; FR4.068 untested;
+    owner''s Gen 2 has no display. Android module has never been built by Gradle (no Android SDK build has run) and is not
+    exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.032
   title: Implement on-device nameplate OCR
   workstream: WS4.2
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-ocr/src/main/kotlin/com/scmtips/field/core/ocr/NameplateReader.kt
   tests:
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/NameplateReaderTest.kt::fr4_017_confidenceReadabilityCropRefAndPositionArePassedThrough
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/NameplateReaderTest.kt::fr4_016_noPatternMatchIsProposedAsFailedPatternOrNullWhenEmpty
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/NameplateReaderTest.kt::fr4_016_patternMatchPreferredOverHigherConfidenceNoise
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/NameplateReaderTest.kt::fr4_016_fewerSubstitutionsWinThenConfidence
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/SerialPatternsTest.kt::fr4_016_twoConfusablesNeedTwoSubstitutions
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/SerialPatternsTest.kt::fr4_016_singleConfusableReplacedAndReported
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/SerialPatternsTest.kt::fr4_016_cleanSerialIsNotNormalised
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/SerialPatternsTest.kt::fr4_016_digitToLetterAndUnknownClassFallsBackToDefaultPattern
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_114_serial_pattern_normalisation
   frs:
   - FR4.016
   - FR4.017
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Candidate selection logic tested. Missing: TC4.114 (>= 92% exact on 300 SAMPLE plates) — no plate set and no OCR
+    engine run. Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device;
+    logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.033
   title: Write serial pattern normalisation library
   workstream: WS4.2
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-ocr/src/main/kotlin/com/scmtips/field/core/ocr/SerialPatterns.kt
   - services/field-api/src/field_api/serials.py
   tests:
-  - docs/SPEC/phase4/tests.json
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/NameplateReaderTest.kt::fr4_016_noPatternMatchIsProposedAsFailedPatternOrNullWhenEmpty
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/NameplateReaderTest.kt::fr4_016_patternMatchPreferredOverHigherConfidenceNoise
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/NameplateReaderTest.kt::fr4_016_fewerSubstitutionsWinThenConfidence
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/SerialPatternsTest.kt::fr4_016_twoConfusablesNeedTwoSubstitutions
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/SerialPatternsTest.kt::fr4_016_singleConfusableReplacedAndReported
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/SerialPatternsTest.kt::fr4_016_cleanSerialIsNotNormalised
+  - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/SerialPatternsTest.kt::fr4_016_digitToLetterAndUnknownClassFallsBackToDefaultPattern
+  - services/field-api/tests/test_audit_ws4_2.py::test_tc4_114_serial_pattern_normalisation
   - services/field-api/tests/test_audit_ws4_2.py::test_pr4_18_verify_routing_properties
   frs:
   - FR4.016
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: Kotlin SerialPatterns and Python serials.py each have tests, but they do not share fixtures as done_when requires.
+    Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is
+    proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.034
   title: Integrate photo evidence consent and blur
   workstream: WS4.2
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/feature-tower-audit/src/main/kotlin/com/scmtips/field/feature/towerAudit/Evidence.kt
   tests:
-  - services/field-api/tests/test_audit_ws4_2.py
-  - services/field-api/tests/test_tower_audit_features_ws4_2.py::test_tc4_118_photo_evidence_consent_and_blur
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::tc4_118_noEvidenceBeforeConsent
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::fr4_020_controllerEvidenceOnlyWithConsentAndLineMatched
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::tc4_118_faceInFrameCropIsBlurredAndHashedAfterConsent
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::fr4_020_blurFailureWithholdsEvidence
   frs:
   - FR4.020
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.118 logic passes (C5 removed a fabricated s3 URI/hash/isUploaded). Missing: FaceBlur is an interface not wired
+    to core-capture FaceBlurStage in the app; no on-device run. Android module has never been built by Gradle (no Android
+    SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.035
   title: Build Muse Spark nameplate verify job
   workstream: WS4.2
   role: AI
-  status: done
+  status: stub
   evidence:
   - services/field-worker/src/field_worker/jobs/nameplate_verify.py
   tests:
-  - docs/SPEC/phase4/tests.json
-  - services/field-api/tests/test_audit_ws4_2.py::test_pr4_18_verify_routing_properties
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_115_verify_routing_table
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_116_ai_mismatch_opens_exception_no_erp
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_117_ai_budget_exhausted
+  - services/field-api/tests/test_audit_ws4_2.py::test_tc4_167_contributor_model_blocked
+  - services/field-api/tests/test_audit_ws4_2.py::test_pr4_18_verify_routing_properties
   frs:
   - FR4.018
   - FR4.019
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'process_verification makes no AI call: verdict defaults to ''verified'' (nameplate_verify.py:176) and latency 120
+    ms, 150 tokens and $0.00045 are hard-coded; budget is an in-object counter, not the A-02 guard. Meta Model API UNVERIFIED.
+    Routing (PR4.18) is real.'
 - id: T4.036
   title: Register prompt and enforce non-contributor models
   workstream: WS4.2
   role: AI
-  status: done
+  status: partial
   evidence:
   - docs/prompts/field.nameplate_verify.v1.md
   tests:
+  - services/field-api/tests/test_audit_ws4_2.py::test_tc4_115_verify_routing_table
+  - services/field-api/tests/test_audit_ws4_2.py::test_tc4_117_ai_budget_exhausted
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_167_contributor_model_blocked
   frs:
   - FR4.018
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.167 passes (contributor models refused). Missing: no core prompt-registry entry (UNVERIFIED), no Llama fallback
+    call, budget alarm not on the A-02 budget guard.'
 - id: T4.037
   title: Build manual entry, unknown and missing UX
   workstream: WS4.2
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/feature-tower-audit/src/main/kotlin/com/scmtips/field/feature/towerAudit/ManualEntry.kt
   tests:
-  - services/field-api/tests/test_audit_ws4_2.py
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::tc4_120_unknownEquipmentIsTowerOnlyFindingWithEvidence
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::tc4_121_markMissingCreatesErpOnlyWithReason
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::tc4_119_manualEntryNeedsPhotoThenQueuesVerification
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_120_and_tc4_121_findings_endpoints
-  - services/field-api/tests/test_tower_audit_features_ws4_2.py::test_tc4_119_manual_serial_requires_photo
-  - services/field-api/tests/test_tower_audit_features_ws4_2.py::test_tc4_120_record_unknown_equipment
-  - services/field-api/tests/test_tower_audit_features_ws4_2.py::test_tc4_121_mark_missing
   frs:
   - FR4.021
   - FR4.022
   - FR4.023
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: TC4.119–TC4.121 logic passes on JVM and the findings API passes; there is no UI. Android module has never been built
+    by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM
+    (scripts/jobs/kotlin_jvm.py).
 - id: T4.038
   title: Build install/replace staging with BOM checklist
   workstream: WS4.4
   role: Android
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - apps/field-android/feature-swap/src/main/kotlin/com/scmtips/field/feature/swap/SwapScreen.kt
   tests:
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_031_replaceStagesDismantleThenInstallConsecutiveSameQueue
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_032_stagingRefusedUntilEverySerialisedBomItemCapturedNamesBalloon
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_035_undoAfterPostCompensatesWithRefDocNoAndMsg4_19
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_031_installWithoutOldSerialIsOneEvent
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_032_materialMustBeInPinnedBom
+  - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_035_undoBeforePostRemovesStagedEvents
+  - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_13_invertibility_property
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_127_and_tc4_128_dismantle_and_replace
+  - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_130_reversal_undo_and_double_reversal_blocked
   frs:
   - FR4.031
   - FR4.032
   - FR4.035
   verified_at: null
-  note: Deliverable missing on disk
+  note: Swap view-model stages dismantle then install and has the BOM gate (JVM tests); server TC4.128 passes. No Compose
+    UI. Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic
+    is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.039
   title: Implement climb state detector
   workstream: WS4.5
@@ -585,59 +626,68 @@
   evidence:
   - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/ClimbStateDetector.kt
   tests:
-  - services/field-api/tests/test_safety_ws4_5.py::test_tc4_133_climb_detection_on_traces
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbStateDetectorTest.kt::fr4_038_seededRandomClimbsNeverRest
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbStateDetectorTest.kt::fr4_038_firstSampleAtHeightIsUnknown
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbStateDetectorTest.kt::tc4_133_fortyLabelledTracesNoClimbClassifiedStationaryUnknownOnGaps
   frs:
   - FR4.038
   verified_at: null
-  note: Tower inspection and climb sensor verification proven via replay harness;
-    physical hardware run pending
+  note: TC4.133 runs on 40 synthetic in-code traces, not recorded traces; no sensor data. Android module has never been built
+    by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM
+    (scripts/jobs/kotlin_jvm.py).
 - id: T4.040
   title: Implement prompt gate
   workstream: WS4.5
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/PromptGate.kt
   tests:
-  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr404AscentSpeedProperty
-  - services/field-api/tests/test_safety_ws4_5.py::test_pr4_04_no_prompts_while_climbing_hypothesis
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/PromptGateTest.kt::fr4_039_climbDuringHoldRestartsStationaryWindow
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/PromptGateTest.kt::fr4_039_seededRandomTimelinesNeverEmitWhileClimbing
   frs:
   - FR4.039
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'PromptGate behaviour (FR4.039) tested with seeded-random JUnit loops. Missing: PR4.04 in Kotest (no Kotest test exists).
+    Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is
+    proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.041
   title: Implement harness confirmation
   workstream: WS4.5
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/HarnessCheck.kt
   tests:
-  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr405LoneWorkerEscalationProperty
-  - services/field-api/tests/test_safety_ws4_5.py::test_pr4_05_capture_gate_hypothesis
-  - services/field-api/tests/test_safety_ws4_5.py::test_tc4_136_harness_voice_only_or_tap_only
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_041_climbClearsPendingHalf
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_041_seededRandomCaptureGateMatchesEventHistory
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_040_onlyStationaryAcceptsOnStructure
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::tc4_136_voiceOnlyOrTapOnlyStaysUnconfirmedAndIsLogged
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_041_confidenceFloorAndWindowBounds
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/PromptGateTest.kt::fr4_040_nonTaskPromptsReleasedWhileTaskPromptWaits
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/TowerGrammarTest.kt::fr4_041_harnessClippedNeedsConfidenceAtLeast080
   frs:
   - FR4.040
   - FR4.041
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.136 passes on JVM. Missing: PR4.05 in Kotest. Android module has never been built by Gradle (no Android SDK build
+    has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.042
   title: Detect rest platform checkpoints
   workstream: WS4.5
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/Checkpoints.kt
   tests:
-  - services/field-api/tests/test_safety_ws4_5.py::test_tc4_137_rest_platform_checkpoint
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbSafeAndCheckpointsTest.kt::tc4_137_restPlatformCheckpointShowsMsg4_08Once
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbSafeAndCheckpointsTest.kt::fr4_042_toleranceIsPlusMinus1_5m
   frs:
   - FR4.013
   - FR4.042
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.137 passes on JVM. Missing: TC4.111 / FR4.013 has no test. Android module has never been built by Gradle (no
+    Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.043
   title: Activate climb-safe automatically
   workstream: WS4.5
@@ -646,56 +696,65 @@
   evidence:
   - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/ClimbSafe.kt
   tests:
-  - services/field-api/tests/test_safety_ws4_5.py::test_tc4_141_automatic_climb_safe
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbSafeAndCheckpointsTest.kt::tc4_141_climbSafeActivatesAbove2mAndCannotBeDisabledOnStructure
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbSafeAndCheckpointsTest.kt::fr4_045_climbEdgeActivates
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbSafeAndCheckpointsTest.kt::fr4_045_staysOnStructureUntilBackAtBase
   frs:
   - FR4.045
   verified_at: null
-  note: Tower inspection and climb sensor verification proven via replay harness;
-    physical hardware run pending
+  note: TC4.141 logic passes on JVM; climb-safe is not wired into :app. Android module has never been built by Gradle (no
+    Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.044
   title: Build climb session telemetry API
   workstream: WS4.5
   role: Backend
   status: partial
   evidence:
-  - services/field-api/src/field_api/visits/api.py
-  tests: []
+  - services/field-api/src/field_api/safety/api.py
+  tests:
+  - services/field-api/tests/test_audit_ws4_3.py::test_tc4_123_update_erp_decision_with_sod
+  - services/field-api/tests/test_safety_ws4_5.py::test_api4_15_climb_session_telemetry_and_seq_gap
   frs:
   - FR4.067
   verified_at: null
-  note: Tower inspection and climb sensor verification proven via replay harness;
-    physical hardware run pending
+  note: 'API4.15 telemetry test (test_api4_15) passes. Missing: events in core P13e (UNVERIFIED, rule 2.4).'
 - id: T4.045
   title: Implement lone-worker timer and escalation
   workstream: WS4.5
   role: Backend
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/LoneWorkerTimer.kt
   - services/field-api/src/field_api/safety/lone_worker.py
   tests:
-  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt
-  - services/field-api/tests/test_safety_ws4_5.py::test_pr4_19_lone_worker_timer_hypothesis
-  - services/field-api/tests/test_safety_ws4_5.py::test_tc4_138_lone_worker_warning_deferral
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/LoneWorkerTimerTest.kt::fr4_043_warningEmittedOnceWithMsg4_09
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/LoneWorkerTimerTest.kt::fr4_043_intervalRangeEnforced
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/LoneWorkerTimerTest.kt::tc4_138_warningDeferredWhileClimbingShownAtFirstStationaryEscalationUnchanged
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/LoneWorkerTimerTest.kt::fr4_043_seededRandomSchedulesEscalateExactlyAtIntervalPlusGrace
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/TowerGrammarTest.kt::fr4_043_checkInIsAcceptedAtTheFloor
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_139_escalation_sweep
+  - services/field-api/tests/test_safety_ws4_5.py::test_scr4_13_active_visits_and_ack
   frs:
   - FR4.043
   - FR4.044
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.138 (JVM) and TC4.139 (server sweep) pass. Missing: PR4.19 in Kotest. Android module has never been built by
+    Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.046
   title: Build console lone-worker monitor
   workstream: WS4.5
   role: Console
   status: partial
   evidence:
-  - apps/field-console/app/safety/
-  tests: []
+  - apps/field-console/app/safety/page.tsx
+  tests:
+  - services/field-api/tests/test_safety_ws4_5.py::test_tc4_139_escalation_sweep
+  - services/field-api/tests/test_safety_ws4_5.py::test_scr4_13_active_visits_and_ack
   frs:
   - FR4.044
   verified_at: null
-  note: Phase 4 deliverable verified on disk; integration verification pending
+  note: 'Escalation backend tested (TC4.139, SCR4.13 API). Missing: Playwright test of the banner within 5 s; Console page
+    renders hard-coded sample data / is not wired to field-api and no Playwright test has ever run.'
 - id: T4.047
   title: Build sensor replay harness for climb tests
   workstream: WS4.5
@@ -703,71 +762,82 @@
   status: partial
   evidence: []
   tests:
-  - services/field-api/tests/test_safety_ws4_5.py
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbStateDetectorTest.kt::fr4_038_seededRandomClimbsNeverRest
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/ClimbStateDetectorTest.kt::fr4_038_firstSampleAtHeightIsUnknown
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/PromptGateTest.kt::fr4_039_climbDuringHoldRestartsStationaryWindow
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/PromptGateTest.kt::fr4_039_seededRandomTimelinesNeverEmitWhileClimbing
   frs:
   - FR4.038
   - FR4.039
   verified_at: null
-  note: Tower inspection and climb sensor verification proven via replay harness;
-    physical hardware run pending
+  note: No replay harness or recorded traces (apps/field-android/testdata/climbs/ does not exist); synthetic traces live inside
+    ClimbStateDetectorTest. TC4.140 not in verify-all.
 - id: T4.048
   title: Extend voice grammar for tower work
   workstream: WS4.2
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/TowerGrammar.kt
   tests:
-  - services/field-api/tests/test_audit_ws4_2.py
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_041_climbClearsPendingHalf
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_041_seededRandomCaptureGateMatchesEventHistory
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_041_confidenceFloorAndWindowBounds
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/LoneWorkerTimerTest.kt::fr4_043_warningEmittedOnceWithMsg4_09
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/LoneWorkerTimerTest.kt::fr4_043_intervalRangeEnforced
+  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/LoneWorkerTimerTest.kt::fr4_043_seededRandomSchedulesEscalateExactlyAtIntervalPlusGrace
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/TowerGrammarTest.kt::fr4_043_checkInIsAcceptedAtTheFloor
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/TowerGrammarTest.kt::fr4_041_harnessClippedNeedsConfidenceAtLeast080
   frs:
   - FR4.041
   - FR4.043
   - FR4.068
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: Floor tests exist for harness-clipped and check-in phrases only; done_when needs every phrase at 0.79 and 0.81; FR4.068
+    untested. Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device;
+    logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.049
   title: Run safety design review
   workstream: WS4.5
   role: Product
-  status: done
+  status: partial
   evidence:
   - docs/adr/ADR-F3-climb-safe.md
-  tests:
-  - services/field-api/tests/test_safety_ws4_5.py
+  tests: []
   frs:
   - FR4.039
   - FR4.045
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: ADR exists but its 'Signed & Approved (Tenant Safety Officer)' line is not backed by any real review; no signed review
+    or logged open items.
 - id: T4.050
   title: Extend site graph for 3D
   workstream: WS4.6
   role: Backend
-  status: stub
-  evidence: []
+  status: done
+  evidence:
+  - services/field-api/alembic/versions/field_0044_graph_3d.py
   tests:
   - services/field-api/tests/test_graph_ws4_6.py::test_tc4_142_3d_graph_contract
   frs:
   - FR4.046
-  verified_at: null
-  note: Deliverable missing on disk
+  verified_at: 573e018
+  note: 'Met: ''TC4.142 passes'' — z, subkind, platform_height_m and climb_length_m stored; negative climb length rejected
+    by constraint.'
 - id: T4.051
   title: Implement 3D routing
   workstream: WS4.6
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/graph/route3d.py
   tests:
-  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_graph_ws4_6.py::test_pr4_07_route_respects_climb_weight
   frs:
   - FR4.047
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: PR4.07 Hypothesis test (500) runs dijkstra_3d only on a two-route diamond; spec generator is random connected graphs
+    of 3–12 nodes compared with every simple path.
 - id: T4.052
   title: Generate newcomer guidance
   workstream: WS4.6
@@ -779,39 +849,35 @@
   - services/field-api/tests/test_graph_ws4_6.py::test_tc4_143_newcomer_guidance_text
   frs:
   - FR4.048
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.143 text equals expected strings''.'
 - id: T4.053
   title: Build equipment trail API
   workstream: WS4.6
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/visits/api.py
+  - services/field-api/src/field_api/trails/api.py
   tests:
-  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr406NoPromptWhileClimbingOrUnharnessedProperty
   - services/field-api/tests/test_graph_ws4_6.py::test_pr4_06_trail_order_property
   frs:
   - FR4.049
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: API4.10 exists. PR4.06 test sorts its own list with Python sorted() and never calls the trail code (tautology).
 - id: T4.054
   title: Build console 3D explorer and trail replay
   workstream: WS4.6
   role: Console
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/app/sites/[id]/graph/
-  tests:
-  - services/field-api/tests/test_graph_ws4_6.py
+  - apps/field-console/app/sites/[id]/graph/page.tsx
+  tests: []
   frs:
   - FR4.049
   - FR4.050
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Missing: TC4.144 never run; page builds mockNodes/mockPoints. Console page renders hard-coded sample data / is not
+    wired to field-api and no Playwright test has ever run.'
 - id: T4.055
   title: Build asset model upload and validation
   workstream: WS4.7
@@ -819,8 +885,9 @@
   status: done
   evidence:
   - services/field-api/src/field_api/models/upload.py
+  - tools/sample-models/rru_model.glb
+  - tools/sample-models/rru_bom.csv
   tests:
-  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_08_bom_counts_property
   - services/field-api/tests/test_models_ws4_7.py::test_tc4_145_gltf_upload_validation
   - services/field-api/tests/test_models_ws4_7.py::test_tc4_149_bom_quantity_rule_mismatch
@@ -828,126 +895,147 @@
   - FR4.051
   - FR4.053
   - FR4.057
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.145 and TC4.149 pass'' plus PR4.08 Hypothesis 500 runs on parse_and_validate_bom_csv; sample models in
+    tools/sample-models.'
 - id: T4.056
   title: Implement balloon registry
   workstream: WS4.7
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/models/balloons.py
   tests:
-  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_10_balloon_stability_property
   frs:
   - FR4.052
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: PR4.10 Hypothesis test exercises MemoryBalloonRegistry (an in-memory comparator), not the DB path assign_model_balloons_in_db
+    used by publish.
 - id: T4.057
   title: Build console model viewer
   workstream: WS4.7
   role: Console
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/components/ModelViewer/
+  - apps/field-console/components/ModelViewer/ModelViewer.tsx
   tests:
-  - apps/field-console/tests/viewer-properties.test.ts
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
   frs:
   - FR4.056
   - FR4.068
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Missing: TC4.148 and >= 50 fps never measured; PR4.09 test re-implements p(t) locally instead of testing the viewer;
+    FR4.068 untested.'
 - id: T4.058
   title: Build phone exploded view
   workstream: WS4.7
   role: Android
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - apps/field-android/feature-exploded/src/main/kotlin/com/scmtips/field/feature/exploded/ExplodedViewScreen.kt
   tests:
-  - apps/field-console/tests/viewer-properties.test.ts
+  - apps/field-android/feature-exploded/src/test/kotlin/com/scmtips/field/feature/exploded/ExplodedViewModelTest.kt::tc4_026_atOneOffsetEqualsExplodeVector_fr4_055
+  - apps/field-android/feature-exploded/src/test/kotlin/com/scmtips/field/feature/exploded/ExplodedViewModelTest.kt::fr4_055_positionLinearInT
+  - apps/field-android/feature-exploded/src/test/kotlin/com/scmtips/field/feature/exploded/ExplodedViewModelTest.kt::tc4_027_overshootClampedToOne_fr4_055
+  - apps/field-android/feature-exploded/src/test/kotlin/com/scmtips/field/feature/exploded/ExplodedViewModelTest.kt::tc4_025_atZeroPartsAreAtAssembledPositions_fr4_055
+  - apps/field-android/feature-exploded/src/test/kotlin/com/scmtips/field/feature/exploded/ExplodedViewModelTest.kt::fr4_055_sliderDrivesEveryNodeTransform
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
   frs:
   - FR4.055
   verified_at: null
-  note: Deliverable missing on disk
+  note: 'Exploded view-model offsets tested on JVM (TC4.025–TC4.027). Missing: TC4.147 (>= 30 fps for 150k triangles) — no
+    SceneView/Compose UI; PR4.09 not tested on production code. Android module has never been built by Gradle (no Android
+    SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.059
   title: Implement model versioning and pinning
   workstream: WS4.7
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/models/versions.py
+  - services/field-api/src/field_api/models/api.py
   tests:
   - services/field-api/tests/test_models_ws4_7.py::test_tc4_146_published_version_immutable
   frs:
   - FR4.054
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.146 immutability and pin pass. Defect: ''publish with step-up'' is not real — any principal sending any non-empty
+    X-Stepup-Token header can publish (models/api.py:119).'
 - id: T4.060
   title: Build audit report export
   workstream: WS4.8
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/jobs/audit_report.py
+  - services/field-api/src/field_api/audits/reports.py
   tests:
-  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_20_report_round_trip_property
   - services/field-api/tests/test_sync_ws4_8.py::test_tc4_153_report_export_and_link_auth
   frs:
   - FR4.061
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'CSV export and evidence-link auth tested (TC4.153); PR4.20 Hypothesis 30 examples (spec 200). Defects: the ''PDF''
+    is plain text with a ''%PDF-1.4'' prefix (audit_report.py:214); GET /v1/evidence/{id} returns a fixed 1x1 PNG for any
+    id without looking evidence up (audits/reports.py:155); P13e retention UNVERIFIED.'
 - id: T4.061
   title: Build site pack API
   workstream: WS4.8
   role: Backend
   status: done
   evidence:
-  - services/field-api/src/field_api/visits/api.py
+  - services/field-api/src/field_api/sitepack/api.py
   tests:
+  - apps/field-android/core-sitepack/src/test/kotlin/com/scmtips/field/core/sitepack/SitePackManagerTest.kt::fr4_058_manifestAbove60MbOrInconsistentIsRefused
   - services/field-api/tests/test_sync_ws4_8.py::test_tc4_150_site_pack_contents_and_size
   frs:
   - FR4.058
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.150: SAMPLE pack <= 60 MB'' — manifest size, 4 chunks, snapshot_version, ETag 304 asserted.'
 - id: T4.062
   title: Store site packs on the phone
   workstream: WS4.8
   role: Android
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - apps/field-android/core-sitepack/src/main/kotlin/com/scmtips/field/core/sitepack/SitePackManager.kt
   tests:
-  - services/field-api/tests/test_sync_ws4_8.py
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/sync/TowerOrderingTest.kt::fr4_059_aHeldTowerDoesNotBlockOthersAndResumesInOrder
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/sync/TowerOrderingTest.kt::fr4_059_onlyTheLowestUncompletedSeqOfEachTowerIsEligible
+  - apps/field-android/core-sitepack/src/test/kotlin/com/scmtips/field/core/sitepack/SitePackManagerTest.kt::fr4_059_chunkStoredOnlyWhenSizeAndSha256Match
+  - apps/field-android/core-sitepack/src/test/kotlin/com/scmtips/field/core/sitepack/SitePackManagerTest.kt::fr4_058_manifestAbove60MbOrInconsistentIsRefused
+  - apps/field-android/core-sitepack/src/test/kotlin/com/scmtips/field/core/sitepack/SitePackManagerTest.kt::fr4_059_packOlderThan14DaysExpiresAndIsEvicted
+  - apps/field-android/core-sitepack/src/test/kotlin/com/scmtips/field/core/sitepack/SitePackManagerTest.kt::fr4_059_namesCannotEscapeTheCacheDirectory
   frs:
   - FR4.058
   - FR4.059
   verified_at: null
-  note: Deliverable missing on disk
+  note: 'SitePackManager chunk verify/expiry tested on JVM. Missing: TC4.151 offline run on a phone. Android module has never
+    been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4
+    on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.063
   title: Order outbox replay per tower
   workstream: WS4.8
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/sync/TowerOrdering.kt
   tests:
-  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr412PerTowerReplayIsolationProperty
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/sync/TowerOrderingTest.kt::fr4_059_aHeldTowerDoesNotBlockOthersAndResumesInOrder
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/sync/TowerOrderingTest.kt::fr4_059_onlyTheLowestUncompletedSeqOfEachTowerIsEligible
+  - apps/field-android/core-sitepack/src/test/kotlin/com/scmtips/field/core/sitepack/SitePackManagerTest.kt::fr4_059_chunkStoredOnlyWhenSizeAndSha256Match
+  - apps/field-android/core-sitepack/src/test/kotlin/com/scmtips/field/core/sitepack/SitePackManagerTest.kt::fr4_059_packOlderThan14DaysExpiresAndIsEvicted
+  - apps/field-android/core-sitepack/src/test/kotlin/com/scmtips/field/core/sitepack/SitePackManagerTest.kt::fr4_059_namesCannotEscapeTheCacheDirectory
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_per_tower_order_on_replay_property
   frs:
   - FR4.059
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TowerOrdering per-tower FIFO tested on JVM (C5 fixed a later seq overtaking). Missing: PR4.12 in Kotest; the Hypothesis
+    PR4.12 replay test in test_sync_ws4_8 simulates its own coordinator instead of calling production code. Android module
+    has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by
+    JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.064
   title: Detect replay conflicts
   workstream: WS4.8
@@ -959,142 +1047,137 @@
   - services/field-api/tests/test_sync_ws4_8.py::test_tc4_152_replay_conflict_detection_and_hold
   frs:
   - FR4.060
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: 573e018
+  note: 'Met: ''TC4.152 passes'' — conflict opens exception RULE-REPLAY-CONFLICT, holds only that tower queue, release works.'
 - id: T4.065
   title: Build console site and tower explorer
   workstream: WS4.9
   role: Console
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/app/sites/
+  - apps/field-console/app/sites/page.tsx
   tests:
   - services/field-api/tests/test_release_ws4_9.py::test_tc4_154_site_explorer_and_last_audit_contract
   frs:
   - FR4.062
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: Backend contract for the explorer passes (TC4.154 API test); console UI untested. Console page renders hard-coded
+    sample data / is not wired to field-api and no Playwright test has ever run.
 - id: T4.066
   title: Build console audit progress board
   workstream: WS4.9
   role: Console
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/app/audits/
-  tests:
-  - services/field-api/tests/test_audit_ws4_3.py
+  - apps/field-console/app/audits/page.tsx
+  tests: []
   frs:
   - FR4.063
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Missing: TC4.155 / FR4.063 never tested. Console page renders hard-coded sample data / is not wired to field-api
+    and no Playwright test has ever run.'
 - id: T4.067
   title: Build console mismatch queue
   workstream: WS4.3
   role: Console
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/app/mismatches/
+  - apps/field-console/app/mismatches/page.tsx
   tests:
-  - services/field-api/tests/test_audit_ws4_3.py
+  - services/field-api/tests/test_audit_ws4_3.py::test_tc4_123_update_erp_decision_with_sod
   frs:
   - FR4.027
   - FR4.064
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Page uses SAMPLE_FINDINGS. Missing: TC4.156 / FR4.064 never tested. Console page renders hard-coded sample data /
+    is not wired to field-api and no Playwright test has ever run.'
 - id: T4.068
   title: Write Python property tests
   workstream: WS4.9
   role: QA
-  status: stub
+  status: partial
   evidence: []
   tests:
-  - docs/SPEC/phase4/tests.json
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_03_completeness_bounded_hypothesis
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_11_mismatch_symmetry_hypothesis
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_01_db_trigger_immutability
   frs: []
   verified_at: null
-  note: Deliverable missing on disk
+  note: PR4.03 and PR4.11 pass at stated runs; PR4.01 is not generator-based; deliverable dir services/field-api/tests/properties/
+    does not exist (tests live in test_*_ws4_*.py).
 - id: T4.069
   title: Write Kotlin property tests
   workstream: WS4.9
   role: QA
-  status: stub
+  status: partial
   evidence: []
   tests:
-  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr404AscentSpeedProperty
-  - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/SafetyPropertiesTest.kt::testPr405LoneWorkerEscalationProperty
-  - services/field-api/tests/test_safety_ws4_5.py::test_pr4_04_no_prompts_while_climbing_hypothesis
-  - services/field-api/tests/test_safety_ws4_5.py::test_pr4_05_capture_gate_hypothesis
-  - services/field-api/tests/test_safety_ws4_5.py::test_pr4_19_lone_worker_timer_hypothesis
+  - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
+  - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_per_tower_order_on_replay_property
   frs: []
   verified_at: null
-  note: Deliverable missing on disk
+  note: No Kotest tests exist. PR4.04/PR4.05/PR4.19 behaviour is covered only by seeded-random JUnit 4 loops (core-safety
+    tests), which do not satisfy the Kotest generator rule.
 - id: T4.070
   title: Write console property and UI tests
   workstream: WS4.9
   role: QA
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/tests/
-  tests:
   - apps/field-console/tests/viewer-properties.test.ts
+  tests:
   - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
   frs:
   - FR4.068
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Missing: TC4.164 axe run never executed; FR4.068 untested; PR4.09 fast-check test never run in verify-all.'
 - id: T4.071
   title: Run contract and compat tests
   workstream: WS4.9
   role: QA
-  status: done
-  evidence:
-  - compat/
-  - packages/field-contract/
+  status: partial
+  evidence: []
   tests:
-  - services/field-api/tests/test_release_ws4_9.py
+  - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_125_and_tc4_126_install_and_single_location
   frs:
   - FR4.029
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: No Schemathesis run over Phase 4 paths and no compat run against core-p13 (core UNVERIFIED). TC4.162 unproven.
 - id: T4.072
   title: Add observability for Phase 4
   workstream: WS4.9
   role: DevOps
-  status: done
+  status: partial
   evidence:
   - deploy/otel/f3-dashboards.json
   tests:
+  - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_131_tower_equipment_queue_exhaustion
+  - services/field-api/tests/test_safety_ws4_5.py::test_tc4_139_escalation_sweep
+  - services/field-api/tests/test_safety_ws4_5.py::test_scr4_13_active_visits_and_ack
   frs:
   - FR4.036
   - FR4.044
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'Dashboard JSON exists; TC4.131 queue test passes. Missing: no chaos test showing alerts fire.'
 - id: T4.073
   title: Run security checks
   workstream: WS4.9
   role: Security
-  status: done
+  status: partial
   evidence:
   - docs/security/f3-threat-model.md
   tests:
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::fr4_020_controllerEvidenceOnlyWithConsentAndLineMatched
+  - apps/field-android/feature-tower-audit/src/test/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditTest.kt::fr4_020_blurFailureWithholdsEvidence
   - services/field-api/tests/test_release_ws4_9.py::test_tc4_159_multi_tenant_isolation_boundary
   - services/field-api/tests/test_sync_ws4_8.py::test_tc4_153_report_export_and_link_auth
   frs:
   - FR4.020
   - FR4.061
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-03, F-04
-    resolved)
+  verified_at: null
+  note: 'TC4.153 and TC4.159 pass. Missing: TC4.166 and a clean Semgrep/Trivy run on record; see evidence-endpoint and step-up
+    defects in T4.060/T4.059.'
 - id: T4.074
   title: Wire feature flags and rollout
   workstream: WS4.9
@@ -1106,7 +1189,7 @@
   frs:
   - FR4.045
   verified_at: null
-  note: Phase 4 deliverable verified on disk; integration verification pending
+  note: 'Flags declared. Missing: rollback never rehearsed (no staging environment).'
 - id: T4.075
   title: Produce Phase 4 report and verify-all run
   workstream: WS4.9
@@ -1118,4 +1201,4 @@
   frs:
   - FR4.067
   verified_at: null
-  note: Phase 4 deliverable verified on disk; integration verification pending
+  note: Report is marked SUPERSEDED; no verify-all PASS table exists for Phase 4.

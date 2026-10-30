@@ -2,27 +2,40 @@
   title: Add erp-sim inbound delivery service
   workstream: WS3.1
   role: ERP
-  status: partial
+  status: done
   evidence:
   - services/erp-sim/src/erp_sim/services/inbound.py
   tests:
   - compat/sap_parity/test_sap_parity.py::test_t3_001_inbound_goods_receipt_parity
+  - compat/sap_parity/test_sap_parity.py::test_t3_009_warehouse_fault_injection_and_prod_rejection
+  - tests/e2e/test_slice_receive_e2e.py::test_slice_goods_receipt_round_trip
   frs:
   - FR3.010
   - FR3.043
-  verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  verified_at: 573e018
+  note: 'Met: "Sim posts GR for SAMPLE delivery 180000123 and returns a material document in range; delivery OverallGoodsMovementStatus
+    becomes C" (test_t3_001 on the erp-sim app; the e2e asserts the 4900000000-4999999999 range).'
 - id: T3.002
   title: Add Alembic migrations for Phase 3 tables
   workstream: WS3.1
   role: Backend
-  status: stub
-  evidence: []
-  tests: []
+  status: partial
+  evidence:
+  - services/field-api/alembic/versions/field_0031_handling_unit.py
+  - services/field-api/alembic/versions/field_0033_pi_document.py
+  - services/field-api/alembic/versions/field_0035_site_graph.py
+  - services/field-api/alembic/versions/field_0038_approval_request.py
+  - scripts/jobs/alembic.py
+  tests:
+  - tests/security/test_rls_catalog.py::test_all_field_tables_have_forced_rls
+  - tests/security/test_rls_catalog.py::test_tenant_isolation_policies_exist
+  - tests/security/test_rls_catalog.py::test_site_scope_policies_exist
   frs:
   - FR3.065
   verified_at: null
-  note: Deliverable missing on disk
+  note: 'Migrations 0030-0039 exist with FORCE RLS; scripts/jobs/alembic.py round-trips on an EMPTY database only.
+    Missing: round-trip on a seeded database; per-table RLS behaviour tests (only catalog checks); spec-column check
+    of each table.'
 - id: T3.003
   title: Add erp-sim outbound delivery service
   workstream: WS3.1
@@ -32,12 +45,14 @@
   - services/erp-sim/src/erp_sim/services/outbound.py
   tests:
   - compat/sap_parity/test_sap_parity.py::test_t3_003_outbound_pick_issue_and_reverse_parity
+  - compat/sap_parity/test_sap_parity.py::test_t3_009_warehouse_fault_injection_and_prod_rejection
   frs:
   - FR3.023
   - FR3.024
   - FR3.043
   verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  note: 'Pick, GI 601 and reversal 602 on SAMPLE 800000045 tested. Missing: "lock conflict returns 423 while another
+    session holds it" - only the header-injected fault profile returns 423; no two-session lock test.'
 - id: T3.004
   title: Add erp-sim physical inventory service
   workstream: WS3.1
@@ -47,12 +62,14 @@
   - services/erp-sim/src/erp_sim/services/physinv.py
   tests:
   - compat/sap_parity/test_sap_parity.py::test_t3_004_physical_inventory_parity
+  - tests/e2e/test_pi_flow.py::test_pi_flow_blind_count_recount_approval_sod_and_erp_posting
   frs:
   - FR3.035
   - FR3.037
   - FR3.043
   verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  note: 'Create (freeze), count and PostDifferences return a material document. Missing: proof that PostDifferences
+    uses the creation-time snapshot when stock moves after creation.'
 - id: T3.005
   title: Add erp-sim material document service
   workstream: WS3.1
@@ -62,25 +79,32 @@
   - services/erp-sim/src/erp_sim/services/matdoc.py
   tests:
   - compat/sap_parity/test_sap_parity.py::test_t3_005_material_document_cancel_and_409_reversal
-  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_110_and_pr3_01_undo_goods_receipt_reversal
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_01_gr_reversal_nets_to_zero
+  - tests/e2e/test_slice_receive_e2e.py::test_slice_goods_receipt_round_trip
   frs:
   - FR3.011
   - FR3.015
   verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  note: 'Cancel creates the reversal referencing the original; second cancel 409; e2e shows 101+102 nets stock to
+    zero for one example. Missing: PR3.01 - the generator test in tests/property/test_pr3_warehouse_properties.py
+    is tautological (asserts its own arithmetic, calls no production code).'
 - id: T3.006
   title: Write declarative SAP mapping files
   workstream: WS3.1
   role: ERP
   status: partial
-  evidence: []
+  evidence:
+  - connectors/sap/mappings/inbound_delivery.yaml
+  - connectors/sap/mappings/outbound_delivery.yaml
+  - connectors/sap/mappings/physinv.yaml
+  - connectors/sap/mappings/material_document.yaml
+  - docs/SPEC/F2_SAP_MAPPING.md
   tests:
   - compat/sap_parity/test_sap_parity.py::test_t3_006_declarative_mapping_files
   frs:
   - FR3.042
   verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  note: 'Four mapping files exist; test only checks top-level keys. Missing: JSON Schema validation; proof that
+    F2_SAP_MAPPING.md is generated from the mappings.'
 - id: T3.007
   title: Implement adapter warehouse calls
   workstream: WS3.1
@@ -94,21 +118,25 @@
   - FR3.041
   - FR3.044
   verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  note: 'Error classifier tested. Missing: golden payloads are a self-rendered summary string, not the HTTP requests
+    the adapter sends; the S/4 target is UNVERIFIED (docs/META_FIELD.md), rule 2.4 caps this at partial.'
 - id: T3.008
   title: Build the parity contract suite
   workstream: WS3.1
   role: QA
   status: partial
   evidence:
-  - compat/sap_parity/
+  - compat/sap_parity/test_sap_parity.py
   tests:
-  - compat/sap_parity/test_sap_parity.py::test_t3_008_sap_vcr_cassettes_parity
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_15_sim_parity
+  - compat/sap_parity/test_sap_parity.py::test_t3_001_inbound_goods_receipt_parity
+  - compat/sap_parity/test_sap_parity.py::test_t3_005_material_document_cancel_and_409_reversal
   frs:
   - FR3.043
   verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  note: Sim parity tests are real. The cassette compat/sap_parity/cassettes/inbound_gr_sample.yaml is hand-written
+    (host s4-test-system.corp.internal, token dev-csrf-token-12345), not a recording; test_t3_008 "parity" checks
+    that fabricated file. No skip-with-UNVERIFIED path. PR3.15 generator test exercises warehouse/outbound/goods_issue.py
+    (fabricated doc numbers), not the sim.
 - id: T3.009
   title: Add sim fault injection profiles for warehouse
   workstream: WS3.1
@@ -122,76 +150,79 @@
   - FR3.040
   - FR3.043
   verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  note: 'Production rejection of the header tested. Missing: "chaos tests can select each profile" - only warehouse_lock
+    is exercised; no chaos run exists.'
 - id: T3.010
   title: Implement ordered posting queue claim
   workstream: WS3.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/posting/queue.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_010_failed_job_blocks_later_jobs_until_retried
   - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_010_ordered_queue_claim_and_predecessor_blocking
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_07_posting_order_strictly_fifo
+  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_010_failed_job_blocks_later_jobs_until_retried
   frs:
   - FR3.038
   - FR3.039
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Lowest-seq claim and predecessor blocking tested sequentially. Missing: TC3.131 (two workers polling one
+    queue concurrently); PR3.07 generator test exercises warehouse/outbound/post.py job numbering, not the claim.'
 - id: T3.011
   title: Implement retry classification and backoff
   workstream: WS3.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/posting/retry.py
   tests:
-  - docs/SPEC/phase3/tests.json
   - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_011_retry_classification_and_backoff_jitter
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_13_bounded_retries_schedule
   frs:
   - FR3.040
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'classify_error and compute_backoff_jitter tested (TC3.132 delays). Missing: PR3.13 - the generator test
+    in tests/property/test_pr3_warehouse_properties.py is tautological (asserts its own arithmetic, calls no production
+    code).'
 - id: T3.012
   title: Implement idempotency and pre-post probe
   workstream: WS3.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/posting/idempotency.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_012_compact_idempotency_key_format
   - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_012_pre_post_probe_adoption
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_06_idempotency_key_format_and_uniqueness
+  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_012_compact_idempotency_key_format
   frs:
   - FR3.041
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Probe adoption tested (TC3.133). But probe_sap_document reads the erp-sim database directly as the postgres
+    superuser instead of going through ErpPort.find_by_idempotency_key, so it cannot work against S/4. PR3.06 -
+    the generator test in tests/property/test_pr3_warehouse_properties.py is tautological (asserts its own arithmetic,
+    calls no production code). Update ddd4b84: the pre-post probe now goes through ErpPort.find_by_idempotency_key
+    (header text FIELD:<key>) and finalizes the adopted document; test drives the real SimAdapter + erp-sim. PR3.06
+    generator test still missing.'
 - id: T3.013
   title: Expose posting queue APIs
   workstream: WS3.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/posting/routes.py
   tests:
-  - services/field-api/tests/test_posting_api_ws3_2.py::test_t3_013_cancel_posting_job_and_cascade_dependent_jobs
   - services/field-api/tests/test_posting_api_ws3_2.py::test_t3_013_list_posting_queues
   - services/field-api/tests/test_posting_api_ws3_2.py::test_t3_013_list_queue_jobs_order
   - services/field-api/tests/test_posting_api_ws3_2.py::test_t3_013_retry_posting_job
+  - services/field-api/tests/test_posting_api_ws3_2.py::test_t3_013_cancel_posting_job_and_cascade_dependent_jobs
   frs:
   - FR3.045
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'List, jobs, retry and cancel-cascade (BR3.14) tested on Postgres. Missing: no Schemathesis run.'
 - id: T3.014
   title: Emit posting events through the outbox
   workstream: WS3.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/posting/events.py
   tests:
@@ -199,21 +230,22 @@
   frs:
   - FR3.038
   - FR3.064
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Four events are written to field.outbox. Missing: no validation against the EV3.01-EV3.04 schemas; no test
+    that an event is never emitted without committed state; FR3.064 has no passing test.'
 - id: T3.015
   title: Add posting metrics and alerts
   workstream: WS3.2
   role: DevOps
-  status: done
+  status: partial
   evidence:
   - deploy/observability/posting.rules.yaml
-  tests:
-  - services/field-worker/tests/unit/test_posting_ws3_2.py
+  tests: []
   frs:
   - FR3.040
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Alert rules file exists. Missing: "Alerts fire in the chaos run and clear after recovery" - no chaos run,
+    no Prometheus evaluation.'
 - id: T3.016
   title: Import inbound deliveries into receive tasks
   workstream: WS3.3
@@ -223,84 +255,93 @@
   - services/field-worker/src/field_worker/warehouse/ibd_import.py
   tests:
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_101_and_tc3_103_ibd_polling_and_conflict
+  - tests/e2e/test_worker_process.py::test_worker_process_imports_and_posts_as_field_worker_role
   frs:
   - FR3.001
   - FR3.003
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: 573e018
+  note: 'Met: "TC3.101 and TC3.103 pass; re-import creates no duplicates" (re-poll idempotent in test_tc3_101; the
+    real worker process imports as field_worker).'
 - id: T3.017
   title: Add CSV inbound delivery import with guided-load conventions
   workstream: WS3.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/csv_import.py
   tests:
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_102_csv_import_with_match_ladder
   frs:
   - FR3.002
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Match ladder and confirm work on Postgres (TC3.102). Missing: API3.03 POST /v1/imports/inbound-deliveries
+    is not implemented, so the module is not reachable from any route or worker loop (no caller outside tests since
+    C4 removed the /v1/warehouse routers); console page apps/field-console/app/warehouse/imports/ does not exist.'
 - id: T3.018
   title: Validate SSCC captures for receiving
   workstream: WS3.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/sscc.py
   tests:
-  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_104_and_pr3_12_sscc_validation_and_duplicate
   - tests/property/test_pr3_warehouse_properties.py::test_pr3_12_sscc_mod10_validity
   frs:
   - FR3.004
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'SSCC Mod-10 and duplicate check tested directly. Missing: receiving/sscc.py is not reachable from any route
+    or worker loop (no caller outside tests since C4 removed the /v1/warehouse routers) - capture ingest/API3.04
+    do not call it, so the 409 FIELD-RCV-409-SSCC-DUPLICATE is not on the product path.'
 - id: T3.019
   title: Derive HU quantity and counted quantity
   workstream: WS3.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/counting.py
   tests:
-  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_105_and_pr3_02_counting_hierarchy_and_line_qty
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_02_counted_quantity_rule
   frs:
   - FR3.005
   - FR3.006
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: counting.py is not reachable from any route or worker loop (no caller outside tests since C4 removed the
+    /v1/warehouse routers); API3.04 in tasks/api.py has its own count rule. PR3.02 - the generator test in tests/property/test_pr3_warehouse_properties.py
+    is tautological (asserts its own arithmetic, calls no production code).
 - id: T3.020
   title: Apply over and under delivery rules
   workstream: WS3.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/tolerance.py
+  - services/field-api/src/field_api/tasks/api.py
   tests:
-  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_106_and_tc3_107_delivery_tolerances
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_14_tolerance_gate
+  - tests/e2e/test_slice_receive_e2e.py::test_over_tolerance_blocks_confirm_and_opens_case
   frs:
   - FR3.007
   - FR3.008
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Tolerance rules are on the live confirm path (API3.06) and tested (TC3.106, TC3.107, e2e 409 + approval
+    case). Missing: PR3.14 - the generator test in tests/property/test_pr3_warehouse_properties.py is tautological
+    (asserts its own arithmetic, calls no production code).'
 - id: T3.021
   title: Handle damaged cartons
   workstream: WS3.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/damage.py
   tests:
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_108_damaged_carton_handling
   frs:
   - FR3.009
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: damage.py is not reachable from any route or worker loop (no caller outside tests since C4 removed the /v1/warehouse
+    routers). The live path (API3.05 flags + confirm) implements only FIELD_DAMAGED_MODE=reject; "TC3.108 passes
+    for both settings" is not met on the product path.
 - id: T3.022
   title: Stage and post goods receipt
   workstream: WS3.3
@@ -308,32 +349,38 @@
   status: done
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/post.py
+  - services/field-api/src/field_api/tasks/api.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_109_stage_and_post_goods_receipt
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_109_goods_receipt_jobs_in_confirm_order
+  - tests/e2e/test_slice_receive_e2e.py::test_slice_goods_receipt_round_trip
   frs:
   - FR3.010
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: 573e018
+  note: 'Met: "TC3.109 passes; material document number in 4900000000-4999999999 recorded" (confirm -> worker ->
+    erp-sim; e2e asserts the range on field.erp_document.doc_number).'
 - id: T3.023
   title: Implement undo after post as reversal
   workstream: WS3.3
   role: Backend
   status: partial
   evidence:
-  - services/field-api/src/field_api/warehouse/receiving/reverse.py
+  - services/field-api/src/field_api/tasks/api.py
   tests:
-  - compat/sap_parity/test_sap_parity.py
+  - tests/e2e/test_slice_receive_e2e.py::test_slice_goods_receipt_round_trip
+  - tests/e2e/test_slice_receive_e2e.py::test_reverse_permissions
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_110_and_pr3_01_undo_goods_receipt_reversal
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_01_gr_reversal_nets_to_zero
   frs:
   - FR3.011
   verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  note: 'Live undo is API3.07 in tasks/api.py (e2e: reversal nets stock to zero, permissions). The deliverable receiving/reverse.py
+    is not reachable from any route or worker loop (no caller outside tests since C4 removed the /v1/warehouse routers)
+    (TC3.110 test targets it). Missing: per-item undo on the live path; PR3.01 - the generator test in tests/property/test_pr3_warehouse_properties.py
+    is tautological (asserts its own arithmetic, calls no production code).'
 - id: T3.024
   title: Route quality-hold receipts
   workstream: WS3.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/receiving/quality.py
   tests:
@@ -341,26 +388,29 @@
   frs:
   - FR3.012
   - FR3.015
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: quality.py is not reachable from any route or worker loop (no caller outside tests since C4 removed the
+    /v1/warehouse routers); quality-hold routing and 321 release are not on the confirm path.
 - id: T3.025
   title: Generate putaway tasks with bin proposal
   workstream: WS3.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/putaway.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py
+  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_112_putaway_proposal_and_scan
   frs:
   - FR3.013
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Bin proposal reads field.location. Missing: putaway tasks are not generated after GR; no test of determinism
+    on the SAMPLE layout or that reserved bins are not proposed twice; module is not reachable from any route or
+    worker loop (no caller outside tests since C4 removed the /v1/warehouse routers).'
 - id: T3.026
   title: Confirm putaway by bin scan
   workstream: WS3.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/putaway.py
   tests:
@@ -368,53 +418,59 @@
   frs:
   - FR3.013
   - FR3.014
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Scan check exists as a function. Missing: API3.08 POST /v1/putaway/{task_id}/lines/{line_id}/confirm not
+    implemented; TC3.112 not run through an API.'
 - id: T3.027
   title: Record dock-to-stock timestamps
   workstream: WS3.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/metrics.py
   tests:
   - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_113_dock_to_stock_duration_metrics
   frs:
   - FR3.016
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Duration arithmetic tested on a fixture. Missing: no timestamps are recorded by the receive/putaway path;
+    metrics.py is not reachable from any route or worker loop (no caller outside tests since C4 removed the /v1/warehouse
+    routers).'
 - id: T3.028
   title: Add receive task APIs
   workstream: WS3.3
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/tasks/api.py
+  - packages/field-contract/openapi.json
   tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py::test_t3_028_warehouse_api_routes
+  - tests/e2e/test_slice_receive_e2e.py::test_count_rules_and_scope
+  - tests/e2e/test_slice_receive_e2e.py::test_slice_goods_receipt_round_trip
   frs:
   - FR3.061
   - FR3.065
   verified_at: null
-  note: Deliverable missing on disk
+  note: 'API3.01, API3.04-API3.07 implemented on Postgres and exported. Missing: API3.02, API3.03, API3.08, API3.09
+    not implemented; no Schemathesis run.'
 - id: T3.029
   title: Import outbound deliveries into pick tasks
   workstream: WS3.4
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/warehouse/obd_import.py
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_4.py
+  tests: []
   frs:
   - FR3.017
   - FR3.026
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'DB-backed OBD import exists. Missing: not called by the worker loop; no passing test (TC3.114).'
 - id: T3.030
   title: Confirm picks by capture
   workstream: WS3.4
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/outbound/pick.py
   tests:
@@ -423,13 +479,15 @@
   frs:
   - FR3.018
   - FR3.019
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: PickEngine is a pure function, not reachable from any route or worker loop (no caller outside tests since
+    C4 removed the /v1/warehouse routers). Live pick counts/confirm (API3.04/3.06) do not validate bin/material/batch
+    from captures. No pick e2e. FR3.018/FR3.019 have no passing test.
 - id: T3.031
   title: Handle short picks
   workstream: WS3.4
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/outbound/short_pick.py
   tests:
@@ -437,581 +495,591 @@
   frs:
   - FR3.020
   - FR3.028
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: Pure function, not reachable from any route or worker loop (no caller outside tests since C4 removed the
+    /v1/warehouse routers); no count request is created on the live path. FR3.020/FR3.028 have no passing test.
 - id: T3.032
   title: Post picking quantities
   workstream: WS3.4
   role: Backend
-  status: done
+  status: partial
   evidence:
+  - services/field-api/src/field_api/tasks/api.py
   - services/field-api/src/field_api/warehouse/outbound/post.py
   tests:
   - services/field-api/tests/test_warehouse_ws3_4.py::test_t3_032_outbound_posting_jobs_generation
   frs:
   - FR3.021
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: API3.06 stages OutboundDeliveryPick + GoodsIssue for pick tasks, but no test posts a pick task to erp-sim
+    (TC3.118). outbound/post.py is not reachable from any route or worker loop (no caller outside tests since C4
+    removed the /v1/warehouse routers).
 - id: T3.033
   title: Pack picked lines into outbound HUs
   workstream: WS3.4
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/outbound/pack.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_104_and_pr3_12_sscc_validation_and_duplicate
   - services/field-api/tests/test_warehouse_ws3_4.py::test_t3_033_outbound_hu_packing_and_sscc
   - tests/property/test_pr3_warehouse_properties.py::test_pr3_12_sscc_mod10_validity
   frs:
   - FR3.022
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'SSCC generation is real and Mod-10 property-tested. Missing: API3.09 POST /v1/pick-tasks/{task_id}/hus
+    not implemented; pack.py is not reachable from any route or worker loop (no caller outside tests since C4 removed
+    the /v1/warehouse routers).'
 - id: T3.034
   title: Post goods issue and reversal
   workstream: WS3.4
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/warehouse/outbound/goods_issue.py
   tests:
-  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_warehouse_ws3_4.py::test_t3_034_goods_issue_and_reversal
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_08_goods_issue_never_exceeds_picked_quantity
   frs:
   - FR3.023
   - FR3.024
   - FR3.025
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'goods_issue.py invents material document numbers (f"490{uuid...}", lines 63 and 103) without any ERP call.
+    The live GI job (API3.06 -> worker -> erp-sim) has no test; PR3.08 generator test exercises the fake module.
+    Update ddd4b84: goods_issue.py no longer invents numbers (material_document_no None; the ERP assigns it when
+    field-worker posts the GI job). The live GI path still has no e2e test (TC3.118).'
 - id: T3.035
   title: Optimise pick path order
   workstream: WS3.4
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/sitegraph/pickpath.py
   tests:
   - services/field-api/tests/test_warehouse_ws3_4.py::test_t3_035_pick_path_2opt_optimization
   frs:
   - FR3.026
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: '2-opt ordering exists. Missing: "Route length <= bin-order length on 100 SAMPLE pick lists" - test uses
+    one 4-line list; module is not reachable from any route or worker loop (no caller outside tests since C4 removed
+    the /v1/warehouse routers).'
 - id: T3.036
   title: Create PI documents from planner requests
   workstream: WS3.5
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/warehouse/inventory/documents.py
+  - services/field-api/src/field_api/pi/api.py
   tests:
-  - services/field-api/tests/test_warehouse_ws3_5.py::test_t3_036_pi_document_creation
+  - tests/e2e/test_pi_flow.py::test_pi_flow_blind_count_recount_approval_sod_and_erp_posting
   frs:
   - FR3.027
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'API3.10 creates PI documents on Postgres (e2e). Missing: planner-request flow; no test carries TC3.121/FR3.027.
+    warehouse/inventory/documents.py is not reachable from any route or worker loop (no caller outside tests since
+    C4 removed the /v1/warehouse routers).'
 - id: T3.037
   title: Implement cycle-count rules
   workstream: WS3.5
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/warehouse/cycle_count.py
   tests:
   - services/field-api/tests/test_warehouse_ws3_5.py::test_t3_037_cycle_count_rules
   frs:
   - FR3.028
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Due-date helpers exist. Missing: not scheduled by the worker; no PI documents created from rules; FR3.028
+    has no passing test.'
 - id: T3.038
   title: Enforce blind count projection
   workstream: WS3.5
   role: Security
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/warehouse/inventory/projection.py
+  - services/field-api/src/field_api/tasks/api.py
+  - services/field-api/src/field_api/pi/api.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_5.py::test_t3_038_blind_count_projection_redaction
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_03_blind_count_never_reveals_book_quantity
+  - tests/e2e/test_pi_flow.py::test_pi_flow_blind_count_recount_approval_sod_and_erp_posting
   frs:
   - FR3.029
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Live task list and count response hide book values (e2e _no_book). Missing: TC3.123 leak scanner across
+    all operator responses; PR3.03 generator test exercises warehouse/inventory/projection.py, not reachable from
+    any route or worker loop (no caller outside tests since C4 removed the /v1/warehouse routers).'
 - id: T3.039
   title: Implement count entry and commit
   workstream: WS3.5
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/warehouse/inventory/counting.py
+  - services/field-api/src/field_api/pi/api.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_105_and_pr3_02_counting_hierarchy_and_line_qty
-  - services/field-api/tests/test_warehouse_ws3_5.py::test_t3_039_count_entry_and_confirmation
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_02_counted_quantity_rule
+  - tests/e2e/test_pi_flow.py::test_pi_flow_blind_count_recount_approval_sod_and_erp_posting
   frs:
   - FR3.030
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'API3.11 count commit works (e2e). Deliverable warehouse/inventory/counting.py does not exist. Missing:
+    TC3.124 zero count by voice; PR3.02 - the generator test in tests/property/test_pr3_warehouse_properties.py
+    is tautological (asserts its own arithmetic, calls no production code).'
 - id: T3.040
   title: Evaluate variance and recount rules
   workstream: WS3.5
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/warehouse/inventory/recount.py
+  - services/field-api/src/field_api/pi/api.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_5.py::test_t3_040_recount_rule_and_different_operator
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_04_recount_rule_and_different_operator
+  - tests/e2e/test_pi_flow.py::test_pr3_04_recount_rule_matches_reference
+  - tests/e2e/test_pi_flow.py::test_pr3_04_recount_acceptance_tolerance
+  - tests/e2e/test_pi_flow.py::test_pi_flow_blind_count_recount_approval_sod_and_erp_posting
   frs:
   - FR3.031
   - FR3.032
   - FR3.033
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'PR3.04 generator tests exercise the live pi/api.py rules; TC3.125 thresholds covered. Missing: TC3.126
+    third count (controller) is not tested.'
 - id: T3.041
   title: Assign and claim recounts
   workstream: WS3.5
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/warehouse/inventory/assignment.py
+  - services/field-api/src/field_api/pi/api.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_5.py::test_t3_041_difference_approval_gate
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_04_recount_rule_and_different_operator
+  - tests/e2e/test_pi_flow.py::test_pi_flow_blind_count_recount_approval_sod_and_erp_posting
+  - tests/e2e/test_pi_flow.py::test_pr3_04_recount_rule_matches_reference
   frs:
   - FR3.032
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Same-operator recount returns 409 FIELD-PI-409-RECOUNT-SAME-OPERATOR on the live path; PR3.04 passes. Missing:
+    POST .../recount-assignment endpoint and console operator suggestion from the description; assignment.py is
+    a re-export shim.'
 - id: T3.042
   title: Apply freeze book inventory semantics
   workstream: WS3.5
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/warehouse/inventory/freeze.py
+  - services/field-api/src/field_api/pi/api.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_5.py::test_t3_042_difference_posting_701_and_702
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_16_freeze_book_inventory_semantics
+  - tests/e2e/test_pi_flow.py::test_pi_flow_blind_count_recount_approval_sod_and_erp_posting
   frs:
   - FR3.035
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Interim: book snapshot is supplied by the controller at creation. Missing: TC3.128 (movements since freeze,
+    warning); PR3.16 generator test exercises warehouse/inventory/freeze.py, not reachable from any route or worker
+    loop (no caller outside tests since C4 removed the /v1/warehouse routers). Update ddd4b84: post_diff.py no longer
+    invents difference document numbers.'
 - id: T3.043
   title: Enforce posting block
   workstream: WS3.5
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/warehouse/inventory/block.py
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_5.py::test_t3_043_freeze_book_snapshot_semantics
+  - services/field-api/src/field_api/tasks/api.py
+  tests: []
   frs:
   - FR3.036
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Confirm returns 423 FIELD-PI-423-POSTING-BLOCKED for bins on an open blocked PI document. Missing: no test
+    (TC3.129, FR3.036); inventory/block.py is not reachable from any route or worker loop (no caller outside tests
+    since C4 removed the /v1/warehouse routers).'
 - id: T3.044
   title: Implement field-local approval interim
   workstream: WS3.5
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/approvals/local.py
+  - services/field-api/src/field_api/pi/api.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_5.py::test_t3_044_audit_export_conservation
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_05_difference_posting_requires_approval
+  - tests/e2e/test_pi_flow.py::test_pi_above_threshold_needs_independent_approver
+  - tests/e2e/test_pi_flow.py::test_p0_regression_client_supplied_approval_route_is_gone
   frs:
   - FR3.034
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Live approval (bands, SoD 403, operator 403, decided 409) tested by example (TC3.127, part of TC3.155).
+    Missing: PR3.05 generator test exercises warehouse/inventory/approvals.py, not reachable from any route or worker
+    loop (no caller outside tests since C4 removed the /v1/warehouse routers); approvals/local.py is a re-export
+    shim; step-up re-auth not implemented.'
 - id: T3.045
   title: Post counts and differences
   workstream: WS3.5
   role: Backend
   status: done
   evidence:
-  - services/field-api/src/field_api/warehouse/inventory/post.py
+  - services/field-api/src/field_api/pi/api.py
+  - services/field-worker/src/field_worker/posting/queue.py
   tests:
-  - services/field-api/tests/test_sitegraph_ws3_6.py
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_045_inventory_post_diff_api
+  - tests/e2e/test_pi_flow.py::test_pi_flow_blind_count_recount_approval_sod_and_erp_posting
+  - tests/e2e/test_pi_flow.py::test_pi_above_threshold_needs_independent_approver
+  - compat/sap_parity/test_sap_parity.py::test_t3_004_physical_inventory_parity
   frs:
   - FR3.034
   - FR3.037
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: 573e018
+  note: 'Met: "TC3.130 passes" - counts then PostDifferences in one PI queue job against erp-sim (702 loss of 40
+    posted), held for approval above FIELD_PI_APPROVAL_VALUE. Note: the spec deliverable warehouse/inventory/post.py
+    does not exist and the unused inventory/post_diff.py invents document numbers.'
 - id: T3.046
   title: Import storage bins into the location tree
   workstream: WS3.6
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/sitegraph/bin_import.py
+  - services/field-api/src/field_api/sitegraph/graph.py
   tests:
-  - docs/SPEC/phase3/tests.json
   - services/field-api/tests/test_sitegraph_ws3_6.py::test_t3_046_bin_hierarchy_tree_validation
   - tests/property/test_pr3_warehouse_properties.py::test_pr3_11_bin_hierarchy_is_a_tree
   frs:
   - FR3.046
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Tree validation exists. Missing: no import of storage bins into field.location (bin_import.py is a re-export
+    of graph.py); TC3.137 pattern parsing not tested.'
 - id: T3.047
   title: Generate the default site graph
   workstream: WS3.6
   role: Backend
-  status: done
-  evidence:
-  - services/field-api/src/field_api/sitegraph/generate.py
-  tests:
-  - services/field-api/tests/test_sitegraph_ws3_6.py::test_t3_047_dijkstra_shortest_path
+  status: missing
+  evidence: []
+  tests: []
   frs:
   - FR3.047
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: sitegraph/generate.py was removed in C4 (in-memory); nothing generates a default site graph.
 - id: T3.048
   title: Build the console graph editor
   workstream: WS3.6
   role: Console
-  status: done
+  status: stub
   evidence:
-  - apps/field-console/app/sites/[id]/graph/
-  tests:
-  - services/field-api/tests/test_sitegraph_ws3_6.py::test_t3_048_position_fusion_and_snapping
+  - apps/field-console/app/sites/[id]/graph/page.tsx
+  tests: []
   frs:
   - FR3.047
   - FR3.048
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: Console graph page renders hard-coded mockNodes/mockPoints; no validation/publish against the API; TC3.138
+    not run.
 - id: T3.049
   title: Register anchors
   workstream: WS3.6
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/sitegraph/anchors.py
   tests:
   - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_049_positioning_anchors
   frs:
   - FR3.048
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Snap-to-graph function exists. Missing: anchor registration (no route, no persistence); forged-tag rejection
+    (TC3.139) not implemented or tested.'
 - id: T3.050
   title: Implement positioning fusion on Android
   workstream: WS3.6
   role: Android
   status: stub
-  evidence: []
-  tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_050_positioning_stub_contract
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_17_fused_position_stays_on_graph
+  evidence:
+  - apps/field-android/core-positioning-stub/src/main/kotlin/com/scmtips/field/core/positioning/LocationProvider.kt
+  tests: []
   frs:
   - FR3.049
   verified_at: null
-  note: Deliverable missing on disk
+  note: Only a manual/QR stub provider exists; no fusion. TC3.140 not run; PR3.17 - the generator test in tests/property/test_pr3_warehouse_properties.py
+    is tautological (asserts its own arithmetic, calls no production code) (ignores its generated inputs).
 - id: T3.051
   title: Implement route API and step builder
   workstream: WS3.6
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/sitegraph/route.py
+  - services/field-api/src/field_api/sitegraph/dijkstra.py
   tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_051_sitegraph_routing
   - tests/property/test_pr3_warehouse_properties.py::test_pr3_09_dijkstra_shortest_path
+  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_051_sitegraph_routing
   frs:
   - FR3.050
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Dijkstra exists and PR3.09 is property-tested on a 3-node graph. Missing: API3.15 GET /v1/sites/{site_id}/routes
+    and the step builder; TC3.141 usability session.'
 - id: T3.052
   title: Implement walking-quiet mode
   workstream: WS3.6
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/safety/WalkingQuiet.kt
   tests:
-  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/safety/WalkingQuietPropertyTest.kt::testPr310WalkingQuietSuppressesPrompts
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_052_walking_quiet_mode
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_10_walking_quiet_mode_suppression
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/safety/WalkingQuietManagerTest.kt::tc3_142_noPromptWhileMovingQueuedPromptsAfter1_5sStationary_fr3_052
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/safety/WalkingQuietManagerTest.kt::fr3_052_briefStopDoesNotReleaseAndThresholdIsStrict
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/safety/WalkingQuietManagerTest.kt::fr3_052_fastOutsideForkliftZoneIsNotSuppressed
   frs:
   - FR3.052
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Kotlin WalkingQuietManager tested on JVM (TC3.142). Missing: PR3.10 - the Python generator test in tests/property/test_pr3_warehouse_properties.py
+    is tautological (asserts its own arithmetic, calls no production code); Kotlin tests are seeded loops, not Kotest
+    generators; the app has never been built by Gradle.'
 - id: T3.053
   title: Build 2D and 3D wayfinding views
   workstream: WS3.6
   role: Android
-  status: stub
+  status: missing
   evidence: []
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_053_wayfinding_guidance_contract
+  tests: []
   frs:
   - FR3.051
   verified_at: null
-  note: Deliverable missing on disk
+  note: No apps/field-android/feature/wayfinding module; TC3.141 usability not run. test_t3_053 only calls the Python
+    Dijkstra.
 - id: T3.054
   title: Record trails
   workstream: WS3.6
   role: Backend
-  status: done
+  status: stub
   evidence:
   - services/field-api/src/field_api/sitegraph/trails.py
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_054_wayfinding_trails
+  tests: []
   frs:
   - FR3.053
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: record_wayfinding_trail returns its arguments as a dict and stores nothing; API3.16 POST /v1/trails not
+    implemented; TC3.143 not run.
 - id: T3.055
   title: Publish graph versions to devices
   workstream: WS3.6
   role: Backend
-  status: done
+  status: stub
   evidence:
   - services/field-api/src/field_api/sitegraph/publish.py
-  tests:
-  - services/field-api/tests/test_sitegraph_ws3_6.py
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_055_sitegraph_publish
+  tests: []
   frs:
   - FR3.047
   - FR3.062
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'publish_site_graph_version returns {"status": "published"} without storing or sending anything; no device
+    switch.'
 - id: T3.056
   title: Build the live task board
   workstream: WS3.7
   role: Console
-  status: done
+  status: stub
   evidence:
-  - apps/field-console/app/warehouse/board/
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_056_warehouse_board_contract
+  - apps/field-console/app/warehouse/board/page.tsx
+  tests: []
   frs:
   - FR3.054
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: Console page renders hard-coded sample arrays; no live API/WebSocket (API3.18 missing); TC3.144 not measured.
 - id: T3.057
   title: Build the discrepancy queue
   workstream: WS3.7
   role: Console
-  status: done
+  status: stub
   evidence:
-  - apps/field-console/app/warehouse/discrepancies/
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_106_and_tc3_107_delivery_tolerances
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_057_warehouse_discrepancies_contract
+  - apps/field-console/app/warehouse/discrepancies/page.tsx
+  tests: []
   frs:
   - FR3.055
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: Console page renders SAMPLE_DISCREPANCIES; not wired to field-api; TC3.136 not run.
 - id: T3.058
   title: Build the receiving dashboard
   workstream: WS3.7
   role: Console
-  status: done
+  status: stub
   evidence:
-  - apps/field-console/app/warehouse/receiving/
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_058_warehouse_receiving_contract
+  - apps/field-console/app/warehouse/receiving/page.tsx
+  tests: []
   frs:
   - FR3.056
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: Static console page with no data source; TC3.145 not run.
 - id: T3.059
   title: Build the inventory accuracy KPI
   workstream: WS3.7
   role: Console
-  status: done
+  status: stub
   evidence:
-  - apps/field-console/app/warehouse/accuracy/
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_059_warehouse_accuracy_contract
+  - apps/field-console/app/warehouse/accuracy/page.tsx
+  tests: []
   frs:
   - FR3.057
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: Static console page with no data source; TC3.145 not run.
 - id: T3.060
   title: Build PI documents, approvals and posting queue pages
   workstream: WS3.7
   role: Console
   status: stub
-  evidence: []
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_5.py
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_060_warehouse_inventory_queues_contract
+  evidence:
+  - apps/field-console/app/warehouse/queues/page.tsx
+  tests: []
   frs:
   - FR3.034
   - FR3.045
   verified_at: null
-  note: Deliverable missing on disk
+  note: inventory/approvals/queues pages are 27-line placeholders with no data source; TC3.127/TC3.136 not run.
 - id: T3.061
   title: Export receipts, counts and variances for core guided load
   workstream: WS3.8
   role: Backend
-  status: done
+  status: stub
   evidence:
   - services/field-worker/src/field_worker/exports/core_supply.py
-  tests:
-  - docs/SPEC/phase3/tests.json
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_061_core_supply_export
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_18_export_conserves_quantities
+  tests: []
   frs:
   - FR3.058
   - FR3.060
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: Deliverable is a 3-line re-export of core_seams.py, which has no export of receipts/counts/variances. API3.17
+    not implemented; TC3.146 not run. PR3.18 generator test exercises warehouse/inventory/export.py, an unrelated
+    unused module.
 - id: T3.062
   title: Detect late receipts
   workstream: WS3.8
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-worker/src/field_worker/warehouse/late_receipt.py
+  - services/field-worker/src/field_worker/warehouse/core_seams.py
   tests:
   - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_062_late_receipt_signal
   frs:
   - FR3.059
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'Late-receipt detection exists as a pure function (late_receipt.py is a re-export). Missing: not run by
+    the worker; no late_receipt export row (TC3.147); FR3.059 has no passing test.'
 - id: T3.063
   title: Implement lens screens for warehouse tasks
   workstream: WS3.8
   role: Android
-  status: stub
+  status: missing
   evidence: []
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_063_warehouse_lens_contracts
+  tests: []
   frs:
   - FR3.061
   verified_at: null
-  note: Deliverable missing on disk
+  note: No apps/field-android/feature/warehouse/lens module; TC3.154 not run.
 - id: T3.064
   title: Implement phone screens for warehouse tasks
   workstream: WS3.8
   role: Android
-  status: stub
+  status: missing
   evidence: []
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_064_warehouse_phone_contracts
+  tests: []
   frs:
   - FR3.061
   - FR3.062
   verified_at: null
-  note: Deliverable missing on disk
+  note: No apps/field-android/feature/warehouse/phone module; no Maestro flow has run.
 - id: T3.065
   title: Implement offline behaviour for warehouse tasks
   workstream: WS3.8
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/WarehouseOutbox.kt
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_065_warehouse_outbox_contract
+  tests: []
   frs:
   - FR3.062
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'WarehouseOutbox.kt exists but is Room-bound, untested, and the app has never been built by Gradle; TC3.148
+    not run. Update 05e6bf2: WarehouseOutbox called a non-existent OutboxWriter.enqueue (never compiled); now queues
+    via commitCapture and compiles (tools/android_check/compile_check --all). Still untested, no Gradle build.'
 - id: T3.066
   title: Add accessibility and gloves voice-only mode
   workstream: WS3.8
   role: Design
   status: stub
   evidence: []
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_066_warehouse_a11y_contrast
+  tests: []
   frs:
   - FR3.063
   verified_at: null
-  note: Deliverable missing on disk
+  note: No warehouse a11y / gloves voice-only mode in the Android app; TC3.149/TC3.150 not run. test_t3_066 only
+    checks token contrast values.
 - id: T3.067
   title: Write the warehouse audit trail
   workstream: WS3.8
   role: Security
-  status: done
+  status: stub
   evidence:
   - services/field-api/src/field_api/audit/warehouse.py
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_067_warehouse_audit_trail
+  tests: []
   frs:
   - FR3.064
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'record_warehouse_audit_event returns {"status": "recorded"} and writes nothing; TC3.151 not run.'
 - id: T3.068
   title: Write Phase 3 property tests
   workstream: WS3.9
   role: QA
   status: partial
-  evidence: []
+  evidence:
+  - tests/property/test_pr3_warehouse_properties.py
   tests:
-  - compat/sap_parity/test_sap_parity.py
-  - services/field-api/tests/test_warehouse_ws3_3.py::test_tc3_110_and_pr3_01_undo_goods_receipt_reversal
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_068_warehouse_properties_coverage
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_01_gr_reversal_nets_to_zero
-  - tests/property/test_pr3_warehouse_properties.py::test_pr3_18_export_conserves_quantities
+  - tests/e2e/test_pi_flow.py::test_pr3_04_recount_rule_matches_reference
+  - tests/property/test_pr3_warehouse_properties.py::test_pr3_09_dijkstra_shortest_path
+  - tests/property/test_pr3_warehouse_properties.py::test_pr3_12_sscc_mod10_validity
   frs: []
   verified_at: null
-  note: SAP parity test fixture not present (Finding F-11)
+  note: 'Real generator tests on live code: PR3.04 only; PR3.09/PR3.11/PR3.12 exercise unwired helpers. Tautological:
+    PR3.01, 3.02, 3.06, 3.10, 3.13, 3.14, 3.17. PR3.03/3.05/3.07/3.08/3.15/3.16/3.18 exercise dead or fake modules.
+    No shrunk counterexamples saved.'
 - id: T3.069
   title: Run chaos and load tests on posting
   workstream: WS3.9
   role: QA
-  status: done
+  status: partial
   evidence:
   - tests/load/posting_k6.js
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_069_posting_load_script
+  tests: []
   frs:
   - FR3.038
   - FR3.040
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: k6 script exists; it has never been run. TC3.153 (>= 99.5% success under faults) not measured.
 - id: T3.070
   title: Run security tests for warehouse APIs
   workstream: WS3.9
   role: Security
-  status: done
+  status: partial
   evidence:
   - services/field-api/tests/security/test_warehouse.py
   tests:
   - services/field-api/tests/security/test_warehouse.py::test_t3_070_warehouse_rbac_enforcement
-  - services/field-api/tests/test_warehouse_ws3_5.py
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_070_warehouse_security
+  - tests/security/test_rls_catalog.py::test_all_field_tables_have_forced_rls
+  - tests/e2e/test_pi_flow.py::test_pi_above_threshold_needs_independent_approver
   frs:
   - FR3.029
   - FR3.065
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'RBAC and RLS catalog checks pass; approval bypass partly covered. Missing: TC3.123 leak scanner, TC3.139
+    forged anchor, TC3.152 cross-site/tenant API tests; FR3.065 has no passing test.'
 - id: T3.071
   title: Run device and usability sessions
   workstream: WS3.9
   role: QA
-  status: done
-  evidence:
-  - docs/reports/F2_device_usability.md
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_071_device_usability_report
+  status: missing
+  evidence: []
+  tests: []
   frs:
   - FR3.049
   - FR3.051
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: No device or usability session has happened (the Android app has never been built). docs/reports/F2_device_usability.md
+    is hand-written and SUPERSEDED.
 - id: T3.072
   title: Write the Phase 3 report and push
   workstream: WS3.9
   role: Owner
-  status: done
-  evidence:
-  - docs/reports/PHASE3_REPORT.md
-  tests:
-  - services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_072_phase3_completion_report
+  status: missing
+  evidence: []
+  tests: []
   frs:
   - FR3.042
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence (F-09 resolved)
+  verified_at: null
+  note: 'verify-all does not PASS all rows; docs/reports/PHASE3_REPORT.md is hand-written and SUPERSEDED (rule 2.3:
+    reports come from the ledger).'

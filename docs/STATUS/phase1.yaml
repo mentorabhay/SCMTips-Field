@@ -2,310 +2,331 @@
   title: Create the SCMTips-Field repo skeleton
   workstream: WS1.1
   role: Owner
-  status: stub
-  evidence: []
-  tests:
-  - tools/checks/tests/test_honesty_checks.py
+  status: partial
+  evidence:
+  - pyproject.toml
+  - docker-compose.dev.yml
+  tests: []
   frs:
   - FR1.001
   verified_at: null
-  note: Deliverable missing on disk
+  note: Repo tree exists and the firewall gate finds no core imports, but nobody has compared it with BRIEF section
+    3 and FR1.001/TC1.101 has no passing test.
 - id: T1.002
   title: Set up the Python workspace with uv
   workstream: WS1.1
   role: DevOps
-  status: done
+  status: partial
   evidence:
   - pyproject.toml
   - uv.lock
-  tests:
-  - tools/checks/tests/test_honesty_checks.py
+  tests: []
   frs:
   - FR1.001
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: '`uv sync --frozen`, ruff and mypy --strict run from the root (CI steps), but FR1.001/TC1.101 has no passing
+    test, so trace cannot accept done.'
 - id: T1.003
   title: Set up the TypeScript workspace with pnpm
   workstream: WS1.1
   role: DevOps
-  status: done
+  status: partial
   evidence:
   - package.json
   - pnpm-lock.yaml
-  tests:
-  - tools/checks/tests/test_honesty_checks.py
+  tests: []
   frs:
   - FR1.001
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Workspace files exist; `pnpm install --frozen-lockfile` and `tsc --noEmit` have not been run in any recorded
+    job (no node_modules, no CI step).
 - id: T1.004
   title: Write docker-compose.dev.yml for the local stack
   workstream: WS1.1
   role: DevOps
-  status: done
+  status: partial
   evidence:
   - docker-compose.dev.yml
-  tests:
-  - tools/checks/tests/test_honesty_checks.py
+  tests: []
   frs:
   - FR1.007
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: '"All services healthy within 90 s" has never been measured or recorded; no compose-up job or log exists.'
 - id: T1.005
   title: Build the verify-all runner
   workstream: WS1.1
   role: DevOps
-  status: done
+  status: partial
   evidence:
+  - scripts/verify_all.py
   - scripts/verify-all.sh
-  tests:
-  - tools/checks/tests/test_honesty_checks.py
+  tests: []
   frs:
   - FR1.001
   - FR1.002
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: verify_all.py runs real jobs and writes JSON, but the TC1.101 failing-fixture test (row FAIL, exit 1) does
+    not exist.
 - id: T1.006
   title: Add lint, typecheck, unit, property and contract jobs
   workstream: WS1.1
   role: DevOps
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - scripts/verify_all.py
+  - scripts/jobs/typecheck.py
   tests: []
   frs:
   - FR1.001
   - FR1.008
   verified_at: null
-  note: Deliverable missing on disk
+  note: Lint/typecheck/unit/property/contract jobs exist in verify_all.py (not as scripts/jobs/*.sh); no test injects
+    a defect into each job.
 - id: T1.007
   title: Add the Alembic round-trip job
   workstream: WS1.1
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - scripts/jobs/alembic.py
   tests: []
   frs:
   - FR1.028
   verified_at: null
-  note: Deliverable missing on disk
+  note: Round-trip job exists for field-api and erp-sim; TC1.107 (empty schema diff, migration without downgrade
+    fails the job) has no test.
 - id: T1.008
   title: Add Semgrep 1.181.0 and Trivy jobs
   workstream: WS1.1
   role: Security
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - scripts/verify_all.py
+  - trivy.yaml
   tests: []
   frs:
   - FR1.003
   verified_at: null
-  note: Deliverable missing on disk
+  note: Semgrep 1.181.0 and Trivy jobs are wired; no seeded vulnerable fixture proves either fails (TC1.104, TC1.105).
 - id: T1.009
   title: Write the names and firewall checks
   workstream: WS1.1
   role: Security
-  status: done
+  status: partial
   evidence:
-  - tools/checks/firewall.py
   - tools/checks/names.py
-  tests:
-  - tools/checks/tests/test_honesty_checks.py
+  - tools/checks/firewall.py
+  tests: []
   frs:
   - FR1.004
   - FR1.005
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Both checks run and pass on the repo; there is no failing-fixture test per rule (TC1.102, TC1.103).
 - id: T1.010
   title: Record branch, commit and review conventions
   workstream: WS1.1
   role: Product
-  status: done
+  status: partial
   evidence:
-  - .github/CODEOWNERS
   - docs/CONTRIBUTING.md
-  - docs/adr/
+  - .github/CODEOWNERS
+  - tools/checks/conventions.py
   tests:
-  - tools/checks/tests/test_honesty_checks.py
+  - tools/checks/tests/test_honesty_checks.py::test_conventions_validates_commits
   frs:
   - FR1.006
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: A non-conforming commit message is rejected by tools/checks/conventions.py (test passes), but the test does
+    not carry TC1.106/FR1.006, so traceability is missing.
 - id: T1.011
   title: Create the field-api app factory
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/app.py
   tests:
-  - services/field-api/tests/unit/test_api_core.py
+  - services/field-api/tests/unit/test_api_core.py::test_problem_json_404_format
   frs:
   - FR1.009
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Unknown route returns problem+json 404 (test passes); "starts with docker compose" is unrecorded and FR1.009
+    (TC1.111/PR1.12) has no passing test.
 - id: T1.012
   title: Implement health and readiness
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/routes/health.py
   tests:
-  - services/field-api/tests/unit/test_api_core.py
+  - services/field-api/tests/unit/test_api_core.py::test_liveness_health
   frs:
   - FR1.007
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: '/v1/ready returns hard-coded "pass" checks with invented durations (database, alembic_head, jwks_cache,
+    erp_sim); a stopped DB cannot give 503 (TC1.108 unmet). Update ddd4b84: /v1/ready now really probes database,
+    Alembic head, core JWKS and erp-sim and returns 503 on failure (test: erp-sim down -> 503). TC1.108 (stopped
+    database -> 503) itself is not tested yet.'
 - id: T1.013
   title: Build the problem+json error registry
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/errors.py
-  tests:
-  - docs/SPEC/phase1/tests.json
+  tests: []
   frs:
   - FR1.009
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Error registry exists; docs/ERROR_CODES.md is missing and PR1.12 (code format property) has no test.
 - id: T1.014
   title: Add request id and structured logging
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-api/src/field_api/logging.py
   - services/field-api/src/field_api/middleware/request_id.py
-  tests:
-  - tools/spikes/wearables-android/tests/test_wearables_spike.py
+  - services/field-api/src/field_api/logging.py
+  tests: []
   frs:
   - FR1.015
   - FR1.063
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Request-id middleware and structlog setup exist; TC1.117 and TC1.159 have no tests.
 - id: T1.015
   title: Instrument OpenTelemetry and RED metrics
   workstream: WS1.2
   role: Backend
-  status: stub
+  status: missing
   evidence: []
   tests: []
   frs:
   - FR1.016
   verified_at: null
-  note: Deliverable missing on disk
+  note: No OpenTelemetry code or dependency exists in any service (no telemetry.py); TC1.118 (one trace id phone
+    to erp-sim in Jaeger) cannot run.
 - id: T1.016
   title: Implement UUIDv7 generation
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_common/uuid7.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_11_uuid7.py::test_pr1_11_uuid7_monotonic_and_format
   frs:
   - FR1.014
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: PR1.11 generator test passes (version, variant, monotonic, clock), but at 100 examples of 5-50 ids; the
+    "1,000,000 ids per run in under 2 s" clause is not tested.
 - id: T1.017
   title: Build the Idempotency-Key middleware and store
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-worker/src/field_worker/posting/idempotency.py
+  - services/field-api/src/field_api/middleware/idempotency.py
   tests:
-  - docs/SPEC/phase1/tests.json
-  - services/field-api/tests/property/test_pr1_03_concurrent_key.py::test_pr1_03_concurrent_same_key
   - services/field-api/tests/property/test_pr1_properties.py::test_pr1_01_idempotency_replay_identical
+  - services/field-api/tests/property/test_pr1_03_concurrent_key.py::test_pr1_03_concurrent_same_key
   - services/field-api/tests/property/test_pr1_properties.py::test_pr1_02_idempotency_key_reused_different_body
   frs:
   - FR1.010
   - FR1.011
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: DB-backed middleware; PR1.01 and PR1.03 have generator tests, but PR1.02 is an example test (not generator)
+    and TC1.112-TC1.114 have no tests.
 - id: T1.018
   title: Add ETag and If-Match handling
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/http/etag.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_properties.py::test_pr1_10_etag_if_match_concurrency
   frs:
   - FR1.012
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: ETag/If-Match exists; the PR1.10 test is not generator-based and TC1.115 has no test.
 - id: T1.019
   title: Add cursor pagination
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/http/pagination.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_09_pagination.py::test_pr1_09_pagination_completeness
   frs:
   - FR1.013
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: PR1.09 test only exercises encode/decode_cursor over an in-memory simulated loop (no DB query, no concurrent
+    inserts, no filter hash); TC1.116 has no test.
 - id: T1.020
   title: Set tenant context per request
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/db.py
   tests:
-  - docs/SPEC/phase1/tests.json
+  - tests/property/test_pr1_04_rls.py::test_rls_fail_closed_when_tenant_unset
+  - tests/property/test_pr1_04_rls.py::test_rls_strict_tenant_isolation
   frs:
   - FR1.030
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: tenant_tx sets app.tenant_id/app.site_ids transaction-locally and unset tenant gives zero rows (test passes),
+    but PR1.04 has no generator test and TC1.120 has no test.
 - id: T1.021
   title: Export the field-api OpenAPI and generate clients
   workstream: WS1.2
   role: Backend
   status: partial
   evidence:
-  - packages/field-contract/
+  - tools/export_openapi.py
+  - packages/field-contract/openapi.json
   tests: []
   frs:
   - FR1.008
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: OpenAPI export and drift check run in CI; no drift fixture test and no Schemathesis run (TC1.110).
 - id: T1.022
   title: Implement site, location, material and device endpoints
   workstream: WS1.2
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/routes/sites.py
+  - services/field-api/src/field_api/routes/locations.py
+  - services/field-api/src/field_api/routes/materials.py
+  - services/field-api/src/field_api/routes/devices.py
   tests: []
   frs:
   - FR1.023
   - FR1.031
   - FR1.032
   verified_at: null
-  note: Deliverable missing on disk
+  note: Routes API1.04-API1.13 are DB-backed (C4) with phase-2 integration tests, but no Schemathesis run and no
+    test carrying FR1.031/FR1.023 (TC1.121, TC1.168).
 - id: T1.023
   title: Create the field-worker skeleton
   workstream: WS1.2
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-worker/src/field_worker/
+  - services/field-worker/src/field_worker/worker.py
+  - services/field-worker/src/field_worker/__main__.py
   tests:
-  - docs/SPEC/phase1/tests.json
-  - services/field-worker/tests/property/test_pr1_19_outbox_effect.py::test_pr1_19_consumer_deduplication_under_crashes
   - services/field-worker/tests/property/test_pr1_19_outbox_effect.py::test_pr1_19_outbox_transaction_atomicity
+  - tests/e2e/test_worker_process.py::test_worker_process_imports_and_posts_as_field_worker_role
   frs:
   - FR1.033
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: A real worker process runs posting, tower, IBD and idempotency-purge loops; the outbox relay and probe-cleanup
+    loops do not exist, and the PR1.19 tests exercise raw Postgres transactions or a Python simulation, not a relay
+    (TC1.166 untested).
 - id: T1.024
   title: Write migration field_0001 baseline
   workstream: WS1.3
@@ -313,11 +334,12 @@
   status: partial
   evidence:
   - services/field-api/alembic/versions/field_0001_baseline.py
+  - scripts/jobs/alembic.py
   tests: []
   frs:
   - FR1.028
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Migration exists and is round-tripped by the alembic job; TC1.107 has no test.
 - id: T1.025
   title: Write migration field_0002 data model v1
   workstream: WS1.3
@@ -330,68 +352,79 @@
   - FR1.028
   - FR1.029
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Tables exist (later migrations extend them); TC1.107 untested and no check of the listed indexes.
 - id: T1.026
   title: Apply forced RLS and the catalog check
   workstream: WS1.3
   role: Security
-  status: done
+  status: partial
   evidence:
   - tests/security/test_rls_catalog.py
   tests:
-  - docs/SPEC/phase1/tests.json
+  - tests/security/test_rls_catalog.py::test_all_field_tables_have_forced_rls
+  - tests/property/test_pr1_04_rls.py::test_rls_strict_tenant_isolation
   frs:
   - FR1.029
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Catalog check passes for every field table (forced RLS, no BYPASSRLS), but the test does not carry TC1.119
+    and PR1.04 has no generator test.
 - id: T1.027
   title: Add site data-scope policies
   workstream: WS1.3
   role: Backend
-  status: stub
-  evidence: []
-  tests: []
+  status: partial
+  evidence:
+  - services/field-api/alembic/versions/field_0002_data_model_v1.py
+  - services/field-api/alembic/versions/field_0054_rls_permissive_base.py
+  tests:
+  - tests/property/test_pr1_04_rls.py::test_rls_site_scoping
+  - tests/security/test_rls_catalog.py::test_site_scope_policies_exist
   frs:
   - FR1.031
   verified_at: null
-  note: Deliverable missing on disk
+  note: Site-scope policies exist and are tested, but no test carries TC1.121/FR1.031.
 - id: T1.028
   title: Enforce the location hierarchy
   workstream: WS1.3
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/routes/locations.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/field-api/tests/property/test_pr1_properties.py::test_pr1_20_location_hierarchy_depth_and_cycles
   frs:
   - FR1.032
   verified_at: null
-  note: Deliverable missing on disk
+  note: Depth-6 and cycle checks exist in the API (C4); PR1.20 test is not generator-based and TC1.171 has no test.
 - id: T1.029
   title: Build the material cache sync
   workstream: WS1.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/material_sync.py
   tests:
-  - services/field-worker/tests/unit/test_material_sync.py
+  - services/field-worker/tests/unit/test_material_sync.py::test_material_cache_sync_three_missed_cycles
   frs:
   - FR1.034
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: 'Sync and 3-miss deletion work against a hand-written MockErpPort; TC1.167 against the SAMPLE seed through
+    SimAdapter has not been run (SimAdapter.list_materials was fabricated until C5). Update eb0d13a/ddd4b84: SimAdapter.list_materials
+    now pages erp-sim A_ProductPlant (was 50 invented materials); the worker syncs materials before IBD import and
+    keeps ERP description/UoM. TC1.167 still not run as a test.'
 - id: T1.030
   title: Write migration field_0003 interim role grants
   workstream: WS1.3
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/field-api/alembic/versions/field_0003_role_grants.py
+  - services/field-api/src/field_api/cli.py
   tests: []
   frs:
   - FR1.022
   verified_at: null
-  note: Deliverable missing on disk
+  note: Migration and grant CLI exist; grant/revoke round trip TC1.126 has no test.
 - id: T1.031
   title: Inventory the core-p13 endpoints the add-on needs
   workstream: WS1.4
@@ -399,65 +432,74 @@
   status: partial
   evidence:
   - compat/USED_ENDPOINTS.yaml
-  tests: []
+  tests:
+  - compat/tests/test_compat.py::test_used_endpoints_presence
   frs:
   - FR1.024
   - FR1.026
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Used endpoints are listed and each non-p13 path has a seam (test passes); FR1.024/FR1.026 traceability (TC1.130)
+    missing for FR1.024.
 - id: T1.032
   title: Generate packages/core-contract for core-p13
   workstream: WS1.4
   role: Backend
   status: partial
   evidence:
-  - packages/core-contract/
-  tests: []
+  - packages/core-contract/specs/core-p13.json
+  - packages/core-contract/specs/core-p13.json.sha256
+  tests:
+  - compat/tests/test_compat.py::test_core_p13_sha256_checksum
   frs:
   - FR1.025
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Spec checksum is pinned (test passes); "regeneration is byte-identical" is not tested because no regeneration
+    step exists (TC1.127).
 - id: T1.033
   title: Build the compat suite
   workstream: WS1.4
   role: QA
-  status: done
+  status: partial
   evidence:
-  - compat/
+  - compat/diff.py
   tests:
-  - compat/tests/test_compat.py
   - compat/tests/test_pr1_13_compat.py::test_pr1_13_compat_change_detection
   frs:
   - FR1.026
   - FR1.027
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Classifier detects removed path/method/response field and new required field (generator test); narrowed
+    type/enum and changed-auth mutations are not implemented or tested, and no compat run against core-p13 is recorded.
 - id: T1.034
   title: Plan the core-p14 compat column
   workstream: WS1.4
   role: QA
-  status: partial
+  status: done
   evidence:
   - compat/MATRIX.md
-  tests: []
+  tests:
+  - compat/tests/test_compat.py::test_matrix_documents_p14_pending
   frs:
   - FR1.026
-  verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  verified_at: 573e018
+  note: 'Done when "core-p14 row reads SKIPPED-PENDING, never PASS": every core-p14 cell in compat/MATRIX.md is
+    SKIPPED-PENDING and /v1/system/status reports core-p14 UNVERIFIED unless a compat report says otherwise.'
 - id: T1.035
   title: Build tools/fake-core for development
   workstream: WS1.4
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - tools/fake-core/
+  - tools/fake-core/src/fake_core/app.py
   tests:
-  - tools/fake-core/tests/test_fake_core.py
+  - tools/fake-core/tests/test_fake_core.py::test_jwks_endpoint
+  - tools/fake-core/tests/test_fake_core.py::test_issue_token_and_device_status
   frs:
   - FR1.018
   - FR1.021
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: fake-core serves EdDSA JWKS, tokens and device status; FR1.021 (TC1.125) has no passing test and the CS-01/CS-07
+    comparison is not recorded.
 - id: T1.036
   title: Implement JWT verification with JWKS caching
   workstream: WS1.4
@@ -470,7 +512,8 @@
   - FR1.019
   - FR1.021
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: JWKS cache with refresh on unknown kid is exercised indirectly by PR1.17; FIELD_JWKS_MAX_STALE_S is not
+    enforced in /v1/ready and TC1.123/TC1.125 have no tests.
 - id: T1.037
   title: Implement POST /v1/auth/exchange
   workstream: WS1.4
@@ -478,26 +521,32 @@
   status: done
   evidence:
   - services/field-api/src/field_api/routes/auth.py
+  - services/field-api/src/field_api/auth/jwks.py
   tests:
-  - docs/SPEC/phase1/tests.json
-  - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_pr1_17_invalid_token_rejected
   - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_pr1_17_token_exchange_acceptance_and_ttl
+  - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_pr1_17_invalid_token_rejected
+  - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_tc1_050_field_token_cannot_be_exchanged
   frs:
   - FR1.018
   - FR1.019
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: 573e018
+  note: 'Done when "PR1.17 and TC1.122 pass": rewritten in C5 to verify only core JWKS tokens (EdDSA from fake-core),
+    TTL <= min(600, core exp - now); Hypothesis PR1.17 tests carry TC1.122 and pass.'
 - id: T1.038
   title: Handle device revocation
   workstream: WS1.4
   role: Backend
-  status: stub
-  evidence: []
-  tests: []
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/deps.py
+  - services/field-api/src/field_api/routes/devices.py
+  tests:
+  - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_t1_038_device_exchange_requires_active_device_row
   frs:
   - FR1.020
   verified_at: null
-  note: Deliverable missing on disk
+  note: Local revoke and per-request rejection of revoked devices exist (deps.require_principal), but the core status
+    poll job (field_worker/jobs/device_status.py) and jti deny list do not exist; TC1.124 has no test.
 - id: T1.039
   title: Define the role-to-permission map
   workstream: WS1.4
@@ -509,7 +558,7 @@
   frs:
   - FR1.022
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Role map extended to the spec permissions (C4); TC1.126 has no test and docs are not checked against code.
 - id: T1.040
   title: Write docs/CORE_SEAMS.md
   workstream: WS1.4
@@ -521,7 +570,7 @@
   frs:
   - FR1.024
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Document exists; TC1.130 has no test and the owner sign-off line is not filled.
 - id: T1.041
   title: Create the erp-sim app skeleton
   workstream: WS1.5
@@ -533,98 +582,101 @@
   frs:
   - FR1.035
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: erp-sim app runs; FR1.035 (TC1.131) has no passing test of the ZSIM/404 error body for an unknown entity.
 - id: T1.042
   title: Write migration erpsim_0001
   workstream: WS1.5
   role: ERP
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/erp-sim/alembic/versions/erpsim_0001_baseline.py
+  - scripts/jobs/alembic.py
   tests: []
   frs:
   - FR1.028
   verified_at: null
-  note: Deliverable missing on disk
+  note: Migration exists and the alembic job round-trips erp-sim; FR1.028 (TC1.107) has no test.
 - id: T1.043
   title: Implement number range allocation
   workstream: WS1.5
   role: ERP
-  status: done
+  status: partial
   evidence:
   - services/erp-sim/src/erp_sim/numbering.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_05_monotonic_number_allocation
   frs:
   - FR1.042
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Number ranges work, but the PR1.05 test is not generator-based and does not use 32 concurrent workers.
 - id: T1.044
   title: Implement enqueue locks
   workstream: WS1.5
   role: ERP
-  status: done
+  status: partial
   evidence:
   - services/erp-sim/src/erp_sim/locks.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_exclusivity
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_ttl_takeover
   frs:
   - FR1.043
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Locks work and are tested, but PR1.06 has no generator test and TC1.138 is not carried.
 - id: T1.045
   title: Build inbound delivery read and goods receipt
   workstream: WS1.5
   role: ERP
   status: partial
   evidence:
-  - services/erp-sim/src/erp_sim/routes/inbound_delivery.py
-  tests: []
+  - services/erp-sim/src/erp_sim/services/inbound.py
+  tests:
+  - tests/e2e/test_slice_receive_e2e.py::test_slice_goods_receipt_round_trip
   frs:
   - FR1.035
   - FR1.036
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Inbound read, PATCH and PostGoodsReceipt work end to end (slice e2e), but TC1.131/TC1.132 are not carried
+    by any test.
 - id: T1.046
   title: Build outbound delivery pick and goods issue
   workstream: WS1.5
   role: ERP
   status: partial
   evidence:
-  - services/erp-sim/src/erp_sim/routes/outbound_delivery.py
+  - services/erp-sim/src/erp_sim/services/outbound.py
   tests: []
   frs:
   - FR1.037
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Pick and goods issue endpoints exist; TC1.133 has no test.
 - id: T1.047
   title: Build physical inventory documents
   workstream: WS1.5
   role: ERP
-  status: stub
-  evidence: []
-  tests: []
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/services/physinv.py
+  tests:
+  - tests/e2e/test_pi_flow.py::test_pi_flow_blind_count_recount_approval_sod_and_erp_posting
   frs:
   - FR1.038
   verified_at: null
-  note: Deliverable missing on disk
+  note: PI create/count/PostDifferences work through the worker (PI e2e), but TC1.134 is not carried by a test.
 - id: T1.048
   title: Build material document create and reverse
   workstream: WS1.5
   role: ERP
-  status: done
+  status: partial
   evidence:
-  - services/erp-sim/src/erp_sim/routes/material_document.py
+  - services/erp-sim/src/erp_sim/services/matdoc.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_07_stock_net_conservation_gr_and_cancel
   frs:
   - FR1.039
   - FR1.044
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Create/cancel conserve stock (test passes), but PR1.07 is not generator-based and TC1.135 is not carried.
 - id: T1.049
   title: Build equipment create, install and dismantle
   workstream: WS1.5
@@ -636,7 +688,7 @@
   frs:
   - FR1.040
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Equipment create/install exist; TC1.136 has no test.
 - id: T1.050
   title: Build maintenance order, notification and measurement documents
   workstream: WS1.5
@@ -648,84 +700,85 @@
   frs:
   - FR1.041
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Endpoints exist; TC1.137 has no test.
 - id: T1.051
   title: Implement idempotency dedupe
   workstream: WS1.5
   role: ERP
-  status: done
+  status: partial
   evidence:
   - services/erp-sim/src/erp_sim/dedupe.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_08_dedupe_replay_and_conflict
   frs:
   - FR1.045
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Dedupe replays and conflicts correctly, but PR1.08 is not generator-based and TC1.139 is not carried.
 - id: T1.052
   title: Build the fault injection API
   workstream: WS1.5
   role: ERP
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/faults/warehouse.py
+  - services/erp-sim/src/erp_sim/routes/fault_admin.py
   tests:
-  - docs/SPEC/phase1/tests.json
+  - compat/sap_parity/test_sap_parity.py::test_t3_009_warehouse_fault_injection_and_prod_rejection
   frs:
   - FR1.046
   - FR1.047
   verified_at: null
-  note: Deliverable missing on disk
+  note: Fault injection exists (phase-3 parity test), but PR1.14 and TC1.140-TC1.142 have no tests.
 - id: T1.053
   title: Seed SAMPLE master and transactional data
   workstream: WS1.5
   role: ERP
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/seed.py
   tests: []
   frs:
   - FR1.048
   verified_at: null
-  note: Deliverable missing on disk
+  note: Seeding exists in seed.py (not erp_sim/seed/sample.yaml); TC1.143 count check has no test.
 - id: T1.054
   title: Build the erp-sim admin UI
   workstream: WS1.5
   role: Console
-  status: stub
-  evidence: []
-  tests:
-  - tests/property/test_pr1_console_shell.py
+  status: partial
+  evidence:
+  - services/erp-sim/src/erp_sim/admin_ui.py
+  tests: []
   frs:
   - FR1.049
   verified_at: null
-  note: Deliverable missing on disk
+  note: Admin UI pages exist; TC1.144/TC1.145 have no tests.
 - id: T1.055
   title: Write erp-sim property and concurrency tests
   workstream: WS1.5
   role: QA
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/erp-sim/tests/test_erpsim_properties.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_05_monotonic_number_allocation
-  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_exclusivity
-  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_06_enqueue_lock_ttl_takeover
-  - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_07_stock_net_conservation_gr_and_cancel
   - services/erp-sim/tests/test_erpsim_properties.py::test_pr1_08_dedupe_replay_and_conflict
   frs: []
   verified_at: null
-  note: Deliverable missing on disk
+  note: Tests for PR1.05-PR1.08 are example tests, not 500-run property tests; PR1.14 has none.
 - id: T1.056
   title: Define the ErpPort interface
   workstream: WS1.6
   role: Backend
-  status: stub
-  evidence: []
-  tests: []
+  status: partial
+  evidence:
+  - connectors/sap/src/field_sap/ports/erp_port.py
+  tests:
+  - connectors/sap/tests/contract/test_port_contract.py::test_port_protocol_conformance
   frs:
   - FR1.050
   verified_at: null
-  note: Deliverable missing on disk
+  note: Port is defined and passes mypy --strict; ADR-0005 recording the port does not exist (docs/adr has 0001-0004).
 - id: T1.057
   title: Implement SimAdapter
   workstream: WS1.6
@@ -733,276 +786,291 @@
   status: partial
   evidence:
   - connectors/sap/src/field_sap/sim/adapter.py
-  tests: []
+  tests:
+  - connectors/sap/tests/contract/test_contract.py::test_tc1_148_goods_receipt_is_idempotent_findable_and_reversible
   frs:
   - FR1.051
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Adapter works against erp-sim; find_by_idempotency_key and list_materials were fabricated until C5. TC1.141/TC1.146
+    have no tests.
 - id: T1.058
   title: Write the S4ODataAdapter stub
   workstream: WS1.6
   role: ERP
   status: partial
   evidence:
-  - connectors/sap/src/field_sap/sim/adapter.py
-  tests: []
+  - connectors/sap/src/field_sap/s4/adapter.py
+  tests:
+  - connectors/sap/tests/contract/test_port_contract.py::test_s4_adapter_protocol_and_not_implemented
   frs:
   - FR1.052
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: Stub conforms to the port and raises NotImplementedError; the test does not carry TC1.147/FR1.052, and S/4
+    itself is UNVERIFIED (rule 2.4).
 - id: T1.059
   title: Build the mapping layer
   workstream: WS1.6
   role: ERP
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - connectors/sap/src/field_sap/mapping/quantities.py
   tests:
-  - connectors/sap/tests/contract/test_contract.py::test_pr1_16_odata_contract_baseline
   - tests/property/test_pr1_16_quantities.py::test_pr1_16_decimal_quantity_formatting
   - tests/property/test_pr1_16_quantities.py::test_pr1_16_item_number_steps_roundtrip
   frs:
   - FR1.053
   verified_at: null
-  note: Deliverable missing on disk
+  note: Only quantity and item-number formatting exist; PR1.16 requires parse(to_odata(o)) == o for GoodsReceipt
+    and other domain objects, which is not implemented or tested.
 - id: T1.060
   title: Write the port contract suite
   workstream: WS1.6
   role: QA
-  status: done
+  status: partial
   evidence:
-  - connectors/sap/tests/contract/
-  tests:
   - connectors/sap/tests/contract/test_contract.py
+  tests:
+  - connectors/sap/tests/contract/test_contract.py::test_tc1_148_goods_receipt_is_idempotent_findable_and_reversible
+  - connectors/sap/tests/contract/test_contract.py::test_tc1_148_list_materials_pages_real_master_data
   frs:
   - FR1.050
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: 'Contract suite runs on SimAdapter + erp-sim (rewritten in C5); "for both adapters" is unmet: no FakeAdapter
+    exists and S4 is not implemented.'
 - id: T1.061
   title: Build the posting worker skeleton
   workstream: WS1.6
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/posting/queue.py
+  - services/field-worker/src/field_worker/posting/retry.py
   tests:
-  - docs/SPEC/phase1/tests.json
   - services/field-worker/tests/property/test_pr1_15_posting_order.py::test_pr1_15_backoff_schedule_and_jitter
-  - services/field-worker/tests/property/test_pr1_15_posting_order.py::test_pr1_15_error_classification
-  - services/field-worker/tests/property/test_pr1_15_posting_order.py::test_pr1_15_queue_sequence_execution_order
+  - services/field-worker/tests/unit/test_posting_ws3_2.py::test_t3_010_ordered_queue_claim_and_predecessor_blocking
   frs:
   - FR1.054
   verified_at: null
-  note: Deliverable missing on disk
+  note: Ordered claim, backoff and outbox writes are real; the PR1.15 ordering property test is a self-contained
+    simulation and TC1.149/TC1.150 have no tests.
 - id: T1.062
   title: Run the Meta Model API access spike
   workstream: WS1.7
   role: AI
-  status: done
+  status: partial
   evidence:
-  - tools/spikes/model-api/
+  - tools/spikes/model_api_harness.py
   tests:
-  - tools/spikes/model-api/test_model_api_spike.py
+  - tools/spikes/model-api/test_model_api_spike.py::test_t1_062_refuses_contributor_models
+  - tools/spikes/model-api/test_model_api_spike.py::test_t1_062_every_call_goes_through_the_budget_guard
   frs:
   - FR1.055
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: The 2026-10-27 results were simulated and are retracted; the budget-guarded harness makes real calls but
+    has never been run with a key, so TC1.151 is unrecorded (Meta Model API UNVERIFIED).
 - id: T1.063
   title: Build the wearables spike app
   workstream: WS1.7
   role: Android
-  status: done
-  evidence:
-  - tools/spikes/wearables-android/
-  tests:
-  - tools/spikes/wearables-android/tests/test_wearables_spike.py
+  status: missing
+  evidence: []
+  tests: []
   frs:
   - FR1.056
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: tools/spikes/wearables-android defaulted to a hand-written MockDeviceKit, reported VERIFIED from it and
+    was never built; deleted in C5. The real DAT path is the M1 slice (A-01); TC1.153 unrecorded.
 - id: T1.064
   title: Test display drawing on Meta Ray-Ban Display
   workstream: WS1.7
   role: Android
-  status: stub
+  status: missing
   evidence: []
-  tests:
-  - tools/spikes/wearables-android/tests/test_wearables_spike.py
+  tests: []
   frs:
   - FR1.056
   verified_at: null
-  note: Deliverable missing on disk
+  note: No spike exists; the owner has Ray-Ban Meta Gen 2 (no display), so display rows are UNVERIFIED (hardware)
+    and TC1.155 cannot be recorded.
 - id: T1.065
   title: Run the spike on the Mock Device Kit
   workstream: WS1.7
   role: Android
-  status: stub
+  status: missing
   evidence: []
-  tests:
-  - tools/spikes/wearables-android/tests/test_wearables_spike.py
+  tests: []
   frs:
   - FR1.057
   verified_at: null
-  note: Deliverable missing on disk
+  note: No spike exists and Meta's mwdat-mockdevice has never been resolved; TC1.156 unrecorded.
 - id: T1.066
   title: Write docs/META_FIELD.md and decide the Llama fallback
   workstream: WS1.7
   role: AI
-  status: done
+  status: partial
   evidence:
   - docs/META_FIELD.md
   tests:
-  - tests/property/test_pr1_meta_field.py
+  - tests/property/test_pr1_meta_field.py::test_meta_field_structure_and_decision
   frs:
   - FR1.058
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: META_FIELD.md was rewritten honestly (all rows UNVERIFIED/BLOCKED) and D1.04 is recorded as revised, but
+    no test carries TC1.169/FR1.058 and the decision rests on unverified access.
 - id: T1.067
   title: Instrument device-side latency
   workstream: WS1.7
   role: Android
-  status: stub
+  status: missing
   evidence: []
   tests: []
   frs:
   - FR1.059
   verified_at: null
-  note: Deliverable missing on disk
+  note: No device-side instrumentation or OTel exists anywhere (see T1.015); spans in Jaeger never observed.
 - id: T1.068
   title: Build server latency harness and baseline report
   workstream: WS1.7
   role: QA
-  status: done
+  status: partial
   evidence:
+  - tools/latency/report.py
   - docs/LATENCY_BASELINE.md
-  - tools/latency/
   tests:
-  - tests/property/test_pr1_latency_baseline.py
+  - tests/property/test_pr1_latency_baseline.py::test_latency_baseline_percentiles_from_raw
+  - tests/property/test_pr1_latency_baseline.py::test_latency_baseline_reports_not_measured_without_raw_data
   frs:
   - FR1.059
   - FR1.060
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Harness computes percentiles only from raw files and reports NOT MEASURED otherwise; no measurement has
+    been taken (docs/perf/raw is empty), so TC1.157/TC1.158 are unmet.
 - id: T1.069
   title: Write the threat model
   workstream: WS1.8
   role: Security
-  status: done
+  status: partial
   evidence:
   - docs/security/THREAT_MODEL.md
   tests:
-  - tests/property/test_pr1_security_baseline.py
+  - tests/property/test_pr1_security_baseline.py::test_security_documentation_and_stride_coverage
   frs:
   - FR1.061
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Rows have control and test ids, but several controls are not implemented (TLS 1.3/HSTS, per-tenant rate
+    limiting, BLE frame hash), DF-07 repeats the retracted "Muse blocked from India" result, and the test only checks
+    STRIDE words.
 - id: T1.070
   title: Write data classification and DPIA starter
   workstream: WS1.8
   role: Security
-  status: done
+  status: partial
   evidence:
-  - docs/privacy/DPIA_STARTER.md
   - docs/security/DATA_CLASSIFICATION.md
+  - docs/privacy/DPIA_STARTER.md
   tests:
-  - tests/property/test_pr1_security_baseline.py
+  - tests/property/test_pr1_security_baseline.py::test_security_documentation_and_stride_coverage
   frs:
   - FR1.061
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: '"Every column classified" is unmet: many v1 columns are absent (e.g. material.gtin, device.serial_no, capture.code_value,
+    task_line.sscc); the test only checks table names.'
 - id: T1.071
   title: Set up secrets handling
   workstream: WS1.8
   role: Security
-  status: done
+  status: partial
   evidence:
-  - docs/security/SECRETS.md
   - services/field-api/src/field_api/secrets.py
+  - docs/security/SECRETS.md
   tests:
-  - services/field-api/tests/unit/test_secrets.py
+  - services/field-api/tests/unit/test_secrets.py::test_scrubber_masks_connection_strings_and_tokens
   frs:
   - FR1.062
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: C5 removed built-in signing keys and added required_secret() with a startup refusal; no test carries TC1.160/FR1.062
+    and FIELD_SECRETS_SOURCE vault/KMS loading is not implemented (file/env only).
 - id: T1.072
   title: Write and enforce the dependency policy
   workstream: WS1.8
   role: Security
-  status: done
+  status: partial
   evidence:
   - docs/security/DEPENDENCY_POLICY.md
   - tools/checks/deps.py
   tests:
-  - tests/property/test_pr1_security_baseline.py
+  - tests/property/test_pr1_security_baseline.py::test_dependency_policy_and_checker
   frs:
   - FR1.064
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: deps.py only checks that uv.lock exists and greps it for license strings uv.lock never contains; no 14-day
+    age rule, no licence allowlist, no SBOM, and it is not run in the lint job.
 - id: T1.073
   title: Create packages/ui-tokens
   workstream: WS1.9
   role: Design
-  status: done
+  status: partial
   evidence:
-  - packages/ui-tokens/
+  - packages/ui-tokens/package.json
   tests:
-  - docs/SPEC/phase1/tests.json
+  - tests/property/test_pr1_18_contrast.py::test_ui_tokens_contrast_ratios
   frs:
   - FR1.067
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Contrast test passes but is not generator-based and carries no PR1.18/TC1.163 id.
 - id: T1.074
   title: Create the field-console shell
   workstream: WS1.9
   role: Console
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/
-  tests:
-  - tests/property/test_pr1_console_shell.py
+  - apps/field-console/app/layout.tsx
+  tests: []
   frs:
   - FR1.066
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Shell exists; axe has never been run (TC1.145) and several pages render hard-coded sample data.
 - id: T1.075
   title: Implement console sign-in via core session
   workstream: WS1.9
   role: Console
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/app/(auth)/
-  tests:
-  - tests/property/test_pr1_console_shell.py
+  - apps/field-console/app/(auth)/login/page.tsx
+  tests: []
   frs:
   - FR1.065
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Login route exists; TC1.161 against fake-core has never been run (the old test only grepped TSX and was
+    removed in C5).
 - id: T1.076
   title: Build empty, no-permission and status screens
   workstream: WS1.9
   role: Console
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/app/
-  tests:
-  - tests/property/test_pr1_console_shell.py
+  - apps/field-console/app/status/page.tsx
+  tests: []
   frs:
   - FR1.066
   - FR1.068
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Screens exist; Playwright has never been run and no snapshots are stored (TC1.162).
 - id: T1.077
   title: Plan and implement per-tenant feature flags
   workstream: WS1.9
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - docs/adr/0004-feature-flags.md
   - services/field-api/src/field_api/flags.py
+  - docs/adr/0004-feature-flags.md
   tests:
-  - services/field-api/tests/unit/test_flags.py
+  - services/field-api/tests/unit/test_flags.py::test_flags_tenant_allowlist
+  - services/field-api/tests/unit/test_flags.py::test_require_flag_dependency
   frs:
   - FR1.068
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence on live database
+  verified_at: null
+  note: Flag resolution works and is tested, but no test carries TC1.164/FR1.068.
 - id: T1.078
   title: Write the Phase 1 report and push
   workstream: WS1.9
@@ -1015,4 +1083,5 @@
   - FR1.001
   - FR1.002
   verified_at: null
-  note: Deliverable present on disk; test node mapping pending verification
+  note: PHASE1_REPORT.md is hand-written and SUPERSEDED; rule 2.3 requires a report generated from this ledger and
+    a verify-all run.

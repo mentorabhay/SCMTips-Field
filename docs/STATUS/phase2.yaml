@@ -2,16 +2,16 @@
   title: Scaffold the Android multi-module project
   workstream: WS2.1
   role: Android
-  status: done
+  status: partial
   evidence:
-  - apps/field-android/gradle/libs.versions.toml
   - apps/field-android/settings.gradle.kts
-  tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_001_multi_module_layout
+  - apps/field-android/gradle/libs.versions.toml
+  tests: []
   frs:
   - FR2.001
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: ./gradlew check has never run (no CI run; Android SDK licence not accepted in the agent environment), so
+    no PASS row for field-android exists. Done_when unmet.
 - id: T2.002
   title: Build the app shell and navigation
   workstream: WS2.1
@@ -19,71 +19,73 @@
   status: partial
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/navigation/Screen.kt
   tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_002_app_shell_and_navigation_routes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/permissions/PermissionManagerTest.kt::fr2_006_permanentDenialOfCameraOrMicShowsMsg2_05AndSurvivesRefresh
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/permissions/PermissionManagerTest.kt::fr2_006_requestsTheSpecPermissions
   frs:
   - FR2.006
   verified_at: null
-  note: Android UI screen verified via Robolectric/unit tests; physical device test
-    pending glasses hardware
+  note: No Espresso navigation test and no cold-start measurement; app never built.
 - id: T2.003
   title: Generate the Kotlin API client with interceptors
   workstream: WS2.1
   role: Android
-  status: done
+  status: partial
   evidence:
-  - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/api/FieldApiClient.kt
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/api/HeaderInterceptor.kt
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/api/RedactingLoggingInterceptor.kt
-  tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_003_api_client_and_interceptors
+  - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/api/FieldApiClient.kt
+  tests: []
   frs:
   - FR2.045
   - FR2.066
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Interceptors are OkHttp-bound and have no unit test (the Python grep test was removed in C5). Done_when
+    "unit test proves headers are set and logs contain no token or body bytes" unmet.
 - id: T2.004
   title: Implement sign-in with a core device token
   workstream: WS2.1
   role: Android
-  status: done
+  status: partial
   evidence:
-  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/auth/CryptoManager.kt
-  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/auth/RevocationHandler.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/auth/TokenManager.kt
-  tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_004_device_token_enrolment_and_keystore
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/auth/CryptoManager.kt
+  tests: []
   frs:
   - FR2.001
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Android Keystore code with no test; no SAMPLE sign-in and no storage scan has run.
 - id: T2.005
   title: Read MDM managed configuration and merge effective config
   workstream: WS2.1
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/config/EffectiveConfig.kt
   tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_005_mdm_managed_configuration_precedence
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/config/EffectiveConfigTest.kt::fr2_004_everyKeyFollowsMdmOverServerOverDefaultInAllFourCombinations
   frs:
   - FR2.004
   - FR2.054
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Precedence logic proven by EffectiveConfigTest (kotlin-jvm job, FR2.004). TC2.104 needs the MDM RestrictionsManager
+    path (Robolectric/device) and FR2.054 has no test. Gradle Android build (the build of record, rule 2.1) has
+    never run, so the module is not proven to compile or link as an Android library.
 - id: T2.006
   title: Handle device revocation
   workstream: WS2.1
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/auth/RevocationHandler.kt
   tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_006_device_revocation_lifecycle
+  - services/field-api/tests/test_ws2_6.py::test_t2_047_device_revocation_stops_session
   frs:
   - FR2.002
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: 'Server half proven (test_ws2_6 revocation: device token refused after revoke). Client half of TC2.102 (session
+    stops within 60 s, tokens deleted, outbox blocked) has no test; RevocationHandler is Android-bound and untested.'
 - id: T2.007
   title: Run capture sessions in a foreground service
   workstream: WS2.1
@@ -91,69 +93,68 @@
   status: partial
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/CaptureSessionService.kt
-  tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_007_foreground_capture_service
+  tests: []
   frs:
   - FR2.005
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: No device run of TC2.105 (30 min screen-off on Android 14/15).
 - id: T2.008
   title: Build permission flows
   workstream: WS2.1
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/permissions/PermissionManager.kt
   tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_008_permission_flows_and_reduced_mode
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/permissions/PermissionManagerTest.kt::fr2_006_permanentDenialOfCameraOrMicShowsMsg2_05AndSurvivesRefresh
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/permissions/PermissionManagerTest.kt::fr2_006_requestsTheSpecPermissions
   frs:
   - FR2.006
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Permission state logic proven by PermissionManagerTest (FR2.006). TC2.106 per-permission flow and TalkBack
+    check need a device. Gradle Android build (the build of record, rule 2.1) has never run, so the module is not
+    proven to compile or link as an Android library.
 - id: T2.009
   title: Implement the battery and thermal ladder
   workstream: WS2.1
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/PowerGovernor.kt
-  tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_009_thermal_battery_ladder
+  tests: []
   frs:
   - FR2.007
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: PowerGovernor has no test (it depends on Android-bound RevocationHandler); TC2.107/TC2.108 have never run.
 - id: T2.010
   title: Record consent and check the camera indicator
   workstream: WS2.1
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/consent/ConsentManager.kt
   tests:
-  - apps/field-android/tests/test_ws2_1.py::test_t2_010_consent_gate_and_indicator_check
+  - services/field-api/tests/test_ws2_6.py::test_t2_048_consent_gate_and_withdrawal
   frs:
   - FR2.064
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Server consent gate proven (test_ws2_6 consent). Client ConsentManager is Retrofit-bound and untested; TC2.155
+    camera-indicator check needs a device.
 - id: T2.011
   title: Wrap the Wearables Device Access Toolkit
   workstream: WS2.2
   role: Android
   status: partial
   evidence:
-  - apps/field-android/core-wearables/
-  tests:
-  - apps/field-android/tests/test_ws2_2.py::test_t2_011_wearables_contracts_and_interfaces
+  - apps/field-android/core-wearables/src/main/kotlin/com/scmtips/field/core/wearables/GlassesContracts.kt
+  tests: []
   frs:
   - FR2.009
   - FR2.010
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: 'UNVERIFIED dependency (§2.4): no Meta Wearables DAT adapter exists and the SDK has never been resolved
+    by a build; MockWearablesKit is a hand-written double, not Meta Mock Device Kit. Done_when (frames/stills in
+    Mock Device Kit tests) unmet.'
 - id: T2.012
   title: Build the phone and glasses pairing flow
   workstream: WS2.2
@@ -162,13 +163,12 @@
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/pairing/GlassesPairingManager.kt
   tests:
-  - apps/field-android/tests/test_ws2_2.py::test_t2_012_pairing_flow_and_single_pairing_constraint
+  - services/field-api/tests/test_ws2_6.py::test_t2_047_device_registration_and_pairing
   frs:
   - FR2.003
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: 'Server pairing rules proven (test_ws2_6: second pairing needs replace=true). TC2.103 with Mock Device Kit
+    not run; GlassesPairingManager is Retrofit-bound and untested; DAT UNVERIFIED.'
 - id: T2.013
   title: Handle disconnects and reconnects
   workstream: WS2.2
@@ -177,13 +177,14 @@
   evidence:
   - apps/field-android/core-wearables/src/main/kotlin/com/scmtips/field/core/wearables/ConnectionMonitor.kt
   tests:
-  - apps/field-android/tests/test_ws2_2.py::test_t2_013_connection_monitor_backoff_and_look_discard
+  - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/ConnectionMonitorTest.kt::fr2_015_backoffScheduleIsCappedAt30s
+  - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/ConnectionMonitorTest.kt::fr2_015_twentyDisconnectsReconnectToTheSameDeviceWithBackoff
   frs:
   - FR2.015
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: Backoff/reconnect logic proven (ConnectionMonitorTest, FR2.015). TC2.116 "no duplicate or lost record across
+    20 disconnects" involves outbox records and is not tested; DAT UNVERIFIED. Gradle Android build (the build of
+    record, rule 2.1) has never run, so the module is not proven to compile or link as an Android library.
 - id: T2.014
   title: Implement the lens renderer for Ray-Ban Display
   workstream: WS2.2
@@ -192,14 +193,13 @@
   evidence:
   - apps/field-android/core-wearables/src/main/kotlin/com/scmtips/field/core/wearables/lens/RayBanLensRenderer.kt
   tests:
-  - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/LensRendererTest.kt
-  - apps/field-android/tests/test_ws2_2.py::test_t2_014_rayban_lens_renderer_and_fake_renderer
+  - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/LensRendererTest.kt::tc2_113_sevenStatesDrawScr2_07CopyWithinTwoLinesOf18
   frs:
   - FR2.013
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: TC2.113 copy/2x18 layout proven by LensRendererTest. Draw <40 ms p95 on hardware unmeasured; no DAT display
+    adapter; owner has Gen 2 (no display) so hardware row is BLOCKED. Gradle Android build (the build of record,
+    rule 2.1) has never run, so the module is not proven to compile or link as an Android library.
 - id: T2.015
   title: Implement the audio-only cue set
   workstream: WS2.2
@@ -207,14 +207,16 @@
   status: partial
   evidence:
   - apps/field-android/core-wearables/src/main/kotlin/com/scmtips/field/core/wearables/audio/AudioCues.kt
+  - apps/field-android/core-wearables/src/main/kotlin/com/scmtips/field/core/wearables/LookFeedback.kt
   tests:
-  - apps/field-android/tests/test_ws2_2.py::test_t2_015_audio_only_cue_set_and_walking_quiet
+  - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/AudioFeedbackTest.kt::fr2_014_displayGlassesUseLensUnlessForceAudioOnly
+  - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/AudioFeedbackTest.kt::tc2_115_gen2ProfileEarconsAndPhrasesPerScr2_08
   frs:
   - FR2.014
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: TC2.115 cue set proven by AudioFeedbackTest against production AudioCues (FR2.014). Audio output path to
+    glasses depends on UNVERIFIED DAT (§2.4). Gradle Android build (the build of record, rule 2.1) has never run,
+    so the module is not proven to compile or link as an Android library.
 - id: T2.016
   title: Add text-to-speech readback through the glasses
   workstream: WS2.2
@@ -223,467 +225,568 @@
   evidence:
   - apps/field-android/core-wearables/src/main/kotlin/com/scmtips/field/core/wearables/audio/Readback.kt
   tests:
-  - apps/field-android/tests/test_ws2_2.py::test_t2_016_glasses_tts_readback_and_ptt_queue_flush
+  - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/AudioFeedbackTest.kt::fr2_012_readbackSpeaksStagedCountAndPushToTalkFlushesIt
   frs:
   - FR2.012
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: Readback/PTT flush logic proven (FR2.012). TC2.112 (device, 300 ms) not run; DAT UNVERIFIED. Gradle Android
+    build (the build of record, rule 2.1) has never run, so the module is not proven to compile or link as an Android
+    library.
 - id: T2.017
   title: Build the Mock Device Kit test harness
   workstream: WS2.2
   role: QA
   status: partial
-  evidence: []
+  evidence:
+  - apps/field-android/core-wearables-testing/src/main/kotlin/com/scmtips/field/core/wearables/mock/MockWearablesKit.kt
   tests:
-  - apps/field-android/tests/test_ws2_2.py::test_t2_017_mock_wearables_kit_and_testdata_scenes
+  - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/ConnectionMonitorTest.kt::fr2_015_backoffScheduleIsCappedAt30s
+  - apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/ConnectionMonitorTest.kt::fr2_015_twentyDisconnectsReconnectToTheSameDeviceWithBackoff
   frs:
   - FR2.015
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: Deliverable src/androidTest/ does not exist; MockWearablesKit is hand-written, not Meta mwdat-mockdevice.
+    TC2.117 not run.
 - id: T2.018
   title: Add phone camera mode with CameraX
   workstream: WS2.2
   role: Android
-  status: partial
+  status: stub
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/source/CameraXSource.kt
-  tests:
-  - apps/field-android/tests/test_ws2_2.py::test_t2_018_camerax_phone_fallback_source
+  tests: []
   frs:
   - FR2.008
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: CameraXSource returned a fake 2048-byte JPEG until C5; it now requires an injected still capture and contains
+    no CameraX code. TC2.165 not run.
 - id: T2.019
   title: Run the owner hardware session
   workstream: WS2.2
   role: Owner
-  status: partial
-  evidence: []
-  tests:
-  - apps/field-android/tests/test_ws2_2.py::test_t2_019_hardware_session_checklist
+  status: missing
+  evidence:
+  - docs/META_FIELD.md
+  tests: []
   frs:
   - FR2.013
   - FR2.064
   verified_at: null
-  note: 'UNVERIFIED: Meta Wearables toolkit SDK coordinate not publicly resolvable;
-    pure GlassesSession interface in :core-wearables and MockWearablesKit in :core-wearables-testing
-    provide test doubles (Finding F-07 / Rule 2.4)'
+  note: Owner hardware session has not happened; META_FIELD.md rows are UNVERIFIED/BLOCKED.
 - id: T2.020
   title: Integrate the on-device detector
   workstream: WS2.3
   role: AI
-  status: done
-  evidence:
-  - apps/field-android/core-capture/src/main/assets/detector_v1.tflite
-  - apps/field-android/core-capture/src/main/assets/detector_v1_model_card.json
-  - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/detect/MediaPipeDetector.kt
-  tests:
-  - apps/field-android/tests/test_ws2_3.py::test_t2_020_detector_and_model_card
+  status: missing
+  evidence: []
+  tests: []
   frs:
   - FR2.016
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: No detector model exists (fake 67-byte detector_v1.tflite retracted in C0; model card NOT_PROVIDED). MediaPipeDetector
+    requires a DetectorEngine that does not exist. TC2.118 mAP and 38 ms p95 unmeasured.
 - id: T2.021
   title: Estimate head speed and segment looks
   workstream: WS2.3
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/motion/LookSegmenter.kt
   tests:
-  - apps/field-android/tests/test_ws2_3.py::test_t2_021_head_speed_look_segmentation
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/motion/LookSegmenterTest.kt::fr2_029_lookEndsAbove25DegPerSecButNotAt25
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/motion/LookSegmenterTest.kt::fr2_029_lookStartsAfter150msStill
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/motion/LookSegmenterTest.kt::fr2_029_moderateMotionBeforeStartResetsTheClock
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/motion/LookSegmenterTest.kt::fr2_029_recordCommitEndsLookAndNextLookGetsNewUuid7
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::fr2_029_timingMarksAreOrderedClockReadingsAndLensFollowsCommit
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_001_autoCaptureThenCaptureCommandYieldsOneRecord_fr2_029
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_002_secondCaptureCommandShowsCapturedAgainWithoutRecord_fr2_029
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_166_eachTriggerCreatesOneRecordForItsLook_fr2_029
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/ReadabilityTest.kt::fr2_021_motionFactorOneAt8LinearTo60
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/ReadabilityTest.kt::tc2_041_34DegPerSecHalvesScore_fr2_021
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/ReadabilityTest.kt::tc2_042_above60DegPerSecIsZero_fr2_021
   frs:
   - FR2.021
   - FR2.029
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Segmentation rules proven by LookSegmenterTest (FR2.029) and motion factor by ReadabilityTest (FR2.021).
+    No SAMPLE IMU traces exist, so "boundaries match labels in 95% of cases" is unmeasured. Gradle Android build
+    (the build of record, rule 2.1) has never run, so the module is not proven to compile or link as an Android
+    library.
 - id: T2.022
   title: Decode barcodes and validate SSCC
   workstream: WS2.3
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParser.kt
-  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1ParserPropertyTest.kt
   tests:
-  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1ParserPropertyTest.kt::testPr212SsccCheckDigitAgreesWithGs1
-  - apps/field-android/tests/test_ws2_3.py::test_t2_022_gs1_barcode_and_sscc_mod10_algorithm
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::fr2_017_expiryDayZeroAndCenturyWindow
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::fr2_017_qrPayloadWithoutAisIsNotGs1
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::fr2_017_truncatedFixedLengthFieldIsInvalid
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::fr2_018_exactlyOneCheckDigitAcceptedPerPrefix
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::tc2_034_publishedSsccIsValid_fr2_018
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::tc2_035_wrongCheckDigitRejectedWithMsg2_08_fr2_018
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::tc2_036_wrongLengthOrNonDigitRejected_fr2_018
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::tc2_119_ssccFromGs1_128ElementStringAndBareCode_fr2_017
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::tc2_120_dataMatrixAisParsed_fr2_017
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/codes/Gs1BarcodeParserTest.kt::tc2_120_elementStringWithGroupSeparator_fr2_017
   frs:
   - FR2.017
   - FR2.018
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: TC2.119/TC2.120 proven by Gs1BarcodeParserTest (FR2.017, FR2.018). PR2.12 has no Kotest generator test (seeded
+    loops only). Barcode decoding itself (ML Kit) is not wired. Gradle Android build (the build of record, rule
+    2.1) has never run, so the module is not proven to compile or link as an Android library.
 - id: T2.023
   title: Read serial text on the device
   workstream: WS2.3
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/ocr/SerialOcrParser.kt
   tests:
-  - apps/field-android/tests/test_ws2_3.py::test_t2_023_serial_ocr_and_confusable_characters
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/ocr/SerialOcrParserTest.kt::fr2_019_digitTokenPreferredOverLabelWordThenConfidence
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/ocr/SerialOcrParserTest.kt::fr2_019_noMatchingTokenReturnsNull
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/ocr/SerialOcrParserTest.kt::fr2_019_taskLinePatternAndDigitConfusables
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/ocr/SerialOcrParserTest.kt::tc2_121_patternTokenSelectedNonMatchingIgnored_fr2_019
   frs:
   - FR2.019
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: TC2.121 token selection proven by SerialOcrParserTest (FR2.019). On-device text recognition (ML Kit) is
+    not wired; parser only. Gradle Android build (the build of record, rule 2.1) has never run, so the module is
+    not proven to compile or link as an Android library.
 - id: T2.024
   title: Implement the capture-zone ranking engine
   workstream: WS2.3
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/rank/Ranker.kt
   tests:
-  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerPropertyTest.kt::testPr201AtMostOneRecordPerLook
-  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerPropertyTest.kt::testPr206ScoreBoundsAndWeights
-  - apps/field-android/tests/test_ws2_3.py::test_pr2_06_deterministic_ranking_permutation_invariance
-  - apps/field-android/tests/test_ws2_3.py::test_t2_024_capture_zone_ranking_math_and_weights
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_003_tieMakesNoRecordLeftResolvesThenCaptureMakesNoSecond_fr2_026
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_010_duplicateWinnerShowsDuplicateAndMakesNoRecord_fr2_025
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::fr2_023_coverageIsExactAreaFraction
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::fr2_023_selectedBoxAlwaysMeetsCoverageFloor
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::fr2_024_componentsAreClampedSoScoreStaysInUnitRange
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::fr2_024_scoreCandidateUsesTheWeights
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::fr2_030_outcomeInvariantUnderPermutation
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_004_coverage019IsIneligibleEvenWithPerfectComponents_fr2_023
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_005_coverageExactly020IsEligible_fr2_023
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_006_lowCoverageBoxNeverSelected_fr2_023
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_007_gapBelow0_05IsTie_fr2_026
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_008_gapOf0_05IsNotTie_fr2_026
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_009_topAtOrBelow0_35IsNone_fr2_024
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_010_alreadyCapturedCodeScoreHalved_fr2_025
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_013_selectionIndependentOfInputOrder_fr2_030
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_014_equalScoresTieWithSameLeftRightInBothOrders_fr2_026
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_015_emptyListIsNone_fr2_030
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_016_allComponentsOneScoresOne_fr2_024
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_017_duplicateHalvesScore_fr2_025
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_018_br2_02WorkedExampleScores0_90_fr2_024
   frs:
   - FR2.023
   - FR2.024
   - FR2.025
   - FR2.026
   - FR2.030
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: FR2.023-FR2.026 and FR2.030 proven by RankerTest/CapturePipelineTest. PR2.01-PR2.06 "1,000 runs each" need
+    Kotest generator tests; none exist. Gradle Android build (the build of record, rule 2.1) has never run, so the
+    module is not proven to compile or link as an Android library.
 - id: T2.025
   title: Track objects and gaze dwell
   workstream: WS2.3
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/rank/DwellTracker.kt
   tests:
-  - apps/field-android/tests/test_ws2_3.py::test_t2_025_dwell_tracker_and_iou_matching
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/DwellTrackerTest.kt::fr2_027_iou
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/DwellTrackerTest.kt::fr2_027_reentryDoesNotCountTimeSpentOutside
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/DwellTrackerTest.kt::fr2_027_unmatchedTracksDropAndNewObjectsGetNewTracks
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/DwellTrackerTest.kt::tc2_125_dwellGrowsToFullAt800msWhileInsideAndResetsOnExit_fr2_027
   frs:
   - FR2.027
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: 'TC2.125 proven by DwellTrackerTest (FR2.027) against production DwellTracker (C5 fixed tracks being deleted
+    on creation). Only gap: the Gradle Android build of record has never run.'
 - id: T2.026
   title: Compute task match from task expectations
   workstream: WS2.3
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/rank/TaskMatcher.kt
   tests:
-  - apps/field-android/tests/test_ws2_3.py::test_t2_026_task_matcher_scoring_ladder
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/TaskMatcherTest.kt::fr2_028_materialMatchIs0_6AndExpectationsCanChange
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/TaskMatcherTest.kt::tc2_126_exactGtinClassNone_fr2_028
   frs:
   - FR2.028
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: 'TC2.126 proven by TaskMatcherTest (FR2.028). Only gap: Gradle Android build never run.'
 - id: T2.027
   title: Score readability with motion penalty
   workstream: WS2.3
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/quality/Readability.kt
   tests:
-  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/QualityAndPrivacyPropertyTest.kt::testPr214ReadabilityMonotoneInHeadSpeed
-  - apps/field-android/tests/test_ws2_3.py::test_t2_027_readability_and_motion_factor
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/ReadabilityTest.kt::fr2_020_monotoneInHeadSpeedAndBounded
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/ReadabilityTest.kt::fr2_021_motionFactorOneAt8LinearTo60
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/ReadabilityTest.kt::tc2_040_stillHeadKeepsBase_fr2_020
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/ReadabilityTest.kt::tc2_041_34DegPerSecHalvesScore_fr2_021
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/ReadabilityTest.kt::tc2_042_above60DegPerSecIsZero_fr2_021
   frs:
   - FR2.020
   - FR2.021
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: FR2.020/FR2.021 formula proven by ReadabilityTest. PR2.14 has no generator test; TC2.122 golden image set
+    does not exist. Gradle Android build (the build of record, rule 2.1) has never run, so the module is not proven
+    to compile or link as an Android library.
 - id: T2.028
   title: Blur bystander faces before upload
   workstream: WS2.3
   role: Security
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/privacy/FaceBlurStage.kt
   tests:
-  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/QualityAndPrivacyPropertyTest.kt::testPr213FaceBlurBeforeUpload
-  - apps/field-android/tests/test_ws2_3.py::test_t2_028_face_blur_stage_privacy_guard
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::fr2_022_failedFaceDetectionWithholdsCropButKeepsTheCode
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/privacy/FaceBlurStageTest.kt::fr2_022_cropWithNoFaceStillCarriesBlurApplied
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/privacy/FaceBlurStageTest.kt::fr2_022_detectionThresholdIs0_30AndMarginIsTenPercentClamped
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/privacy/FaceBlurStageTest.kt::tc2_037_bystanderFacePixelatedAndCounted_fr2_022
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/privacy/FaceBlurStageTest.kt::tc2_038_detectorFailureWithholdsCrop_fr2_022
   frs:
   - FR2.022
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Pixelation of ARGB blocks proven by FaceBlurStageTest (FR2.022; C5 found the old stage overwrote JPEG bytes
+    and blurred nothing). PR2.13 no generator test; TC2.123 golden face set missing; no face detector engine wired.
+    Gradle Android build (the build of record, rule 2.1) has never run, so the module is not proven to compile or
+    link as an Android library.
 - id: T2.029
   title: Orchestrate the capture pipeline
   workstream: WS2.3
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipeline.kt
   tests:
-  - apps/field-android/tests/test_ws2_3.py::test_t2_029_capture_pipeline_orchestration
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/motion/LookSegmenterTest.kt::fr2_029_lookEndsAbove25DegPerSecButNotAt25
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/motion/LookSegmenterTest.kt::fr2_029_lookStartsAfter150msStill
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/motion/LookSegmenterTest.kt::fr2_029_moderateMotionBeforeStartResetsTheClock
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/motion/LookSegmenterTest.kt::fr2_029_recordCommitEndsLookAndNextLookGetsNewUuid7
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::fr2_029_timingMarksAreOrderedClockReadingsAndLensFollowsCommit
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_001_autoCaptureThenCaptureCommandYieldsOneRecord_fr2_029
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_002_secondCaptureCommandShowsCapturedAgainWithoutRecord_fr2_029
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_166_eachTriggerCreatesOneRecordForItsLook_fr2_029
   frs:
   - FR2.029
   - FR2.063
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: TC2.166 and timing marks proven by CapturePipelineTest (FR2.029). FR2.063 (end-to-end latency instrumentation)
+    has no test; pipeline has no real detector/camera source. Gradle Android build (the build of record, rule 2.1)
+    has never run, so the module is not proven to compile or link as an Android library.
 - id: T2.030
   title: Write ranking property tests
   workstream: WS2.3
   role: QA
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt
   tests:
-  - apps/field-android/tests/test_ws2_3.py
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_003_tieMakesNoRecordLeftResolvesThenCaptureMakesNoSecond_fr2_026
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::fr2_023_coverageIsExactAreaFraction
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::fr2_023_selectedBoxAlwaysMeetsCoverageFloor
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::fr2_030_outcomeInvariantUnderPermutation
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_004_coverage019IsIneligibleEvenWithPerfectComponents_fr2_023
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_005_coverageExactly020IsEligible_fr2_023
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_006_lowCoverageBoxNeverSelected_fr2_023
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_007_gapBelow0_05IsTie_fr2_026
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_008_gapOf0_05IsNotTie_fr2_026
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_013_selectionIndependentOfInputOrder_fr2_030
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_014_equalScoresTieWithSameLeftRightInBothOrders_fr2_026
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/rank/RankerTest.kt::tc2_015_emptyListIsNone_fr2_030
   frs:
   - FR2.023
   - FR2.026
   - FR2.030
   verified_at: null
-  note: Deliverable missing on disk
+  note: Deliverable RankerProperties.kt does not exist; RankerTest has seeded-random sweeps, not Kotest properties
+    with 1,000 cases. PR2.01-PR2.06 unproven.
 - id: T2.031
   title: Build the golden scene set and perception tests
   workstream: WS2.3
   role: QA
-  status: stub
+  status: missing
   evidence: []
-  tests:
-  - apps/field-android/tests/test_ws2_3.py::test_t2_031_golden_scene_perception
+  tests: []
   frs:
   - FR2.016
   - FR2.019
   - FR2.022
   verified_at: null
-  note: Deliverable missing on disk
+  note: apps/field-android/testdata/scenes/ holds no golden scene set with labels; TC2.118-TC2.124 do not run in
+    verify-all (the Python grep claiming them was removed in C5).
 - id: T2.032
   title: Build the push-to-talk controller
   workstream: WS2.4
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/ptt/PttController.kt
   tests:
-  - apps/field-android/tests/test_ws2_4.py::test_t2_032_ptt_controller_and_audio_buffer_zeroing
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ptt/PttControllerTest.kt::fr2_011_audioIsRecordedOnlyWhileHeldForEveryTrigger
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ptt/PttControllerTest.kt::fr2_035_bufferAndSnapshotAreZeroedAfterRecognition
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ptt/PttControllerTest.kt::fr2_035_snapshotIsZeroedEvenWhenRecognitionThrows
+  - tests/test_ws2_9.py::test_t2_070_privacy_scan_passes
   frs:
   - FR2.011
   - FR2.035
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: FR2.011/FR2.035 buffer zeroing proven by PttControllerTest. TC2.111 (hardware triggers) and TC2.131 (heap
+    dump / storage scan on device) not run. Gradle Android build (the build of record, rule 2.1) has never run,
+    so the module is not proven to compile or link as an Android library.
 - id: T2.033
   title: Integrate the ASR adapter
   workstream: WS2.4
   role: Android
-  status: done
+  status: stub
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/asr/AsrEngine.kt
   tests:
-  - apps/field-android/tests/test_ws2_4.py::test_t2_033_offline_asr_engine
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ptt/PttControllerTest.kt::fr2_035_bufferAndSnapshotAreZeroedAfterRecognition
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ptt/PttControllerTest.kt::fr2_035_snapshotIsZeroedEvenWhenRecognitionThrows
   frs:
   - FR2.031
   - FR2.035
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: No recogniser backend exists (C5 removed an invented "capture" 0.95 result); OfflineAsrEngine needs a RecognizerBackend
+    that is not implemented. Airplane-mode check not run.
 - id: T2.034
   title: Implement the grammar parser and confidence floor
   workstream: WS2.4
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/grammar/VoiceGrammarParser.kt
-  - apps/field-android/core-voice/src/main/res/raw/grammar_en.json
-  - apps/field-android/core-voice/src/main/res/raw/grammar_hi_in.json
   tests:
-  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/VoicePropertyTest.kt::testPr209BelowFloorVoiceIsInert
-  - apps/field-android/tests/test_ws2_4.py::test_pr2_09_confidence_floor_rejection
-  - apps/field-android/tests/test_ws2_4.py::test_t2_034_voice_grammar_and_confidence_floor
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/grammar/VoiceGrammarParserTest.kt::tc2_128_allFifteenCommandsParseToTheirIntent
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/grammar/VoiceGrammarParserTest.kt::tc2_128_outOfGrammarGivesMsg2_10AndIsNotAccepted
   frs:
   - FR2.031
   - FR2.032
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: TC2.128 and the 0.80 floor (TC2.027) proven by VoiceGrammarParserTest (FR2.031, FR2.032). TC2.129 (session-level
+    "what is this"/"repeat") untested; PR2.09 no generator test. Gradle Android build (the build of record, rule
+    2.1) has never run, so the module is not proven to compile or link as an Android library.
 - id: T2.035
   title: Implement the number parser and locale hooks
   workstream: WS2.4
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/numbers/NumberWordParser.kt
   tests:
-  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/VoicePropertyTest.kt::testPr210NumberParserRoundTrip
-  - apps/field-android/tests/test_ws2_4.py::test_pr2_10_number_parse_composite_words
-  - apps/field-android/tests/test_ws2_4.py::test_pr2_10_number_parse_digits_roundtrip
-  - apps/field-android/tests/test_ws2_4.py::test_t2_035_number_parsing_and_locale_json
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/numbers/NumberWordParserTest.kt::fr2_034_exhaustiveRoundTripDigitsAndWords
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/numbers/NumberWordParserTest.kt::fr2_034_outOfRangeAndMalformedInputsAreNull
   frs:
   - FR2.034
   - FR2.036
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: FR2.034 proven by NumberWordParserTest (exhaustive 0..9999). PR2.10 no generator test; TC2.132 locale lexicon
+    and FR2.036 untested. Gradle Android build (the build of record, rule 2.1) has never run, so the module is not
+    proven to compile or link as an Android library.
 - id: T2.036
   title: Implement the confirm gate and correction commands
   workstream: WS2.4
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/ConfirmGate.kt
   tests:
-  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/VoicePropertyTest.kt::testPr211ConfirmRequiredToPost
-  - apps/field-android/tests/test_ws2_4.py::test_pr2_11_confirm_gate_timeout_cancels_post
-  - apps/field-android/tests/test_ws2_4.py::test_pr2_11_confirm_gate_within_10s_dispatches
-  - apps/field-android/tests/test_ws2_4.py::test_t2_036_confirm_gate_lifecycle_and_corrections
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ConfirmGateTest.kt::tc2_130_timeoutClearsStageWithMsg2_22AndSendsNothing
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ConfirmGateTest.kt::tc2_133_undoBeforePostRemovesLineAndUndoAfterPostStagesOneReversal
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ConfirmGateTest.kt::tc2_134_wrongOneSupersedesAndConditionToggles
+  - services/field-api/tests/test_ws2_6.py::test_t2_052_voice_count_and_post_gate
   frs:
   - FR2.033
   - FR2.037
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Gate logic proven by ConfirmGateTest (TC2.130/TC2.133/TC2.134 gate parts, FR2.033). PR2.11 no Kotest generator;
+    TC2.130 "nothing in outbox" and TC2.133 fake-consumer integration untested; FR2.037 untested. Gradle Android
+    build (the build of record, rule 2.1) has never run, so the module is not proven to compile or link as an Android
+    library.
 - id: T2.037
   title: Record voice events
   workstream: WS2.4
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/VoiceEventRecorder.kt
   tests:
-  - apps/field-android/tests/test_ws2_4.py::test_t2_037_voice_event_recorder
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/VoiceEventRecorderTest.kt::fr2_038_everyUtteranceIsRecordedInOrderWithAllFields
   frs:
   - FR2.038
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Recorder ordering proven (FR2.038). TC2.139 (Schemathesis contract run) has never been run. Gradle Android
+    build (the build of record, rule 2.1) has never run, so the module is not proven to compile or link as an Android
+    library.
 - id: T2.038
   title: Write voice property tests
   workstream: WS2.4
   role: QA
-  status: done
+  status: partial
   evidence:
-  - apps/field-android/core-voice/src/test/
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ConfirmGateTest.kt
   tests:
-  - apps/field-android/tests/test_ws2_4.py
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/numbers/NumberWordParserTest.kt::fr2_034_exhaustiveRoundTripDigitsAndWords
+  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/numbers/NumberWordParserTest.kt::fr2_034_outOfRangeAndMalformedInputsAreNull
+  - services/field-api/tests/test_ws2_6.py::test_t2_052_voice_count_and_post_gate
   frs:
   - FR2.032
   - FR2.033
   - FR2.034
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Voice tests are JUnit 4 seeded loops, not Kotest properties with 1,000 cases; PR2.09 and PR2.11 unproven.
 - id: T2.039
   title: Create the Room outbox with SQLCipher
   workstream: WS2.5
   role: Android
-  status: done
+  status: partial
   evidence:
-  - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/db/OutboxDao.kt
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/db/OutboxDatabase.kt
-  - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/db/OutboxEntities.kt
+  - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/crypto/CropEncryptedStorage.kt
   tests:
-  - apps/field-android/tests/test_ws2_5.py::test_t2_039_room_sqlcipher_and_crop_encryption
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/crypto/CropEncryptedStorageTest.kt::fr2_043_cropFileIsCiphertextAndRoundTrips
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/crypto/CropEncryptedStorageTest.kt::fr2_043_tamperingOrAWrongKeyIsDetected
   frs:
   - FR2.043
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Crop AES-256-GCM proven by CropEncryptedStorageTest (FR2.043, crop part). Room + SQLCipher database never
+    built or tested; TC2.135 not run.
 - id: T2.040
   title: Commit captures atomically with UUIDv7 keys
   workstream: WS2.5
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/OutboxWriter.kt
-  tests:
-  - apps/field-android/tests/test_ws2_5.py::test_t2_040_atomic_commit_and_uuidv7
+  tests: []
   frs:
   - FR2.039
   - FR2.044
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: UUIDv7 proven (FR2.039); OutboxPropertyTest (FR2.044) exists but is Room-bound and has only run against
+    throwaway stand-ins, not real Room. TC2.136 (200 forced kills) not run.
 - id: T2.041
   title: Build the ordered sync worker
   workstream: WS2.5
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/sync/SyncWorker.kt
   tests:
-  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/OutboxPropertyTest.kt::testPr207ExactlyOnceDeliveryUnderFaults
-  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/OutboxPropertyTest.kt::testPr208PerTaskOrderPreserved
-  - apps/field-android/tests/test_ws2_5.py::test_t2_041_sync_worker_and_ordered_drain
-  - apps/field-android/tests/test_ws2_5.py::test_t2_045_pr2_07_exactly_once_under_faults
-  - apps/field-android/tests/test_ws2_5.py::test_t2_045_pr2_08_per_task_fifo_order
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/sync/ConflictRulesTest.kt::fr2_045_retryLadderIs2_4_8_16_32ThenExponentialFrom30sCappedAt300s
   frs:
   - FR2.040
   - FR2.045
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Retry ladder proven (FR2.045 backoff part). SyncWorker (WorkManager) untested; PR2.07/PR2.08 against a fault-injecting
+    fake server do not exist; FR2.040 untested.
 - id: T2.042
   title: Apply conflict rules
   workstream: WS2.5
   role: Android
-  status: done
+  status: partial
   evidence:
-  - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/sync/ConflictPolicy.kt
+  - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/sync/ConflictRules.kt
   tests:
-  - apps/field-android/tests/test_ws2_5.py::test_t2_042_conflict_policy_br2_11
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/sync/ConflictRulesTest.kt::fr2_041_responseCodesMapToBr2_11States
   frs:
   - FR2.041
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: BR2.11 code mapping proven by ConflictRulesTest (FR2.041). TC2.138 needs a fake server; not run. Gradle
+    Android build (the build of record, rule 2.1) has never run, so the module is not proven to compile or link
+    as an Android library.
 - id: T2.043
   title: Enforce queue limits and build the outbox screen
   workstream: WS2.5
   role: Android
   status: partial
   evidence:
+  - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/OutboxCapacity.kt
   - apps/field-android/feature-tasks/src/main/kotlin/com/scmtips/field/feature/tasks/OutboxScreen.kt
   tests:
-  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/OutboxPropertyTest.kt::testPr218OutboxBound
-  - apps/field-android/tests/test_ws2_5.py::test_t2_043_queue_capacity_and_outbox_screen
-  - apps/field-android/tests/test_ws2_5.py::test_t2_045_pr2_18_bounded_capacity_without_loss
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/OutboxCapacityTest.kt::fr2_042_byteCapAppliesIndependently
   frs:
   - FR2.042
   verified_at: null
-  note: Android UI screen verified via Robolectric/unit tests; physical device test
-    pending glasses hardware
+  note: Caps proven by OutboxCapacityTest (TC2.052-TC2.054, FR2.042). PR2.18 no generator; TC2.137 needs the OutboxScreen
+    UI (Compose, untested); OutboxDao.getPendingCount excludes paused/quarantined items.
 - id: T2.044
   title: Build the live channel client
   workstream: WS2.5
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/live/LiveClient.kt
   tests:
-  - apps/field-android/tests/test_ws2_5.py::test_t2_044_live_channel_and_sse_fallback
+  - services/field-api/tests/test_ws2_6.py::test_t2_053_live_channel_requires_auth_and_replays
   frs:
   - FR2.052
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: LiveClient is OkHttp-bound and untested; TC2.144/TC2.145 client behaviour (resume, SSE fallback after 2
+    WS failures) not run. Server live channel auth/replay tested in test_ws2_6.
 - id: T2.045
   title: Write outbox property tests with fault injection
   workstream: WS2.5
   role: QA
-  status: done
+  status: partial
   evidence:
-  - apps/field-android/core-outbox/src/test/
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/OutboxCapacityTest.kt
   tests:
-  - apps/field-android/tests/test_ws2_5.py::test_t2_045_pr2_07_exactly_once_under_faults
-  - apps/field-android/tests/test_ws2_5.py::test_t2_045_pr2_08_per_task_fifo_order
-  - apps/field-android/tests/test_ws2_5.py::test_t2_045_pr2_18_bounded_capacity_without_loss
+  - apps/field-android/core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/OutboxCapacityTest.kt::fr2_042_byteCapAppliesIndependently
   frs:
   - FR2.039
   - FR2.040
   - FR2.042
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: No property tests with fault injection at 500 runs; PR2.07, PR2.08, PR2.18 unproven.
 - id: T2.046
   title: Write migrations field_0020 to field_0028
   workstream: WS2.6
   role: Backend
   status: done
   evidence:
-  - services/field-api/alembic/versions/
+  - services/field-api/alembic/versions/field_0020_devices_and_pairing.py
+  - services/field-api/alembic/versions/field_0021_consent_record.py
+  - services/field-api/alembic/versions/field_0022_captures_and_evidence.py
+  - services/field-api/alembic/versions/field_0023_capture_upload.py
+  - services/field-api/alembic/versions/field_0024_voice_event.py
+  - services/field-api/alembic/versions/field_0025_count_record.py
+  - services/field-api/alembic/versions/field_0026_idempotency_record_extension.py
+  - services/field-api/alembic/versions/field_0027_device_notification.py
+  - services/field-api/alembic/versions/field_0028_verification_attempt.py
   tests:
-  - services/field-api/tests/test_ws2_6.py
+  - services/field-api/tests/test_ws2_6.py::test_t2_055_tenant_isolation
+  - tests/security/test_rls_catalog.py::test_all_field_tables_have_forced_rls
+  - tests/security/test_rls_catalog.py::test_tenant_isolation_policies_exist
   frs:
   - FR2.053
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: 573e018
+  note: 'Met: "Upgrade and downgrade pass on PostgreSQL 16; RLS forced on every new table" — scripts/jobs/alembic.py
+    round-trip passes on PG16 (re-run 2026-10-30) and tests/security/test_rls_catalog asserts relforcerowsecurity
+    on every field.* table; tenant isolation (TC2.160, FR2.053) passes.'
 - id: T2.047
   title: Implement the device APIs
   workstream: WS2.6
   role: Backend
-  status: stub
-  evidence: []
+  status: done
+  evidence:
+  - services/field-api/src/field_api/routes/devices.py
+  - services/field-api/alembic/versions/field_0020_devices_and_pairing.py
   tests:
-  - apps/field-android/tests/test_ws2_1.py
   - services/field-api/tests/test_ws2_6.py::test_t2_047_device_heartbeat_and_config
   - services/field-api/tests/test_ws2_6.py::test_t2_047_device_registration_and_pairing
   - services/field-api/tests/test_ws2_6.py::test_t2_047_device_revocation_stops_session
@@ -691,120 +794,135 @@
   - FR2.002
   - FR2.003
   - FR2.054
-  verified_at: null
-  note: Deliverable missing on disk
+  verified_at: 573e018
+  note: 'Met (server API): TC2.103 single pairing / replace, TC2.163 heartbeat + config ETag/304, TC2.102 server
+    side (revoke with If-Match, device token refused everywhere) pass in test_ws2_6 on Postgres. Client halves of
+    TC2.102/TC2.103 are tracked on T2.006/T2.012.'
 - id: T2.048
   title: Implement the consent API
   workstream: WS2.6
   role: Backend
-  status: stub
-  evidence: []
+  status: done
+  evidence:
+  - services/field-api/src/field_api/routes/consents.py
+  - services/field-api/alembic/versions/field_0021_consent_record.py
   tests:
-  - apps/field-android/tests/test_ws2_1.py
   - services/field-api/tests/test_ws2_6.py::test_t2_048_consent_gate_and_withdrawal
   frs:
   - FR2.064
-  verified_at: null
-  note: Deliverable missing on disk
+  verified_at: 573e018
+  note: 'Met (server API): TC2.154 server assertions — capture refused without consent (403 FIELD-CAP-403-NO-CONSENT),
+    accepted after consent, refused after withdrawal; user taken from token. MSG2.23 on device is tracked on T2.010.'
 - id: T2.049
   title: Implement capture ingest and crop storage
   workstream: WS2.6
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/routes/captures.py
+  - services/field-api/src/field_api/crops.py
   tests:
-  - apps/field-android/tests/test_ws2_4.py
-  - services/field-api/tests/test_ws2_6.py::test_t2_049_presigned_upload_and_cloudevents_outbox
+  - services/field-api/tests/test_ws2_6.py::test_t2_049_upload_put_and_crop_roundtrip
   frs:
   - FR2.022
   - FR2.046
   - FR2.051
   verified_at: null
-  note: Deliverable missing on disk
+  note: TC2.140 (upload slot, PUT, sha256, 410 expiry) and TC2.146 (outbox envelope) pass. TC2.139 Schemathesis
+    has never run; TC2.143 requires SSE-KMS object storage at tenant/site/date — only LocalCropStore (filesystem)
+    exists, S3/KMS not implemented.
 - id: T2.050
   title: Add idempotency handling to POST routes
   workstream: WS2.6
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-worker/src/field_worker/posting/idempotency.py
+  - services/field-api/src/field_api/middleware/idempotency.py
   tests:
-  - docs/SPEC/phase2/tests.json
+  - services/field-api/tests/property/test_pr1_properties.py::test_pr1_01_idempotency_replay_identical
+  - services/field-api/tests/property/test_pr1_properties.py::test_pr1_02_idempotency_key_reused_different_body
   frs:
   - FR2.047
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: DB-backed idempotency middleware works (PR1.01/PR1.02 tests pass). PR2.15 has no Hypothesis test (replay
+    same body / mutated body / after 24 h expiry). Deliverable path common/idempotency.py does not exist.
 - id: T2.051
   title: Detect duplicates and associate task lines
   workstream: WS2.6
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/routes/captures.py
   tests:
-  - apps/field-android/tests/test_ws2_3.py
   - services/field-api/tests/test_ws2_6.py::test_t2_051_server_duplicates_and_task_matching
   frs:
   - FR2.048
   - FR2.049
   verified_at: null
-  note: Deliverable missing on disk
+  note: TC2.141 (409 duplicate_of) and TC2.142 (GTIN/SSCC line match, on_task) pass. PR2.04 Hypothesis property
+    (500 runs) does not exist.
 - id: T2.052
   title: Implement voice event, count record and post request APIs
   workstream: WS2.6
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/routes/voice.py
+  - services/field-api/alembic/versions/field_0056_post_voice_event_unique.py
   tests:
-  - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/VoicePropertyTest.kt::testPr211ConfirmRequiredToPost
-  - apps/field-android/tests/test_ws2_4.py::test_pr2_11_confirm_gate_timeout_cancels_post
-  - apps/field-android/tests/test_ws2_4.py::test_pr2_11_confirm_gate_within_10s_dispatches
   - services/field-api/tests/test_ws2_6.py::test_t2_052_voice_count_and_post_gate
   frs:
   - FR2.038
   - FR2.050
   - FR2.055
   verified_at: null
-  note: Deliverable missing on disk
+  note: TC2.162 server count record and the post/confirm gate pass. "PR2.11 server oracle" has no generator test;
+    TC2.133 undo/reversal via fake consumer not tested server-side.
 - id: T2.053
   title: Build the live hub
   workstream: WS2.6
   role: Backend
-  status: stub
-  evidence: []
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/routes/live.py
   tests:
-  - apps/field-android/tests/test_ws2_5.py
+  - services/field-api/tests/test_ws2_6.py::test_t2_053_live_channel_requires_auth_and_replays
   frs:
   - FR2.052
   verified_at: null
-  note: Deliverable missing on disk
+  note: 'Live channel requires a token, scopes per device and replays from the DB. TC2.144 resume-from last_event_id
+    ordering and TC2.145 WS-to-SSE fallback are not tested. Update eb0d13a: the worker now queues erp.posted / erp.failed
+    device ticks for the requesting device (proved by stack smoke and tools/android_check/drive_backend against
+    the live stack).'
 - id: T2.054
   title: Apply retention and legal hold to crops
   workstream: WS2.6
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - services/field-worker/src/field_worker/retention/
+  - services/field-worker/src/field_worker/retention/job.py
   tests:
   - services/field-api/tests/test_ws2_6.py::test_t2_054_crop_retention_and_legal_hold
   frs:
   - FR2.051
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Retention/legal-hold logic passes. TC2.143 also requires SSE-KMS objects at tenant/site/date paths; object
+    storage is not implemented (local filesystem only).
 - id: T2.055
   title: Publish the contract and run RLS and contract tests
   workstream: WS2.6
   role: Backend
-  status: done
+  status: partial
   evidence:
-  - packages/field-contract/openapi.yaml
+  - packages/field-contract/openapi.json
   tests:
-  - apps/field-android/tests/test_ws2_4.py
   - services/field-api/tests/test_ws2_6.py::test_t2_055_tenant_isolation
   frs:
   - FR2.046
   - FR2.053
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Contract exported and drift-checked; TC2.160 tenant isolation passes. TC2.139 Schemathesis on API2.01-API2.14
+    has never run. Deliverable openapi.yaml exists but the exported, drift-checked contract is openapi.json.
 - id: T2.056
   title: Register the verification prompt in core
   workstream: WS2.7
@@ -817,8 +935,8 @@
   frs:
   - FR2.057
   verified_at: null
-  note: Android UI screen verified via Robolectric/unit tests; physical device test
-    pending glasses hardware
+  note: Prompt definition exists. TC2.147 needs registration in core (P13b stub) and a recorded AI call outcome;
+    not done. Core prompt registry is external/UNVERIFIED.
 - id: T2.057
   title: Build the model router
   workstream: WS2.7
@@ -827,20 +945,20 @@
   evidence:
   - services/field-worker/src/field_worker/verify/router.py
   tests:
-  - docs/SPEC/phase2/tests.json
   - services/field-worker/tests/test_verify_properties.py::test_t2_057_contributor_model_refused
   - services/field-worker/tests/test_verify_properties.py::test_t2_060_pr2_16_verification_routing
   frs:
   - FR2.056
   - FR2.059
   verified_at: null
-  note: Android UI screen verified via Robolectric/unit tests; physical device test
-    pending glasses hardware
+  note: Allowlist and -contributor refusal pass. TC2.148 requires worker startup to fail with FieldContributorModelConfig
+    alert (router check only); PR2.16 Hypothesis test exists but routes over a bare function, not the queued job.
+    Model APIs UNVERIFIED (§2.4).
 - id: T2.058
   title: Implement the verification job
   workstream: WS2.7
   role: AI
-  status: partial
+  status: stub
   evidence:
   - services/field-worker/src/field_worker/verify/job.py
   tests:
@@ -851,13 +969,14 @@
   - FR2.061
   - FR2.062
   verified_at: null
-  note: Android UI screen verified via Robolectric/unit tests; physical device test
-    pending glasses hardware
+  note: 'Job returns dicts only: no DB write of verification_attempt, no event emission, no model client. Fallback
+    pipeline substitutes invented defaults (verdict "verified", confidence 0.95, tokens 120, cost 0.0012) when a
+    response lacks fields. TC2.150/TC2.151 tests use injected callables; p95 5 s unmeasured.'
 - id: T2.059
   title: Add the Llama fallback and unverified path
   workstream: WS2.7
   role: AI
-  status: partial
+  status: stub
   evidence:
   - services/field-worker/src/field_worker/verify/fallback.py
   tests:
@@ -865,8 +984,8 @@
   frs:
   - FR2.060
   verified_at: null
-  note: Android UI screen verified via Robolectric/unit tests; physical device test
-    pending glasses hardware
+  note: No real Muse or Llama client exists; primary/fallback are injected callables and missing fields are filled
+    with invented values (see T2.058). TC2.149 tested only against lambdas. Meta Model API UNVERIFIED (§2.4).
 - id: T2.060
   title: Write router and budget property tests
   workstream: WS2.7
@@ -881,121 +1000,118 @@
   - FR2.056
   - FR2.058
   verified_at: null
-  note: Android UI screen verified via Robolectric/unit tests; physical device test
-    pending glasses hardware
+  note: PR2.16 and PR2.17 Hypothesis tests run, but PR2.17 models the budget as a boolean, not the budget ledger
+    (ops.ai_usage / BudgetGuard) with concurrent jobs and exhaustion mid-batch; oracle "HTTP mock call count vs
+    budget ledger" unmet.
 - id: T2.061
   title: Build the device registry page
   workstream: WS2.8
   role: Console
-  status: done
+  status: partial
   evidence:
   - apps/field-console/app/devices/page.tsx
-  tests:
-  - tests/property/test_pr2_console.py::test_t2_061_device_registry_page_contract
+  tests: []
   frs:
   - FR2.067
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Page renders the hard-coded INITIAL_DEVICES sample array (incl. "Google Pixel 8 Pro"), not GET /v1/devices.
+    TC2.157 Playwright never run; FR2.067 untested.
 - id: T2.062
   title: Build the device detail page with revoke
   workstream: WS2.8
   role: Console
-  status: done
+  status: partial
   evidence:
   - apps/field-console/app/devices/[id]/page.tsx
-  tests:
-  - tests/property/test_pr2_console.py::test_t2_062_device_detail_and_revoke_contract
+  tests: []
   frs:
   - FR2.002
   - FR2.067
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Device detail derives its model from the id string ("glasses" -> Ray-Ban Meta Gen 2) instead of the API;
+    revoke path not exercised. TC2.157 never run.
 - id: T2.063
   title: Build the capture inspector
   workstream: WS2.8
   role: Console
-  status: done
+  status: partial
   evidence:
   - apps/field-console/app/captures/[id]/page.tsx
-  tests:
-  - tests/property/test_pr2_console.py::test_t2_063_capture_inspector_contract
+  tests: []
   frs:
   - FR2.068
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: TC2.158 Playwright never run; permission-gated crop and audit not verified; FR2.068 untested.
 - id: T2.064
   title: Test console pages with Playwright and axe
   workstream: WS2.8
   role: QA
-  status: done
+  status: partial
   evidence:
-  - apps/field-console/e2e/captures.spec.ts
   - apps/field-console/e2e/devices.spec.ts
-  tests:
-  - tests/property/test_pr2_console.py::test_t2_064_e2e_playwright_specs
+  - apps/field-console/e2e/captures.spec.ts
+  tests: []
   frs:
   - FR2.067
   - FR2.068
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Playwright/axe specs exist but have never been executed (no node_modules, not in verify-all). TC2.157-TC2.159
+    unproven.
 - id: T2.065
   title: Instrument latency end to end
   workstream: WS2.9
   role: DevOps
-  status: done
+  status: partial
   evidence:
   - ops/dashboards/f1-capture.json
   tests:
   - tests/test_ws2_9.py::test_t2_065_latency_dashboard_json
   frs:
   - FR2.063
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Dashboard JSON exists; no SAMPLE run has produced per-segment p50/p95.
 - id: T2.066
   title: Run the latency campaign
   workstream: WS2.9
   role: QA
-  status: done
-  evidence:
-  - docs/perf/F1-latency.md
-  tests:
-  - tests/test_ws2_9.py::test_t2_066_latency_campaign_report
+  status: missing
+  evidence: []
+  tests: []
   frs:
   - FR2.063
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: docs/perf/F1-latency.md is a hand-written report with an invented p95 of 345 ms (SUPERSEDED); no latency
+    campaign has run. TC2.152 unproven.
 - id: T2.067
   title: Load test capture ingest
   workstream: WS2.9
   role: QA
-  status: done
+  status: partial
   evidence:
   - tests/load/k6_capture_ingest.js
   tests:
   - tests/test_ws2_9.py::test_t2_067_k6_load_test_script
   frs:
   - FR2.063
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: k6 script exists but has never been run; TC2.153 (p95 <= 120 ms, 0 5xx) unmeasured.
 - id: T2.068
   title: Run the chaos campaign
   workstream: WS2.9
   role: QA
-  status: done
-  evidence:
-  - docs/perf/F1-chaos.md
-  tests:
-  - tests/test_ws2_9.py::test_t2_068_chaos_campaign_report
+  status: missing
+  evidence: []
+  tests: []
   frs:
   - FR2.039
   - FR2.040
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: docs/perf/F1-chaos.md is a hand-written report (SUPERSEDED); no chaos campaign has run.
 - id: T2.069
   title: Run the end-to-end tick test
   workstream: WS2.9
   role: QA
-  status: done
+  status: partial
   evidence:
   - apps/field-android/maestro/capture_post.yaml
   tests:
@@ -1003,43 +1119,49 @@
   frs:
   - FR2.052
   - FR2.055
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Maestro flow file exists but has never run (no APK, no device); not in verify-all.
 - id: T2.070
   title: Verify privacy controls
   workstream: WS2.9
   role: Security
-  status: done
+  status: partial
   evidence:
   - scripts/privacy_scan.py
   tests:
-  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/quality/QualityAndPrivacyPropertyTest.kt::testPr213FaceBlurBeforeUpload
   - tests/test_ws2_9.py::test_t2_070_privacy_scan_passes
   frs:
   - FR2.022
   - FR2.035
   - FR2.066
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: Privacy scanner runs with 0 findings on the repo (test_t2_070). PR2.13 oracle has no generator test; TC2.131
+    heap dump / device storage scan and TC2.161 log scan of a full e2e run have not happened.
 - id: T2.071
   title: Add the walking-quiet hook and data minimisation
   workstream: WS2.9
   role: Android
-  status: done
+  status: partial
   evidence:
   - apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/safety/QuietModePolicy.kt
   tests:
-  - tests/test_ws2_9.py::test_t2_071_quiet_mode_policy
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/pipeline/CapturePipelineTest.kt::tc2_156_walkingQuietNoTiePromptNoTieRecordErrorStillShown_fr2_065
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/privacy/FaceBlurStageTest.kt::fr2_066_cropAbove640IsWithheld
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/safety/QuietModePolicyTest.kt::fr2_065_promptsSuppressedExceptErrors
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/safety/QuietModePolicyTest.kt::fr2_065_quietFromConfigZoneFlagOrSpeedAbove1_2
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/safety/QuietModePolicyTest.kt::fr2_066_noFullFramesAndNoExifStored
+  - apps/field-android/core-capture/src/test/kotlin/com/scmtips/field/core/capture/safety/QuietModePolicyTest.kt::tc2_110_cropAtMost640x640And256Kb_fr2_066
   frs:
   - FR2.065
   - FR2.066
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: 'TC2.156 and TC2.110 proven by CapturePipelineTest/QuietModePolicyTest against production code (FR2.065,
+    FR2.066). Only gap: Gradle Android build of record never run.'
 - id: T2.072
   title: Complete the security review
   workstream: WS2.9
   role: Security
-  status: done
+  status: partial
   evidence:
   - docs/security/F1-threat-model.md
   tests:
@@ -1047,18 +1169,19 @@
   frs:
   - FR2.053
   - FR2.059
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: 'Threat model text claims "0 High, 0 Critical findings open", but C5 (2026-10-30) found open high-severity
+    issues it missed: token exchange accepted field tokens, JWKS fell back to a hard-coded key, hard-coded signing
+    keys, fail-open device status. Review must be redone.'
 - id: T2.073
   title: Release the phase
   workstream: WS2.9
   role: Owner
-  status: done
-  evidence:
-  - docs/reports/F1-report.md
-  tests:
-  - tests/test_ws2_9.py::test_t2_073_release_report
+  status: missing
+  evidence: []
+  tests: []
   frs:
   - FR2.001
-  verified_at: 50eb301b46
-  note: Verified non-trivial deliverable and passing test/gate evidence
+  verified_at: null
+  note: docs/reports/F1-report.md is a hand-written "ALL 73 TASKS VERIFIED / RELEASE READY" claim (SUPERSEDED);
+    verify-all has never printed PASS for all Phase 2 rows.
