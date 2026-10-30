@@ -182,5 +182,5 @@ creates the field tower site, mirrors FLs and equipment through the SAP readers,
 swap of slot A-S3. `smoke --all` drives receive (voice) → putaway → pick (short) → count within tolerance → count
 beyond tolerance → recount by a second operator → approval → tower visit (check-in, climb events, heartbeat) → audit →
 check-out → swap, with the phone's exact request shapes, and checks erp-sim documents, stock and equipment.
-The smoke uses erp-sim stock as its oracle for the blind counts, so it needs field bin stock and erp-sim stock in step
+The smoke uses erp-sim stock as its reference for the blind counts, so it needs field bin stock and erp-sim stock in step
 (a fresh stack; an erp-sim `/_sim/reset` alone breaks that).

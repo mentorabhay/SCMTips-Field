@@ -178,9 +178,15 @@ def test_m2_commands_and_phone_hash_rules(monkeypatch: pytest.MonkeyPatch) -> No
     from tools.dev_stack import stack
 
     seen: list[str] = []
+
+    def recorder(name: str) -> object:
+        def run(a: object) -> int:
+            seen.append(f"{name}:{getattr(a, 'bin', None)}:{getattr(a, 'all', None)}")
+            return 0
+        return run
+
     for cmd in ("outbound", "count", "tower", "smoke"):
-        monkeypatch.setattr(stack, f"cmd_{cmd}", lambda a, c=cmd: seen.append(f"{c}:{getattr(a, 'bin', None)}:"
-                                                                              f"{getattr(a, 'all', None)}") or 0)
+        monkeypatch.setattr(stack, f"cmd_{cmd}", recorder(cmd))
     assert stack.main(["outbound"]) == 0 and stack.main(["count", "03-05-02"]) == 0
     assert stack.main(["tower"]) == 0 and stack.main(["smoke", "--all"]) == 0
     assert seen == ["outbound:None:None", "count:03-05-02:None", "tower:None:None", "smoke:None:True"]
