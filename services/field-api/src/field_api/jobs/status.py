@@ -37,7 +37,7 @@ LINE_STATE_OUT = MappingProxyType({
     "cancelled": "done",
 })
 
-_TASK_STATE_IN: dict[str, str] = {v: k for k, v in TASK_STATE_OUT.items()}
+_TASK_STATE_IN = MappingProxyType({v: k for k, v in TASK_STATE_OUT.items()})
 
 
 def task_state_out(db_state: str) -> str:
