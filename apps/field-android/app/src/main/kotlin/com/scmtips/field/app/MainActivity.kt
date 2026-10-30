@@ -109,16 +109,28 @@ class MainActivity : ComponentActivity() {
         if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
     }
 
-    /** Handheld scanners in keyboard-wedge mode type the code and press Enter. */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (!controller.wantsWedge) return super.dispatchKeyEvent(event)
-        val terminator = event.keyCode == KeyEvent.KEYCODE_ENTER || event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
+    /**
+     * Handheld scanners in keyboard-wedge mode type the code and press Enter.
+     * Uses the public Activity key callbacks (dispatchKeyEvent is restricted API in androidx).
+     */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
+        if (handleWedgeKey(event)) true else super.onKeyDown(keyCode, event)
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
+        if (isWedgeKey(event)) true else super.onKeyUp(keyCode, event)
+
+    private fun isWedgeKey(event: KeyEvent): Boolean {
+        if (!controller.wantsWedge) return false
+        return isTerminator(event) || event.unicodeChar != 0 // volume, back, ... are left alone
+    }
+
+    private fun isTerminator(event: KeyEvent): Boolean =
+        event.keyCode == KeyEvent.KEYCODE_ENTER || event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
             event.keyCode == KeyEvent.KEYCODE_TAB
-        val ch = event.unicodeChar
-        if (!terminator && ch == 0) return super.dispatchKeyEvent(event) // volume, back, ...
-        if (event.action == KeyEvent.ACTION_DOWN) {
-            if (terminator) wedge.enter()?.let { controller.onCode(it, InputSource.SCAN) } else wedge.type(ch.toChar())
-        }
+
+    private fun handleWedgeKey(event: KeyEvent): Boolean {
+        if (!isWedgeKey(event)) return false
+        if (isTerminator(event)) wedge.enter()?.let { controller.onCode(it, InputSource.SCAN) } else wedge.type(event.unicodeChar.toChar())
         return true
     }
 

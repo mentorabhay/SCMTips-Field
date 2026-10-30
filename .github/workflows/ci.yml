@@ -182,6 +182,10 @@ jobs:
         if: success() || failure()
         run: ../../scripts/ci/logged.sh lintDebug ./gradlew lintDebug --stacktrace --continue
 
+      - name: Android lint issue list
+        if: success() || failure()
+        run: ../../scripts/ci/logged.sh lint-issues ../../scripts/ci/lint_issues.sh
+
       - name: Enforce pinned distribution checksum (rule 2.1)
         if: success() || failure()
         run: >-
