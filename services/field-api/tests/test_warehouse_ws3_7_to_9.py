@@ -31,25 +31,7 @@ def auth_headers(roles: list[str]) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-@pytest.mark.unit
-def test_t3_045_inventory_post_diff_api(client):
-    """T3.045: Physical inventory difference posting endpoint (701/702)."""
-    headers = auth_headers(["field.supervisor"])
-    resp = client.post(
-        "/v1/warehouse/inventory/differences/post",
-        json={
-            "line_id": "L1",
-            "counted_qty": 25.0,
-            "book_qty": 20.0,
-            "unit_price": 10.0,
-        },
-        headers=headers,
-    )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["movement_type"] == "701"
-    assert data["difference_qty"] == 5.0
-
+# test_t3_045_inventory_post_diff_api: removed in C3 (it asserted that a supervisor posts 701/702 with client-supplied book qty and no approval, i.e. the P0 bypass; replaced by services/field-api/tests/integration/test_pi_flow.py).
 
 @pytest.mark.unit
 def test_t3_049_positioning_anchors():

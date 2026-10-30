@@ -268,6 +268,57 @@ class PostingQueueWorker:
         self.db_url = db_url
         self.worker_id = f"worker_{uuid.uuid4().hex[:8]}"
 
+    async def _post_physical_inventory(self, job: ClaimedJob, req: ErpPostingRequest) -> Any:
+        """SAP sequence: create PI doc (once) -> enter every count -> post differences (701/702).
+
+        The ERP PI number is persisted into the job payload right after creation, so a retry never
+        creates a second ERP document.
+        """
+        hdr = dict(req.header_data)
+        erp_pi = hdr.get("ErpPhysicalInventoryDocument")
+        year = hdr.get("FiscalYear", str(datetime.now(UTC).year))
+        if not erp_pi:
+            created = await self.erp_port.create_physical_inventory_doc(
+                ErpPostingRequest(
+                    idempotency_key=f"{req.idempotency_key}:create", doc_family="PhysicalInventoryCreate",
+                    site_id=req.site_id, plant=req.plant, posting_date=req.posting_date,
+                    header_data={
+                        "Plant": req.plant, "StorageLocation": hdr.get("StorageLocation", ""),
+                        "PhysicalInventoryDocumentFiscalYear": year, "PostingBlocked": True,
+                        "FreezeBookInventory": True,
+                        "to_PhysicalInventoryDocItem": [
+                            {"Material": it["Material"], "Plant": req.plant,
+                             "StorageLocation": hdr.get("StorageLocation", "")}
+                            for it in req.items
+                        ],
+                    },
+                    items=(),
+                )
+            )
+            erp_pi = created.document_number
+            payload = {**job.payload, "header_data": {**hdr, "ErpPhysicalInventoryDocument": erp_pi}}
+            with psycopg.connect(self.db_url, autocommit=True) as c, c.cursor() as cur:
+                cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(job.tenant_id),))
+                cur.execute("UPDATE field.posting_job SET payload = %s WHERE id = %s", (json.dumps(payload), job.job_id))
+        for n, it in enumerate(req.items, start=1):
+            await self.erp_port.enter_physical_inventory_count(
+                ErpPostingRequest(
+                    idempotency_key=f"{req.idempotency_key}:count:{n}", doc_family="PhysicalInventoryCount",
+                    site_id=req.site_id, plant=req.plant, posting_date=req.posting_date,
+                    header_data={"PhysicalInventoryDocument": erp_pi, "FiscalYear": year, "LineNo": n,
+                                 "QuantityInEntryUnit": it["QuantityInUnitOfEntry"],
+                                 "EntryUnit": it.get("UnitOfEntry", "EA")},
+                    items=(),
+                )
+            )
+        return await self.erp_port.post_physical_inventory_differences(
+            ErpPostingRequest(
+                idempotency_key=req.idempotency_key, doc_family="PhysicalInventory", site_id=req.site_id,
+                plant=req.plant, posting_date=req.posting_date,
+                header_data={"PhysicalInventoryDocument": erp_pi, "FiscalYear": year}, items=(),
+            )
+        )
+
     async def process_one_job(self, tenant_id: str) -> bool:
         """Claim and process one pending job. Returns True if a job was processed."""
         now = datetime.now(UTC)
@@ -346,7 +397,7 @@ class PostingQueueWorker:
             elif doc_family == "Cancellation":
                 erp_res = await self.erp_port.cancel_material_document(post_req)
             elif doc_family == "PhysicalInventory":
-                erp_res = await self.erp_port.post_physical_inventory_differences(post_req)
+                erp_res = await self._post_physical_inventory(claimed, post_req)
             elif doc_family == "Transfer":
                 erp_res = await self.erp_port.post_transfer_posting(post_req)
             else:

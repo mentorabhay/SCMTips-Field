@@ -24,6 +24,7 @@ from field_api.middleware.auth import AuthMiddleware
 from field_api.middleware.idempotency import IdempotencyMiddleware
 from field_api.middleware.request_id import RequestIdMiddleware
 from field_api.models.api import router as models_router
+from field_api.pi.api import router as pi_router
 from field_api.posting.routes import router as posting_router
 from field_api.routes.auth import router as auth_router
 from field_api.routes.captures import router as captures_router
@@ -46,8 +47,6 @@ from field_api.tasks.api import router as tasks_router
 from field_api.trails.api import router as trails_router
 from field_api.visits.api import router as visits_router
 from field_api.visits.override import router as visits_override_router
-from field_api.warehouse.inventory.routes import router as warehouse_inventory_router
-from field_api.warehouse.outbound.routes import router as warehouse_outbound_router
 from field_api.warehouse.receiving.routes import router as warehouse_router
 
 logger = structlog.get_logger(__name__)
@@ -187,9 +186,8 @@ def create_app() -> FastAPI:
     app.include_router(status_router)
     app.include_router(posting_router)
     app.include_router(tasks_router)
+    app.include_router(pi_router)
     app.include_router(warehouse_router)
-    app.include_router(warehouse_outbound_router)
-    app.include_router(warehouse_inventory_router)
     app.include_router(sitegraph_router)
     app.include_router(site_tree_router)
     app.include_router(visits_router)

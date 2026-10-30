@@ -1918,6 +1918,228 @@
         }
       }
     },
+    "/v1/pi-documents": {
+      "post": {
+        "tags": [
+          "Physical inventory (API3.10-3.12)"
+        ],
+        "summary": "Create Pi Document",
+        "operationId": "create_pi_document_v1_pi_documents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PiCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Pi Document V1 Pi Documents Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pi-documents/{pi_id}/items/{item}/counts": {
+      "post": {
+        "tags": [
+          "Physical inventory (API3.10-3.12)"
+        ],
+        "summary": "Commit Count",
+        "operationId": "commit_count_v1_pi_documents__pi_id__items__item__counts_post",
+        "parameters": [
+          {
+            "name": "pi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pi Id"
+            }
+          },
+          {
+            "name": "item",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PiCountIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Commit Count V1 Pi Documents  Pi Id  Items  Item  Counts Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pi-documents/{pi_id}/post-differences": {
+      "post": {
+        "tags": [
+          "Physical inventory (API3.10-3.12)"
+        ],
+        "summary": "Post Differences",
+        "operationId": "post_differences_v1_pi_documents__pi_id__post_differences_post",
+        "parameters": [
+          {
+            "name": "pi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pi Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Post Differences V1 Pi Documents  Pi Id  Post Differences Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/approval-requests/{apr_id}/decide": {
+      "post": {
+        "tags": [
+          "Physical inventory (API3.10-3.12)"
+        ],
+        "summary": "Decide",
+        "operationId": "decide_v1_approval_requests__apr_id__decide_post",
+        "parameters": [
+          {
+            "name": "apr_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Apr Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Decide V1 Approval Requests  Apr Id  Decide Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/warehouse/receiving/imports/csv/preview": {
       "post": {
         "tags": [
@@ -2345,538 +2567,6 @@
                   "type": "object",
                   "title": "Response Compute D2S Metrics V1 Warehouse Metrics Dock To Stock Post"
                 }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/outbound/pick": {
-      "post": {
-        "tags": [
-          "warehouse-outbound"
-        ],
-        "summary": "Confirm Pick",
-        "description": "T3.030 / TC3.115 / TC3.116: Confirm product pick with bin and barcode verification.",
-        "operationId": "confirm_pick_v1_warehouse_outbound_pick_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PickConfirmationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Confirm Pick V1 Warehouse Outbound Pick Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/outbound/short-pick": {
-      "post": {
-        "tags": [
-          "warehouse-outbound"
-        ],
-        "summary": "Record Short Pick",
-        "description": "T3.031 / TC3.117: Handle short pick exception and trigger cycle-count.",
-        "operationId": "record_short_pick_v1_warehouse_outbound_short_pick_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ShortPickRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Record Short Pick V1 Warehouse Outbound Short Pick Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/outbound/pack": {
-      "post": {
-        "tags": [
-          "warehouse-outbound"
-        ],
-        "summary": "Pack Items",
-        "description": "T3.033 / TC3.119 / PR3.12: Pack picked lines into outbound handling units with SSCC.",
-        "operationId": "pack_items_v1_warehouse_outbound_pack_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PackRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Pack Items V1 Warehouse Outbound Pack Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/outbound/goods-issue": {
-      "post": {
-        "tags": [
-          "warehouse-outbound"
-        ],
-        "summary": "Post Delivery Goods Issue",
-        "description": "T3.034 / TC3.120 / PR3.08: Post 601 goods issue.",
-        "operationId": "post_delivery_goods_issue_v1_warehouse_outbound_goods_issue_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GoodsIssueRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Post Delivery Goods Issue V1 Warehouse Outbound Goods Issue Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/outbound/reverse-issue": {
-      "post": {
-        "tags": [
-          "warehouse-outbound"
-        ],
-        "summary": "Reverse Delivery Goods Issue",
-        "description": "T3.034 / PR3.01: Post 602 goods issue reversal.",
-        "operationId": "reverse_delivery_goods_issue_v1_warehouse_outbound_reverse_issue_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReverseIssueRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Reverse Delivery Goods Issue V1 Warehouse Outbound Reverse Issue Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/outbound/optimize-path": {
-      "post": {
-        "tags": [
-          "warehouse-outbound"
-        ],
-        "summary": "Optimize Picking Path",
-        "description": "T3.035 / FR3.026: 2-opt shortest-path routing over pick stops.",
-        "operationId": "optimize_picking_path_v1_warehouse_outbound_optimize_path_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OptimizePathRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "array",
-                  "title": "Response Optimize Picking Path V1 Warehouse Outbound Optimize Path Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/inventory/documents": {
-      "post": {
-        "tags": [
-          "warehouse-inventory"
-        ],
-        "summary": "Create Pi Document",
-        "description": "T3.036 / TC3.121: Create a physical inventory document.",
-        "operationId": "create_pi_document_v1_warehouse_inventory_documents_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PiDocumentCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Create Pi Document V1 Warehouse Inventory Documents Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/inventory/documents/{doc_id}/lines": {
-      "get": {
-        "tags": [
-          "warehouse-inventory"
-        ],
-        "summary": "Get Pi Document Lines",
-        "description": "T3.038 / PR3.03: Get PI lines. Strictly redacts book quantities for operator sessions.",
-        "operationId": "get_pi_document_lines_v1_warehouse_inventory_documents__doc_id__lines_get",
-        "parameters": [
-          {
-            "name": "doc_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Doc Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": true
-                  },
-                  "title": "Response Get Pi Document Lines V1 Warehouse Inventory Documents  Doc Id  Lines Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/inventory/count": {
-      "post": {
-        "tags": [
-          "warehouse-inventory"
-        ],
-        "summary": "Submit Count",
-        "description": "T3.039 / TC3.124: Record an inventory count entry (committed on confirm).",
-        "operationId": "submit_count_v1_warehouse_inventory_count_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InventoryCountEntry"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Submit Count V1 Warehouse Inventory Count Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/inventory/recount/validate": {
-      "post": {
-        "tags": [
-          "warehouse-inventory"
-        ],
-        "summary": "Validate Recount Counter",
-        "description": "T3.040 / PR3.04: Validates recount counter differs from initial counter.",
-        "operationId": "validate_recount_counter_v1_warehouse_inventory_recount_validate_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecountValidationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Validate Recount Counter V1 Warehouse Inventory Recount Validate Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/inventory/differences/post": {
-      "post": {
-        "tags": [
-          "warehouse-inventory"
-        ],
-        "summary": "Post Inventory Difference",
-        "description": "T3.042 / PR3.05: Post 701/702 difference document with variance approval gate.",
-        "operationId": "post_inventory_difference_v1_warehouse_inventory_differences_post_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PostDifferenceRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Post Inventory Difference V1 Warehouse Inventory Differences Post Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/warehouse/inventory/documents/{doc_id}/export": {
-      "get": {
-        "tags": [
-          "warehouse-inventory"
-        ],
-        "summary": "Export Audit Csv",
-        "description": "T3.044 / PR3.18: Export quantity-conserving physical inventory audit CSV.",
-        "operationId": "export_audit_csv_v1_warehouse_inventory_documents__doc_id__export_get",
-        "parameters": [
-          {
-            "name": "doc_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Doc Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
               }
             }
           },
@@ -5699,6 +5389,29 @@
         ],
         "title": "CsvPreviewRequest"
       },
+      "DecisionIn": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "title": "DecisionIn"
+      },
       "DeviceConfigResponse": {
         "properties": {
           "device_id": {
@@ -6389,34 +6102,6 @@
         ],
         "title": "FlagIn"
       },
-      "GoodsIssueRequest": {
-        "properties": {
-          "delivery_no": {
-            "type": "string",
-            "title": "Delivery No"
-          },
-          "lines": {
-            "anyOf": [
-              {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lines"
-          }
-        },
-        "type": "object",
-        "required": [
-          "delivery_no"
-        ],
-        "title": "GoodsIssueRequest"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -6543,45 +6228,6 @@
           "quantity"
         ],
         "title": "ImportedRow"
-      },
-      "InventoryCountEntry": {
-        "properties": {
-          "pi_doc_id": {
-            "type": "string",
-            "title": "Pi Doc Id"
-          },
-          "line_id": {
-            "type": "string",
-            "title": "Line Id"
-          },
-          "counted_qty": {
-            "type": "number",
-            "minimum": 0.0,
-            "title": "Counted Qty"
-          },
-          "is_zero_count": {
-            "type": "boolean",
-            "title": "Is Zero Count",
-            "default": false
-          },
-          "counter_operator_id": {
-            "type": "string",
-            "title": "Counter Operator Id"
-          },
-          "is_confirmed": {
-            "type": "boolean",
-            "title": "Is Confirmed",
-            "default": false
-          }
-        },
-        "type": "object",
-        "required": [
-          "pi_doc_id",
-          "line_id",
-          "counted_qty",
-          "counter_operator_id"
-        ],
-        "title": "InventoryCountEntry"
       },
       "LocationCreate": {
         "properties": {
@@ -6988,40 +6634,6 @@
         ],
         "title": "NodeCreate"
       },
-      "OptimizePathRequest": {
-        "properties": {
-          "stops": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Stops"
-          },
-          "graph_coordinates": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "items": {
-                    "type": "number"
-                  },
-                  "type": "array"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Graph Coordinates"
-          }
-        },
-        "type": "object",
-        "required": [
-          "stops"
-        ],
-        "title": "OptimizePathRequest"
-      },
       "OverrideRequest": {
         "properties": {
           "supervisor_id": {
@@ -7041,40 +6653,6 @@
           "reason"
         ],
         "title": "OverrideRequest"
-      },
-      "PackRequest": {
-        "properties": {
-          "task_line_id": {
-            "type": "string",
-            "title": "Task Line Id"
-          },
-          "pack_quantity": {
-            "type": "number",
-            "title": "Pack Quantity"
-          },
-          "existing_sscc": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Existing Sscc"
-          },
-          "serial_counter": {
-            "type": "integer",
-            "title": "Serial Counter",
-            "default": 1
-          }
-        },
-        "type": "object",
-        "required": [
-          "task_line_id",
-          "pack_quantity"
-        ],
-        "title": "PackRequest"
       },
       "PaginatedResponse": {
         "properties": {
@@ -7106,8 +6684,57 @@
         ],
         "title": "PaginatedResponse"
       },
-      "PiDocumentCreate": {
+      "PiCountIn": {
         "properties": {
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          },
+          "is_zero": {
+            "type": "boolean",
+            "title": "Is Zero",
+            "default": false
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "voice",
+              "scan",
+              "manual",
+              "mixed"
+            ],
+            "title": "Source",
+            "default": "mixed"
+          },
+          "capture_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capture Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "qty"
+        ],
+        "title": "PiCountIn"
+      },
+      "PiCreateIn": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
           "plant": {
             "type": "string",
             "title": "Plant"
@@ -7116,137 +6743,101 @@
             "type": "string",
             "title": "Storage Location"
           },
-          "bins": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Bins"
-          },
-          "materials": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Materials"
-          },
           "planned_count_date": {
-            "type": "string",
-            "format": "date",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Planned Count Date"
           },
-          "freeze_book": {
+          "freeze": {
             "type": "boolean",
-            "title": "Freeze Book",
+            "title": "Freeze",
             "default": true
           },
-          "posting_blocked": {
+          "posting_block": {
             "type": "boolean",
-            "title": "Posting Blocked",
+            "title": "Posting Block",
             "default": true
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PiItemIn"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Items"
           }
         },
         "type": "object",
         "required": [
+          "site_id",
           "plant",
-          "storage_location"
+          "storage_location",
+          "items"
         ],
-        "title": "PiDocumentCreate"
+        "title": "PiCreateIn"
       },
-      "PickConfirmationRequest": {
+      "PiItemIn": {
         "properties": {
-          "task_line_id": {
+          "bin": {
             "type": "string",
-            "title": "Task Line Id"
+            "minLength": 1,
+            "title": "Bin"
           },
-          "scanned_bin": {
+          "material": {
             "type": "string",
-            "title": "Scanned Bin"
+            "minLength": 1,
+            "title": "Material"
           },
-          "scanned_code": {
+          "uom": {
             "type": "string",
-            "title": "Scanned Code"
-          },
-          "quantity": {
-            "type": "number",
-            "title": "Quantity",
-            "default": 1.0
-          },
-          "batch": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Batch"
-          },
-          "serial": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Serial"
-          }
-        },
-        "type": "object",
-        "required": [
-          "task_line_id",
-          "scanned_bin",
-          "scanned_code"
-        ],
-        "title": "PickConfirmationRequest"
-      },
-      "PostDifferenceRequest": {
-        "properties": {
-          "line_id": {
-            "type": "string",
-            "title": "Line Id"
-          },
-          "counted_qty": {
-            "type": "number",
-            "title": "Counted Qty"
+            "title": "Uom",
+            "default": "EA"
           },
           "book_qty": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
             "title": "Book Qty"
           },
           "unit_price": {
-            "type": "number",
-            "title": "Unit Price",
-            "default": 100.0
-          },
-          "counter_id": {
-            "type": "string",
-            "title": "Counter Id",
-            "default": "counter-01"
-          },
-          "approval_record": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "number",
+                "minimum": 0.0
               },
               {
-                "type": "null"
+                "type": "string"
               }
             ],
-            "title": "Approval Record"
+            "title": "Unit Price"
           }
         },
         "type": "object",
         "required": [
-          "line_id",
-          "counted_qty",
-          "book_qty"
+          "bin",
+          "material",
+          "book_qty",
+          "unit_price"
         ],
-        "title": "PostDifferenceRequest"
+        "title": "PiItemIn"
       },
       "PostGoodsReceiptRequest": {
         "properties": {
@@ -7823,24 +7414,6 @@
         "type": "object",
         "title": "ReconcileRequest"
       },
-      "RecountValidationRequest": {
-        "properties": {
-          "initial_counter_id": {
-            "type": "string",
-            "title": "Initial Counter Id"
-          },
-          "recount_counter_id": {
-            "type": "string",
-            "title": "Recount Counter Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "initial_counter_id",
-          "recount_counter_id"
-        ],
-        "title": "RecountValidationRequest"
-      },
       "ReverseEventRequest": {
         "properties": {
           "reason": {
@@ -7885,25 +7458,6 @@
           "reason"
         ],
         "title": "ReverseIn"
-      },
-      "ReverseIssueRequest": {
-        "properties": {
-          "original_goods_issue": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Original Goods Issue"
-          },
-          "reason": {
-            "type": "string",
-            "title": "Reason",
-            "default": "supervisor_reversal"
-          }
-        },
-        "type": "object",
-        "required": [
-          "original_goods_issue"
-        ],
-        "title": "ReverseIssueRequest"
       },
       "Route3DResponse": {
         "properties": {
@@ -8019,41 +7573,6 @@
           "latency_ms"
         ],
         "title": "ServiceHealth"
-      },
-      "ShortPickRequest": {
-        "properties": {
-          "task_line_id": {
-            "type": "string",
-            "title": "Task Line Id"
-          },
-          "short_qty": {
-            "type": "number",
-            "title": "Short Qty"
-          },
-          "reason_code": {
-            "type": "string",
-            "title": "Reason Code",
-            "description": "One of: bin_empty, damaged, not_found"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          }
-        },
-        "type": "object",
-        "required": [
-          "task_line_id",
-          "short_qty",
-          "reason_code"
-        ],
-        "title": "ShortPickRequest"
       },
       "ShortestPathRequest": {
         "properties": {
