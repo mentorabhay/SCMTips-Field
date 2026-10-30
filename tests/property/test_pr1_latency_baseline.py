@@ -1,9 +1,13 @@
 """Property tests verifying Server Latency Harness and Baseline Report (TC1.157 / TC1.158)."""
 
+import json
+import math
 import sys
 from pathlib import Path
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 if str(ROOT) not in sys.path:
@@ -27,25 +31,29 @@ def test_latency_probe_k6_script_exists():
 
 
 @pytest.mark.property
-def test_latency_baseline_meets_brief_targets():
-    """TC1.158: Latency baseline document and BRIEF target bounds."""
-    assert DOC_PATH.exists()
-    content = DOC_PATH.read_text(encoding="utf-8")
+def test_latency_baseline_reports_not_measured_without_raw_data(tmp_path):
+    """TC1.158 (C0 rewrite): with no raw files, every segment is NOT MEASURED; nothing is invented.
 
-    # Required segments
-    assert "Glasses -> Phone" in content
-    assert "Barcode Detection" in content
-    assert "field-api Processing" in content
-    assert "Shutter-to-Ack" in content
+    Replaces a test that asserted PASS on hard-coded sample arrays (review §3.14).
+    """
+    data = generate_baseline_data(raw_dir=tmp_path / "none")
+    assert data["segments"], "segment list must not be empty"
+    assert all(r.status == "NOT MEASURED" and r.p50_ms is None and r.p95_ms is None for r in data["segments"])
 
-    # Benchmark numbers
-    assert "10 RPS" in content
-    assert "50 RPS" in content
-    assert "100 RPS" in content
 
-    # Assert measured end to end adheres to 800ms limit
-    data = generate_baseline_data()
-    total_segment = [s for s in data["segments"] if "Shutter-to-Ack" in s.segment_name][0]
-    assert total_segment.measured_p50_ms <= 600.0
-    assert total_segment.measured_p95_ms <= 800.0
-    assert total_segment.status == "PASS"
+@pytest.mark.property
+@settings(max_examples=200, deadline=None)
+@given(
+    samples=st.lists(st.floats(min_value=0.0, max_value=5000.0, allow_nan=False), min_size=1, max_size=300),
+)
+def test_latency_baseline_percentiles_from_raw(tmp_path_factory, samples):
+    """TC1.158: p50/p95 are nearest-rank over committed raw samples; PASS iff p95 <= BRIEF target."""
+    raw = tmp_path_factory.mktemp("raw")
+    (raw / "run.json").write_text(json.dumps({"source": "test", "segments": {"shutter_to_ack": samples}}))
+    seg = next(r for r in generate_baseline_data(raw_dir=raw)["segments"] if r.key == "shutter_to_ack")
+    s = sorted(samples)
+    n = len(s)
+    exp_p50 = round(s[math.ceil(0.5 * n) - 1], 2)
+    exp_p95 = round(s[math.ceil(0.95 * n) - 1], 2)
+    assert (seg.p50_ms, seg.p95_ms, seg.samples) == (exp_p50, exp_p95, n)
+    assert seg.status == ("PASS" if exp_p95 <= 800.0 else "GAP")

@@ -1,206 +1,133 @@
 """Latency Baseline Reporter and Segment Joiner (Task T1.068 / FR1.059 / FR1.060).
 
-Joins device spans (from Android LatencyTracker) and server spans (from field-api probe)
-and generates docs/LATENCY_BASELINE.md comparing measured p50/p95 against BRIEF targets.
+Computes p50/p95 per budget segment **only from committed raw measurement files** in
+``docs/perf/raw/*.json``. A segment with no samples is reported as ``NOT MEASURED``;
+this module never supplies numbers of its own (C0 correction, review §3.14).
+
+Raw file format (one file per measurement run)::
+
+    {"source": "k6|device-trace|logcat", "captured_at": "<iso8601>", "device": "...",
+     "segments": {"<segment key>": [ms, ms, ...], ...}}
 """
 
-import os
-import platform
+from __future__ import annotations
+
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+ROOT = Path(__file__).resolve().parent.parent.parent
+RAW_DIR = ROOT / "docs" / "perf" / "raw"
+DOC_PATH = ROOT / "docs" / "LATENCY_BASELINE.md"
+
 
 @dataclass(frozen=True)
-class LatencySegment:
-    segment_name: str
-    description: str
-    target_p50_ms: float
-    target_p95_ms: float
-    measured_p50_ms: float
-    measured_p95_ms: float
-    status: str  # PASS / GAP / UNVERIFIED
+class SegmentSpec:
+    key: str
+    name: str
+    target_p95_ms: float | None  # None = covered by the end-to-end budget only
 
-    @property
-    def meets_targets(self) -> bool:
-        return (
-            self.measured_p50_ms <= self.target_p50_ms
-            and self.measured_p95_ms <= self.target_p95_ms
-        )
+
+# BRIEF §2 budgets. Gen 2 has no display, so "lens draw" becomes spoken-prompt start.
+SEGMENTS: tuple[SegmentSpec, ...] = (
+    SegmentSpec("glasses_to_phone", "Glasses -> phone still transfer (DAT)", None),
+    SegmentSpec("on_device_perception", "On-device barcode/text (ML Kit)", None),
+    SegmentSpec("phone_to_api", "Phone -> field-api upload", 120.0),
+    SegmentSpec("api_processing", "field-api processing", None),
+    SegmentSpec("api_to_phone", "field-api -> phone response", None),
+    SegmentSpec("prompt_start", "Phone -> glasses spoken prompt start", None),
+    SegmentSpec("shutter_to_ack", "Shutter-to-Ack total", 800.0),
+)
+
+
+@dataclass(frozen=True)
+class SegmentResult:
+    key: str
+    name: str
+    samples: int
+    p50_ms: float | None
+    p95_ms: float | None
+    target_p95_ms: float | None
+    status: str  # PASS | GAP | NOT MEASURED | MEASURED (no target)
+    sources: tuple[str, ...]
 
 
 def compute_percentiles(values: list[float]) -> tuple[float, float]:
+    """Nearest-rank p50/p95. Raises on empty input: callers must not invent values."""
     if not values:
-        return 0.0, 0.0
-    sorted_v = sorted(values)
-    n = len(sorted_v)
-    p50_idx = int(n * 0.50)
-    p95_idx = min(int(n * 0.95), n - 1)
-    return round(sorted_v[p50_idx], 2), round(sorted_v[p95_idx], 2)
+        raise ValueError("cannot compute percentiles of an empty sample")
+    s = sorted(values)
+    n = len(s)
+
+    def rank(p: float) -> float:
+        idx = max(0, min(n - 1, int(-(-p * n // 1)) - 1))  # ceil(p*n) - 1
+        return round(s[idx], 2)
+
+    return rank(0.50), rank(0.95)
 
 
-def generate_baseline_data() -> dict[str, Any]:
-    # 1. Device segments (derived from Wearables Android LatencyTracker on sample runs)
-    shutter_to_phone = [135.0, 142.0, 150.0, 160.0, 148.0, 155.0, 172.0, 140.0, 165.0, 158.0]
-    barcode_detect = [18.0, 22.0, 25.0, 28.0, 19.0, 24.0, 31.0, 20.0, 26.0, 29.0]
-    phone_to_server = [45.0, 52.0, 60.0, 68.0, 55.0, 58.0, 74.0, 48.0, 62.0, 70.0]
-    server_probe = [4.2, 5.1, 6.0, 7.5, 4.8, 5.5, 9.2, 4.5, 6.2, 8.1]
-    server_to_phone = [42.0, 48.0, 56.0, 64.0, 50.0, 54.0, 71.0, 45.0, 58.0, 66.0]
-    hud_ack = [14.0, 16.0, 18.0, 22.0, 15.0, 17.0, 24.0, 15.0, 19.0, 21.0]
-
-    # End-to-end total (sum of segments per sample)
-    e2e = [
-        shutter_to_phone[i]
-        + barcode_detect[i]
-        + phone_to_server[i]
-        + server_probe[i]
-        + server_to_phone[i]
-        + hud_ack[i]
-        for i in range(len(shutter_to_phone))
-    ]
-
-    segments = [
-        LatencySegment(
-            segment_name="1. Glasses -> Phone (Raw Capture)",
-            description="BLE/Wi-Fi transfer of still/frame from glasses sensor to Android host",
-            target_p50_ms=180.0,
-            target_p95_ms=250.0,
-            measured_p50_ms=compute_percentiles(shutter_to_phone)[0],
-            measured_p95_ms=compute_percentiles(shutter_to_phone)[1],
-            status="PASS",
-        ),
-        LatencySegment(
-            segment_name="2. On-Device Barcode Detection",
-            description="ML Kit Barcode scanning on phone CPU (1D/2D symbologies)",
-            target_p50_ms=35.0,
-            target_p95_ms=60.0,
-            measured_p50_ms=compute_percentiles(barcode_detect)[0],
-            measured_p95_ms=compute_percentiles(barcode_detect)[1],
-            status="PASS",
-        ),
-        LatencySegment(
-            segment_name="3. Phone -> field-api (Ingest Upload)",
-            description="Cellular/Wi-Fi payload upload to /v1/captures or probe endpoint",
-            target_p50_ms=80.0,
-            target_p95_ms=150.0,
-            measured_p50_ms=compute_percentiles(phone_to_server)[0],
-            measured_p95_ms=compute_percentiles(phone_to_server)[1],
-            status="PASS",
-        ),
-        LatencySegment(
-            segment_name="4. field-api Processing",
-            description="FastAPI middleware stack, auth check, UUIDv7 and RLS verification",
-            target_p50_ms=15.0,
-            target_p95_ms=35.0,
-            measured_p50_ms=compute_percentiles(server_probe)[0],
-            measured_p95_ms=compute_percentiles(server_probe)[1],
-            status="PASS",
-        ),
-        LatencySegment(
-            segment_name="5. field-api -> Phone (Response Delivery)",
-            description="Downstream JSON payload delivery with ETag and headers",
-            target_p50_ms=80.0,
-            target_p95_ms=150.0,
-            measured_p50_ms=compute_percentiles(server_to_phone)[0],
-            measured_p95_ms=compute_percentiles(server_to_phone)[1],
-            status="PASS",
-        ),
-        LatencySegment(
-            segment_name="6. Phone -> HUD Ack (Lens Draw Ack)",
-            description="BLE transmit of 2-line HUD instruction and earcon cue trigger",
-            target_p50_ms=25.0,
-            target_p95_ms=45.0,
-            measured_p50_ms=compute_percentiles(hud_ack)[0],
-            measured_p95_ms=compute_percentiles(hud_ack)[1],
-            status="PASS",
-        ),
-        LatencySegment(
-            segment_name="TOTAL End-to-End (Shutter-to-Ack)",
-            description="Complete worker interaction budget from button press to HUD confirmation",
-            target_p50_ms=600.0,
-            target_p95_ms=800.0,
-            measured_p50_ms=compute_percentiles(e2e)[0],
-            measured_p95_ms=compute_percentiles(e2e)[1],
-            status="PASS",
-        ),
-    ]
-
-    # Server probe RPS benchmark summary
-    server_rps_benchmarks = {
-        "10_rps": {"p50_ms": 4.5, "p95_ms": 8.8, "errors": 0},
-        "50_rps": {"p50_ms": 6.2, "p95_ms": 14.1, "errors": 0},
-        "100_rps": {"p50_ms": 9.4, "p95_ms": 22.6, "errors": 0},
-    }
-
-    return {
-        "host": {
-            "platform": platform.platform(),
-            "python": sys.version.split()[0],
-            "cores": os.cpu_count() or 8,
-        },
-        "segments": segments,
-        "rps_benchmarks": server_rps_benchmarks,
-    }
+def load_raw(raw_dir: Path = RAW_DIR) -> dict[str, tuple[list[float], list[str]]]:
+    out: dict[str, tuple[list[float], list[str]]] = {}
+    if not raw_dir.exists():
+        return out
+    for f in sorted(raw_dir.glob("*.json")):
+        data = json.loads(f.read_text(encoding="utf-8"))
+        segs = data.get("segments", {})
+        if not isinstance(segs, dict):
+            raise ValueError(f"{f.name}: 'segments' must be an object")
+        for key, vals in segs.items():
+            if not all(isinstance(v, (int, float)) and v >= 0 for v in vals):
+                raise ValueError(f"{f.name}: segment {key} has non-numeric or negative samples")
+            bucket = out.setdefault(key, ([], []))
+            bucket[0].extend(float(v) for v in vals)
+            bucket[1].append(f.name)
+    return out
 
 
-def write_markdown_report(data: dict[str, Any], out_file: Path) -> None:
+def generate_baseline_data(raw_dir: Path = RAW_DIR) -> dict[str, Any]:
+    raw = load_raw(raw_dir)
+    results: list[SegmentResult] = []
+    for spec in SEGMENTS:
+        vals, srcs = raw.get(spec.key, ([], []))
+        if not vals:
+            results.append(SegmentResult(spec.key, spec.name, 0, None, None, spec.target_p95_ms, "NOT MEASURED", ()))
+            continue
+        p50, p95 = compute_percentiles(vals)
+        if spec.target_p95_ms is None:
+            status = "MEASURED"
+        else:
+            status = "PASS" if p95 <= spec.target_p95_ms else "GAP"
+        results.append(SegmentResult(spec.key, spec.name, len(vals), p50, p95, spec.target_p95_ms, status, tuple(srcs)))
+    return {"segments": results, "raw_dir": str(raw_dir)}
+
+
+def write_markdown_report(data: dict[str, Any], out_file: Path = DOC_PATH) -> None:
     lines = [
         "# SCMTIPS Field Latency Baseline & Budget Report (Task T1.068 / FR1.059 / FR1.060)",
         "",
-        f"**Generated**: 2026-10-27 | **Environment**: {data['host']['platform']} | **Host Cores**: {data['host']['cores']}",
-        "**Governing Requirements**: BRIEF Shutter-to-Ack $\\le 800\\text{ ms}$ | Server Probe Target $\\le 50\\text{ ms}$",
+        "Generated by `tools/latency/report.py` from raw files in `docs/perf/raw/` only.",
         "",
-        "---",
-        "",
-        "## 1. End-to-End Interaction Latency Budget (Glasses -> Phone -> Server -> HUD)",
-        "",
-        "| Segment | Description | Target p50 | Target p95 | Measured p50 | Measured p95 | Status |",
-        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |",
+        "| Segment | Target p95 | Samples | p50 | p95 | Raw data | Status |",
+        "|---|---|---|---|---|---|---|",
     ]
-
-    for s in data["segments"]:
-        lines.append(
-            f"| **{s.segment_name}** | {s.description} | {s.target_p50_ms} ms | {s.target_p95_ms} ms | "
-            f"**{s.measured_p50_ms} ms** | **{s.measured_p95_ms} ms** | **{s.status}** |"
-        )
-
-    lines.extend(
-        [
-            "",
-            "---",
-            "",
-            "## 2. Server-Side Diagnostic Probe Throughput (`POST /v1/diagnostics/probe`)",
-            "",
-            "Driven via `tools/latency/k6/probe.js` through full middleware stack (Auth, Tenancy, Tracing, Problem Details):",
-            "",
-            "| Concurrency Rate | Target p95 | Measured p50 | Measured p95 | Error Rate | Status |",
-            "| :--- | :--- | :--- | :--- | :--- | :--- |",
-            f"| **10 RPS** | $\\le 50\\text{{ ms}}$ | {data['rps_benchmarks']['10_rps']['p50_ms']} ms | {data['rps_benchmarks']['10_rps']['p95_ms']} ms | 0.00% | **PASS** |",
-            f"| **50 RPS** | $\\le 100\\text{{ ms}}$ | {data['rps_benchmarks']['50_rps']['p50_ms']} ms | {data['rps_benchmarks']['50_rps']['p95_ms']} ms | 0.00% | **PASS** |",
-            f"| **100 RPS** | $\\le 150\\text{{ ms}}$ | {data['rps_benchmarks']['100_rps']['p50_ms']} ms | {data['rps_benchmarks']['100_rps']['p95_ms']} ms | 0.00% | **PASS** |",
-            "",
-            "---",
-            "",
-            "## 3. Findings and Latency Gaps Analysis",
-            "",
-            "1. **BRIEF 800ms Budget Adherence**: Measured total shutter-to-ack p50 is **296.0 ms** and p95 is **381.0 ms**, comfortably beneath the **800.0 ms** hard ceiling.",
-            "2. **Critical Path Bottleneck**: The primary latency contributor is the Wi-Fi/BLE still transfer (~155 ms), followed by cellular upload (~58 ms).",
-            "3. **Local ML Barcode Efficiency**: On-device barcode recognition takes ~24 ms, validating that barcode verification must stay on the mobile device rather than sending uncompressed frames over WAN.",
-            "4. **Server Middleware Overhead**: `field-api` adds $<10\\text{ ms}$ overhead under 100 rps, proving high-concurrency viability for warehouse fleets.",
-        ]
-    )
-
-    out_file.parent.mkdir(parents=True, exist_ok=True)
+    for r in data["segments"]:
+        tgt = f"{r.target_p95_ms:.0f} ms" if r.target_p95_ms is not None else "—"
+        p50 = f"{r.p50_ms} ms" if r.p50_ms is not None else "—"
+        p95 = f"{r.p95_ms} ms" if r.p95_ms is not None else "—"
+        src = ", ".join(r.sources) or "—"
+        lines.append(f"| {r.name} | {tgt} | {r.samples} | {p50} | {p95} | {src} | {r.status} |")
     out_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def main() -> None:
+def main() -> int:
     data = generate_baseline_data()
-    out = Path(__file__).resolve().parent.parent.parent / "docs" / "LATENCY_BASELINE.md"
-    write_markdown_report(data, out)
-    print(f"Latency baseline report generated at {out}")
+    write_markdown_report(data)
+    measured = sum(1 for r in data["segments"] if r.samples)
+    print(f"segments measured: {measured}/{len(SEGMENTS)}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -1,3 +1,5 @@
+> **SUPERSEDED — 2026-10-30.** This report's completion claims are not supported by evidence. See the internal review of 30 Oct 2026. Current status comes only from `docs/STATUS/phase<N>.yaml` (re-audited) plus the latest Linux CI run.
+
 # F1 Capture Engine: Chaos Campaign Report (Task T2.068 / FR2.039, FR2.040)
 
 ## 1. Scope & Execution

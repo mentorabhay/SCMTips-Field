@@ -1,14 +1,9 @@
 {
   "model_name": "detector_v1.tflite",
-  "version": "1.0.0",
-  "architecture": "MobileNetV2-SSDLite int8",
-  "input_tensor": { "shape": [1, 300, 300, 3], "type": "uint8" },
+  "status": "NOT_PROVIDED",
   "classes": ["carton", "label", "nameplate", "gauge", "tag", "device"],
   "score_threshold": 0.50,
   "max_results": 10,
-  "metrics": {
-    "mAP@0.5": 0.742,
-    "inference_latency_ms_p95": 34.5
-  },
-  "training_data": "SCMTIPS Warehouse and Yard Object Dataset (synthetic & field labeled)"
+  "metrics": null,
+  "note": "No trained model exists. The former 67-byte placeholder and its mAP/latency figures were fabricated and removed (C0, review 3.14). Until a real int8 model with an eval artefact is committed, detection is disabled and perception relies on ML Kit barcode + text recognition."
 }

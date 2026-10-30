@@ -1,3 +1,5 @@
+> **SUPERSEDED — 2026-10-30.** This report's completion claims are not supported by evidence. See the internal review of 30 Oct 2026. Current status comes only from `docs/STATUS/phase<N>.yaml` (re-audited) plus the latest Linux CI run.
+
 # F1 Capture Engine: Latency Campaign Report (Task T2.066 / FR2.063, TC2.152)
 
 ## 1. Executive Summary
