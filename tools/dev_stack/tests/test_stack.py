@@ -141,3 +141,29 @@ def test_busy_default_ports_move_to_the_next_free_one(monkeypatch: pytest.Monkey
     assert stack.port("field-api") == 8003
     assert json.loads((tmp_path / "ports.json").read_text(encoding="utf-8")) == chosen
     assert stack.local("fake-core") == "http://127.0.0.1:8012"
+
+
+def test_pair_survives_a_console_without_block_characters(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+                                                          capsys: pytest.CaptureFixture[str]) -> None:
+    """Owner's PC, 2026-10-31: qrcode.print_ascii raised UnicodeEncodeError on the cp1252 console and
+    pair exited 1. The SVG is written first and the console failure is only a notice."""
+    import argparse
+
+    import qrcode
+
+    from tools.dev_stack import stack
+
+    monkeypatch.setattr(stack, "load_env", lambda: {})
+    monkeypatch.setattr(stack, "ROOT", tmp_path)
+    monkeypatch.setattr(stack, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(stack, "ensure_demo_site", lambda s: {"tenant": "t", "site": "s", "site_name": "Site"})
+    monkeypatch.setattr(stack, "_core_token", lambda *a: "tok")
+
+    def no_blocks(self: object, **kw: object) -> None:
+        raise UnicodeEncodeError("charmap", "█", 0, 1, "character maps to <undefined>")
+
+    monkeypatch.setattr(qrcode.QRCode, "print_ascii", no_blocks)
+    args = argparse.Namespace(user="op", hours=1, api="http://192.168.1.2:8003", no_ascii=False, no_open=True)
+    assert stack.cmd_pair(args) == 0
+    assert (tmp_path / "var" / "pairing-qr.svg").stat().st_size > 1000
+    assert "cannot draw the QR code" in capsys.readouterr().out

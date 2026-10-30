@@ -452,11 +452,19 @@ def cmd_pair(a: argparse.Namespace) -> int:
     from qrcode.image.svg import SvgPathImage
 
     png = ROOT / "var" / "pairing-qr.svg"
+    png.parent.mkdir(parents=True, exist_ok=True)
     with png.open("wb") as fh:
         qr.make_image(image_factory=SvgPathImage).save(fh)
     if not a.no_ascii:
-        qr.print_ascii(invert=True)
-    print(f"\nScan this in the app (Settings > Pair with PC). Also saved as {png.relative_to(ROOT)} (open it in a browser).")
+        try:
+            qr.print_ascii(invert=True)
+        except UnicodeEncodeError:
+            # Owner's PC, 2026-10-31: the Windows console code page (cp1252) has no block characters.
+            print("(This console cannot draw the QR code; use the image that opens now.)")
+    if sys.platform == "win32" and not a.no_open:
+        with contextlib.suppress(OSError):
+            os.startfile(png)  # show the QR in the default image viewer / browser
+    print(f"\nScan it in the app: SCMTips Field > Scan pairing QR. Image: {png} (open it in a browser).")
     print(f"API {api} | site {state['site_name']} | user {a.user} | valid {a.hours} h")
     print("The QR holds a dev login token for this PC's fake-core only; it stops working when fake-core restarts.")
     return 0
@@ -627,6 +635,7 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--hours", type=int, default=12)
     pr.add_argument("--api", help="override the URL the phone uses (e.g. a tunnel URL)")
     pr.add_argument("--no-ascii", action="store_true")
+    pr.add_argument("--no-open", action="store_true", help="do not open the QR image (Windows)")
     dl = sub.add_parser("delivery")
     dl.add_argument("--lines", type=int, default=3)
     sm = sub.add_parser("smoke")
