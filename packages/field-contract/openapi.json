@@ -1346,6 +1346,7 @@
           "Voice and posting"
         ],
         "summary": "Submit Post Request",
+        "description": "Finish a job (contract \u00a74): two-step confirmation (touch or voice) + staged_hash, then per type.\n\nreceive / pick: staged ERP posting (API3.06); 202 {status: queued}.\nputaway / audit: 202 {status: completed}; count: {status: queued | awaiting_approval};\nswap: {status: queued}. The ERP result arrives as a live event.",
         "operationId": "submit_post_request_v1_tasks__task_id__post_requests_post",
         "parameters": [
           {
@@ -1743,6 +1744,7 @@
           "Warehouse tasks (API3.xx)"
         ],
         "summary": "List Tasks",
+        "description": "Task list at M2 jobs contract \u00a72. Operators see their sites (RLS); a '*' token sees all.",
         "operationId": "list_tasks_v1_tasks_get",
         "parameters": [
           {
@@ -1774,8 +1776,10 @@
                   "type": "null"
                 }
               ],
+              "description": "one type or a comma list, e.g. receive,putaway",
               "title": "Type"
-            }
+            },
+            "description": "one type or a comma list, e.g. receive,putaway"
           },
           {
             "name": "status",
@@ -1790,8 +1794,10 @@
                   "type": "null"
                 }
               ],
+              "description": "one state or a comma list, e.g. open,in_progress",
               "title": "Status"
-            }
+            },
+            "description": "one state or a comma list, e.g. open,in_progress"
           },
           {
             "name": "cursor",
@@ -3371,7 +3377,7 @@
           "Safety & Climb Sessions"
         ],
         "summary": "Supervisor acknowledge lone-worker escalation",
-        "description": "Acknowledge escalated visit from supervisor console (SCR4.13 / FR4.044).",
+        "description": "Acknowledge escalated visit from supervisor console (SCR4.13 / FR4.044). Needs field.visit.ack.",
         "operationId": "api_lone_worker_acknowledge_v1_safety_visits__visit_id__ack_post",
         "parameters": [
           {
@@ -4241,6 +4247,229 @@
           }
         }
       }
+    },
+    "/v1/tasks/{task_id}/lines/{line_id}/confirmations": {
+      "post": {
+        "tags": [
+          "Job runner (M2)"
+        ],
+        "summary": "Confirm Line",
+        "operationId": "confirm_line_v1_tasks__task_id__lines__line_id__confirmations_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Line Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmationIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Confirm Line V1 Tasks  Task Id  Lines  Line Id  Confirmations Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/approval-requests": {
+      "get": {
+        "tags": [
+          "Console (M2)"
+        ],
+        "summary": "List Approval Requests",
+        "operationId": "list_approval_requests_v1_approval_requests_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "one state or a comma list",
+              "default": "pending",
+              "title": "Status"
+            },
+            "description": "one state or a comma list"
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Approval Requests V1 Approval Requests Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}/recount": {
+      "post": {
+        "tags": [
+          "Console (M2)"
+        ],
+        "summary": "Request Recount",
+        "description": "New count task for the same bins and materials, a new PI document round with the frozen book of\nthe first (FR3.035); the old task and document are cancelled and their pending approval closed.\nThe recount must be counted by someone else (FR3.032); round 3 by an inventory controller (FR3.033).",
+        "operationId": "request_recount_v1_tasks__task_id__recount_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RecountIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Request Recount V1 Tasks  Task Id  Recount Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4415,6 +4644,109 @@
         },
         "type": "object",
         "title": "ConfirmIn"
+      },
+      "ConfirmMethod": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "touch",
+              "voice"
+            ],
+            "title": "Method"
+          },
+          "post_voice_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Voice Event Id"
+          },
+          "confirm_voice_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Voice Event Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method"
+        ],
+        "title": "ConfirmMethod",
+        "description": "How the operator confirmed (contract \u00a74): ``touch`` = saw the review screen and pressed\n\"Yes, post it\"; ``voice`` = an accepted ``post`` turn followed by ``confirm`` within 10 s."
+      },
+      "ConfirmationIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bin",
+              "product",
+              "hu",
+              "serial"
+            ],
+            "title": "Kind"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "scan",
+              "voice",
+              "manual"
+            ],
+            "title": "Source",
+            "default": "scan"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "old",
+                  "new"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "code"
+        ],
+        "title": "ConfirmationIn"
       },
       "ConsentRecord": {
         "properties": {
@@ -5340,7 +5672,8 @@
             "enum": [
               "damaged",
               "short",
-              "under"
+              "under",
+              "missing"
             ],
             "title": "Flag"
           },
@@ -5370,6 +5703,17 @@
             ],
             "title": "Reason Code"
           },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
           "capture_id": {
             "anyOf": [
               {
@@ -5397,7 +5741,8 @@
         "required": [
           "flag"
         ],
-        "title": "FlagIn"
+        "title": "FlagIn",
+        "description": "``missing`` (any job; audit reasons not_found / removed_by_other / inaccessible), ``short``\n(pick: bin_empty / damaged / not_found, FR3.020; receive: an under-delivery reason), ``damaged``\n(receive: photo evidence and quantity, FR3.009), ``under`` (receive). ``reason`` is the contract\nname of ``reason_code``."
       },
       "HTTPValidationError": {
         "properties": {
@@ -5950,6 +6295,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Book Qty"
@@ -5962,6 +6310,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Unit Price"
@@ -5970,11 +6321,10 @@
         "type": "object",
         "required": [
           "bin",
-          "material",
-          "book_qty",
-          "unit_price"
+          "material"
         ],
-        "title": "PiItemIn"
+        "title": "PiItemIn",
+        "description": "One bin/material to count. Without ``book_qty`` the server snapshots the field bin stock\n(field.bin_stock), so the book never passes through a client; ``unit_price`` defaults to\nFIELD_PI_DEFAULT_UNIT_PRICE (no price source on ErpPort yet)."
       },
       "PostRequest": {
         "properties": {
@@ -5997,21 +6347,43 @@
             "pattern": "^[0-9a-f]{64}$",
             "title": "Staged Hash"
           },
+          "confirm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfirmMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "post_voice_event_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Post Voice Event Id"
           },
           "confirm_voice_event_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Confirm Voice Event Id"
           }
         },
         "type": "object",
         "required": [
           "lines",
-          "staged_hash",
-          "post_voice_event_id",
-          "confirm_voice_event_id"
+          "staged_hash"
         ],
         "title": "PostRequest"
       },
@@ -6075,6 +6447,17 @@
           "updated_at": {
             "type": "string",
             "title": "Updated At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
           }
         },
         "type": "object",
@@ -6307,6 +6690,24 @@
         "type": "object",
         "title": "ReconcileRequest"
       },
+      "RecountIn": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "title": "RecountIn"
+      },
       "ReverseEventRequest": {
         "properties": {
           "reason": {
@@ -6414,8 +6815,18 @@
           },
           "type": {
             "type": "string",
+            "enum": [
+              "state_changed",
+              "harness_confirmed",
+              "checkpoint_reached",
+              "check_in",
+              "climb_safe_activated",
+              "climb_safe_released",
+              "warning_deferred",
+              "warning_emitted"
+            ],
             "title": "Type",
-            "description": "Event type: state_changed, harness_confirmed, checkpoint_reached, check_in, climb_safe_activated, etc."
+            "description": "Event type (unknown types are 422, not a database error)"
           },
           "altitude_m": {
             "anyOf": [

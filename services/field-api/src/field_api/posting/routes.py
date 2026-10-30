@@ -62,6 +62,7 @@ class PostingJobRecord(BaseModel):
     payload: dict[str, Any]
     created_at: str
     updated_at: str
+    last_error: str | None = None  # SAP / adapter message of the last failed attempt
 
 
 @router.get("/v1/posting-queues", response_model=list[QueueSummary])
@@ -120,7 +121,8 @@ async def list_queue_jobs(
         cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(principal.tenant_id),))
         cur.execute(
             """
-            SELECT id, queue_key, seq, ref_doc_no, status, attempts, max_attempts, next_attempt_at, payload, created_at, updated_at
+            SELECT id, queue_key, seq, ref_doc_no, status, attempts, max_attempts, next_attempt_at, payload, created_at,
+                   updated_at, last_error
             FROM field.posting_job
             WHERE tenant_id = %s AND queue_key = %s
             ORDER BY seq ASC, created_at ASC;
@@ -143,6 +145,7 @@ async def list_queue_jobs(
                     payload=payload_data,
                     created_at=r[9].isoformat() if r[9] else "",
                     updated_at=r[10].isoformat() if r[10] else "",
+                    last_error=r[11],
                 )
             )
         return jobs

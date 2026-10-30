@@ -41,6 +41,7 @@ APPROVAL_VALUE = Decimal(os.getenv("FIELD_PI_APPROVAL_VALUE", "50000"))
 MAX_ITEMS = int(os.getenv("FIELD_PI_MAX_ITEMS", "50"))
 MAX_COUNTS = 3
 BAND_B3_FROM = Decimal(os.getenv("FIELD_PI_BAND_B3_FROM", "500000"))
+DEFAULT_UNIT_PRICE = Decimal(os.getenv("FIELD_PI_DEFAULT_UNIT_PRICE", "0"))
 
 
 def _err(status: int, code: str, title: str, detail: str | None = None) -> FieldError:
@@ -61,6 +62,11 @@ def recount_accepted(previous: Decimal, current: Decimal) -> bool:
     return abs(current - previous) <= max(Decimal(1), abs(previous) * Decimal("0.005"))
 
 
+def count_title(bins: set[str], recount: bool = False) -> str:
+    word = "Recount" if recount else "Count"
+    return f"{word} bin {next(iter(bins))}" if len(bins) == 1 else f"{word} {len(bins)} bins"
+
+
 def band_for(value_abs: Decimal) -> str:
     if value_abs <= APPROVAL_VALUE:
         return "B1"
@@ -69,11 +75,15 @@ def band_for(value_abs: Decimal) -> str:
 
 # --------------------------------------------------------------------------- API3.10
 class PiItemIn(BaseModel):
+    """One bin/material to count. Without ``book_qty`` the server snapshots the field bin stock
+    (field.bin_stock), so the book never passes through a client; ``unit_price`` defaults to
+    FIELD_PI_DEFAULT_UNIT_PRICE (no price source on ErpPort yet)."""
+
     bin: str = Field(min_length=1)
     material: str = Field(min_length=1)
     uom: str = "EA"
-    book_qty: Decimal = Field(ge=0)
-    unit_price: Decimal = Field(ge=0)
+    book_qty: Decimal | None = Field(default=None, ge=0)
+    unit_price: Decimal | None = Field(default=None, ge=0)
 
 
 class PiCreateIn(BaseModel):
@@ -92,7 +102,7 @@ def create_pi_document(
     body: PiCreateIn,
     principal: Principal = Depends(require_permission("field.pi.create")),
 ) -> dict[str, Any]:
-    if not has_permission(principal.permissions, "field.pi.book"):
+    if any(it.book_qty is not None for it in body.items) and not has_permission(principal.permissions, "field.pi.book"):
         raise _err(403, "FIELD-AUTH-403-PERMISSION", "Book snapshot requires field.pi.book")
     if "*" not in principal.site_ids and body.site_id not in principal.site_ids:
         raise _err(403, "FIELD-AUTH-403-SCOPE", "Site not in scope")
@@ -103,10 +113,11 @@ def create_pi_document(
         year = str((body.planned_count_date or date.today()).year)
         cur.execute(
             """
-            INSERT INTO field.task (tenant_id, site_id, type, status, priority, title, ref_doc_no)
-            VALUES (%s, %s, 'count', 'pending', 'normal', %s, %s) RETURNING id
+            INSERT INTO field.task (tenant_id, site_id, type, status, priority, title, ref_doc_no, subtitle)
+            VALUES (%s, %s, 'count', 'pending', 'normal', %s, %s, %s) RETURNING id
             """,
-            (principal.tenant_id, body.site_id, f"PI {doc_number}", doc_number),
+            (principal.tenant_id, body.site_id, count_title({it.bin for it in body.items}), doc_number,
+             f"PI {doc_number}"),
         )
         task_id = str(cur.fetchone()[0])
         cur.execute(
@@ -131,10 +142,16 @@ def create_pi_document(
                 (principal.tenant_id, body.site_id, task_id, n, mrow[0] if mrow else None, it.uom, it.bin),
             )
             line_id = str(cur.fetchone()[0])
+            book = it.book_qty
+            if book is None:
+                cur.execute("SELECT COALESCE(SUM(quantity), 0) FROM field.bin_stock WHERE site_id = %s"
+                            " AND storage_bin = %s AND material_no = %s", (body.site_id, it.bin, it.material))
+                book = Decimal(cur.fetchone()[0])
             cur.execute(
                 "INSERT INTO field.pi_book (tenant_id, pi_document_id, task_line_id, book_qty, unit_price, currency)"
                 " VALUES (%s, %s, %s, %s, %s, %s)",
-                (principal.tenant_id, pi_id, line_id, it.book_qty, it.unit_price, body.currency),
+                (principal.tenant_id, pi_id, line_id, book,
+                 it.unit_price if it.unit_price is not None else DEFAULT_UNIT_PRICE, body.currency),
             )
     return {"id": pi_id, "doc_number": doc_number, "task_id": task_id, "status": "open",
             "items": len(body.items), "queue_key": "PID:pending"}
@@ -229,7 +246,12 @@ def commit_count(
 
 
 # --------------------------------------------------------------------------- API3.12
-def _stage_pi_posting(cur: Any, principal_tenant: str, pi_id: str, idem: str, approver: str | None) -> str:
+def stage_pi_posting(cur: Any, principal_tenant: str, pi_id: str, idem: str, approver: str | None,
+                     device_id: str | None = None) -> str:
+    """Stage the PI difference posting (create -> counts -> 701/702) as one job in queue PID:<doc>.
+
+    ``device_id`` (the phone that finished the count) receives the erp.posted / erp.failed event.
+    """
     cur.execute(
         "SELECT site_id, plant, doc_number, fiscal_year, task_id, storage_location"
         " FROM field.pi_document WHERE id = %s::uuid",
@@ -256,11 +278,15 @@ def _stage_pi_posting(cur: Any, principal_tenant: str, pi_id: str, idem: str, ap
         cur, tenant_id=principal_tenant, site_id=str(site_id), doc_type="PI_DIFF", movement_type="701/702",
         queue_key=f"PID:{doc_no}", ref_doc_no=doc_no, plant=plant, idempotency_key=idem,
         payload={"task_id": str(task_id), "line_ids": [str(r[0]) for r in rows], "pi_document_id": pi_id,
-                 "approved_by": approver, "line_status_after": "posted"},
+                 "approved_by": approver, "line_status_after": "posted", "device_id": device_id},
         jobs=[JobSpec("PhysicalInventory", {"FieldPiDocument": doc_no, "FiscalYear": year,
                                             "StorageLocation": sloc}, tuple(items))],
     )
     cur.execute("UPDATE field.pi_document SET status = 'counted' WHERE id = %s::uuid", (pi_id,))
+    cur.execute("UPDATE field.task_line SET status = 'posting', version = version + 1, updated_at = NOW()"
+                " WHERE id = ANY(%s::uuid[])", ([str(r[0]) for r in rows],))
+    cur.execute("UPDATE field.task SET status = 'posting', version = version + 1, updated_at = NOW()"
+                " WHERE id = %s::uuid", (str(task_id),))
     return staged.erp_document_id
 
 
@@ -309,7 +335,7 @@ def post_differences(
             apr = str(cur.fetchone()[0])
             return {"status": "awaiting_approval", "approval_request_id": apr, "band": band_for(value_abs),
                     "value_abs": f"{value_abs:.2f}", "currency": currency}
-        erp_doc = _stage_pi_posting(cur, principal.tenant_id, pi_id, idempotency_key, None)
+        erp_doc = stage_pi_posting(cur, principal.tenant_id, pi_id, idempotency_key, None)
     return {"status": "queued", "erp_document_id": erp_doc, "band": "B1", "value_abs": f"{value_abs:.2f}",
             "currency": currency}
 
@@ -349,5 +375,5 @@ def decide(
         )
         erp_doc = None
         if new_status == "approved" and atype == "pi_variance" and pi_id:
-            erp_doc = _stage_pi_posting(cur, principal.tenant_id, str(pi_id), idempotency_key, principal.id)
+            erp_doc = stage_pi_posting(cur, principal.tenant_id, str(pi_id), idempotency_key, principal.id)
     return {"id": apr_id, "status": new_status, "erp_document_id": erp_doc}

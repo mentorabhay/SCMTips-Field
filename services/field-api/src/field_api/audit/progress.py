@@ -70,7 +70,8 @@ def get_audit_progress(tenant_id: str, task_id: str) -> dict[str, Any]:
                     l.id AS location_id,
                     COALESCE(l.sector_code, 'UNASSIGNED') AS sector_code,
                     COALESCE(l.height_m, 0.0) AS height_m,
-                    COALESCE(tl_tow.code, 'T01') AS tower_code
+                    COALESCE(tl_tow.code, 'T01') AS tower_code,
+                    tl.captured_serial
                 FROM field.task_line tl
                 LEFT JOIN field.location l ON tl.location_id = l.id
                 LEFT JOIN field.location tl_tow ON tl_tow.id = l.parent_id AND tl_tow.kind = 'tower'
@@ -99,8 +100,10 @@ def get_audit_progress(tenant_id: str, task_id: str) -> dict[str, Any]:
             for r in task_lines:
                 exp_s = r[1]
                 st = r[3]
-                if st in ("captured", "done") and exp_s:
+                if st in ("captured", "done") and exp_s and r[8] is None:
                     captured_serials.add(exp_s)
+                if r[8]:  # M2 audit line: the serial scanned at this position
+                    captured_serials.add(r[8])
 
     # 4. Group expected items hierarchically
     site_expected: set[str] = set()
@@ -164,5 +167,9 @@ def get_audit_progress(tenant_id: str, task_id: str) -> dict[str, Any]:
         "site": round(site_val, 3),
         "site_id": site_id,
         "empty_scope": site_empty,
+        # FR4.024 defines an empty scope's completeness as 1.0 (with empty_scope); for display the
+        # percentage is null then, so a console never shows "100 %" for an audit with nothing to find.
+        "percent": None if site_empty else round(site_val * 100, 1),
+        "expected_count": len(site_expected),
         "towers": tower_outputs,
     }

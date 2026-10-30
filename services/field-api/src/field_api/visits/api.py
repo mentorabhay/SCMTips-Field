@@ -144,7 +144,7 @@ async def check_in(
                 override_by, override_reason, baro_baseline_hpa,
                 timer_interval_min, last_heartbeat_at, status
             ) VALUES (
-                %s::uuid, %s::uuid, %s::uuid, %s::uuid, %s,
+                %s::uuid, %s::uuid, %s::uuid, %s, %s,
                 %s, %s, %s,
                 %s, %s, %s,
                 %s, %s, %s,

@@ -51,6 +51,57 @@ def auto_provision_outbound_sample(cur: Any, client: str, delivery_document: str
     return ("1010", "101A", "open")
 
 
+@router.get("/A_OutbDeliveryHeader")
+async def list_outbound_deliveries(
+    filter_query: str | None = Query(None, alias="$filter"),
+    expand: str | None = Query(None, alias="$expand"),
+    sap_client: str = Header("100", alias="sap-client"),
+) -> dict[str, Any]:
+    """Collection read (A_OutbDeliveryHeader) with the filters the field worker uses (FR3.017):
+    ``ShippingPoint eq '<plant>'`` (the SAMPLE plant ships from itself) and
+    ``OverallPickingStatus ne 'C'`` / ``OverallGoodsMovementStatus ne 'C'``."""
+    import re
+
+    with get_conn() as conn, conn.cursor() as cur:
+        await evaluate_faults(cur, sap_client, "API_OUTBOUND_DELIVERY_SRV", "Query", "*")
+        query = ("SELECT delivery_document, plant, storage_location, status, header_data, last_change_date_time"
+                 " FROM erpsim.outbound_delivery WHERE client = %s")
+        params: list[Any] = [sap_client]
+        if filter_query:
+            m = re.search(r"(?:ShippingPoint|ShippingPlant)\s+eq\s+'([^']+)'", filter_query, re.IGNORECASE)
+            if m:
+                query += " AND plant = %s"
+                params.append(m.group(1))
+            if re.search(r"Overall(?:Picking|GoodsMovement)Status\s+ne\s+'C'", filter_query, re.IGNORECASE):
+                query += " AND status NOT IN ('C', 'completed', 'issued')"
+        cur.execute(query + " ORDER BY delivery_document", tuple(params))
+        headers = cur.fetchall()
+        results = []
+        for hdr in headers:
+            done = hdr[3] in ("C", "completed", "issued")
+            hd = hdr[4] if isinstance(hdr[4], dict) else json.loads(hdr[4] or "{}")
+            d_data: dict[str, Any] = {
+                "DeliveryDocument": hdr[0], "ShippingPoint": hdr[1], "ShippingPlant": hdr[1],
+                "StorageLocation": hdr[2], "ShipToParty": hd.get("ShipTo", ""),
+                "OverallPickingStatus": "C" if done else "A", "OverallGoodsMovementStatus": "C" if done else "A",
+                "LastChangeDateTime": hdr[5].isoformat() if hdr[5] else None,
+            }
+            if expand and "to_DeliveryDocumentItem" in expand:
+                cur.execute(
+                    "SELECT item_no, material_no, delivery_qty, picked_qty, uom, status"
+                    " FROM erpsim.outbound_delivery_item WHERE client = %s AND delivery_document = %s ORDER BY item_no",
+                    (sap_client, hdr[0]),
+                )
+                d_data["to_DeliveryDocumentItem"] = {"results": [
+                    {"DeliveryDocument": hdr[0], "DeliveryDocumentItem": r[0], "Material": r[1],
+                     "ActualDeliveryQuantity": str(r[2]), "PickedQuantity": str(r[3]), "DeliveryQuantityUnit": r[4],
+                     "ItemStatus": r[5]}
+                    for r in cur.fetchall()
+                ]}
+            results.append(d_data)
+    return {"d": {"results": results}}
+
+
 @router.get("/A_OutbDeliveryHeader('{delivery_document}')")
 async def get_outbound_delivery(
     delivery_document: str,

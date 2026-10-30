@@ -10,6 +10,8 @@ from typing import Any, cast
 
 from fastapi import APIRouter, Header, Query
 
+from erp_sim.db import get_conn
+
 router = APIRouter(prefix="/sap/opu/odata/sap/API_FUNCTIONALLOCATION", tags=["FunctionalLocation"])
 
 FIXTURE_PATH = Path(__file__).resolve().parent.parent / "fixtures" / "towers.json"
@@ -38,8 +40,25 @@ async def get_functional_locations(
     skip: int | None = Query(0, alias="$skip"),
     sap_client: str = Header("100", alias="sap-client"),
 ) -> dict[str, Any]:
-    """OData v2 endpoint to list functional locations with prefix and change date filtering."""
-    locations = load_fl_fixtures()
+    """OData v2 endpoint to list functional locations with prefix and change date filtering.
+
+    Serves the JSON fixtures plus every location in erpsim.functional_location (the database wins
+    for the same FunctionalLocation), so towers created for a test read back as a tree.
+    """
+    by_fl = {loc["FunctionalLocation"]: loc for loc in load_fl_fixtures()}
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT func_loc, description, superior_func_loc, kind, sector_code, height_m, plant, last_change_date_time"
+            " FROM erpsim.functional_location WHERE client = %s ORDER BY func_loc",
+            (sap_client,),
+        )
+        for r in cur.fetchall():
+            by_fl[r[0]] = {
+                "FunctionalLocation": r[0], "FunctionalLocationName": r[1], "SuperiorFunctionalLocation": r[2] or "",
+                "Kind": r[3], "SectorCode": r[4], "HeightM": float(r[5]) if r[5] is not None else None,
+                "MaintenancePlant": r[6] or "", "LastChangeDateTime": r[7].isoformat() if r[7] else None,
+            }
+    locations = list(by_fl.values())
 
     # Filter by $filter expression (e.g. startswith(FunctionalLocation, 'IN01-TWR-0042'))
     if filter_expr:

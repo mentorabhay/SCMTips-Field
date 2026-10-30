@@ -14,8 +14,7 @@
   - FR4.003
   verified_at: null
   note: 'Migrations exist and the verify-all alembic job round-trips them on an empty DB; cross-tenant isolation of location/equipment
-    is shown by test_tc4_159. Missing: no upgrade/downgrade on a seeded DB, and no test dedicated to RLS on the 0041/0042
-    tables.'
+    is shown by test_tc4_159. Missing: no upgrade/downgrade on a seeded DB, and no test dedicated to RLS on the 0041/0042 tables.'
 - id: T4.002
   title: Build site tree service and API
   workstream: WS4.1
@@ -31,7 +30,9 @@
   - FR4.002
   - FR4.003
   verified_at: 573e018
-  note: 'Verifier 2026-10-30 found GET /v1/sites/{id}/tree ran without a token and took the tenant from a client header (hard-coded fallback). Fixed same day: require_permission(field.site.read) + site scope + tenant from the token, transaction-local RLS; test_t4_002_site_tree_needs_a_token_and_ignores_tenant_header. Still missing: installed equipment per position is always empty (tree.py).'
+  note: 'Verifier 2026-10-30 found GET /v1/sites/{id}/tree ran without a token and took the tenant from a client header (hard-coded
+    fallback). Fixed same day: require_permission(field.site.read) + site scope + tenant from the token, transaction-local RLS; test_t4_002_site_tree_needs_a_token_and_ignores_tenant_header.
+    Still missing: installed equipment per position is always empty (tree.py).'
 - id: T4.003
   title: Implement functional location mask validator
   workstream: WS4.1
@@ -44,7 +45,8 @@
   frs:
   - FR4.008
   verified_at: 573e018
-  note: 'Verifier 2026-10-30 (WRONG for done): the mask parameter and FIELD_FL_MASK are never used; segments are hard-coded regexes (sites/fl_mask.py). Spec wants a configurable tenant-level mask.'
+  note: 'Verifier 2026-10-30 (WRONG for done): the mask parameter and FIELD_FL_MASK are never used; segments are hard-coded regexes
+    (sites/fl_mask.py). Spec wants a configurable tenant-level mask.'
 - id: T4.004
   title: Build SAP functional location reader
   workstream: WS4.1
@@ -56,8 +58,8 @@
   frs:
   - FR4.004
   verified_at: null
-  note: FunctionalLocationReader pages with $top/$skip, but no test reads the 3 SAMPLE sites from erp-sim and no test pages
-    over 1000 rows.
+  note: FunctionalLocationReader pages with $top/$skip, but no test reads the 3 SAMPLE sites from erp-sim and no test pages over 1000
+    rows.
 - id: T4.005
   title: Build SAP installed equipment reader
   workstream: WS4.1
@@ -65,12 +67,17 @@
   status: partial
   evidence:
   - connectors/sap/src/field_sap/equipment_read.py
+  - services/field-worker/src/field_worker/tower/installed_base.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_102_equipment_import_fields_and_duplicates
+  - tests/e2e/test_m2_jobs_e2e.py::test_tower_audit_reconciles_and_swap_posts_through_tower_queue
   frs:
   - FR4.005
   verified_at: 573e018
-  note: 'Verifier 2026-10-30 (WRONG for done): EquipmentReader has no production caller, never links equipment to locations (FR4.005); TC4.102 runs against a hand-made MockTransport, not erp-sim.'
+  note: 'Verifier 2026-10-30 (WRONG for done): EquipmentReader has no production caller, never links equipment to locations (FR4.005);
+    TC4.102 runs against a hand-made MockTransport, not erp-sim. | M2 (31 Oct 2026, branch m2/backend): the equipment reader now feeds
+    an import (sync_tower_installed_base) that links equipment to the tower''s locations, tested against erp-sim; erp-sim A_Equipment
+    also filters Equipment/SerialNumber. Still missing: TC4.102 duplicate-serial report surfaced.'
 - id: T4.006
   title: Implement import job staging, preview and apply
   workstream: WS4.1
@@ -87,8 +94,8 @@
   - FR4.006
   - FR4.007
   verified_at: null
-  note: 'Staging/preview/apply proven by TC4.101 (31 rows). Missing: PR4.16 has no generator-based test (the test is a fixed
-    example), and API4.01 POST /v1/sites/import is not a route (absent from OpenAPI).'
+  note: 'Staging/preview/apply proven by TC4.101 (31 rows). Missing: PR4.16 has no generator-based test (the test is a fixed example),
+    and API4.01 POST /v1/sites/import is not a route (absent from OpenAPI).'
 - id: T4.007
   title: Add delta import and schedule
   workstream: WS4.1
@@ -101,8 +108,7 @@
   frs:
   - FR4.006
   verified_at: null
-  note: 'TC4.103 passes (watermark; repeat run zero changes). Missing: the nightly schedule — FieldWorker.tick never runs
-    run_fl_delta_import.'
+  note: 'TC4.103 passes (watermark; repeat run zero changes). Missing: the nightly schedule — FieldWorker.tick never runs run_fl_delta_import.'
 - id: T4.008
   title: Report rejected import rows
   workstream: WS4.1
@@ -123,12 +129,15 @@
   status: partial
   evidence:
   - services/erp-sim/fixtures/towers.json
+  - services/erp-sim/alembic/versions/erpsim_0002_fl_hierarchy.py
+  - services/erp-sim/src/erp_sim/services/fl.py
   tests: []
   frs:
   - FR4.005
   verified_at: null
-  note: Fixture file exists and erp-sim reads it, but no test loads it and asserts the 3 sites / 48 equipment / 3 mismatch
-    counts.
+  note: 'Fixture file exists and erp-sim reads it, but no test loads it and asserts the 3 sites / 48 equipment / 3 mismatch counts.
+    | M2 (31 Oct 2026, branch m2/backend): API_FUNCTIONALLOCATION also serves database locations (parent, kind, sector, height) so a
+    test tower reads back as a tree.'
 - id: T4.010
   title: Implement site check-in API
   workstream: WS4.1
@@ -136,16 +145,19 @@
   status: partial
   evidence:
   - services/field-api/src/field_api/visits/api.py
+  - services/field-api/alembic/versions/field_0059_m2_jobs.py
   tests:
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_107_checkin_inside_geofence
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_108_checkin_expired_permit
   - services/field-api/tests/test_tower_ws4_1.py::test_pr4_17_geofence_invariant_property
+  - tests/e2e/test_m2_jobs_e2e.py::test_tower_visit_shapes_the_phone_sends
   frs:
   - FR4.009
   - FR4.010
   verified_at: null
-  note: 'TC4.107 and TC4.108 pass via the API. Missing: PR4.17 is a fixed-example test, not a generator (spec: Hypothesis,
-    1000 runs).'
+  note: 'TC4.107 and TC4.108 pass via the API. Missing: PR4.17 is a fixed-example test, not a generator (spec: Hypothesis, 1000 runs).
+    | M2 (31 Oct 2026, branch m2/backend): site_visit.user_id/override_by/acked_by are now text: check-in by any non-UUID principal
+    (e.g. ''op-1'' from the pairing QR) failed with a cast error before. Still missing: PR4.17.'
 - id: T4.011
   title: Add geofence override with audit
   workstream: WS4.1
@@ -163,7 +175,10 @@
   - FR4.011
   - FR4.067
   verified_at: 573e018
-  note: 'Verifier 2026-10-30 found the override route had no auth (supervisor_id from the body, tenant from a header) and check-in accepted any override_by. Fixed same day: override needs field.visit.override, override_by is the token''s principal, mock_location recorded, check-in override needs the same permission; tests test_tc4_109_technician_cannot_override_the_geofence and test_tc4_109_override_route_records_the_supervisor_from_the_token. Partial until the next independent verifier pass re-checks it.'
+  note: 'Verifier 2026-10-30 found the override route had no auth (supervisor_id from the body, tenant from a header) and check-in accepted
+    any override_by. Fixed same day: override needs field.visit.override, override_by is the token''s principal, mock_location recorded,
+    check-in override needs the same permission; tests test_tc4_109_technician_cannot_override_the_geofence and test_tc4_109_override_route_records_the_supervisor_from_the_token.
+    Partial until the next independent verifier pass re-checks it.'
 - id: T4.012
   title: Implement check-out
   workstream: WS4.1
@@ -189,8 +204,9 @@
   frs:
   - FR4.014
   verified_at: 573e018
-  note: 'Met: ''TC4.112 passes for SAMPLE site with 24 lines'' — 24 lines ordered by sector then height, snapshot_version
-    erp-*. (Old evidence path sitegraph/generate.py was deleted in C4.)'
+  note: 'Met: ''TC4.112 passes for SAMPLE site with 24 lines'' — 24 lines ordered by sector then height, snapshot_version erp-*. (Old
+    evidence path sitegraph/generate.py was deleted in C4.) | M2 (31 Oct 2026, branch m2/backend): generate_audit_task gained sector_code
+    (sector audit), line position labels and position order; listed test still passes.'
 - id: T4.014
   title: Implement audit completeness service
   workstream: WS4.3
@@ -200,12 +216,14 @@
   - services/field-api/src/field_api/audit/progress.py
   tests:
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_03_completeness_bounded_hypothesis
+  - tests/e2e/test_m2_jobs_e2e.py::test_tower_audit_reconciles_and_swap_posts_through_tower_queue
   frs:
   - FR4.024
   - FR4.063
   verified_at: null
-  note: 'PR4.03 passes (Hypothesis, 1000 runs) against calculate_completeness. Missing: FR4.063 (console progress board, TC4.155)
-    has no test; per-tower cache invalidation on capture sync is untested.'
+  note: 'PR4.03 passes (Hypothesis, 1000 runs) against calculate_completeness. Missing: FR4.063 (console progress board, TC4.155) has
+    no test; per-tower cache invalidation on capture sync is untested. | M2 (31 Oct 2026, branch m2/backend): M2 line captures count
+    as captured; response adds percent (null for an empty scope; FR4.024 keeps value 1.0 + empty_scope) and expected_count.'
 - id: T4.015
   title: Build reconciliation engine
   workstream: WS4.3
@@ -215,10 +233,17 @@
   - services/field-api/src/field_api/audit/reconcile.py
   tests:
   - services/field-api/tests/test_audit_ws4_3.py::test_pr4_11_mismatch_symmetry_hypothesis
+  - services/field-api/tests/test_m2_jobs_unit.py::test_pr4_11_position_reconciliation_reports_both_sides
+  - services/field-api/tests/test_m2_jobs_unit.py::test_classify_positions_examples
+  - tests/e2e/test_m2_jobs_e2e.py::test_tower_audit_reconciles_and_swap_posts_through_tower_queue
   frs:
   - FR4.025
   verified_at: 573e018
-  note: 'Verifier 2026-10-30 (WRONG for done): serial_mismatch is never produced (count stays 0, audit/reconcile.py); PR4.11 tests only the set-difference helper, not run_audit_reconciliation, and not misplaced/class-match cases.'
+  note: 'Verifier 2026-10-30 (WRONG for done): serial_mismatch is never produced (count stays 0, audit/reconcile.py); PR4.11 tests only
+    the set-difference helper, not run_audit_reconciliation, and not misplaced/class-match cases. | M2 (31 Oct 2026, branch m2/backend):
+    serial_mismatch is now produced (position check: a different serial unknown to the installed base); misplaced when the serial is
+    installed elsewhere; reconcile_task runs on the caller''s transaction and is used when an M2 audit is finished. Still partial: the
+    PR4.11 property runs classify_positions (300 examples), not run_audit_reconciliation with 500 runs.'
 - id: T4.016
   title: Open and deduplicate exception cases
   workstream: WS4.3
@@ -240,11 +265,13 @@
   status: partial
   evidence:
   - services/field-api/src/field_api/audit/mismatch_api.py
-  tests: []
+  tests:
+  - tests/e2e/test_m2_jobs_e2e.py::test_tower_audit_reconciles_and_swap_posts_through_tower_queue
   frs:
   - FR4.064
   verified_at: null
-  note: GET /v1/mismatches exists (API4.16 in OpenAPI) but no contract test or data-scope test exists.
+  note: 'GET /v1/mismatches exists (API4.16 in OpenAPI) but no contract test or data-scope test exists. | M2 (31 Oct 2026, branch m2/backend):
+    items carry captured_by (who scanned the line). Still missing: contract tests / data-scope test.'
 - id: T4.018
   title: Enforce audit sign-off rule
   workstream: WS4.3
@@ -257,7 +284,9 @@
   frs:
   - FR4.028
   verified_at: 573e018
-  note: 'Verifier 2026-10-30 found any authenticated user could send supervisor_waiver=true and the waived lines were only logged. Fixed same day: a waiver needs field.override.grant (technician gets 403) and unresolved lines are set to status ''waived'' and listed in the audit.signed_off event (test_tc4_122_signoff_blocked_until_explained_or_waived). Partial until the next verifier pass.'
+  note: 'Verifier 2026-10-30 found any authenticated user could send supervisor_waiver=true and the waived lines were only logged. Fixed
+    same day: a waiver needs field.override.grant (technician gets 403) and unresolved lines are set to status ''waived'' and listed
+    in the audit.signed_off event (test_tc4_122_signoff_blocked_until_explained_or_waived). Partial until the next verifier pass.'
 - id: T4.019
   title: Add missing and unknown finding endpoints
   workstream: WS4.3
@@ -273,7 +302,8 @@
   - FR4.022
   - FR4.023
   verified_at: null
-  note: 'TC4.120/TC4.121 pass via the API. Fixed 2026-10-30: tower_only findings now store the real crop_ref sha256 and size from the submitted evidence instead of a placeholder. Still partial: no on-device evidence upload proven.'
+  note: 'TC4.120/TC4.121 pass via the API. Fixed 2026-10-30: tower_only findings now store the real crop_ref sha256 and size from the
+    submitted evidence instead of a placeholder. Still partial: no on-device evidence upload proven.'
 - id: T4.020
   title: Extend erp-sim with functional locations and equipment install/dismantle
   workstream: WS4.4
@@ -282,14 +312,17 @@
   evidence:
   - services/erp-sim/src/erp_sim/routes/equipment.py
   - services/erp-sim/src/erp_sim/services/fl.py
+  - services/erp-sim/alembic/versions/erpsim_0002_fl_hierarchy.py
   tests:
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_125_and_tc4_126_install_and_single_location
+  - tests/e2e/test_m2_jobs_e2e.py::test_tower_audit_reconciles_and_swap_posts_through_tower_queue
   frs:
   - FR4.029
   - FR4.030
   verified_at: null
-  note: 'erp-sim has FL and equipment routes with time segments and install. Missing: SCR4.14 (console) not shown; no erp-sim
-    equipment contract test.'
+  note: 'erp-sim has FL and equipment routes with time segments and install. Missing: SCR4.14 (console) not shown; no erp-sim equipment
+    contract test. | M2 (31 Oct 2026, branch m2/backend): Install/Dismantle never worked on the routes: number range CHANGE_DOC and
+    column equipment_install.change_doc were missing (HTTP 500 on every call); both added. Still missing: SCR4.14 time segments.'
 - id: T4.021
   title: Implement SAP adapter equipment operations
   workstream: WS4.4
@@ -299,12 +332,14 @@
   - connectors/sap/src/field_sap/equipment.py
   tests:
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_125_and_tc4_126_install_and_single_location
+  - tests/e2e/test_m2_jobs_e2e.py::test_tower_audit_reconciles_and_swap_posts_through_tower_queue
   frs:
   - FR4.029
   - FR4.030
   verified_at: null
-  note: 'SAPEquipmentAdapter exists and the tower queue uses it. Missing: no contract test runs it against erp-sim; live SAP
-    UNVERIFIED (rule 2.4).'
+  note: 'SAPEquipmentAdapter exists and the tower queue uses it. Missing: no contract test runs it against erp-sim; live SAP UNVERIFIED
+    (rule 2.4). | M2 (31 Oct 2026, branch m2/backend): get_equipment / find_equipment_by_serial added; install + dismantle exercised
+    against erp-sim through the queue. UNVERIFIED for live SAP.'
 - id: T4.022
   title: Configure posting queue per tower
   workstream: WS4.4
@@ -312,6 +347,7 @@
   status: partial
   evidence:
   - services/field-worker/src/field_worker/posting/equipment_queue.py
+  - services/field-api/src/field_api/jobs/finish.py
   tests:
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_131_tower_equipment_queue_exhaustion
@@ -319,10 +355,17 @@
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_job_in_backoff_is_not_overtaken
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_failed_head_blocks_its_tower
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_one_poster_per_tower_queue
+  - tests/e2e/test_m2_jobs_e2e.py::test_tower_audit_reconciles_and_swap_posts_through_tower_queue
   frs:
   - FR4.036
   verified_at: null
-  note: 'TC4.131 passes. Fixed 2026-10-30: the real PR4.12 replay test (500 Hypothesis runs) found that a second worker could post seq N+1 while seq N was in flight (FOR UPDATE SKIP LOCKED) and that a job in retry backoff or failed for good was silently overtaken. process_next_tower_job now takes a per-queue advisory lock and only ever works the head of line (waiting/blocked otherwise); three regression tests cover it. ERP side in these tests is a recording test double, not erp-sim.'
+  note: 'TC4.131 passes. Fixed 2026-10-30: the real PR4.12 replay test (500 Hypothesis runs) found that a second worker could post seq
+    N+1 while seq N was in flight (FOR UPDATE SKIP LOCKED) and that a job in retry backoff or failed for good was silently overtaken.
+    process_next_tower_job now takes a per-queue advisory lock and only ever works the head of line (waiting/blocked otherwise); three
+    regression tests cover it. ERP side in these tests is a recording test double, not erp-sim. | M2 (31 Oct 2026, branch m2/backend):
+    swap = dismantle + install with consecutive seq in EQUIP:<tower FL> (FR4.031); the last job writes back the change document, the
+    installed base (field.equipment + serial_event) and the task; erp.posted/erp.failed reach the phone; last_error stored. Head-of-line
+    tests still pass.'
 - id: T4.023
   title: Build equipment events API
   workstream: WS4.4
@@ -343,8 +386,8 @@
   - FR4.031
   - FR4.033
   verified_at: null
-  note: 'TC4.125/TC4.126 pass (install, single location). Missing: PR4.14 (idempotent events) and PR4.15 (replace atomicity)
-    have no generator tests; TC4.127–TC4.129 not all evidenced.'
+  note: 'TC4.125/TC4.126 pass (install, single location). Missing: PR4.14 (idempotent events) and PR4.15 (replace atomicity) have no
+    generator tests; TC4.127–TC4.129 not all evidenced.'
 - id: T4.024
   title: Implement reversal on undo-after-post
   workstream: WS4.4
@@ -360,8 +403,8 @@
   frs:
   - FR4.035
   verified_at: null
-  note: 'TC4.130 passes. PR4.13 test draws only an initial status from two values (50 examples), not random posted sequences
-    reversed in order (spec: 300 runs).'
+  note: 'TC4.130 passes. PR4.13 test draws only an initial status from two values (50 examples), not random posted sequences reversed
+    in order (spec: 300 runs).'
 - id: T4.025
   title: Implement serial_event history and single-location invariant
   workstream: WS4.4
@@ -378,8 +421,8 @@
   - FR4.033
   - FR4.034
   verified_at: null
-  note: 'Immutability trigger proven by a fixed test; seq monotonic proven by Hypothesis. Missing: PR4.01 (install-then-dismantle)
-    is not generator-based; PR4.02 as specified (one active location under concurrent installs) is not what the test checks.'
+  note: 'Immutability trigger proven by a fixed test; seq monotonic proven by Hypothesis. Missing: PR4.01 (install-then-dismantle) is
+    not generator-based; PR4.02 as specified (one active location under concurrent installs) is not what the test checks.'
 - id: T4.026
   title: Implement mismatch decisions with core approvals
   workstream: WS4.3
@@ -394,8 +437,8 @@
   - FR4.027
   - FR4.067
   verified_at: null
-  note: TC4.123 passes incl. 403 FIELD-EXC-403-SOD. The approval is a local field.approval_request, not a core approval (core
-    P13 UNVERIFIED, rule 2.4).
+  note: TC4.123 passes incl. 403 FIELD-EXC-403-SOD. The approval is a local field.approval_request, not a core approval (core P13 UNVERIFIED,
+    rule 2.4).
 - id: T4.027
   title: Build installed-base read model and API
   workstream: WS4.9
@@ -408,8 +451,7 @@
   frs:
   - FR4.065
   verified_at: null
-  note: 'TC4.157 passes against the field DB view. Missing: done_when requires ''against erp-sim''; no erp-sim comparison
-    is made.'
+  note: 'TC4.157 passes against the field DB view. Missing: done_when requires ''against erp-sim''; no erp-sim comparison is made.'
 - id: T4.028
   title: Emit installed_base.changed and publish via P13f
   workstream: WS4.9
@@ -450,9 +492,9 @@
   - FR4.014
   - FR4.017
   verified_at: null
-  note: 'TowerAuditScreen.kt is a plain-Kotlin controller with no UI. Missing: Maestro flow tower_audit.yaml has never run.
-    Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is
-    proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TowerAuditScreen.kt is a plain-Kotlin controller with no UI. Missing: Maestro flow tower_audit.yaml has never run. Android
+    module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit
+    4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.031
   title: Render lens sector checklist
   workstream: WS4.2
@@ -468,9 +510,9 @@
   - FR4.015
   - FR4.068
   verified_at: null
-  note: 'TC4.113 logic passes on JVM. Missing: ''<= 400 ms after capture'' is a device measurement never made; FR4.068 untested;
-    owner''s Gen 2 has no display. Android module has never been built by Gradle (no Android SDK build has run) and is not
-    exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TC4.113 logic passes on JVM. Missing: ''<= 400 ms after capture'' is a device measurement never made; FR4.068 untested; owner''s
+    Gen 2 has no display. Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device;
+    logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.032
   title: Implement on-device nameplate OCR
   workstream: WS4.2
@@ -492,9 +534,9 @@
   - FR4.016
   - FR4.017
   verified_at: null
-  note: 'Candidate selection logic tested. Missing: TC4.114 (>= 92% exact on 300 SAMPLE plates) — no plate set and no OCR
-    engine run. Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device;
-    logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'Candidate selection logic tested. Missing: TC4.114 (>= 92% exact on 300 SAMPLE plates) — no plate set and no OCR engine run.
+    Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only
+    by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.033
   title: Write serial pattern normalisation library
   workstream: WS4.2
@@ -516,9 +558,9 @@
   frs:
   - FR4.016
   verified_at: null
-  note: Kotlin SerialPatterns and Python serials.py each have tests, but they do not share fixtures as done_when requires.
-    Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is
-    proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
+  note: Kotlin SerialPatterns and Python serials.py each have tests, but they do not share fixtures as done_when requires. Android module
+    has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4
+    on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.034
   title: Integrate photo evidence consent and blur
   workstream: WS4.2
@@ -534,9 +576,9 @@
   frs:
   - FR4.020
   verified_at: null
-  note: 'TC4.118 logic passes (C5 removed a fabricated s3 URI/hash/isUploaded). Missing: FaceBlur is an interface not wired
-    to core-capture FaceBlurStage in the app; no on-device run. Android module has never been built by Gradle (no Android
-    SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TC4.118 logic passes (C5 removed a fabricated s3 URI/hash/isUploaded). Missing: FaceBlur is an interface not wired to core-capture
+    FaceBlurStage in the app; no on-device run. Android module has never been built by Gradle (no Android SDK build has run) and is
+    not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.035
   title: Build Muse Spark nameplate verify job
   workstream: WS4.2
@@ -554,7 +596,9 @@
   - FR4.018
   - FR4.019
   verified_at: null
-  note: 'Fixed 2026-10-30: with no model client or an empty/invalid model answer the job now returns unverified_no_model / unverified_bad_response and never invents a verified verdict (test_t4_035_no_model_client_means_nothing_is_verified). Stub remains: no real Muse Spark client; Meta Model API UNVERIFIED (§2.4).'
+  note: 'Fixed 2026-10-30: with no model client or an empty/invalid model answer the job now returns unverified_no_model / unverified_bad_response
+    and never invents a verified verdict (test_t4_035_no_model_client_means_nothing_is_verified). Stub remains: no real Muse Spark client;
+    Meta Model API UNVERIFIED (§2.4).'
 - id: T4.036
   title: Register prompt and enforce non-contributor models
   workstream: WS4.2
@@ -569,8 +613,8 @@
   frs:
   - FR4.018
   verified_at: null
-  note: 'TC4.167 passes (contributor models refused). Missing: no core prompt-registry entry (UNVERIFIED), no Llama fallback
-    call, budget alarm not on the A-02 budget guard.'
+  note: 'TC4.167 passes (contributor models refused). Missing: no core prompt-registry entry (UNVERIFIED), no Llama fallback call, budget
+    alarm not on the A-02 budget guard.'
 - id: T4.037
   title: Build manual entry, unknown and missing UX
   workstream: WS4.2
@@ -588,9 +632,8 @@
   - FR4.022
   - FR4.023
   verified_at: null
-  note: TC4.119–TC4.121 logic passes on JVM and the findings API passes; there is no UI. Android module has never been built
-    by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM
-    (scripts/jobs/kotlin_jvm.py).
+  note: TC4.119–TC4.121 logic passes on JVM and the findings API passes; there is no UI. Android module has never been built by Gradle
+    (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.038
   title: Build install/replace staging with BOM checklist
   workstream: WS4.4
@@ -613,9 +656,9 @@
   - FR4.032
   - FR4.035
   verified_at: null
-  note: Swap view-model stages dismantle then install and has the BOM gate (JVM tests); server TC4.128 passes. No Compose
-    UI. Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic
-    is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
+  note: Swap view-model stages dismantle then install and has the BOM gate (JVM tests); server TC4.128 passes. No Compose UI. Android
+    module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit
+    4 on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.039
   title: Implement climb state detector
   workstream: WS4.5
@@ -630,9 +673,8 @@
   frs:
   - FR4.038
   verified_at: null
-  note: TC4.133 runs on 40 synthetic in-code traces, not recorded traces; no sensor data. Android module has never been built
-    by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM
-    (scripts/jobs/kotlin_jvm.py).
+  note: TC4.133 runs on 40 synthetic in-code traces, not recorded traces; no sensor data. Android module has never been built by Gradle
+    (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.040
   title: Implement prompt gate
   workstream: WS4.5
@@ -646,9 +688,9 @@
   frs:
   - FR4.039
   verified_at: null
-  note: 'PromptGate behaviour (FR4.039) tested with seeded-random JUnit loops. Missing: PR4.04 in Kotest (no Kotest test exists).
-    Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is
-    proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'PromptGate behaviour (FR4.039) tested with seeded-random JUnit loops. Missing: PR4.04 in Kotest (no Kotest test exists). Android
+    module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit
+    4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.041
   title: Implement harness confirmation
   workstream: WS4.5
@@ -668,8 +710,8 @@
   - FR4.040
   - FR4.041
   verified_at: null
-  note: 'TC4.136 passes on JVM. Missing: PR4.05 in Kotest. Android module has never been built by Gradle (no Android SDK build
-    has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TC4.136 passes on JVM. Missing: PR4.05 in Kotest. Android module has never been built by Gradle (no Android SDK build has run)
+    and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.042
   title: Detect rest platform checkpoints
   workstream: WS4.5
@@ -684,8 +726,8 @@
   - FR4.013
   - FR4.042
   verified_at: null
-  note: 'TC4.137 passes on JVM. Missing: TC4.111 / FR4.013 has no test. Android module has never been built by Gradle (no
-    Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TC4.137 passes on JVM. Missing: TC4.111 / FR4.013 has no test. Android module has never been built by Gradle (no Android SDK
+    build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.043
   title: Activate climb-safe automatically
   workstream: WS4.5
@@ -700,8 +742,8 @@
   frs:
   - FR4.045
   verified_at: null
-  note: TC4.141 logic passes on JVM; climb-safe is not wired into :app. Android module has never been built by Gradle (no
-    Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
+  note: TC4.141 logic passes on JVM; climb-safe is not wired into :app. Android module has never been built by Gradle (no Android SDK
+    build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.044
   title: Build climb session telemetry API
   workstream: WS4.5
@@ -709,13 +751,16 @@
   status: partial
   evidence:
   - services/field-api/src/field_api/safety/api.py
+  - services/field-api/alembic/versions/field_0059_m2_jobs.py
   tests:
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_123_update_erp_decision_with_sod
   - services/field-api/tests/test_safety_ws4_5.py::test_api4_15_climb_session_telemetry_and_seq_gap
+  - tests/e2e/test_m2_jobs_e2e.py::test_tower_visit_shapes_the_phone_sends
   frs:
   - FR4.067
   verified_at: null
-  note: 'API4.15 telemetry test (test_api4_15) passes. Missing: events in core P13e (UNVERIFIED, rule 2.4).'
+  note: 'API4.15 telemetry test (test_api4_15) passes. Missing: events in core P13e (UNVERIFIED, rule 2.4). | M2 (31 Oct 2026, branch
+    m2/backend): event type climb_safe_released added (was a check violation -> 500); unknown types are 422. Still missing: P13e publication.'
 - id: T4.045
   title: Implement lone-worker timer and escalation
   workstream: WS4.5
@@ -736,8 +781,8 @@
   - FR4.043
   - FR4.044
   verified_at: null
-  note: 'TC4.138 (JVM) and TC4.139 (server sweep) pass. Missing: PR4.19 in Kotest. Android module has never been built by
-    Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TC4.138 (JVM) and TC4.139 (server sweep) pass. Missing: PR4.19 in Kotest. Android module has never been built by Gradle (no
+    Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.046
   title: Build console lone-worker monitor
   workstream: WS4.5
@@ -745,14 +790,18 @@
   status: partial
   evidence:
   - apps/field-console/app/safety/page.tsx
+  - services/field-api/src/field_api/safety/api.py
+  - services/field-api/src/field_api/auth/permissions.py
   tests:
   - services/field-api/tests/test_safety_ws4_5.py::test_tc4_139_escalation_sweep
   - services/field-api/tests/test_safety_ws4_5.py::test_scr4_13_active_visits_and_ack
+  - services/field-api/tests/test_m2_jobs_unit.py::test_safety_ack_needs_visit_ack
   frs:
   - FR4.044
   verified_at: null
-  note: 'Escalation backend tested (TC4.139, SCR4.13 API). Missing: Playwright test of the banner within 5 s; Console page
-    renders hard-coded sample data / is not wired to field-api and no Playwright test has ever run.'
+  note: 'Escalation backend tested (TC4.139, SCR4.13 API). Missing: Playwright test of the banner within 5 s; Console page renders hard-coded
+    sample data / is not wired to field-api and no Playwright test has ever run. | M2 (31 Oct 2026, branch m2/backend): POST /v1/safety/visits/{id}/ack
+    now needs field.visit.ack; field.supervisor holds it. Console banner (Playwright) not in this pass.'
 - id: T4.047
   title: Build sensor replay harness for climb tests
   workstream: WS4.5
@@ -768,8 +817,8 @@
   - FR4.038
   - FR4.039
   verified_at: null
-  note: No replay harness or recorded traces (apps/field-android/testdata/climbs/ does not exist); synthetic traces live inside
-    ClimbStateDetectorTest. TC4.140 not in verify-all.
+  note: No replay harness or recorded traces (apps/field-android/testdata/climbs/ does not exist); synthetic traces live inside ClimbStateDetectorTest.
+    TC4.140 not in verify-all.
 - id: T4.048
   title: Extend voice grammar for tower work
   workstream: WS4.2
@@ -791,9 +840,9 @@
   - FR4.043
   - FR4.068
   verified_at: null
-  note: Floor tests exist for harness-clipped and check-in phrases only; done_when needs every phrase at 0.79 and 0.81; FR4.068
-    untested. Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device;
-    logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
+  note: Floor tests exist for harness-clipped and check-in phrases only; done_when needs every phrase at 0.79 and 0.81; FR4.068 untested.
+    Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only
+    by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
 - id: T4.049
   title: Run safety design review
   workstream: WS4.5
@@ -806,7 +855,8 @@
   - FR4.039
   - FR4.045
   verified_at: null
-  note: 'ADR corrected 2026-10-30 to ''Proposed — not signed''; the false sign-off lines were removed. A real safety review with logged open items is still required.'
+  note: ADR corrected 2026-10-30 to 'Proposed — not signed'; the false sign-off lines were removed. A real safety review with logged
+    open items is still required.
 - id: T4.050
   title: Extend site graph for 3D
   workstream: WS4.6
@@ -819,8 +869,7 @@
   frs:
   - FR4.046
   verified_at: 573e018
-  note: 'Met: ''TC4.142 passes'' — z, subkind, platform_height_m and climb_length_m stored; negative climb length rejected
-    by constraint.'
+  note: 'Met: ''TC4.142 passes'' — z, subkind, platform_height_m and climb_length_m stored; negative climb length rejected by constraint.'
 - id: T4.051
   title: Implement 3D routing
   workstream: WS4.6
@@ -833,8 +882,8 @@
   frs:
   - FR4.047
   verified_at: null
-  note: PR4.07 Hypothesis test (500) runs dijkstra_3d only on a two-route diamond; spec generator is random connected graphs
-    of 3–12 nodes compared with every simple path.
+  note: PR4.07 Hypothesis test (500) runs dijkstra_3d only on a two-route diamond; spec generator is random connected graphs of 3–12
+    nodes compared with every simple path.
 - id: T4.052
   title: Generate newcomer guidance
   workstream: WS4.6
@@ -860,7 +909,8 @@
   frs:
   - FR4.049
   verified_at: null
-  note: 'API4.10 exists. Fixed 2026-10-30: PR4.06 Hypothesis (500 runs) appends events through append_serial_event with colliding/out-of-order times and checks get_equipment_trail returns each exactly once in (occurred_at, seq) order.'
+  note: 'API4.10 exists. Fixed 2026-10-30: PR4.06 Hypothesis (500 runs) appends events through append_serial_event with colliding/out-of-order
+    times and checks get_equipment_trail returns each exactly once in (occurred_at, seq) order.'
 - id: T4.054
   title: Build console 3D explorer and trail replay
   workstream: WS4.6
@@ -873,8 +923,8 @@
   - FR4.049
   - FR4.050
   verified_at: null
-  note: 'Missing: TC4.144 never run; page builds mockNodes/mockPoints. Console page renders hard-coded sample data / is not
-    wired to field-api and no Playwright test has ever run.'
+  note: 'Missing: TC4.144 never run; page builds mockNodes/mockPoints. Console page renders hard-coded sample data / is not wired to
+    field-api and no Playwright test has ever run.'
 - id: T4.055
   title: Build asset model upload and validation
   workstream: WS4.7
@@ -893,7 +943,9 @@
   - FR4.053
   - FR4.057
   verified_at: 573e018
-  note: 'Verifier 2026-10-30 (WRONG for done): the BOM rule is skipped when an item has no mapped nodes (models/upload.py effective_count falls back to qty, so qty 4 with 0 nodes passes); sub-parts below level 1 are not excluded; PR4.08''s generator is depth 1 with no shared names and its reference check copies the validator logic.'
+  note: 'Verifier 2026-10-30 (WRONG for done): the BOM rule is skipped when an item has no mapped nodes (models/upload.py effective_count
+    falls back to qty, so qty 4 with 0 nodes passes); sub-parts below level 1 are not excluded; PR4.08''s generator is depth 1 with
+    no shared names and its reference check copies the validator logic.'
 - id: T4.056
   title: Implement balloon registry
   workstream: WS4.7
@@ -921,7 +973,9 @@
   - FR4.056
   - FR4.068
   verified_at: null
-  note: 'Fixed 2026-10-30: the viewer now computes offsets with lib/exploded.ts and PR4.09 is a fast-check property (1,000 runs) on that function, run by the verify-all vitest job. Still missing: TC4.148 and >= 50 fps never measured; FR4.068 untested; no real WebGL renderer (SVG canvas).'
+  note: 'Fixed 2026-10-30: the viewer now computes offsets with lib/exploded.ts and PR4.09 is a fast-check property (1,000 runs) on
+    that function, run by the verify-all vitest job. Still missing: TC4.148 and >= 50 fps never measured; FR4.068 untested; no real
+    WebGL renderer (SVG canvas).'
 - id: T4.058
   title: Build phone exploded view
   workstream: WS4.7
@@ -938,9 +992,9 @@
   frs:
   - FR4.055
   verified_at: null
-  note: 'Exploded view-model offsets tested on JVM (TC4.025–TC4.027). Missing: TC4.147 (>= 30 fps for 150k triangles) — no
-    SceneView/Compose UI; PR4.09 not tested on production code. Android module has never been built by Gradle (no Android
-    SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'Exploded view-model offsets tested on JVM (TC4.025–TC4.027). Missing: TC4.147 (>= 30 fps for 150k triangles) — no SceneView/Compose
+    UI; PR4.09 not tested on production code. Android module has never been built by Gradle (no Android SDK build has run) and is not
+    exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.059
   title: Implement model versioning and pinning
   workstream: WS4.7
@@ -954,7 +1008,9 @@
   frs:
   - FR4.054
   verified_at: null
-  note: 'TC4.146 immutability and pin pass. Fixed 2026-10-30: publish now requires field.model.publish AND an X-Stepup-Token that verifies against the core JWKS for the same user and tenant, issued within 5 minutes (models/api.py); any-header bypass closed, tests test_models_ws4_7 step-up cases. Still partial: real core step-up flow UNVERIFIED against P13.'
+  note: 'TC4.146 immutability and pin pass. Fixed 2026-10-30: publish now requires field.model.publish AND an X-Stepup-Token that verifies
+    against the core JWKS for the same user and tenant, issued within 5 minutes (models/api.py); any-header bypass closed, tests test_models_ws4_7
+    step-up cases. Still partial: real core step-up flow UNVERIFIED against P13.'
 - id: T4.060
   title: Build audit report export
   workstream: WS4.8
@@ -969,7 +1025,9 @@
   frs:
   - FR4.061
   verified_at: null
-  note: 'CSV export and evidence-link auth tested (TC4.153). Fixed 2026-10-30: PDF is now a real PDF writer (jobs/pdf.py, validated by qpdf in test_pdf_writer.py); GET /v1/evidence/{id} reads the stored crop under RLS (404 unknown/foreign, 410 expired by retention). Still partial: PR4.20 runs 30 examples (spec 200); P13e retention UNVERIFIED.'
+  note: 'CSV export and evidence-link auth tested (TC4.153). Fixed 2026-10-30: PDF is now a real PDF writer (jobs/pdf.py, validated
+    by qpdf in test_pdf_writer.py); GET /v1/evidence/{id} reads the stored crop under RLS (404 unknown/foreign, 410 expired by retention).
+    Still partial: PR4.20 runs 30 examples (spec 200); P13e retention UNVERIFIED.'
 - id: T4.061
   title: Build site pack API
   workstream: WS4.8
@@ -1002,9 +1060,8 @@
   - FR4.058
   - FR4.059
   verified_at: null
-  note: 'SitePackManager chunk verify/expiry tested on JVM. Missing: TC4.151 offline run on a phone. Android module has never
-    been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4
-    on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'SitePackManager chunk verify/expiry tested on JVM. Missing: TC4.151 offline run on a phone. Android module has never been built
+    by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.063
   title: Order outbox replay per tower
   workstream: WS4.8
@@ -1023,7 +1080,9 @@
   frs:
   - FR4.059
   verified_at: null
-  note: 'TowerOrdering per-tower FIFO tested on JVM (C5 fixed a later seq overtaking). The server-side PR4.12 replay test now drives the real worker queue (2026-10-30). Missing: PR4.12 in Kotest on the phone outbox. Android module not yet built by Gradle nor run on a device; logic proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TowerOrdering per-tower FIFO tested on JVM (C5 fixed a later seq overtaking). The server-side PR4.12 replay test now drives
+    the real worker queue (2026-10-30). Missing: PR4.12 in Kotest on the phone outbox. Android module not yet built by Gradle nor run
+    on a device; logic proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.064
   title: Detect replay conflicts
   workstream: WS4.8
@@ -1031,12 +1090,18 @@
   status: partial
   evidence:
   - services/field-worker/src/field_worker/posting/conflicts.py
+  - services/field-worker/src/field_worker/posting/equipment_queue.py
   tests:
   - services/field-api/tests/test_sync_ws4_8.py::test_tc4_152_replay_conflict_detection_and_hold
+  - tests/e2e/test_m2_jobs_e2e.py::test_swap_dismantle_conflict_holds_the_tower_queue
   frs:
   - FR4.060
   verified_at: 573e018
-  note: 'Verifier 2026-10-30 (WRONG for done): check_and_handle_replay_conflict has no production caller; the worker never reads ERP state; the test passes a hand-built dict; MSG4.23 not checked.'
+  note: 'Verifier 2026-10-30 (WRONG for done): check_and_handle_replay_conflict has no production caller; the worker never reads ERP
+    state; the test passes a hand-built dict; MSG4.23 not checked. | M2 (31 Oct 2026, branch m2/backend): wired: before posting, the
+    worker reads the unit''s ERP state through the SAP equipment adapter; a dismantle whose unit is no longer at the expected FL (or
+    an install of a unit installed elsewhere) holds the tower queue and opens an S2 replay_conflict case (tested against erp-sim). Still
+    missing: MSG4.23 payload check; offline-replay preconditions from the phone outbox.'
 - id: T4.065
   title: Build console site and tower explorer
   workstream: WS4.9
@@ -1049,8 +1114,8 @@
   frs:
   - FR4.062
   verified_at: null
-  note: Backend contract for the explorer passes (TC4.154 API test); console UI untested. Console page renders hard-coded
-    sample data / is not wired to field-api and no Playwright test has ever run.
+  note: Backend contract for the explorer passes (TC4.154 API test); console UI untested. Console page renders hard-coded sample data
+    / is not wired to field-api and no Playwright test has ever run.
 - id: T4.066
   title: Build console audit progress board
   workstream: WS4.9
@@ -1062,8 +1127,8 @@
   frs:
   - FR4.063
   verified_at: null
-  note: 'Missing: TC4.155 / FR4.063 never tested. Console page renders hard-coded sample data / is not wired to field-api
-    and no Playwright test has ever run.'
+  note: 'Missing: TC4.155 / FR4.063 never tested. Console page renders hard-coded sample data / is not wired to field-api and no Playwright
+    test has ever run.'
 - id: T4.067
   title: Build console mismatch queue
   workstream: WS4.3
@@ -1077,8 +1142,8 @@
   - FR4.027
   - FR4.064
   verified_at: null
-  note: 'Page uses SAMPLE_FINDINGS. Missing: TC4.156 / FR4.064 never tested. Console page renders hard-coded sample data /
-    is not wired to field-api and no Playwright test has ever run.'
+  note: 'Page uses SAMPLE_FINDINGS. Missing: TC4.156 / FR4.064 never tested. Console page renders hard-coded sample data / is not wired
+    to field-api and no Playwright test has ever run.'
 - id: T4.068
   title: Write Python property tests
   workstream: WS4.9
@@ -1091,8 +1156,8 @@
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_01_db_trigger_immutability
   frs: []
   verified_at: null
-  note: PR4.03 and PR4.11 pass at stated runs; PR4.01 is not generator-based; deliverable dir services/field-api/tests/properties/
-    does not exist (tests live in test_*_ws4_*.py).
+  note: PR4.03 and PR4.11 pass at stated runs; PR4.01 is not generator-based; deliverable dir services/field-api/tests/properties/ does
+    not exist (tests live in test_*_ws4_*.py).
 - id: T4.069
   title: Write Kotlin property tests
   workstream: WS4.9
@@ -1104,8 +1169,8 @@
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_per_tower_order_on_replay_property
   frs: []
   verified_at: null
-  note: No Kotest tests exist. PR4.04/PR4.05/PR4.19 behaviour is covered only by seeded-random JUnit 4 loops (core-safety
-    tests), which do not satisfy the Kotest generator rule.
+  note: No Kotest tests exist. PR4.04/PR4.05/PR4.19 behaviour is covered only by seeded-random JUnit 4 loops (core-safety tests), which
+    do not satisfy the Kotest generator rule.
 - id: T4.070
   title: Write console property and UI tests
   workstream: WS4.9
@@ -1118,7 +1183,8 @@
   frs:
   - FR4.068
   verified_at: null
-  note: 'Fixed 2026-10-30: viewer-properties.test.ts now tests console code (lib/exploded.ts with fast-check; real ui-tokens contrast pairs) and runs in verify-all (vitest job). Still missing: TC4.164 axe run on rendered pages; FR4.068 untested.'
+  note: 'Fixed 2026-10-30: viewer-properties.test.ts now tests console code (lib/exploded.ts with fast-check; real ui-tokens contrast
+    pairs) and runs in verify-all (vitest job). Still missing: TC4.164 axe run on rendered pages; FR4.068 untested.'
 - id: T4.071
   title: Run contract and compat tests
   workstream: WS4.9
@@ -1164,8 +1230,8 @@
   - FR4.020
   - FR4.061
   verified_at: null
-  note: 'TC4.153 and TC4.159 pass. Missing: TC4.166 and a clean Semgrep/Trivy run on record; see evidence-endpoint and step-up
-    defects in T4.060/T4.059.'
+  note: 'TC4.153 and TC4.159 pass. Missing: TC4.166 and a clean Semgrep/Trivy run on record; see evidence-endpoint and step-up defects
+    in T4.060/T4.059.'
 - id: T4.074
   title: Wire feature flags and rollout
   workstream: WS4.9

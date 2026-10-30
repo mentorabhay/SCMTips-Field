@@ -48,7 +48,10 @@ def list_mismatches(
                     c.confidence,
                     e.material,
                     e.equipment_class,
-                    s.code AS site_code
+                    s.code AS site_code,
+                    (SELECT tc.confirmed_by FROM field.task_line_confirmation tc
+                      WHERE tc.task_line_id = af.task_line_id AND tc.accepted
+                      ORDER BY tc.created_at DESC LIMIT 1) AS captured_by
                 FROM field.audit_finding af
                 JOIN field.site s ON af.site_id = s.id
                 LEFT JOIN field.capture c ON af.capture_id = c.id
@@ -114,6 +117,7 @@ def list_mismatches(
                 mat = r[12]
                 eq_class = r[13]
                 s_code = r[14]
+                captured_by = r[15]  # who scanned the line (M2 confirmations); None for capture-only findings
 
                 age_hours = max(0, int((now - created_at).total_seconds() / 3600))
                 crop_url = (
@@ -138,6 +142,7 @@ def list_mismatches(
                         "equipment_class": eq_class,
                         "age_h": age_hours,
                         "created_at": created_at.isoformat(),
+                        "captured_by": captured_by,
                     }
                 )
 

@@ -26,6 +26,15 @@ from field_api.db import principal_tx
 from field_api.deps import require_permission
 from field_api.errors import FieldError
 from field_api.http.pagination import decode_cursor, encode_cursor
+from field_api.jobs.counting import record_blind_count
+from field_api.jobs.status import (
+    TASK_TYPES,
+    compose_subtitle,
+    line_state_out,
+    split_list,
+    task_state_out,
+    to_db_task_states,
+)
 from field_api.posting.staging import JobSpec, StagedDocument, stage_document
 from field_api.warehouse.receiving.post import (
     GR_DOC_TYPE,
@@ -42,8 +51,7 @@ router = APIRouter(tags=["Warehouse tasks (API3.xx)"])
 
 VOICE_CONF_FLOOR = float(os.getenv("FIELD_VOICE_CONF_FLOOR", "0.80"))
 UNDO_WINDOW_MIN = int(os.getenv("FIELD_UNDO_WINDOW_MIN", "30"))
-TASK_TYPES = frozenset({"receive", "putaway", "pick", "count"})
-COUNTABLE_LINE_STATES = frozenset({"pending", "in_progress", "counted"})
+COUNTABLE_LINE_STATES = frozenset({"pending", "in_progress", "counted", "confirmed", "flagged"})
 
 
 def _err(status: int, code: str, title: str, detail: str | None = None) -> FieldError:
@@ -59,28 +67,42 @@ def _scope_check(principal: Principal, site_id: str | None) -> None:
 @router.get("/v1/tasks")
 def list_tasks(
     site_id: str | None = None,
-    type: str | None = Query(None),  # noqa: A002 - spec query parameter name
-    status: str | None = None,
+    type: str | None = Query(None, description="one type or a comma list, e.g. receive,putaway"),  # noqa: A002 - spec query parameter name
+    status: str | None = Query(None, description="one state or a comma list, e.g. open,in_progress"),
     cursor: str | None = None,
     limit: int = Query(50, ge=1, le=200),
     principal: Principal = Depends(require_permission("field.task.read")),
 ) -> dict[str, Any]:
+    """Task list at M2 jobs contract §2. Operators see their sites (RLS); a '*' token sees all."""
     _scope_check(principal, site_id)
-    if type is not None and type not in TASK_TYPES:
-        raise _err(422, "FIELD-HTTP-422-VALIDATION", "Unknown task type", f"type must be one of {sorted(TASK_TYPES)}")
+    types = split_list(type)
+    unknown = sorted(set(types) - TASK_TYPES)
+    if unknown:
+        raise _err(422, "FIELD-HTTP-422-VALIDATION", "Unknown task type", f"type must be among {sorted(TASK_TYPES)}")
+    states = to_db_task_states(split_list(status))
+    if states is None:
+        raise _err(422, "FIELD-HTTP-422-VALIDATION", "Unknown task status",
+                   "status must be among open, in_progress, awaiting_posting, awaiting_approval, done, failed")
     after = decode_cursor(cursor) if cursor else None
-    clauses, params = ["TRUE"], []
-    for col, val in (("t.site_id::text", site_id), ("t.type", type), ("t.status", status)):
-        if val is not None:
-            clauses.append(f"{col} = %s")
-            params.append(val)
+    clauses: list[str] = ["TRUE"]
+    params: list[Any] = []
+    if site_id is not None:
+        clauses.append("t.site_id::text = %s")
+        params.append(site_id)
+    if types:
+        clauses.append("t.type = ANY(%s)")
+        params.append(types)
+    if states:
+        clauses.append("t.status = ANY(%s)")
+        params.append(states)
     if after:
         clauses.append("t.id > %s::uuid")
         params.append(after)
     with principal_tx(principal) as cur:
         cur.execute(
             f"""
-            SELECT t.id, t.site_id, t.type, t.status, t.title, t.ref_doc_no, t.version
+            SELECT t.id, t.site_id, t.type, t.status, t.title, t.ref_doc_no, t.version, t.subtitle, t.reason,
+                   t.due_at, t.updated_at, t.completed_at
               FROM field.task t
              WHERE {' AND '.join(clauses)}
              ORDER BY t.id
@@ -93,46 +115,65 @@ def list_tasks(
         rows = rows[:limit]
         ids = [r[0] for r in rows]
         lines: dict[str, list[dict[str, Any]]] = {}
+        pieces: dict[str, Decimal] = {}
         if ids:
             cur.execute(
                 """
                 SELECT l.task_id, l.id, l.line_no, l.storage_bin, m.erp_material_no, l.uom,
-                       l.expected_qty, l.counted_qty, l.status, l.version, t.type
+                       l.expected_qty, l.counted_qty, l.status, l.version, t.type, l.picked_qty,
+                       COALESCE(m.description, e.equipment_class), l.position, l.expected_serial,
+                       COALESCE(m.erp_material_no, e.material)
                   FROM field.task_line l
                   JOIN field.task t ON t.id = l.task_id
                   LEFT JOIN field.material m ON m.id = l.material_id
+                  LEFT JOIN LATERAL (
+                       SELECT eq.equipment_class, eq.material FROM field.equipment eq
+                        WHERE l.expected_serial IS NOT NULL AND eq.serial_no = l.expected_serial
+                        ORDER BY eq.updated_at DESC LIMIT 1) e ON TRUE
                  WHERE l.task_id = ANY(%s)
-                 ORDER BY l.task_id, l.line_no
-                """,
+                 ORDER BY l.task_id, CASE WHEN t.type = 'pick' THEN l.storage_bin END NULLS LAST, l.line_no
+                """,  # pick stops in walking order (bin code order, field_common.bin_stock.walking_order)
                 (ids,),
             )
             for r in cur.fetchall():
+                ttype = r[10]
                 item: dict[str, Any] = {
                     "id": str(r[1]),
                     "line_no": r[2],
-                    "bin": r[3],
-                    "material": r[4],
+                    "material": r[15],
+                    "description": r[12],
                     "uom": r[5],
-                    "status": r[8],
+                    "bin": r[3],
+                    "position": r[13],
+                    "expected_serial": r[14],
+                    "status": line_state_out(r[8]),
                     "version": r[9],
                 }
-                if r[10] != "count":  # blind count: never expected/book quantities (FR3.029)
+                if ttype != "count":  # blind count: never expected/book quantities (FR3.029)
                     item["expected_qty"] = float(r[6])
-                    item["counted_qty"] = float(r[7])
+                    item["counted_qty"] = float(r[11] if ttype == "pick" else r[7])
+                    pieces[str(r[0])] = pieces.get(str(r[0]), Decimal(0)) + Decimal(r[6])
                 lines.setdefault(str(r[0]), []).append(item)
-    items = [
-        {
-            "id": str(r[0]),
-            "site_id": str(r[1]),
+    items = []
+    for r in rows:
+        tid = str(r[0])
+        tlines = lines.get(tid, [])
+        items.append({
+            "id": tid,
             "type": r[2],
-            "status": r[3],
+            "status": task_state_out(r[3]),
             "title": r[4],
-            "erp_ref": r[5],
+            "subtitle": compose_subtitle(r[2], r[7], len(tlines), pieces.get(tid, Decimal(0))),
+            "ref_doc_no": r[5],
+            "erp_ref": r[5],  # pre-M2 name, kept for older phone builds
+            "reason": r[8],
+            "due": r[9].isoformat() if r[9] else None,
+            "site_id": str(r[1]),
             "version": r[6],
-            "lines": lines.get(str(r[0]), []),
-        }
-        for r in rows
-    ]
+            "updated_at": r[10].isoformat() if r[10] else None,
+            "completed_at": r[11].isoformat() if r[11] else None,
+            "lines": tlines,
+        })
     return {"items": items, "next_cursor": encode_cursor(str(rows[-1][0])) if more and rows else None}
 
 
@@ -176,12 +217,17 @@ def record_count(
         )
     with principal_tx(principal) as cur:
         _, status, uom, ttype, _site, _v = _load_line(cur, task_id, line_id)
-        if ttype not in ("receive", "pick"):
-            raise _err(409, "FIELD-TASK-409-STATE", "Counts on this task type use the PI endpoint")
+        if ttype not in ("receive", "pick", "count"):
+            raise _err(409, "FIELD-TASK-409-STATE", f"{ttype.capitalize()} jobs are not counted",
+                       "Use the confirmations endpoint for put-away, audit and swap lines")
         if status not in COUNTABLE_LINE_STATES:
             raise _err(409, "FIELD-TASK-409-STATE", "Line already posted or in posting", f"line status is {status}")
         if body.uom != uom:
             raise _err(422, "FIELD-TASK-422-UOM", "Unit of measure mismatch", f"line uom is {uom}")
+        if ttype == "count":
+            version = record_blind_count(cur, principal, task_id, line_id, body.qty, body.uom, body.source,
+                                         body.voice_event_id)
+            return {"line_id": line_id, "counted_qty": float(body.qty), "source": body.source, "version": version}
         qty_col = "picked_qty" if ttype == "pick" else "counted_qty"
         cur.execute(
             f"""
@@ -205,16 +251,30 @@ def record_count(
             "UPDATE field.task SET status = 'in_progress', updated_at = NOW() WHERE id = %s::uuid AND status = 'pending'",
             (task_id,),
         )
-    return {"line_id": line_id, "counted_qty": float(body.qty), "source": body.source, "version": version}
+    out: dict[str, Any] = {"line_id": line_id, "counted_qty": float(body.qty), "source": body.source,
+                           "version": version}
+    if ttype == "pick":
+        out["picked_qty"] = float(body.qty)
+    return out
 
 
 # --------------------------------------------------------------------------- API3.05
 class FlagIn(BaseModel):
-    flag: Literal["damaged", "short", "under"]
+    """``missing`` (any job; audit reasons not_found / removed_by_other / inaccessible), ``short``
+    (pick: bin_empty / damaged / not_found, FR3.020; receive: an under-delivery reason), ``damaged``
+    (receive: photo evidence and quantity, FR3.009), ``under`` (receive). ``reason`` is the contract
+    name of ``reason_code``."""
+
+    flag: Literal["damaged", "short", "under", "missing"]
     qty: Decimal | None = Field(default=None, ge=0)
     reason_code: str | None = None
+    reason: str | None = None
     capture_id: str | None = None
     evidence_id: str | None = None
+
+
+MISSING_REASONS = frozenset({"not_found", "removed_by_other", "inaccessible"})
+SHORT_PICK_REASONS = frozenset({"bin_empty", "damaged", "not_found"})
 
 
 @router.post("/v1/tasks/{task_id}/lines/{line_id}/flags")
@@ -224,11 +284,23 @@ def flag_line(
     body: FlagIn,
     principal: Principal = Depends(require_permission("field.capture.create")),
 ) -> dict[str, Any]:
+    reason = body.reason_code or body.reason
     with principal_tx(principal) as cur:
-        _, status, _uom, _ttype, _site, _v = _load_line(cur, task_id, line_id)
+        _, status, _uom, ttype, _site, _v = _load_line(cur, task_id, line_id)
         if status not in COUNTABLE_LINE_STATES:
             raise _err(409, "FIELD-TASK-409-STATE", "Line already posted or in posting")
-        if body.flag == "damaged":
+        if body.flag == "missing":
+            reason = reason or "not_found"
+            if reason not in MISSING_REASONS:
+                raise _err(422, "FIELD-RCV-422-REASON", "Reason code missing or unknown", f"one of {sorted(MISSING_REASONS)}")
+            cur.execute(
+                """
+                UPDATE field.task_line SET reason_code = %s, status = 'flagged', version = version + 1, updated_at = NOW()
+                 WHERE id = %s::uuid RETURNING damaged_qty, status
+                """,
+                (reason, line_id),
+            )
+        elif body.flag == "damaged":
             if not (body.capture_id and body.evidence_id) or body.qty is None:
                 raise _err(422, "FIELD-RCV-422-EVIDENCE", "Photo evidence and damaged quantity required")
             cur.execute("SELECT 1 FROM field.capture WHERE id = %s::uuid", (body.capture_id,))
@@ -244,18 +316,27 @@ def flag_line(
                 (body.qty, body.evidence_id, line_id),
             )
         else:
-            if body.reason_code not in VALID_UNDER_DELIVERY_REASONS:
-                raise _err(422, "FIELD-RCV-422-REASON", "Reason code missing or unknown",
-                           f"one of {sorted(VALID_UNDER_DELIVERY_REASONS)}")
+            if ttype == "pick":
+                # FR3.020 codes bin_empty / damaged / not_found, or the phone's own words ("picked 3 of 5")
+                if not reason or len(reason) > 120:
+                    raise _err(422, "FIELD-RCV-422-REASON", "Say why the pick is short",
+                               f"one of {sorted(SHORT_PICK_REASONS)} or a short text")
+                allowed = frozenset({reason})
+            else:
+                allowed = VALID_UNDER_DELIVERY_REASONS
+            if reason not in allowed:
+                raise _err(422, "FIELD-RCV-422-REASON", "Reason code missing or unknown", f"one of {sorted(allowed)}")
             cur.execute(
                 """
                 UPDATE field.task_line SET reason_code = %s, version = version + 1, updated_at = NOW()
                  WHERE id = %s::uuid RETURNING damaged_qty, status
                 """,
-                (body.reason_code, line_id),
+                (reason, line_id),
             )
         row = cur.fetchone()
-    return {"line_id": line_id, "damaged_qty": float(row[0]) if row else 0.0, "status": row[1] if row else status}
+    return {"line_id": line_id, "flag": body.flag, "reason": reason,
+            "damaged_qty": float(row[0]) if row else 0.0,
+            "status": line_state_out(row[1]) if row else line_state_out(status)}
 
 
 # --------------------------------------------------------------------------- API3.06

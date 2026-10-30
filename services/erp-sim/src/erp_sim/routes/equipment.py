@@ -71,7 +71,16 @@ async def list_equipment(
     # Filter
     if filter_expr:
         filter_expr = filter_expr.strip()
-        if "FunctionalLocation eq" in filter_expr:
+        import re as _re
+        m_eq = _re.search(r"Equipment eq '([^']+)'", filter_expr)
+        m_sn = _re.search(r"SerialNumber eq '([^']+)'", filter_expr)
+        if m_eq:
+            results = [e for e in results if e.get("Equipment") == m_eq.group(1)]
+        if m_sn:
+            results = [e for e in results if e.get("SerialNumber") == m_sn.group(1)]
+        if m_eq or m_sn:
+            pass
+        elif "FunctionalLocation eq" in filter_expr:
             import re
             m = re.search(r"FunctionalLocation eq '([^']+)'", filter_expr)
             if m:

@@ -111,16 +111,18 @@ async def poll_and_import_inbound_deliveries(
             if not existing_task:
                 # 1. Create new receive task
                 task_id = uuid7_str()
-                title = f"Receive {deliv_doc}"
+                title = f"Delivery {deliv_doc}"  # M2 jobs contract §2
+                supplier = d.get("Supplier") or (d.get("HeaderData") or {}).get("Vendor")
                 cur.execute(
                     """
                     INSERT INTO field.task (
                         id, tenant_id, site_id, type, status, priority, title,
-                        ref_doc_no, last_change_at, created_at, updated_at
+                        ref_doc_no, last_change_at, subtitle, created_at, updated_at
                     )
-                    VALUES (%s, %s, %s, 'receive', 'pending', 'normal', %s, %s, %s, NOW(), NOW());
+                    VALUES (%s, %s, %s, 'receive', 'pending', 'normal', %s, %s, %s, %s, NOW(), NOW());
                     """,
-                    (task_id, tenant_id, site_id, title, deliv_doc, last_change_dt),
+                    (task_id, tenant_id, site_id, title, deliv_doc, last_change_dt,
+                     f"From {supplier}" if supplier else None),
                 )
                 tasks_created += 1
 

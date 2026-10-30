@@ -445,6 +445,84 @@
         }
       }
     },
+    "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/A_OutbDeliveryHeader": {
+      "get": {
+        "tags": [
+          "Outbound Delivery"
+        ],
+        "summary": "List Outbound Deliveries",
+        "description": "Collection read (A_OutbDeliveryHeader) with the filters the field worker uses (FR3.017):\n``ShippingPoint eq '<plant>'`` (the SAMPLE plant ships from itself) and\n``OverallPickingStatus ne 'C'`` / ``OverallGoodsMovementStatus ne 'C'``.",
+        "operationId": "list_outbound_deliveries_sap_opu_odata_sap_API_OUTBOUND_DELIVERY_SRV_A_OutbDeliveryHeader_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Filter"
+            }
+          },
+          {
+            "name": "$expand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Expand"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Outbound Deliveries Sap Opu Odata Sap Api Outbound Delivery Srv A Outbdeliveryheader Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/A_OutbDeliveryHeader('{delivery_document}')": {
       "get": {
         "tags": [
@@ -3437,7 +3515,7 @@
           "FunctionalLocation"
         ],
         "summary": "Get Functional Locations",
-        "description": "OData v2 endpoint to list functional locations with prefix and change date filtering.",
+        "description": "OData v2 endpoint to list functional locations with prefix and change date filtering.\n\nServes the JSON fixtures plus every location in erpsim.functional_location (the database wins\nfor the same FunctionalLocation), so towers created for a test read back as a tree.",
         "operationId": "get_functional_locations_sap_opu_odata_sap_API_FUNCTIONALLOCATION_A_FunctionalLocation_get",
         "parameters": [
           {
@@ -3533,7 +3611,7 @@
           "FunctionalLocation"
         ],
         "summary": "Get Functional Locations",
-        "description": "OData v2 endpoint to list functional locations with prefix and change date filtering.",
+        "description": "OData v2 endpoint to list functional locations with prefix and change date filtering.\n\nServes the JSON fixtures plus every location in erpsim.functional_location (the database wins\nfor the same FunctionalLocation), so towers created for a test read back as a tree.",
         "operationId": "get_functional_locations_sap_opu_odata_sap_API_FUNCTIONALLOCATION_FunctionalLocation_get",
         "parameters": [
           {

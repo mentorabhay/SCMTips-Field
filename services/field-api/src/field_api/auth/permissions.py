@@ -68,6 +68,7 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.exception.read",
             "field.exception.decide",
             "field.visit.override",
+            "field.visit.ack",  # acknowledge a lone-worker escalation (FR4.044, console)
             "field.trail.read",
         ),
         "inventory.controller": (
