@@ -18,7 +18,8 @@
   evidence:
   - pyproject.toml
   - uv.lock
-  tests: []
+  tests:
+  - tools/checks/tests/test_honesty_checks.py
   frs:
   - FR1.001
   verified_at: 50eb301b46
@@ -31,7 +32,8 @@
   evidence:
   - package.json
   - pnpm-lock.yaml
-  tests: []
+  tests:
+  - tools/checks/tests/test_honesty_checks.py
   frs:
   - FR1.001
   verified_at: 50eb301b46
@@ -43,7 +45,8 @@
   status: done
   evidence:
   - docker-compose.dev.yml
-  tests: []
+  tests:
+  - tools/checks/tests/test_honesty_checks.py
   frs:
   - FR1.007
   verified_at: 50eb301b46
@@ -55,7 +58,8 @@
   status: done
   evidence:
   - scripts/verify-all.sh
-  tests: []
+  tests:
+  - tools/checks/tests/test_honesty_checks.py
   frs:
   - FR1.001
   - FR1.002
@@ -103,7 +107,8 @@
   evidence:
   - tools/checks/firewall.py
   - tools/checks/names.py
-  tests: []
+  tests:
+  - tools/checks/tests/test_honesty_checks.py
   frs:
   - FR1.004
   - FR1.005
@@ -118,7 +123,8 @@
   - .github/CODEOWNERS
   - docs/CONTRIBUTING.md
   - docs/adr/
-  tests: []
+  tests:
+  - tools/checks/tests/test_honesty_checks.py
   frs:
   - FR1.006
   verified_at: 50eb301b46

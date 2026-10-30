@@ -1,0 +1,17 @@
+{
+  "scene_id": "SCENE-01-WAREHOUSE-CARTON",
+  "name": "Carton on Pallet with GS1-128 barcode",
+  "preview_frames_count": 15,
+  "frame_rate_fps": 15,
+  "resolution": "504x896",
+  "objects": [
+    {
+      "id": "obj-01",
+      "type": "barcode_gs1_128",
+      "code": "01084123456789051726123110BATCH99",
+      "bounding_box": { "x": 252, "y": 448, "w": 120, "h": 60 },
+      "readability": 0.94,
+      "task_match": 1.0
+    }
+  ]
+}

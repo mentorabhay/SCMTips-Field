@@ -16,6 +16,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import yaml  # type: ignore[import-untyped]
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 STATUS_DIR = ROOT / "docs" / "STATUS"
 REPORTS_DIR = ROOT / "reports" / "verify-all"
@@ -89,9 +91,21 @@ def main() -> int:
         # Collect passing test IDs if recorded
         pass
 
+    passed_tests: set[str] = set()
     violations: list[str] = []
     print(f"Validating trace across {len(status_files)} status file(s)...")
-    # Validation loop will be executed when status files are generated in R1
+
+    for sf in sorted(status_files):
+        try:
+            if sf.suffix in (".yaml", ".yml"):
+                content = yaml.safe_load(sf.read_text(encoding="utf-8"))
+            else:
+                content = json.loads(sf.read_text(encoding="utf-8"))
+            if isinstance(content, list):
+                for entry in content:
+                    violations.extend(validate_task_entry(entry, passed_tests))
+        except Exception as e:
+            violations.append(f"Failed to parse {sf.name}: {e}")
 
     if violations:
         print(f"[FAIL] Found {len(violations)} trace violation(s):")
