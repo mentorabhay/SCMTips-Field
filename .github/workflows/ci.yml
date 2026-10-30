@@ -61,6 +61,7 @@ jobs:
           uv run python tools/checks/no_inmemory_stores.py
           uv run python tools/checks/test_exercises_prod.py
           uv run python tools/checks/names.py
+          uv run python tools/checks/route_auth.py
           uv run python tools/checks/test_collection.py
       - name: Conventions (branch + last 10 commits)
         if: success() || failure()

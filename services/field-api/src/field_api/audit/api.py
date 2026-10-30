@@ -28,6 +28,7 @@ from field_api.audit.progress import get_audit_progress
 from field_api.audit.reconcile import run_audit_reconciliation
 from field_api.audit.signoff import AuditSignoffConflict, sign_off_audit_task
 from field_api.auth.jwt import Principal
+from field_api.auth.permissions import has_permission
 from field_api.deps import require_principal
 from pydantic import BaseModel
 
@@ -106,7 +107,16 @@ def api_signoff_audit(
     body: SignoffRequest,
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
-    """Sign-off an audit task enforcing completeness or supervisor waiver (FR4.028 / TC4.122)."""
+    """Sign-off an audit task enforcing completeness or supervisor waiver (FR4.028 / TC4.122).
+
+    A waiver is a supervisor decision: it needs field.override.grant. (Previously any
+    authenticated user could send supervisor_waiver=true.)
+    """
+    if body.supervisor_waiver and not has_permission(principal.permissions, "field.override.grant"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error_code": "FIELD-AUTH-403-FORBIDDEN", "message": "A sign-off waiver needs a supervisor"},
+        )
     try:
         return sign_off_audit_task(
             tenant_id=principal.tenant_id,

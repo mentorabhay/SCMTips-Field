@@ -114,7 +114,13 @@ def sign_off_audit_task(
                     msg = MSG4_21_TEMPLATE.format(n=unresolved_count)
                     raise AuditSignoffConflict(unresolved_count=unresolved_count, message=msg)
 
-                # Supervisor waiver applies: mark unresolved lines as waived
+                # Supervisor waiver applies: the unresolved lines are marked waived, so the record
+                # shows exactly which lines were signed off unseen. (Previously this only logged.)
+                cur.execute(
+                    "UPDATE field.task_line SET status = 'waived', updated_at = NOW() "
+                    "WHERE tenant_id = %s AND id = ANY(%s::uuid[])",
+                    (tenant_id, [str(x) for x in unresolved_lines]),
+                )
                 logger.info(
                     "supervisor_waiver_applied",
                     task_id=task_id,
@@ -144,6 +150,7 @@ def sign_off_audit_task(
                 if (supervisor_waiver and unresolved_count > 0)
                 else None,
                 "unresolved_waived_count": unresolved_count,
+                "waived_line_ids": [str(x) for x in unresolved_lines] if supervisor_waiver else [],
                 "signed_off_at": now.isoformat(),
             }
             cur.execute(

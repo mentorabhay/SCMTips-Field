@@ -5,6 +5,7 @@ Verifies that scripts, checks, and build wrappers do not contain fake pass patte
 - print('... clean') / print("... clean")
 - echo PASS / echo [PASS]
 - simulated execution
+- hard-coded '**PASS**' / '→ PASS' claims in report generators
 - hard-coded exit 0 in wrapper scripts
 """
 
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 
 SCAN_TARGETS = [
     ROOT / "scripts",
-    ROOT / "tools" / "checks",
+    ROOT / "tools",  # all of tools/: report builders there once hard-coded PASS tables
     ROOT / "apps" / "field-android" / "gradlew",
     ROOT / "apps" / "field-android" / "gradlew.bat",
 ]
@@ -25,6 +26,9 @@ FORBIDDEN_PATTERNS = [
     (re.compile(r"print\s*\(\s*['\"][^'\"]*clean['\"]\s*\)", re.IGNORECASE), "Fake clean print pattern"),
     (re.compile(r"echo\s+.*PASS", re.IGNORECASE), "Fake echo PASS pattern"),
     (re.compile(r"['\"]simulated execution['\"]|simulated execution", re.IGNORECASE), "Simulated execution stub pattern"),
+    # A report generator must read results, not spell them: a literal '**PASS**' table cell or '→ PASS'
+    # in a string is a hand-written completion claim (rule 2.3; verifier finding 2026-10-30).
+    (re.compile(r"\*\*PASS\*\*|→\s*PASS"), "Hard-coded PASS claim in a report generator"),
 ]
 
 WRAPPER_EXIT_ZERO = re.compile(r"^\s*exit\s+0\s*$", re.MULTILINE)

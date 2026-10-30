@@ -757,7 +757,7 @@
   title: Write migrations field_0020 to field_0028
   workstream: WS2.6
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/alembic/versions/field_0020_devices_and_pairing.py
   - services/field-api/alembic/versions/field_0021_consent_record.py
@@ -775,9 +775,7 @@
   frs:
   - FR2.053
   verified_at: 573e018
-  note: 'Met: "Upgrade and downgrade pass on PostgreSQL 16; RLS forced on every new table" — scripts/jobs/alembic.py
-    round-trip passes on PG16 (re-run 2026-10-30) and tests/security/test_rls_catalog asserts relforcerowsecurity
-    on every field.* table; tenant isolation (TC2.160, FR2.053) passes.'
+  note: 'Verifier 2026-10-30 (WRONG for done): live columns differ from the spec on every table (e.g. device lacks core_device_ref/binding_fingerprint/user_id/parent_device_id; idempotency_record lacks principal_id/method/path/state/locked_until; voice_event/count_record lack idempotency_key, staged_hash, kind, value). trace.py D6 spec-column check is not implemented.'
 - id: T2.047
   title: Implement the device APIs
   workstream: WS2.6

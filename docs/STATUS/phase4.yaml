@@ -20,23 +20,23 @@
   title: Build site tree service and API
   workstream: WS4.1
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/sites/tree.py
   tests:
+  - services/field-api/tests/test_tower_ws4_1.py::test_t4_002_site_tree_needs_a_token_and_ignores_tenant_header
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_106_site_tree_api
   frs:
   - FR4.001
   - FR4.002
   - FR4.003
   verified_at: 573e018
-  note: 'Met: ''Contract test TC4.106 passes; level order follows height_m'' — test_tc4_106 asserts levels ordered 10/20/30
-    m, ETag and 304; API4.02 in OpenAPI.'
+  note: 'Verifier 2026-10-30 found GET /v1/sites/{id}/tree ran without a token and took the tenant from a client header (hard-coded fallback). Fixed same day: require_permission(field.site.read) + site scope + tenant from the token, transaction-local RLS; test_t4_002_site_tree_needs_a_token_and_ignores_tenant_header. Still missing: installed equipment per position is always empty (tree.py).'
 - id: T4.003
   title: Implement functional location mask validator
   workstream: WS4.1
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/sites/fl_mask.py
   tests:
@@ -44,8 +44,7 @@
   frs:
   - FR4.008
   verified_at: 573e018
-  note: 'Met: ''TC4.105 passes for 20 SAMPLE valid and invalid codes'' — 10 valid + 10 invalid codes with kind/parent/depth
-    checked.'
+  note: 'Verifier 2026-10-30 (WRONG for done): the mask parameter and FIELD_FL_MASK are never used; segments are hard-coded regexes (sites/fl_mask.py). Spec wants a configurable tenant-level mask.'
 - id: T4.004
   title: Build SAP functional location reader
   workstream: WS4.1
@@ -63,7 +62,7 @@
   title: Build SAP installed equipment reader
   workstream: WS4.1
   role: ERP
-  status: done
+  status: partial
   evidence:
   - connectors/sap/src/field_sap/equipment_read.py
   tests:
@@ -71,8 +70,7 @@
   frs:
   - FR4.005
   verified_at: 573e018
-  note: 'Met: ''TC4.102 passes; serial duplicates are reported'' — reader maps the 6 fields and reports RRU-SN-0001 on 10001001/10001003
-    (OData response via httpx.MockTransport, not erp-sim).'
+  note: 'Verifier 2026-10-30 (WRONG for done): EquipmentReader has no production caller, never links equipment to locations (FR4.005); TC4.102 runs against a hand-made MockTransport, not erp-sim.'
 - id: T4.006
   title: Implement import job staging, preview and apply
   workstream: WS4.1
@@ -152,10 +150,12 @@
   title: Add geofence override with audit
   workstream: WS4.1
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/visits/override.py
   tests:
+  - services/field-api/tests/test_tower_ws4_1.py::test_tc4_109_override_route_records_the_supervisor_from_the_token
+  - services/field-api/tests/test_tower_ws4_1.py::test_tc4_109_technician_cannot_override_the_geofence
   - services/field-api/tests/test_audit_ws4_3.py::test_tc4_123_update_erp_decision_with_sod
   - services/field-api/tests/test_safety_ws4_5.py::test_api4_15_climb_session_telemetry_and_seq_gap
   - services/field-api/tests/test_tower_ws4_1.py::test_tc4_109_supervisor_geofence_override
@@ -163,8 +163,7 @@
   - FR4.011
   - FR4.067
   verified_at: 573e018
-  note: 'Met: ''TC4.109 passes'' — geofence fail 422, supervisor override 201 with audit row field.visit.override carrying
-    override_by and reason.'
+  note: 'Verifier 2026-10-30 found the override route had no auth (supervisor_id from the body, tenant from a header) and check-in accepted any override_by. Fixed same day: override needs field.visit.override, override_by is the token''s principal, mock_location recorded, check-in override needs the same permission; tests test_tc4_109_technician_cannot_override_the_geofence and test_tc4_109_override_route_records_the_supervisor_from_the_token. Partial until the next independent verifier pass re-checks it.'
 - id: T4.012
   title: Implement check-out
   workstream: WS4.1
@@ -211,7 +210,7 @@
   title: Build reconciliation engine
   workstream: WS4.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/audit/reconcile.py
   tests:
@@ -219,7 +218,7 @@
   frs:
   - FR4.025
   verified_at: 573e018
-  note: 'Met: ''PR4.11 passes with 500 runs'' — Hypothesis 1000 runs on classify_sets_symmetric.'
+  note: 'Verifier 2026-10-30 (WRONG for done): serial_mismatch is never produced (count stays 0, audit/reconcile.py); PR4.11 tests only the set-difference helper, not run_audit_reconciliation, and not misplaced/class-match cases.'
 - id: T4.016
   title: Open and deduplicate exception cases
   workstream: WS4.3
@@ -250,7 +249,7 @@
   title: Enforce audit sign-off rule
   workstream: WS4.3
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/audit/signoff.py
   tests:
@@ -258,7 +257,7 @@
   frs:
   - FR4.028
   verified_at: 573e018
-  note: 'Met: ''TC4.122 passes'' — sign-off blocked until every line is captured, explained or waived.'
+  note: 'Verifier 2026-10-30 found any authenticated user could send supervisor_waiver=true and the waived lines were only logged. Fixed same day: a waiver needs field.override.grant (technician gets 403) and unresolved lines are set to status ''waived'' and listed in the audit.signed_off event (test_tc4_122_signoff_blocked_until_explained_or_waived). Partial until the next verifier pass.'
 - id: T4.019
   title: Add missing and unknown finding endpoints
   workstream: WS4.3
@@ -880,7 +879,7 @@
   title: Build asset model upload and validation
   workstream: WS4.7
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/models/upload.py
   - tools/sample-models/rru_model.glb
@@ -894,8 +893,7 @@
   - FR4.053
   - FR4.057
   verified_at: 573e018
-  note: 'Met: ''TC4.145 and TC4.149 pass'' plus PR4.08 Hypothesis 500 runs on parse_and_validate_bom_csv; sample models in
-    tools/sample-models.'
+  note: 'Verifier 2026-10-30 (WRONG for done): the BOM rule is skipped when an item has no mapped nodes (models/upload.py effective_count falls back to qty, so qty 4 with 0 nodes passes); sub-parts below level 1 are not excluded; PR4.08''s generator is depth 1 with no shared names and its reference check copies the validator logic.'
 - id: T4.056
   title: Implement balloon registry
   workstream: WS4.7
@@ -1030,7 +1028,7 @@
   title: Detect replay conflicts
   workstream: WS4.8
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-worker/src/field_worker/posting/conflicts.py
   tests:
@@ -1038,7 +1036,7 @@
   frs:
   - FR4.060
   verified_at: 573e018
-  note: 'Met: ''TC4.152 passes'' — conflict opens exception RULE-REPLAY-CONFLICT, holds only that tower queue, release works.'
+  note: 'Verifier 2026-10-30 (WRONG for done): check_and_handle_replay_conflict has no production caller; the worker never reads ERP state; the test passes a hand-built dict; MSG4.23 not checked.'
 - id: T4.065
   title: Build console site and tower explorer
   workstream: WS4.9

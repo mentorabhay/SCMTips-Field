@@ -474,7 +474,7 @@
   title: Plan the core-p14 compat column
   workstream: WS1.4
   role: QA
-  status: done
+  status: partial
   evidence:
   - compat/MATRIX.md
   tests:
@@ -482,8 +482,7 @@
   frs:
   - FR1.026
   verified_at: 573e018
-  note: 'Done when "core-p14 row reads SKIPPED-PENDING, never PASS": every core-p14 cell in compat/MATRIX.md is
-    SKIPPED-PENDING and /v1/system/status reports core-p14 UNVERIFIED unless a compat report says otherwise.'
+  note: 'Verifier 2026-10-30 (WRONG for done): compat/MATRIX.md is hand-written; no tag list, no core-p14.json existence switch, no generated diff; the test only greps ''SKIPPED-PENDING''.'
 - id: T1.035
   title: Build tools/fake-core for development
   workstream: WS1.4
@@ -518,7 +517,7 @@
   title: Implement POST /v1/auth/exchange
   workstream: WS1.4
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/routes/auth.py
   - services/field-api/src/field_api/auth/jwks.py
@@ -530,8 +529,7 @@
   - FR1.018
   - FR1.019
   verified_at: 573e018
-  note: 'Done when "PR1.17 and TC1.122 pass": rewritten in C5 to verify only core JWKS tokens (EdDSA from fake-core),
-    TTL <= min(600, core exp - now); Hypothesis PR1.17 tests carry TC1.122 and pass.'
+  note: 'Verifier 2026-10-30 (WRONG for done): field token is HS256 (spec EdDSA); every rejection returns one generic 401 code instead of per-failure codes (FR1.019/TC1.123); revoked returns 403 FIELD-AUTH-403-DEVICE-REVOKED instead of 401 FIELD-AUTH-401-REVOKED; PR1.17 lacks the key/alg/iss/aud/exp/binding/status mutation generator and runs 25-30 examples, not 500.'
 - id: T1.038
   title: Handle device revocation
   workstream: WS1.4

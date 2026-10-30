@@ -40,6 +40,12 @@ def test_no_fake_gates_detects_violations(tmp_path: Path) -> None:
     assert len(violations) > 0
     assert any("hard-coded exit 0" in v for v in violations)
 
+    # Failing file 4: a report builder that spells its results
+    fake_report = tmp_path / "build_report.py"
+    fake_report.write_text('rows = ["| **semgrep** | SAST | **PASS** |", "- trivy → PASS"]\n', encoding="utf-8")
+    violations = check_fake_gates_file(fake_report)
+    assert any("Hard-coded PASS claim" in v for v in violations)
+
 
 @pytest.mark.unit
 def test_conventions_validates_commits() -> None:
@@ -79,3 +85,28 @@ def test_conventions_validates_branches() -> None:
     assert validate_branch_name("")[0] is False
     assert validate_branch_name("random-branch-no-type")[0] is False
     assert validate_branch_name("feat/")[0] is False
+    # owner amendment A-01: the M1 slice branch
+    assert validate_branch_name("slice/m1-field-test")[0] is True
+    assert validate_branch_name("slice/")[0] is False
+
+
+@pytest.mark.unit
+def test_conventions_checks_every_commit_not_only_the_newest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The old NUL-pair split parsed only the newest commit; an older bad commit must be reported."""
+    import subprocess
+
+    import tools.checks.conventions as conv
+
+    def git(*a: str) -> None:
+        subprocess.run(["git", *a], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "t")
+    for msg in ("bad message without prefix", "feat(x): good one (T1.001)\n\nbody line"):
+        (tmp_path / "f").write_text(msg, encoding="utf-8")
+        git("add", "f")
+        git("commit", "-q", "-m", msg)
+    monkeypatch.setattr(conv, "ROOT", tmp_path)
+    violations = conv.check_git_history(max_commits=10)
+    assert len(violations) == 1 and "bad message without prefix" in violations[0]

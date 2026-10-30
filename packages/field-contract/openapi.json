@@ -2328,7 +2328,7 @@
           "Sites"
         ],
         "summary": "Get Site Tree Endpoint",
-        "description": "GET /v1/sites/{id}/tree returning nested hierarchy with height order and ETag.",
+        "description": "GET /v1/sites/{id}/tree returning nested hierarchy with height order and ETag.\n\nTenant and site scope come only from the token. (Previously an unauthenticated caller could\nname any tenant in a header, with a hard-coded tenant as fallback.)",
         "operationId": "get_site_tree_endpoint_v1_sites__site_id__tree_get",
         "parameters": [
           {
@@ -2338,22 +2338,6 @@
             "schema": {
               "type": "string",
               "title": "Site Id"
-            }
-          },
-          {
-            "name": "tenant-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Tenant Id"
             }
           },
           {
@@ -2405,7 +2389,7 @@
           "Visits"
         ],
         "summary": "Check In",
-        "description": "Check in to a site validating geofence distance and permit validity window.",
+        "description": "Check in to a site validating geofence distance and permit validity window.\n\nTenant, site scope and visitor come from the token. (Previously the tenant came from a client\nheader with a hard-coded fallback, no token was needed, and any caller could name any\noverride_by to skip the geofence.) Overriding at check-in needs field.visit.override, and the\noverride is recorded as the calling supervisor.",
         "operationId": "check_in_v1_sites__site_id__visits_post",
         "parameters": [
           {
@@ -2415,16 +2399,6 @@
             "schema": {
               "type": "string",
               "title": "Site Id"
-            }
-          },
-          {
-            "name": "tenant-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "e8eb2a80-d529-4bdd-b669-d21fe847cb74",
-              "title": "Tenant Id"
             }
           }
         ],
@@ -2470,7 +2444,7 @@
           "Visits"
         ],
         "summary": "Check Out",
-        "description": "Check out of site, stop timer, and return warning if outbox items remain unsynced.",
+        "description": "Check out of site, stop timer, and return warning if outbox items remain unsynced.\n\nOnly the visitor themself, or a supervisor with field.visit.override, can close a visit.",
         "operationId": "check_out_v1_visits__visit_id__patch",
         "parameters": [
           {
@@ -2480,16 +2454,6 @@
             "schema": {
               "type": "string",
               "title": "Visit Id"
-            }
-          },
-          {
-            "name": "tenant-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "e8eb2a80-d529-4bdd-b669-d21fe847cb74",
-              "title": "Tenant Id"
             }
           }
         ],
@@ -2545,16 +2509,6 @@
             "schema": {
               "type": "string",
               "title": "Visit Id"
-            }
-          },
-          {
-            "name": "tenant-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "e8eb2a80-d529-4bdd-b669-d21fe847cb74",
-              "title": "Tenant Id"
             }
           }
         ],
@@ -2713,7 +2667,7 @@
           "mismatches"
         ],
         "summary": "Api Signoff Audit",
-        "description": "Sign-off an audit task enforcing completeness or supervisor waiver (FR4.028 / TC4.122).",
+        "description": "Sign-off an audit task enforcing completeness or supervisor waiver (FR4.028 / TC4.122).\n\nA waiver is a supervisor decision: it needs field.override.grant. (Previously any\nauthenticated user could send supervisor_waiver=true.)",
         "operationId": "api_signoff_audit_v1_tasks__id__audit_signoff_post",
         "parameters": [
           {
@@ -5812,20 +5766,27 @@
       },
       "OverrideRequest": {
         "properties": {
-          "supervisor_id": {
-            "type": "string",
-            "title": "Supervisor Id"
-          },
           "reason": {
             "type": "string",
             "minLength": 5,
             "title": "Reason",
             "description": "Mandatory reason for geofence override"
+          },
+          "mock_location": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mock Location",
+            "description": "Whether the phone reported a mock location provider"
           }
         },
         "type": "object",
         "required": [
-          "supervisor_id",
           "reason"
         ],
         "title": "OverrideRequest"
@@ -7129,7 +7090,14 @@
       "field_api__visits__api__CheckInRequest": {
         "properties": {
           "user_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "User Id"
           },
           "device_id": {
@@ -7219,7 +7187,6 @@
         },
         "type": "object",
         "required": [
-          "user_id",
           "permit_ref",
           "permit_valid_until",
           "lat",

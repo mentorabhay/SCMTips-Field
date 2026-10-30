@@ -208,7 +208,15 @@ def test_tc4_122_signoff_blocked_until_explained_or_waived(
     assert data["unresolved_count"] == 4
     assert "4 expected items are not captured or explained" in data["message"]
 
-    # 3. Supervisor waiver with reason succeeds
+    # 3. A technician cannot waive (verifier finding 2026-10-30: any user could)
+    resp_tech_waiver = client.post(
+        f"/v1/tasks/{task_id}/audit/signoff",
+        json={"supervisor_waiver": True, "waiver_reason": "I would like to go home now"},
+        headers=auth_context["headers_tech"],
+    )
+    assert resp_tech_waiver.status_code == 403
+
+    # 4. Supervisor waiver with reason succeeds
     resp_waived = client.post(
         f"/v1/tasks/{task_id}/audit/signoff",
         json={
@@ -221,6 +229,11 @@ def test_tc4_122_signoff_blocked_until_explained_or_waived(
     res_data = resp_waived.json()
     assert res_data["status"] == "signed_off"
     assert res_data["waived_count"] == 4
+    # the waived lines are recorded as such, not only logged
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true), set_config('app.site_ids', '*', true)", (t_id,))
+        cur.execute("SELECT status, count(*) FROM field.task_line WHERE task_id = %s::uuid GROUP BY status", (task_id,))
+        assert dict(cur.fetchall()) == {"waived": 4}
 
 
 # =========================================================================

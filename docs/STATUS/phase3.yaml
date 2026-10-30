@@ -708,7 +708,7 @@
   title: Post counts and differences
   workstream: WS3.5
   role: Backend
-  status: done
+  status: partial
   evidence:
   - services/field-api/src/field_api/pi/api.py
   - services/field-worker/src/field_worker/posting/queue.py
@@ -720,9 +720,7 @@
   - FR3.034
   - FR3.037
   verified_at: 573e018
-  note: 'Met: "TC3.130 passes" - counts then PostDifferences in one PI queue job against erp-sim (702 loss of 40
-    posted), held for approval above FIELD_PI_APPROVAL_VALUE. Note: the spec deliverable warehouse/inventory/post.py
-    does not exist and the unused inventory/post_diff.py invents document numbers.'
+  note: 'Verifier 2026-10-30 (WRONG for done): spec deliverable inventory/post.py does not exist; post_diff.py is orphan; FR3.034 core-band and re-auth checks are deferred to seam CS-05 (rule 2.4 caps at partial); PR3.05 tests approvals.validate_approval_state_for_posting, not the pi/api.py endpoint.'
 - id: T3.046
   title: Import storage bins into the location tree
   workstream: WS3.6

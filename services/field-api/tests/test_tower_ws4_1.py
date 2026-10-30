@@ -42,7 +42,7 @@ client = TestClient(app)
 def auth_headers() -> dict[str, Any]:
     tenant_id = str(uuid.uuid4())
     token = create_dev_token(
-        principal_id="test-tower-tech-01",
+        principal_id=str(uuid.uuid4()),
         tenant_id=tenant_id,
         roles=["field.technician", "field.supervisor", "field.operator"],
         site_ids=["*"],
@@ -519,7 +519,9 @@ def test_tc4_109_supervisor_geofence_override(auth_headers):
         assert row is not None
         assert row[0] == "field.visit.override"
         payload_data = row[1] if isinstance(row[1], dict) else json.loads(row[1])
-        assert payload_data["override_by"] == sup_id
+        # the override is recorded as the authenticated supervisor, never the body's override_by
+        assert payload_data["override_by"] != sup_id
+        assert payload_data["override_by"] == v_data["user_id"]
         assert "multipath distortion" in payload_data["reason"]
 
 
@@ -589,3 +591,92 @@ def test_pr4_17_geofence_invariant_property():
     # 3. Accuracy > 50m always rejected regardless of distance
     high_accuracy = 55.0
     assert high_accuracy > 50.0  # Fails accuracy gate
+
+
+# =========================================================================
+# Verifier finding 2026-10-30: these routes used to run without a token, take the tenant from a
+# client header (hard-coded fallback) and accept any override_by.
+# =========================================================================
+def _token(tenant_id: str, roles: list[str], site_ids: list[str] | None = None) -> dict[str, str]:
+    tok = create_dev_token(principal_id=str(uuid.uuid4()), tenant_id=tenant_id, roles=roles,
+                           site_ids=site_ids or ["*"])
+    return {"Authorization": f"Bearer {tok}"}
+
+
+def _checkin_body(**extra: Any) -> dict[str, Any]:
+    return {"permit_ref": "PERMIT-SEC-0001", "permit_valid_until": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+            "lat": 12.9752, "lon": 77.5946, "accuracy_m": 15.0, **extra}
+
+
+@pytest.mark.unit
+def test_t4_002_site_tree_needs_a_token_and_ignores_tenant_header():
+    """FR4.001: no token -> 401; another tenant's token (even naming the owner in a header) -> 404."""
+    owner, other, site_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    create_test_tower_site(owner, site_id)
+    assert client.get(f"/v1/sites/{site_id}/tree", headers={"tenant_id": owner}).status_code == 401
+    spoof = client.get(f"/v1/sites/{site_id}/tree", headers={**_token(other, ["field.technician"]), "tenant_id": owner})
+    assert spoof.status_code == 404
+    out_of_scope = client.get(f"/v1/sites/{site_id}/tree",
+                              headers=_token(owner, ["field.technician"], site_ids=[str(uuid.uuid4())]))
+    assert out_of_scope.status_code == 403
+    assert client.get(f"/v1/sites/{site_id}/tree", headers=_token(owner, ["field.technician"])).status_code == 200
+
+
+@pytest.mark.unit
+def test_tc4_109_technician_cannot_override_the_geofence():
+    """FR4.011: a technician naming any override_by at check-in, or calling the override route, gets 403."""
+    tenant, site_id = str(uuid.uuid4()), str(uuid.uuid4())
+    create_test_tower_site(tenant, site_id, lat=12.9716, lon=77.5946, radius_m=150)
+    tech = _token(tenant, ["field.technician"])
+    assert client.post(f"/v1/sites/{site_id}/visits", json=_checkin_body()).status_code == 401
+    r = client.post(f"/v1/sites/{site_id}/visits", headers=tech,
+                    json=_checkin_body(override_by=str(uuid.uuid4()), override_reason="I say so, trust me"))
+    assert r.status_code == 403
+    # an inside-geofence visit, then a technician tries the supervisor override route
+    ok = client.post(f"/v1/sites/{site_id}/visits", headers=tech, json=_checkin_body(lat=12.9716))
+    assert ok.status_code == 201, ok.text
+    vid = ok.json()["id"]
+    assert client.post(f"/v1/visits/{vid}/override", json={"reason": "multipath under steel"}).status_code == 401
+    assert client.post(f"/v1/visits/{vid}/override", headers=tech,
+                       json={"reason": "multipath under steel"}).status_code == 403
+
+
+@pytest.mark.unit
+def test_tc4_109_override_route_records_the_supervisor_from_the_token():
+    """FR4.011: POST /v1/visits/{id}/override writes override_by = the supervisor's own id and audits it."""
+    tenant, site_id = str(uuid.uuid4()), str(uuid.uuid4())
+    create_test_tower_site(tenant, site_id, lat=12.9716, lon=77.5946, radius_m=150)
+    vid = client.post(f"/v1/sites/{site_id}/visits", headers=_token(tenant, ["field.technician"]),
+                      json=_checkin_body(lat=12.9716)).json()["id"]
+    sup_id = str(uuid.uuid4())
+    sup = {"Authorization": "Bearer " + create_dev_token(principal_id=sup_id, tenant_id=tenant,
+                                                         roles=["field.supervisor"], site_ids=["*"])}
+    r = client.post(f"/v1/visits/{vid}/override", headers=sup,
+                    json={"reason": "GPS multipath under lattice steel", "mock_location": False})
+    assert r.status_code == 200, r.text
+    assert r.json()["override_by"] == sup_id
+    # a supervisor of another tenant cannot touch it
+    other = client.post(f"/v1/visits/{vid}/override", headers=_token(str(uuid.uuid4()), ["field.supervisor"]),
+                        json={"reason": "cross tenant attempt"})
+    assert other.status_code == 404
+    with psycopg.connect(DATABASE_URL) as conn, conn.cursor() as cur:
+        cur.execute("SELECT override_by::text, override_reason FROM field.site_visit WHERE id = %s::uuid", (vid,))
+        assert cur.fetchone() == (sup_id, "GPS multipath under lattice steel")
+        cur.execute("SELECT payload FROM field.outbox WHERE aggregate_id = %s::uuid AND event_type = 'field.visit.override'",
+                    (vid,))
+        payload = cur.fetchone()[0]
+        assert payload["override_by"] == sup_id and payload["mock_location"] is False
+
+
+@pytest.mark.unit
+def test_tc4_110_only_the_visitor_or_a_supervisor_checks_out():
+    """FR4.012: another technician of the same tenant cannot close someone else's visit."""
+    tenant, site_id = str(uuid.uuid4()), str(uuid.uuid4())
+    create_test_tower_site(tenant, site_id, lat=12.9716, lon=77.5946, radius_m=150)
+    vid = client.post(f"/v1/sites/{site_id}/visits", headers=_token(tenant, ["field.technician"]),
+                      json=_checkin_body(lat=12.9716)).json()["id"]
+    r = client.patch(f"/v1/visits/{vid}", headers=_token(tenant, ["field.technician"]), json={"unsynced_count": 0})
+    assert r.status_code == 404
+    r = client.patch(f"/v1/visits/{vid}", headers=_token(tenant, ["field.supervisor", "field.technician"]),
+                     json={"unsynced_count": 0})
+    assert r.status_code == 200 and r.json()["status"] == "checked_out"

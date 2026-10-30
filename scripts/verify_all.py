@@ -38,6 +38,7 @@ JOBS: list[tuple[str, str, list[str]]] = [
     ("names", "Naming denylist & sample data check", ["uv", "run", "python", "tools/checks/names.py"]),
     ("conventions", "Branch & commit conventions check", ["uv", "run", "python", "tools/checks/conventions.py"]),
     ("no-inmemory-stores", "No module-level state stores in API code", ["uv", "run", "python", "tools/checks/no_inmemory_stores.py"]),
+    ("route-auth", "Every API route enforces auth", ["uv", "run", "python", "tools/checks/route_auth.py"]),
     ("tests-exercise-prod", "Tests exercise production code", ["uv", "run", "python", "tools/checks/test_exercises_prod.py"]),
     (
         "openapi-drift",
