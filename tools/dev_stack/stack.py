@@ -1308,6 +1308,161 @@ def cmd_smoke(a: argparse.Namespace) -> int:
     return 0
 
 
+# ------------------------------------------------------------------ printable labels
+JOB_ORDER = ("receive", "putaway", "pick", "count", "audit", "swap")
+JOB_NAME = {
+    "receive": "Receive",
+    "putaway": "Put away",
+    "pick": "Pick",
+    "count": "Count",
+    "audit": "Tower audit",
+    "swap": "Swap",
+}
+# A serial no tower holds: scan it during an audit to see a mismatch reach the console.
+UNEXPECTED_SERIAL = "RRU-SN-TEST01"
+
+
+def label_sheet(
+    tasks: list[dict[str, Any]], spares: list[str], per_type: int = 2
+) -> list[tuple[str, list[tuple[str, str]]]]:
+    """Open jobs -> sections of (code, caption) to print: every code the phone asks for, per job.
+
+    Receive/count/put-away scan the product code, put-away and pick also the bin, audit and swap the
+    serial on the unit; the swap's new unit is a spare in store. Each section ends with one wrong code
+    so the refusal can be tried too."""
+    out: list[tuple[str, list[tuple[str, str]]]] = []
+    # Newest first within a type (task ids are UUIDv7, so they sort by creation time); keep per_type of each.
+    newest = sorted((t for t in tasks if t.get("lines")), key=lambda t: str(t["id"]), reverse=True)
+    kept: list[dict[str, Any]] = []
+    for t in newest:
+        if sum(1 for k in kept if k["type"] == t["type"]) < per_type:
+            kept.append(t)
+    ordered = sorted(kept, key=lambda t: JOB_ORDER.index(t["type"]) if t["type"] in JOB_ORDER else 99)
+    for t in ordered:
+        codes: list[tuple[str, str]] = []
+
+        def add(code: str | None, caption: str, codes: list[tuple[str, str]] = codes) -> None:
+            if code and code not in {c for c, _ in codes}:
+                codes.append((code, caption))
+
+        kind = t["type"]
+        lines = sorted(t.get("lines") or [], key=lambda ln: ln.get("line_no") or 0)
+        for ln in lines:
+            item = " · ".join(str(x) for x in (ln.get("description"), ln.get("uom")) if x)
+            if kind in ("receive", "count"):
+                add(ln.get("material"), f"product{f' · {item}' if item else ''}")
+            if kind == "count":
+                add(ln.get("bin"), "the bin being counted")
+            if kind == "putaway":
+                add(ln.get("material"), "pallet / product label")
+                add(ln.get("bin"), "bin to put it in")
+            if kind == "pick":
+                add(ln.get("bin"), f"stop {lines.index(ln) + 1}: bin")
+                add(ln.get("material"), f"stop {lines.index(ln) + 1}: product")
+            if kind in ("audit", "swap"):
+                where = ln.get("position") or "unit"
+                add(
+                    ln.get("expected_serial"),
+                    f"{where}: {'old unit (remove)' if kind == 'swap' else 'serial label'}",
+                )
+        if kind == "swap":
+            for sp in spares[:1]:
+                add(sp, "new unit from store (install)")
+        if not codes:
+            continue
+        wrong = {
+            "receive": ("SAMPLE-MAT-9999", "wrong product (should be refused)"),
+            "count": ("SAMPLE-MAT-9999", "not in this bin (should be refused)"),
+            "putaway": ("03-07-01", "wrong bin (should be refused)"),
+            "pick": ("03-07-01", "wrong bin (should be refused)"),
+            "audit": (UNEXPECTED_SERIAL, "a unit SAP does not expect (shows as a finding)"),
+            "swap": (UNEXPECTED_SERIAL, "wrong unit (should be refused)"),
+        }.get(kind)
+        if wrong and wrong[0] not in {c for c, _ in codes}:
+            codes.append(wrong)
+        out.append((f"{JOB_NAME.get(kind, kind)}: {t.get('title') or t['id']}", codes))
+    return out
+
+
+def render_labels(sections: list[tuple[str, list[tuple[str, str]]]], when: str) -> str:
+    """One printable HTML page; each label is a QR code plus the code in large text (type it if a scan fails)."""
+    import html
+
+    import qrcode
+    from qrcode.image.svg import SvgPathImage
+
+    def svg(code: str) -> str:
+        qr = qrcode.QRCode(border=1, box_size=6)
+        qr.add_data(code)
+        qr.make(fit=True)
+        img: Any = qr.make_image(image_factory=SvgPathImage)
+        return str(img.to_string(encoding="unicode"))
+
+    parts = [
+        "<!DOCTYPE html><html><head><meta charset='utf-8'><title>SCMTips Field test labels</title><style>",
+        "body{font-family:system-ui,sans-serif;margin:16px;color:#1C1E21}h1{font-size:22px}",
+        "h2{font-size:17px;margin:20px 0 8px;break-after:avoid}.grid{display:flex;flex-wrap:wrap;gap:10px}",
+        ".l{border:1px solid #CED0D4;border-radius:8px;padding:8px;width:190px;text-align:center;break-inside:avoid}",
+        ".l svg{width:150px;height:150px}.c{font:700 15px ui-monospace,monospace;word-break:break-all}",
+        ".k{font-size:12px;color:#65676B}.wrong{border-style:dashed}p{color:#65676B}</style></head><body>",
+        f"<h1>Test labels for the open jobs</h1><p>Made {html.escape(when)}. Print this page, or show it on a second "
+        "screen. Point the phone or glasses at a code. Dashed labels are wrong on purpose.</p>",
+    ]
+    if not sections:
+        parts.append(
+            "<p><b>No open jobs.</b> Run delivery, outbound, count or tower first, then labels again.</p>"
+        )
+    for title, codes in sections:
+        parts.append(f"<h2>{html.escape(title)}</h2><div class='grid'>")
+        for code, caption in codes:
+            cls = "l wrong" if "refused" in caption or "does not expect" in caption else "l"
+            parts.append(
+                f"<div class='{cls}'>{svg(code)}<div class='c'>{html.escape(code)}</div>"
+                f"<div class='k'>{html.escape(caption)}</div></div>"
+            )
+        parts.append("</div>")
+    parts.append("</body></html>")
+    return "".join(parts)
+
+
+def _spare_serials() -> list[str]:
+    """Read-only: RRU serials in store (no functional location) in erp-sim."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("erpsim"), autocommit=True) as c, c.cursor() as cur:
+        cur.execute(
+            "SELECT serial_no FROM erpsim.equipment WHERE func_loc IS NULL AND material_no = 'MAT-RRU-01'"
+            " ORDER BY equipment_no"
+        )
+        return [str(r[0]) for r in cur.fetchall()]
+
+
+def cmd_labels(a: argparse.Namespace) -> int:
+    """var/labels.html: QR labels for every code the open jobs ask for (opens on Windows)."""
+    load_env()
+    apply_ports()
+    state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
+    if not state.get("site"):
+        print("No demo site yet: run `stack up`, then delivery / outbound / count / tower.")
+        return 1
+    api = a.api or local("field-api")
+    tasks: list[dict[str, Any]] = []
+    for site in [s for s in (state.get("site"), state.get("tower_site")) if s and site_exists(s)]:
+        phone = Phone(api, _core_token("labels", state["tenant"], site, 600)).pair(
+            f"labels-{uuid.uuid4().hex[:8]}"
+        )
+        tasks += phone.tasks(site)
+    sections = label_sheet(tasks, _spare_serials(), a.per_type)
+    out = ROOT / "var" / "labels.html"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(render_labels(sections, time.strftime("%Y-%m-%d %H:%M")), encoding="utf-8")
+    print(f"{sum(len(c) for _t, c in sections)} labels for the newest {len(sections)} of {len(tasks)} open jobs: {out}")
+    if sys.platform == "win32" and not a.no_open:
+        with contextlib.suppress(OSError):
+            os.startfile(out)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="stack")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -1328,13 +1483,18 @@ def main(argv: list[str] | None = None) -> int:
     ct = sub.add_parser("count", help="a blind count task for a bin of the SAMPLE site")
     ct.add_argument("bin", nargs="?", help="e.g. 03-05-02 (default: a bin that holds stock)")
     sub.add_parser("tower", help="SAMPLE-TWR-0001 in erp-sim + field: a sector A audit and a swap task")
+    lb = sub.add_parser("labels", help="var/labels.html: printable QR labels for every open job")
+    lb.add_argument("--api")
+    lb.add_argument("--no-open", action="store_true")
+    lb.add_argument("--per-type", type=int, default=2, help="newest jobs of each type to print (default 2)")
     sm = sub.add_parser("smoke")
     sm.add_argument("--api")
     sm.add_argument("--wait", type=float, default=90)
     sm.add_argument("--all", action="store_true", help="every job type: receive, putaway, pick, count, audit, swap")
     a = ap.parse_args(argv)
     return {"up": cmd_up, "down": cmd_down, "status": cmd_status, "pair": cmd_pair, "smoke": cmd_smoke,
-            "delivery": cmd_delivery, "outbound": cmd_outbound, "count": cmd_count, "tower": cmd_tower}[a.cmd](a)
+            "delivery": cmd_delivery, "outbound": cmd_outbound, "count": cmd_count, "tower": cmd_tower,
+            "labels": cmd_labels}[a.cmd](a)
 
 
 if __name__ == "__main__":

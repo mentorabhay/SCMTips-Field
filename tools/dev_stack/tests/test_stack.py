@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
+from tools.dev_stack import stack
 from tools.dev_stack.stack import GENERATED_SECRETS, ensure_env_local, pairing_payload, parse_env
 
 
@@ -197,3 +199,69 @@ def test_m2_commands_and_phone_hash_rules(monkeypatch: pytest.MonkeyPatch) -> No
     pick = httpx.Response(201, json={"counted_qty": 3.0, "picked_qty": 3.0})
     assert stack.Phone.counted(pick, 9) == 3.0
     assert stack.Phone.counted(httpx.Response(201, json={}), 9) == 9.0
+
+
+def test_label_sheet_lists_every_code_each_job_asks_for() -> None:
+    tasks: list[dict[str, Any]] = [
+        {
+            "id": "s",
+            "type": "swap",
+            "title": "Swap RRU",
+            "lines": [
+                {"line_no": 10, "position": "Sector A · slot 3", "expected_serial": "RRU-SN-OLD"}
+            ],
+        },
+        {
+            "id": "p",
+            "type": "pick",
+            "title": "Pick 80",
+            "lines": [
+                {"line_no": 20, "bin": "02-01-02", "material": "SAMPLE-MAT-0009"},
+                {"line_no": 10, "bin": "02-01-01", "material": "SAMPLE-MAT-0001"},
+            ],
+        },
+        {
+            "id": "r",
+            "type": "receive",
+            "title": "Delivery 18",
+            "lines": [{"line_no": 10, "material": "SAMPLE-MAT-0005", "uom": "EA"}],
+        },
+        {"id": "e", "type": "putaway", "title": "Empty", "lines": []},
+    ]
+    sheet = stack.label_sheet(tasks, ["RRU-SN-NEW"])
+    assert [t for t, _ in sheet] == [
+        "Receive: Delivery 18",
+        "Pick: Pick 80",
+        "Swap: Swap RRU",
+    ]  # job order, empty job left out
+    pick = dict(sheet[1][1])
+    assert list(pick)[:4] == [
+        "02-01-01",
+        "SAMPLE-MAT-0001",
+        "02-01-02",
+        "SAMPLE-MAT-0009",
+    ]  # walking order
+    assert "refused" in pick["03-07-01"]
+    swap = dict(sheet[2][1])
+    assert (
+        swap["RRU-SN-OLD"].endswith("old unit (remove)")
+        and swap["RRU-SN-NEW"] == "new unit from store (install)"
+    )
+    assert stack.UNEXPECTED_SERIAL in swap
+
+
+def test_label_page_carries_each_code_as_text_and_qr() -> None:
+    page = stack.render_labels(
+        [
+            (
+                "Count: bin 02-01-01",
+                [
+                    ("02-01-01", "the bin being counted"),
+                    ("SAMPLE-MAT-9999", "not in this bin (should be refused)"),
+                ],
+            )
+        ],
+        "2026-10-31 10:00",
+    )
+    assert page.count("<svg") == 2 and "02-01-01" in page and "class='l wrong'" in page
+    assert "No open jobs" in stack.render_labels([], "now")
