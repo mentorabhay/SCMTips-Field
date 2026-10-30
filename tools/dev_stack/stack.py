@@ -92,9 +92,58 @@ PORTS = {"fake-core": ("FIELD_STACK_CORE_PORT", 8011), "erp-sim": ("FIELD_STACK_
 HEALTH = {"fake-core": "/.well-known/jwks.json", "erp-sim": "/_sim/health", "field-api": "/v1/health"}
 
 
+PORTS_FILE = ROOT / "var" / "dev_stack_ports.json"
+
+
+def _chosen() -> dict[str, int]:
+    try:
+        return {k: int(v) for k, v in json.loads(PORTS_FILE.read_text(encoding="utf-8")).items()}
+    except (OSError, ValueError):
+        return {}
+
+
 def port(name: str) -> int:
+    """Explicit FIELD_STACK_*_PORT, else the port `up` chose last time, else the default."""
     var, default = PORTS[name]
-    return int(os.environ.get(var) or default)
+    return int(os.environ.get(var) or _chosen().get(name) or default)
+
+
+def owner_of_port(p: int) -> str:
+    """Best effort 'pid N (program)' of whatever listens on 127.0.0.1:p (Windows netstat/tasklist)."""
+    if os.name != "nt":
+        return "another program"
+    try:
+        out = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True, timeout=10).stdout
+        pid = next((ln.split()[-1] for ln in out.splitlines() if f":{p} " in ln and "LISTENING" in ln), None)
+        if not pid:
+            return "another program"
+        img = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True,
+                             text=True, timeout=10).stdout.split(",")[0].strip('"')
+        return f"pid {pid} ({img or 'unknown'})"
+    except (OSError, subprocess.SubprocessError):
+        return "another program"
+
+
+def choose_ports() -> dict[str, int]:
+    """Pick each service's port before starting: keep ours if running, honour an explicit setting, else
+    the default if free, else the next free one (owner's PC, 2026-10-31: 8001, later 8000, were taken).
+    The choice is saved so pair/smoke/delivery and the phone's QR code use the same ports."""
+    chosen: dict[str, int] = {}
+    for name, (var, default) in PORTS.items():
+        if os.environ.get(var) or running(name) is not None:
+            chosen[name] = port(name)
+            continue
+        for cand in range(default, default + 40):
+            if cand not in chosen.values() and not port_in_use(cand):
+                if cand != default:
+                    print(f"{name}: port {default} is used by {owner_of_port(default)}; using {cand}")
+                chosen[name] = cand
+                break
+        else:
+            raise SystemExit(f"FAIL: no free port for {name} in {default}-{default + 39}")
+    PORTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PORTS_FILE.write_text(json.dumps(chosen, indent=2), encoding="utf-8")
+    return chosen
 
 
 def local(name: str) -> str:
@@ -277,12 +326,13 @@ def cmd_up(a: argparse.Namespace) -> int:
     if filled:
         print(f"generated in .env.local: {', '.join(filled)}")
     load_env()
+    choose_ports()
     apply_ports()
     bind = "127.0.0.1" if a.local_only else "0.0.0.0"
     taken = [n for n in PORTS if running(n) is None and port_in_use(port(n))]
-    if taken:
+    if taken:  # only an explicit FIELD_STACK_*_PORT can still collide
         for n in taken:
-            print(f"FAIL: port {port(n)} for {n} is used by another program. Stop it, or set "
+            print(f"FAIL: port {port(n)} for {n} is used by {owner_of_port(port(n))}. Stop it, or set "
                   f"{PORTS[n][0]}=<free port> in .env.local and run again.")
         return 1
     ensure_database()

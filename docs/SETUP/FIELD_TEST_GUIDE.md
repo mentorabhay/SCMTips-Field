@@ -32,7 +32,9 @@ Every step's log is also on the `ci-logs` branch (`runs/<job>/<run>-<attempt>/`)
 
 You need **uv** and PostgreSQL 16 on port **5450**. For Postgres, either run Docker Desktop with `docker compose -f docker-compose.dev.yml up -d postgres`, or use your existing local Postgres.
 
-In PowerShell at `<repo>`:
+**Easiest:** double-click `<repo>\scripts\dev\run-field-stack.cmd`. It starts everything, runs the smoke test, creates a delivery and shows the pairing QR. (`run-field-stack.sh` is the Linux/macOS version and does not run on Windows.) Busy ports are skipped automatically; the QR code always carries the right one.
+
+Or in PowerShell at `<repo>`:
 ```powershell
 .\scripts\dev\run-field-stack.ps1            # first run creates .env.local with fresh signing keys
 .\scripts\dev\run-field-stack.ps1 smoke      # proves phone -> ERP without a phone; must end with "PASS: ERP material document 49…"

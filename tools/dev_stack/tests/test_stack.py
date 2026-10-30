@@ -72,7 +72,7 @@ def test_port_in_use_sees_another_program() -> None:
 
 def test_up_refuses_when_another_program_holds_a_port(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     """Owner's PC, 2026-10-31: something else held 8001; fake-core died on bind and the health probe
-    was answered by the other program. `up` must stop before starting anything."""
+    was answered by the other program. With an explicit port, `up` must stop before starting anything."""
     import argparse
 
     from tools.dev_stack import stack
@@ -80,7 +80,9 @@ def test_up_refuses_when_another_program_holds_a_port(monkeypatch: pytest.Monkey
     monkeypatch.setattr(stack, "ensure_env_local", lambda: [])
     monkeypatch.setattr(stack, "load_env", lambda: {})
     monkeypatch.setattr(stack, "running", lambda name: None)
-    monkeypatch.setattr(stack, "port_in_use", lambda p: p == stack.port("fake-core"))
+    monkeypatch.setattr(stack, "PORTS_FILE", stack.ROOT / "var" / "test_ports_refuse.json")
+    monkeypatch.setenv("FIELD_STACK_CORE_PORT", "8011")  # an explicit port is never moved
+    monkeypatch.setattr(stack, "port_in_use", lambda p: p == 8011)
     started: list[str] = []
     monkeypatch.setattr(stack, "ensure_database", lambda: started.append("db"))
     def fake_start(name: str, cmd: list[str]) -> int:
@@ -119,3 +121,23 @@ def test_saved_demo_site_is_reused_only_if_it_still_exists(monkeypatch: pytest.M
     finally:
         stack.STATE.unlink(missing_ok=True)
     assert out["site"] == "new-site" and out["tenant"] == "t" and calls
+
+
+def test_busy_default_ports_move_to_the_next_free_one(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Owner's PC, 2026-10-31: 8000 was taken after 8001. `up` now moves on, saves the choice, and the
+    QR code / smoke / delivery commands read the same saved ports."""
+    from tools.dev_stack import stack
+
+    for var, _ in stack.PORTS.values():
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(stack, "PORTS_FILE", tmp_path / "ports.json")
+    monkeypatch.setattr(stack, "running", lambda name: None)
+    monkeypatch.setattr(stack, "owner_of_port", lambda p: "pid 1 (other.exe)")
+    busy = {8000, 8001, 8011}
+    monkeypatch.setattr(stack, "port_in_use", lambda p: p in busy)
+    chosen = stack.choose_ports()
+    # 8000/8001 busy, 8002 already given to erp-sim -> field-api gets 8003; fake-core 8011 busy -> 8012
+    assert chosen == {"fake-core": 8012, "erp-sim": 8002, "field-api": 8003}
+    assert stack.port("field-api") == 8003
+    assert json.loads((tmp_path / "ports.json").read_text(encoding="utf-8")) == chosen
+    assert stack.local("fake-core") == "http://127.0.0.1:8012"
