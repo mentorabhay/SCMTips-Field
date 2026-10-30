@@ -99,7 +99,13 @@ def load_evidence(root: Path, junit_globs: list[str]) -> Evidence:
             cls, name = tc.attrib.get("classname", ""), tc.attrib.get("name", "")
             base = name.split("[")[0]
             stem = cls.rsplit(".", 1)[-1]
-            if stem in kt_files and kt_files[stem].suffix == ".kt":
+            if cls.endswith((".ts", ".tsx")) and (root / cls).is_file():
+                # vitest junit: classname is the file, name is "describe > test"; the node is file::test title
+                title = name.split(" > ")[-1]
+                node = f"{cls}::{title}"
+                pt = PassedTest(node, set(), "fc.assert" in (root / cls).read_text(encoding="utf-8"))
+                text = name
+            elif stem in kt_files and kt_files[stem].suffix == ".kt":
                 ktxt = kt_files[stem].read_text(encoding="utf-8")
                 node = f"{kt_files[stem].relative_to(root).as_posix()}::{base}"
                 pt = PassedTest(node, set(), "io.kotest.property" in ktxt)

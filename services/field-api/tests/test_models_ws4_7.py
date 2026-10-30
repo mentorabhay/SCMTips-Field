@@ -3,11 +3,9 @@
 Covers:
 - T4.055: glTF 2.0 validation, triangle counts, SHA-256 hash (FR4.051 / FR4.053 / TC4.145)
 - T4.056: Balloon registry stability & monotonic numbering (FR4.052 / PR4.10)
-- T4.057: Exploded view linear offset equation p(t) = p0 + t*v (FR4.056 / PR4.09 / TC4.148)
 - T4.058: Android phone exploded view contract & 30 fps (FR4.055 / TC4.147)
 - T4.059: Model versioning, step-up publish, immutability, equipment pinning (FR4.054 / TC4.146)
 - PR4.08: BOM counts Hypothesis 500 runs (FR4.057 / TC4.149)
-- PR4.09: Exploded offsets fast-check 1,000 runs
 - PR4.10: Balloon stability Hypothesis 500 runs
 - API4.12, API4.13, API4.14 endpoints contract
 """
@@ -174,63 +172,6 @@ def test_pr4_08_bom_counts_property(top_qty: int, num_nodes: int, num_child_node
         assert len(qty_issues) >= 1, (
             f"Expected mismatch issue when top_qty={top_qty} != net={net_mapped}"
         )
-
-
-# ==============================================================================
-# Property PR4.09: Exploded offsets fast-check 1,000 runs (FR4.055 / FR4.056)
-# ==============================================================================
-@settings(max_examples=1000, deadline=None)
-@given(
-    p0=st.tuples(
-        st.floats(min_value=-100.0, max_value=100.0),
-        st.floats(min_value=-100.0, max_value=100.0),
-        st.floats(min_value=-100.0, max_value=100.0),
-    ),
-    v=st.tuples(
-        st.floats(min_value=-50.0, max_value=50.0),
-        st.floats(min_value=-50.0, max_value=50.0),
-        st.floats(min_value=-50.0, max_value=50.0),
-    ),
-    t=st.floats(min_value=0.0, max_value=1.0),
-    alpha=st.floats(min_value=0.0, max_value=1.0),
-    t2=st.floats(min_value=0.0, max_value=1.0),
-)
-def test_pr4_09_exploded_offsets_linearity_property(
-    p0: tuple[float, float, float],
-    v: tuple[float, float, float],
-    t: float,
-    alpha: float,
-    t2: float,
-):
-    """PR4.09: Position at t=0 equals assembled pos; offset at t=1 equals v; linear in t."""
-
-    def p(s: float) -> tuple[float, float, float]:
-        clamped_s = max(0.0, min(1.0, s))
-        return (
-            p0[0] + clamped_s * v[0],
-            p0[1] + clamped_s * v[1],
-            p0[2] + clamped_s * v[2],
-        )
-
-    # 1. At t=0, p(0) == p0
-    at_zero = p(0.0)
-    for dim in range(3):
-        assert abs(at_zero[dim] - p0[dim]) < 1e-6
-
-    # 2. At t=1, p(1) == p0 + v
-    at_one = p(1.0)
-    for dim in range(3):
-        assert abs(at_one[dim] - (p0[dim] + v[dim])) < 1e-6
-
-    # 3. Linearity: p(alpha*t + (1-alpha)*t2) == alpha*p(t) + (1-alpha)*p(t2)
-    s_comb = alpha * t + (1.0 - alpha) * t2
-    p_comb = p(s_comb)
-    p_t1 = p(t)
-    p_t2 = p(t2)
-
-    for dim in range(3):
-        expected_dim = alpha * p_t1[dim] + (1.0 - alpha) * p_t2[dim]
-        assert abs(p_comb[dim] - expected_dim) < 1e-4
 
 
 # ==============================================================================

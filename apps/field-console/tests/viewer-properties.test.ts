@@ -1,60 +1,57 @@
 /**
- * Console Property and UI Test Suite for Phase 4 (Task T4.070 / PR4.09, SCR4.08-SCR4.13, TC4.164).
+ * Console property tests for Phase 4 (T4.070 / T4.057).
+ *
+ * These exercise the console's own code: lib/exploded.ts (used by components/ModelViewer) and the
+ * generated design tokens in @scmtips-field/ui-tokens. (Previously this file re-computed formulas
+ * locally and asserted them against themselves, and it was never run.)
  */
-
+import fc from "fast-check";
 import { describe, expect, test } from "vitest";
+import { tokens } from "@scmtips-field/ui-tokens";
+import { explodedPosition, type Vec3 } from "../lib/exploded";
+import { contrastRatio } from "../lib/contrast";
 
-describe("Phase 4 3D Viewer & Console Explorer Properties", () => {
-  /**
-   * PR4.09: Exploded View offsets are strictly linear: p(t) = p0 + t * v for all t in [0, 1].
-   */
-  test("PR4.09: Exploded view linear offset invariant", () => {
-    const p0 = [10.0, 20.0, 30.0];
-    const v = [5.0, -2.0, 15.0];
+const coord = fc.double({ min: -100, max: 100, noNaN: true });
+const vec = fc.tuple(coord, coord, coord) as fc.Arbitrary<Vec3>;
+const unit = fc.double({ min: 0, max: 1, noNaN: true });
 
-    for (let i = 0; i <= 100; i++) {
-      const t = i / 100.0;
-      const pt = [p0[0] + t * v[0], p0[1] + t * v[1], p0[2] + t * v[2]];
+describe("PR4.09 exploded offsets (FR4.056)", () => {
+  test("PR4.09: p(0) = p0, p(1) = p0 + v, p(t) linear in t, t clamped to [0, 1]", () => {
+    fc.assert(
+      fc.property(vec, vec, unit, unit, fc.double({ min: -5, max: 5, noNaN: true }), (p0, v, a, b, wild) => {
+        const at0 = explodedPosition(p0, v, 0);
+        for (let i = 0; i < 3; i++) expect(at0[i] === p0[i]).toBe(true); // numeric equality (-0 === 0)
+        const at1 = explodedPosition(p0, v, 1);
+        for (let i = 0; i < 3; i++) expect(at1[i] - p0[i]).toBeCloseTo(v[i], 9);
+        // linearity: p(a) - p(b) = (a - b) * v
+        const pa = explodedPosition(p0, v, a);
+        const pb = explodedPosition(p0, v, b);
+        for (let i = 0; i < 3; i++) expect(pa[i] - pb[i]).toBeCloseTo((a - b) * v[i], 9);
+        // overshoot is clamped
+        const pw = explodedPosition(p0, v, wild);
+        const clamped = explodedPosition(p0, v, Math.min(1, Math.max(0, wild)));
+        for (let i = 0; i < 3; i++) expect(pw[i] === clamped[i]).toBe(true);
+      }),
+      { numRuns: 1000 },
+    );
+  });
+});
 
-      expect(pt[0]).toBeCloseTo(p0[0] + t * v[0], 5);
-      expect(pt[1]).toBeCloseTo(p0[1] + t * v[1], 5);
-      expect(pt[2]).toBeCloseTo(p0[2] + t * v[2], 5);
-
-      if (t === 0.0) {
-        expect(pt).toEqual(p0);
-      } else if (t === 1.0) {
-        expect(pt).toEqual([15.0, 18.0, 45.0]);
+describe("TC4.164 token contrast (WCAG 2.1 AA, text >= 4.5:1)", () => {
+  const themes = Object.keys(tokens.color) as (keyof typeof tokens.color)[];
+  for (const theme of themes) {
+    test(`TC4.164: ${theme} text, muted text and primary-button text meet 4.5:1`, () => {
+      const c = tokens.color[theme] as Record<string, { value: string }>;
+      const pairs: [string, string][] = [
+        ["text", "bg"],
+        ["text", "surface"],
+        ["textMuted", "bg"],
+      ];
+      if (c.primaryText) pairs.push(["primaryText", "primary"]);
+      for (const [fg, bg] of pairs) {
+        if (!c[fg] || !c[bg]) continue;
+        expect(contrastRatio(c[fg].value, c[bg].value), `${theme} ${fg} on ${bg}`).toBeGreaterThanOrEqual(4.5);
       }
-    }
-  });
-
-  /**
-   * TC4.164: WCAG 2.1 AA Contrast and Accessibility invariants on Console screens.
-   * Contrast ratio must be >= 4.5:1 for standard text.
-   */
-  test("TC4.164: Contrast ratio calculation meets WCAG 2.1 AA", () => {
-    function luminance(r: number, g: number, b: number): number {
-      const a = [r, g, b].map((v) => {
-        v /= 255;
-        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-      });
-      return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
-    }
-
-    function contrast(rgb1: [number, number, number], rgb2: [number, number, number]): number {
-      const l1 = luminance(...rgb1);
-      const l2 = luminance(...rgb2);
-      const bright = Math.max(l1, l2);
-      const dark = Math.min(l1, l2);
-      return (bright + 0.05) / (dark + 0.05);
-    }
-
-    // Black text on white background
-    const crBlackOnWhite = contrast([0, 0, 0], [255, 255, 255]);
-    expect(crBlackOnWhite).toBeGreaterThanOrEqual(4.5);
-
-    // Blue-600 on white background
-    const crBlueOnWhite = contrast([37, 99, 235], [255, 255, 255]);
-    expect(crBlueOnWhite).toBeGreaterThanOrEqual(4.5);
-  });
+    });
+  }
 });

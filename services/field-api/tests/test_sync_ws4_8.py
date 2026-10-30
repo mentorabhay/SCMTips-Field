@@ -16,6 +16,7 @@ import csv
 import io
 import uuid
 
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from field_api.app import app
@@ -31,6 +32,10 @@ from field_worker.posting.conflicts import (
     release_queue_hold,
 )
 from field_worker.posting.equipment_queue import (
+    DATABASE_URL as WORKER_DB_URL,
+)
+from field_worker.posting.equipment_queue import (
+    enqueue_tower_equipment_job,
     process_next_tower_job,
 )
 from hypothesis import given, settings
@@ -57,92 +62,71 @@ def _auth_headers(
 
 
 # ==============================================================================
-# Property PR4.12: Per-Tower Order on Replay Hypothesis 500 runs (FR4.059)
+# Property PR4.12: Per-Tower Order on Replay (FR4.059)
 # ==============================================================================
+class _RecordingEquipmentPort:
+    """Test double for the SAP equipment adapter: records the order of ERP calls."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def install_equipment(self, eq_no: str, target_fl: str, idempotency_key: str | None = None) -> dict[str, str]:
+        self.calls.append(eq_no)
+        return {"change_document": f"CD-{len(self.calls)}"}
+
+    def dismantle_equipment(self, eq_no: str, idempotency_key: str | None = None) -> dict[str, str]:
+        self.calls.append(eq_no)
+        return {"change_document": f"CD-{len(self.calls)}"}
+
+
 @settings(max_examples=500, deadline=None)
 @given(
-    tower_events=st.dictionaries(
-        keys=st.sampled_from(["T01", "T02", "T03", "T04"]),
-        values=st.lists(
-            st.tuples(
-                st.integers(min_value=1, max_value=100),  # seq
-                st.sampled_from(["install", "dismantle"]),  # op
-            ),
-            min_size=1,
-            max_size=15,
-            unique_by=lambda x: x[0],  # unique seq per tower
-        ),
-        min_size=2,
-        max_size=4,
-    ),
-    held_tower=st.sampled_from(["T01", "T02", "T03", "T04"]),
+    plan=st.lists(st.tuples(st.sampled_from(["T01", "T02", "T03"]), st.sampled_from(["install", "dismantle"])),
+                  min_size=2, max_size=12),
+    held_tower=st.sampled_from(["T01", "T02", "T03"]),
 )
-def test_pr4_12_per_tower_order_on_replay_property(
-    tower_events: dict[str, list[tuple[int, str]]],
-    held_tower: str,
-):
-    """PR4.12: Events for each tower replay in seq order; a held tower never blocks other towers."""
-    # Flatten all events across towers into an outbox list with shuffled submission
-    all_events = []
-    for t_fl, ev_list in tower_events.items():
-        for seq, op in ev_list:
-            all_events.append(
-                {
-                    "id": str(uuid.uuid4()),
-                    "tower_fl": t_fl,
-                    "seq": seq,
-                    "op": op,
-                    "status": "pending",
-                }
-            )
+def test_pr4_12_per_tower_order_on_replay_property(plan: list[tuple[str, str]], held_tower: str) -> None:
+    """PR4.12: the real worker queue replays each tower's jobs in seq order; a held tower never blocks others.
 
-    # Coordinator state
-    held_set = {held_tower}
-    processed_by_tower: dict[str, list[int]] = {t: [] for t in tower_events}
+    Jobs are enqueued interleaved across towers through enqueue_tower_equipment_job, one tower is
+    held in field.queue_hold, and process_next_tower_job is driven round-robin. (Previously this
+    test simulated a queue in local dicts and never touched the worker.)
+    """
+    tenant = str(uuid.uuid4())
+    site = str(uuid.uuid4())
+    prefix = uuid.uuid4().hex[:6]
+    order: dict[str, list[str]] = {}
+    for i, (tower, op) in enumerate(plan):
+        fl = f"{prefix}-{tower}"
+        eq = f"EQ-{tower}-{i}"
+        enqueue_tower_equipment_job(tenant_id=tenant, site_id=site, tower_fl=fl, operation=op, equipment_no=eq,
+                                    serial_no=f"SR-{i}", material="MAT-01", target_fl=f"{fl}-A-L01")
+        order.setdefault(fl, []).append(eq)
+    held_fl = f"{prefix}-{held_tower}"
+    with psycopg.connect(WORKER_DB_URL) as conn, conn.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant,))
+        cur.execute("INSERT INTO field.queue_hold (tenant_id, queue_key, tower_fl, conflict_reason) "
+                    "VALUES (%s, %s, %s, 'PR4.12 test hold')", (tenant, f"EQUIP:{held_fl}", held_fl))
 
-    # Simulation loop: replay steps
-    max_steps = 100
-    for _ in range(max_steps):
-        # Dispatch eligible events
-        eligible = []
-        for t_fl, _t_events in tower_events.items():
-            if t_fl in held_set:
-                continue  # Held tower blocked
-            # Find next lowest unprocessed seq
-            remaining = [
-                e for e in all_events if e["tower_fl"] == t_fl and e["status"] == "pending"
-            ]
-            if remaining:
-                next_ev = min(remaining, key=lambda x: x["seq"])
-                eligible.append(next_ev)
+    ports = {fl: _RecordingEquipmentPort() for fl in order}
+    active = set(order)
+    while active:
+        for fl in sorted(active):
+            res = process_next_tower_job(tenant, f"EQUIP:{fl}", adapter=ports[fl])
+            if res is None or res.get("status") == "held":
+                active.discard(fl)
 
-        if not eligible:
-            break
-
-        for ev in eligible:
-            t_fl = ev["tower_fl"]
-            seq = ev["seq"]
-            # Invariant 1: Strictly monotonic sequence order per tower
-            if processed_by_tower[t_fl]:
-                assert seq > processed_by_tower[t_fl][-1], (
-                    f"Out of order execution on tower {t_fl}: got seq {seq} after {processed_by_tower[t_fl][-1]}"
-                )
-            processed_by_tower[t_fl].append(seq)
-            ev["status"] = "completed"
-
-    # Invariant 2: The held tower processed ZERO events
-    assert len(processed_by_tower.get(held_tower, [])) == 0, (
-        f"Held tower {held_tower} illegally processed events"
-    )
-
-    # Invariant 3: All non-held towers processed ALL their pending events in exact order
-    for t_fl, ev_list in tower_events.items():
-        if t_fl != held_tower:
-            expected_seqs = sorted([s for s, _ in ev_list])
-            assert processed_by_tower[t_fl] == expected_seqs, (
-                f"Tower {t_fl} did not process all events in sequence: expected {expected_seqs}, got {processed_by_tower[t_fl]}"
-            )
-
+    for fl, expected in order.items():
+        assert ports[fl].calls == ([] if fl == held_fl else expected), fl
+    with psycopg.connect(WORKER_DB_URL) as conn, conn.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant,))
+        cur.execute("SELECT set_config('app.site_ids', '*', true)")
+        cur.execute("SELECT queue_key, status, count(*) FROM field.posting_job WHERE tenant_id = %s "
+                    "GROUP BY queue_key, status", (tenant,))
+        by_queue = {(q, s): n for q, s, n in cur.fetchall()}
+    for fl, expected in order.items():
+        want = "pending" if fl == held_fl else "completed"
+        assert by_queue.get((f"EQUIP:{fl}", want)) == len(expected), (fl, by_queue)
 
 # ==============================================================================
 # Property PR4.20: Report Round Trip Hypothesis 200 runs (FR4.061)

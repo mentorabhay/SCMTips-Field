@@ -22,6 +22,7 @@ from field_api.db import get_conn
 from field_api.equipment.history import append_serial_event
 from field_api.graph.guidance import generate_newcomer_guidance
 from field_api.graph.route3d import dijkstra_3d
+from field_api.trails.api import get_equipment_trail
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -46,44 +47,30 @@ def _auth_headers(tenant_id: str, user_id: str = "test-user-ws46") -> dict[str, 
 # ==============================================================================
 @settings(max_examples=500, deadline=None)
 @given(
-    events=st.lists(
-        st.tuples(
-            st.integers(min_value=0, max_value=1000),  # timestamp offset in seconds
-            st.integers(min_value=1, max_value=500),  # seq
-            st.text(min_size=1, max_size=10, alphabet="ABC123"),  # loc
-        ),
-        min_size=1,
-        max_size=40,
-    )
+    offsets=st.lists(st.integers(min_value=0, max_value=20), min_size=1, max_size=12),
 )
-def test_pr4_06_trail_order_property(events):
-    """PR4.06: Trail replay visits locations in non-decreasing occurred_at with ties broken by seq.
+def test_pr4_06_trail_order_property(offsets: list[int]) -> None:
+    """PR4.06: the real trail API replays events in non-decreasing occurred_at, ties broken by seq.
 
-    Every history event is visited exactly once.
+    Events are appended through the production append_serial_event (which assigns seq) with
+    out-of-order, often colliding occurred_at values; get_equipment_trail must return each event
+    exactly once in (occurred_at, seq) order. (Previously this test only sorted a local list.)
     """
+    tenant_id = str(uuid.uuid4())
+    serial = f"PR406-{uuid.uuid4().hex[:10].upper()}"
     base_time = datetime(2026, 6, 1, 8, 0, 0, tzinfo=UTC)
-    raw_events = [
-        {
-            "occurred_at": base_time + timedelta(seconds=t_off),
-            "seq": s,
-            "loc": loc,
-            "id": idx,
-        }
-        for idx, (t_off, s, loc) in enumerate(events)
-    ]
+    appended: dict[int, datetime] = {}
+    for off in offsets:
+        at = base_time + timedelta(minutes=off)
+        ev = append_serial_event(tenant_id=tenant_id, serial_no=serial, event_type="move",
+                                 source_plant="1100", source_storage_location="0001", occurred_at=at)
+        appended[int(ev["seq"])] = at
 
-    # Replay sorting reference: strictly (occurred_at, seq)
-    sorted_expected = sorted(raw_events, key=lambda e: (e["occurred_at"], e["seq"]))
-
-    # Verify monotonic ordering
-    for i in range(len(sorted_expected) - 1):
-        e1 = sorted_expected[i]
-        e2 = sorted_expected[i + 1]
-        assert (e1["occurred_at"], e1["seq"]) <= (e2["occurred_at"], e2["seq"])
-
-    # Verify every event is visited exactly once
-    assert len(sorted_expected) == len(raw_events)
-    assert {e["id"] for e in sorted_expected} == {e["id"] for e in raw_events}
+    points = get_equipment_trail(tenant_id=tenant_id, serial_no=serial)["points"]
+    keys = [(datetime.fromisoformat(p["at"]), p["seq"]) for p in points]
+    assert keys == sorted(keys)
+    assert sorted(p["seq"] for p in points) == sorted(appended)
+    assert {p["seq"]: datetime.fromisoformat(p["at"]) for p in points} == appended
 
 
 # ==============================================================================
@@ -178,7 +165,6 @@ def test_tc4_142_3d_graph_contract():
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # 1. Insert site
@@ -251,7 +237,6 @@ def test_tc4_132_trail_from_store():
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # Insert site and tower location
@@ -329,7 +314,6 @@ def test_api4_11_route_endpoint():
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # Insert site
@@ -427,7 +411,6 @@ def test_api4_11_missing_node_and_unreachable():
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # Insert site

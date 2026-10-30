@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { explodedPosition } from "../../lib/exploded";
 
 /**
  * WebGL 3D Model Viewer with Explode Slider & Balloon Annotations (Task T4.057 / SCR4.09 / FR4.056 / FR4.068 / TC4.148).
@@ -208,9 +209,9 @@ export default function ModelViewer({
               const baseX = 250 + (idx % 2 === 0 ? -40 : 40);
               const baseY = 200 + (idx - 2) * 35;
 
-              // Linear displacement offset = t * explode_vector (PR4.09)
-              const curX = baseX + explodeT * vx * 300;
-              const curY = baseY - explodeT * vy * 300;
+              // Linear displacement offset = t * explode_vector (PR4.09), drawn at 300 px per metre
+              const [curX, negY] = explodedPosition([baseX, -baseY, 0], [vx * 300, vy * 300, vz * 300], explodeT);
+              const curY = -negY;
 
               const isSelected = selectedPart === item.part_no;
               const isDimmed = selectedPart !== null && !isSelected;

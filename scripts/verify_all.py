@@ -79,6 +79,8 @@ JOBS: list[tuple[str, str, list[str]]] = [
     ("unit", "Unit tests (Pytest)", ["uv", "run", "pytest", "-m", "unit", "--capture=no", "--junitxml=reports/junit-unit.xml"]),
     ("property", "Property invariant tests (Hypothesis)", ["uv", "run", "pytest", "-m", "property", "--capture=no", "--junitxml=reports/junit-property.xml"]),
     ("contract", "Contract verification tests", ["uv", "run", "pytest", "-m", "contract", "--capture=no", "--junitxml=reports/junit-contract.xml"]),
+    ("vitest", "Console/package tests (vitest + fast-check)",
+     ["pnpm", "exec", "vitest", "run", "--reporter=default", "--reporter=junit", "--outputFile.junit=reports/junit-vitest.xml"]),
     ("compat", "Core contract compatibility tests", ["uv", "run", "pytest", "compat/tests", "--capture=no", "--junitxml=reports/junit-compat.xml"]),
     # 8. Status Trace & Acceptance Criteria Verification
     # 9. Kotlin JVM logic tests (kotlinc + JUnit 4 from the Gradle distribution) and the real Android build
@@ -220,7 +222,7 @@ def run_job(name: str, desc: str, cmd: list[str]) -> dict[str, Any]:
         "log_path": str(log_file.relative_to(ROOT)),
     }
 
-    if name in ("unit", "property", "contract", "compat"):
+    if name in ("unit", "property", "contract", "compat", "vitest"):
         res["test_counts"] = extract_test_counts(output)
 
     return res

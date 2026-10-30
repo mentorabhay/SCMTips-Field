@@ -320,8 +320,7 @@
   frs:
   - FR4.036
   verified_at: null
-  note: 'TC4.131 passes; the PR4.12 Hypothesis test only checks seq allocation 1..N on enqueue (30 examples), not replay order
-    under interruptions (spec: 500 runs).'
+  note: 'TC4.131 passes. Fixed 2026-10-30: PR4.12 replay (test_sync_ws4_8, 500 Hypothesis runs) enqueues interleaved tower jobs through the real worker queue, holds one tower in field.queue_hold and drives process_next_tower_job: each tower posts in seq order and the held tower blocks only itself. The ERP side is a recording test double, not erp-sim.'
 - id: T4.023
   title: Build equipment events API
   workstream: WS4.4
@@ -859,7 +858,7 @@
   frs:
   - FR4.049
   verified_at: null
-  note: API4.10 exists. PR4.06 test sorts its own list with Python sorted() and never calls the trail code (tautology).
+  note: 'API4.10 exists. Fixed 2026-10-30: PR4.06 Hypothesis (500 runs) appends events through append_serial_event with colliding/out-of-order times and checks get_equipment_trail returns each exactly once in (occurred_at, seq) order.'
 - id: T4.054
   title: Build console 3D explorer and trail replay
   workstream: WS4.6
@@ -916,13 +915,12 @@
   evidence:
   - apps/field-console/components/ModelViewer/ModelViewer.tsx
   tests:
-  - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
+  - 'apps/field-console/tests/viewer-properties.test.ts::PR4.09: p(0) = p0, p(1) = p0 + v, p(t) linear in t, t clamped to [0, 1]'
   frs:
   - FR4.056
   - FR4.068
   verified_at: null
-  note: 'Missing: TC4.148 and >= 50 fps never measured; PR4.09 test re-implements p(t) locally instead of testing the viewer;
-    FR4.068 untested.'
+  note: 'Fixed 2026-10-30: the viewer now computes offsets with lib/exploded.ts and PR4.09 is a fast-check property (1,000 runs) on that function, run by the verify-all vitest job. Still missing: TC4.148 and >= 50 fps never measured; FR4.068 untested; no real WebGL renderer (SVG canvas).'
 - id: T4.058
   title: Build phone exploded view
   workstream: WS4.7
@@ -936,7 +934,6 @@
   - apps/field-android/feature-exploded/src/test/kotlin/com/scmtips/field/feature/exploded/ExplodedViewModelTest.kt::tc4_027_overshootClampedToOne_fr4_055
   - apps/field-android/feature-exploded/src/test/kotlin/com/scmtips/field/feature/exploded/ExplodedViewModelTest.kt::tc4_025_atZeroPartsAreAtAssembledPositions_fr4_055
   - apps/field-android/feature-exploded/src/test/kotlin/com/scmtips/field/feature/exploded/ExplodedViewModelTest.kt::fr4_055_sliderDrivesEveryNodeTransform
-  - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
   frs:
   - FR4.055
   verified_at: null
@@ -1025,10 +1022,7 @@
   frs:
   - FR4.059
   verified_at: null
-  note: 'TowerOrdering per-tower FIFO tested on JVM (C5 fixed a later seq overtaking). Missing: PR4.12 in Kotest; the Hypothesis
-    PR4.12 replay test in test_sync_ws4_8 simulates its own coordinator instead of calling production code. Android module
-    has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by
-    JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TowerOrdering per-tower FIFO tested on JVM (C5 fixed a later seq overtaking). The server-side PR4.12 replay test now drives the real worker queue (2026-10-30). Missing: PR4.12 in Kotest on the phone outbox. Android module not yet built by Gradle nor run on a device; logic proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
 - id: T4.064
   title: Detect replay conflicts
   workstream: WS4.8
@@ -1119,11 +1113,11 @@
   evidence:
   - apps/field-console/tests/viewer-properties.test.ts
   tests:
-  - services/field-api/tests/test_models_ws4_7.py::test_pr4_09_exploded_offsets_linearity_property
+  - 'apps/field-console/tests/viewer-properties.test.ts::PR4.09: p(0) = p0, p(1) = p0 + v, p(t) linear in t, t clamped to [0, 1]'
   frs:
   - FR4.068
   verified_at: null
-  note: 'Missing: TC4.164 axe run never executed; FR4.068 untested; PR4.09 fast-check test never run in verify-all.'
+  note: 'Fixed 2026-10-30: viewer-properties.test.ts now tests console code (lib/exploded.ts with fast-check; real ui-tokens contrast pairs) and runs in verify-all (vitest job). Still missing: TC4.164 axe run on rendered pages; FR4.068 untested.'
 - id: T4.071
   title: Run contract and compat tests
   workstream: WS4.9
