@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     OTEL_EXPORTER_OTLP_ENDPOINT: str = "http://localhost:4317"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", ".env.local"),  # .env.local: owner-only secrets, git-ignored (A-02)
         env_file_encoding="utf-8",
         extra="ignore",
     )
