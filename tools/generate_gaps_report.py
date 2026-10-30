@@ -33,6 +33,26 @@ def load_phase_data(phase: int) -> tuple[dict[str, Any], list[dict[str, Any]], d
     return meta, tasks, fs, ts, tests, status_entries
 
 
+
+def _verify_all_section() -> list[str]:
+    """Job table from the newest reports/verify-all/*.json (rule 2.3: reports come from ledger + verify-all JSON)."""
+    runs = sorted((ROOT / "reports" / "verify-all").glob("*.json"))
+    if not runs:
+        return ["No verify-all report exists yet, so nothing is proven by a run."]
+    run = json.loads(runs[-1].read_text(encoding="utf-8"))
+    lines = [
+        f"`{runs[-1].relative_to(ROOT).as_posix()}`: **{run.get('summary')}**, git `{str(run.get('git_sha', ''))[:10]}`,"
+        f" dirty: {run.get('dirty')}, OS: {run.get('os')}, {run.get('total_jobs')} jobs run"
+        f" ({run.get('passed')} pass, {run.get('failed')} fail, {run.get('skipped')} skip).",
+        "",
+        "| Job | Status | Note |",
+        "|---|:---:|---|",
+    ]
+    for j in run.get("jobs", []):
+        note = j.get("reason") or j.get("error") or (f"counts {j['test_counts']}" if j.get("test_counts") else "")
+        lines.append(f"| `{j.get('job')}` | {j.get('status')} | {str(note).splitlines()[0] if note else ''} |")
+    return lines
+
 def main() -> int:
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%SZ")
 
@@ -107,14 +127,13 @@ def main() -> int:
         "",
         "---",
         "",
-        "## 2. Key Forensic Findings Driving Gaps",
+        "## 2. Latest verify-all run",
         "",
-        "1. **Finding F-03 (Orphan Kotlin in Phase 4)**: 19 Kotlin files (~1,850 lines) sit loose outside `settings.gradle.kts`. Climb-safe, tower audit, exploded CAD views, OCR, and site pack managers were never compiled into any shipping module.",
-        "2. **Finding F-04 (Unmarked Python Tests in Phase 4)**: 56 Phase 4 test methods had no suite markers and were bypassed by verify-all runners until root `conftest.py` was introduced in R0.",
-        "3. **Finding F-07 (Unverified Meta Wearables SDK)**: Wearables code depends exclusively on `MockWearablesKit`. The coordinate `com.meta.wearables:toolkit-sdk:0.1.0-preview` is unverified. All wearables tasks are partial/unverified per Rule 2.4.",
-        "4. **Finding F-09 (Missing Feature Commits in Phase 3)**: Commits stopped at WS3.3 (T3.028). Tasks T3.029–T3.072 (outbound picking, GI 601/602, physical inventory, site wayfinding graph, supervisor consoles) have 38 missing deliverables and 8 stub deliverables.",
-        "5. **Finding F-10 (API Surface Discrepancy)**: The spec defines 67 APIs across Phases 1–4, whereas `field-api` currently exposes only 49 routes.",
-        "6. **Finding F-11 (Skipped SAP Parity Tests)**: S/4 HANA connector tests skip unconditionally due to missing cassette fixtures.",
+    ])
+    md_lines.extend(_verify_all_section())
+    md_lines.extend([
+        "",
+        "Findings behind the gaps are listed in the internal review of 30 Oct 2026; each task's own note below is authoritative.",
         "",
         "---",
         "",
