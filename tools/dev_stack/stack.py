@@ -351,9 +351,31 @@ def cmd_up(a: argparse.Namespace) -> int:
     return 0 if all(ok.values()) else 1
 
 
+STACK_PROCESS = r"fake_core\.app:app|erp_sim\.app:app|field_api\.app:app|-m field_worker"
+
+
+def stop_leftovers() -> int:
+    """Stop stack processes this tool lost track of (owner's PC, 2026-10-31: a field-api from an earlier
+    run kept port 8000 after its pid file was gone). Matched by our own module names, which nothing
+    else uses."""
+    if os.name == "nt":
+        ps = (
+            "Get-CimInstance Win32_Process -Filter \"Name = 'python.exe'\" | "
+            f"Where-Object {{ $_.CommandLine -match '{STACK_PROCESS}' }} | "
+            "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $_.ProcessId }"
+        )
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True).stdout
+    else:
+        out = subprocess.run(["pkill", "-f", "-e", STACK_PROCESS.replace("\\", "")], capture_output=True, text=True).stdout
+    return len([ln for ln in out.splitlines() if ln.strip()])
+
+
 def cmd_down(_a: argparse.Namespace) -> int:
     for name in reversed(list(services("127.0.0.1"))):
         print(f"{name}: {'stopped' if stop(name) else 'not running'}")
+    n = stop_leftovers()
+    if n:
+        print(f"stopped {n} leftover stack process(es) from earlier runs")
     return 0
 
 
