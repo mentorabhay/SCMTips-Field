@@ -1022,12 +1022,19 @@
   role: Console
   status: partial
   evidence:
-  - apps/field-console/app/layout.tsx
-  tests: []
+  - "apps/field-console/app/layout.tsx"
+  - "apps/field-console/app/(console)/layout.tsx"
+  - "apps/field-console/components/ConsoleShell.tsx"
+  - "apps/field-console/lib/api.ts"
+  - "apps/field-console/lib/theme.ts"
+  tests:
+  - "apps/field-console/tests/api-client.test.ts::every write carries a UUIDv7 Idempotency-Key, a fresh one per call"
+  - "apps/field-console/tests/api-client.test.ts::listTasks sends comma lists and follows next_cursor"
+  - "apps/field-console/tests/theme-contrast.test.ts::tailwind.config.js uses the same colours as lib/theme.ts"
   frs:
   - FR1.066
   verified_at: null
-  note: Shell exists; axe has never been run (TC1.145) and several pages render hard-coded sample data.
+  note: "M2 console pass (2026-10-31, branch m2/console): shell rebuilt to docs design Console.dc.html (light theme, nav with live counts, phone-width layout); every API call goes through the typed client lib/api.ts (injected fetch, Idempotency-Key UUIDv7 on writes, problem+json and FastAPI error bodies mapped to plain English); palette contrast >= 4.5:1 checked by theme-contrast.test.ts. Tenant switcher placeholder not built. TC1.145 (axe on the shell) not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
 - id: T1.075
   title: Implement console sign-in via core session
   workstream: WS1.9
@@ -1054,13 +1061,20 @@
   role: Console
   status: partial
   evidence:
-  - apps/field-console/app/status/page.tsx
-  tests: []
+  - "apps/field-console/app/(console)/page.tsx"
+  - "apps/field-console/app/(console)/status/page.tsx"
+  - "apps/field-console/lib/views/system.ts"
+  - "apps/field-console/components/ui.tsx"
+  tests:
+  - "apps/field-console/tests/views-sites-ops.test.ts::all good"
+  - "apps/field-console/tests/views-sites-ops.test.ts::ERP down and worker down use the SCR1.05 copy and count as attention"
+  - "apps/field-console/tests/views-work.test.ts::unavailable and loading inputs say so instead of showing 0"
+  - "apps/field-console/tests/api-client.test.ts::generic 403 -> MSG1.10; flag disabled -> MSG1.15; no role -> MSG1.11; SoD keeps its own text"
   frs:
   - FR1.066
   - FR1.068
   verified_at: null
-  note: Screens exist; Playwright has never been run and no snapshots are stored (TC1.162).
+  note: "M2 console pass (2026-10-31, branch m2/console): the old pages rendered hard-coded arrays and a view switcher; replaced. Home (Right now) and System status read GET /v1/system/status and /v1/system/ai-usage; every view has loading, empty, error and no-permission states (SCR1.03 copy, MSG1.10/1.11/1.15 from error codes). SCR1.04 add-on-disabled is shown only as the MSG1.15 error text, not a dedicated screen. TC1.162 Playwright snapshots not made. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
 - id: T1.077
   title: Plan and implement per-tenant feature flags
   workstream: WS1.9

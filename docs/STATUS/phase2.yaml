@@ -1004,39 +1004,41 @@
   role: Console
   status: partial
   evidence:
-  - apps/field-console/app/devices/page.tsx
-  tests: []
+  - "apps/field-console/app/(console)/devices/page.tsx"
+  - "apps/field-console/lib/views/devices.ts"
+  tests:
+  - "apps/field-console/tests/views-sites-ops.test.ts::row fields, pairing by id, stale and revoked"
+  - "apps/field-console/tests/views-work.test.ts::devices: revoked are not counted; stale are called out"
   frs:
   - FR2.067
   verified_at: null
-  note: Page renders the hard-coded INITIAL_DEVICES sample array (incl. "Google Pixel 8 Pro"), not GET /v1/devices.
-    TC2.157 Playwright never run; FR2.067 untested.
+  note: "M2 console pass (2026-10-31, branch m2/console): the INITIAL_DEVICES sample array is gone; the page polls GET /v1/devices every 5 s (device, paired with, last seen, battery, waiting to send, stale after 15 min from is_stale). Not done: filters and cursor paging (GET /v1/devices has only limit), site and person columns (DeviceRecord has neither). TC2.157 not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
 - id: T2.062
   title: Build the device detail page with revoke
   workstream: WS2.8
   role: Console
   status: partial
   evidence:
-  - apps/field-console/app/devices/[id]/page.tsx
-  tests: []
+  - "apps/field-console/app/(console)/devices/page.tsx"
+  - "apps/field-console/components/ConfirmDialog.tsx"
+  tests:
+  - "apps/field-console/tests/api-client.test.ts::every write carries a UUIDv7 Idempotency-Key, a fresh one per call"
   frs:
   - FR2.002
   - FR2.067
   verified_at: null
-  note: Device detail derives its model from the id string ("glasses" -> Ray-Ban Meta Gen 2) instead of the API;
-    revoke path not exercised. TC2.157 never run.
+  note: "M2 console pass (2026-10-31, branch m2/console): the detail page (model derived from the id string) was removed; /devices/:id redirects to /devices. Revoke is on the list: native <dialog> confirm naming the device and serial, POST /v1/devices/{id}/revoke {reason}, then MSG2.19. Not done: device detail (pairing, consent, 24 h heartbeat history: no API), core step-up before revoke. TC2.157 revoke path not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
 - id: T2.063
   title: Build the capture inspector
   workstream: WS2.8
   role: Console
-  status: partial
-  evidence:
-  - apps/field-console/app/captures/[id]/page.tsx
+  status: missing
+  evidence: []
   tests: []
   frs:
   - FR2.068
   verified_at: null
-  note: TC2.158 Playwright never run; permission-gated crop and audit not verified; FR2.068 untested.
+  note: "M2 console pass (2026-10-31, branch m2/console): the capture inspector page was removed: it rendered one hard-coded capture object and never called GET /v1/captures/{id}. Not rebuilt in this pass (not in the M2 console design)."
 - id: T2.064
   title: Test console pages with Playwright and axe
   workstream: WS2.8
@@ -1050,8 +1052,7 @@
   - FR2.067
   - FR2.068
   verified_at: null
-  note: Playwright/axe specs exist but have never been executed (no node_modules, not in verify-all). TC2.157-TC2.159
-    unproven.
+  note: "Playwright/axe specs exist but have never been executed (no node_modules, not in verify-all). TC2.157-TC2.159 unproven. M2 console pass (2026-10-31): devices.spec.ts and captures.spec.ts assert sample data and pages that were removed (Google Pixel 8 Pro rows, /devices/[id], /captures/[id]); they must be rewritten before they can pass."
 - id: T2.065
   title: Instrument latency end to end
   workstream: WS2.9
