@@ -443,16 +443,23 @@
   status: partial
   evidence:
   - apps/field-android/feature-tower-audit/src/main/kotlin/com/scmtips/field/feature/towerAudit/TowerAuditScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
   tests:
   - apps/field-android/core-ocr/src/test/kotlin/com/scmtips/field/core/ocr/NameplateReaderTest.kt::fr4_017_confidenceReadabilityCropRefAndPositionArePassedThrough
   - services/field-api/tests/test_audit_ws4_2.py::test_tc4_112_audit_task_generation
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::audit_checkInChecklistClimbSerialsMissingFindingsClimbDownCheckOut
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::audit_withAnActiveVisitStartsAtTheChecklist
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::climbEvents_offlineNeverBlockTheClimberAndAreResentWithTheNextBatch
   frs:
   - FR4.014
   - FR4.017
   verified_at: null
-  note: 'TowerAuditScreen.kt is a plain-Kotlin controller with no UI. Missing: Maestro flow tower_audit.yaml has never run.
-    Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is
-    proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TowerAuditScreen.kt is a plain-Kotlin controller with no UI. Missing: Maestro flow tower_audit.yaml has never run. Android module has
+    never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
+    M2 (2026-10-31): the phone''s sector audit runs in app/jobs/JobRunner.kt (check-in with permit and a LocationManager fix, before-you-climb
+    checklist, climb-safe, one serial confirmation per expected unit, ''It is not there'' sends flag missing, findings, climb down, check-out)
+    per docs/design/M2_JOBS_CONTRACT.md; feature-tower-audit''s TowerAuditScreen is not used by the app. JVM tests only; not run on a device or
+    against the M2 backend (the confirmations endpoint and flag ''missing'' did not exist in field-api when written).'
 - id: T4.031
   title: Render lens sector checklist
   workstream: WS4.2
@@ -598,6 +605,7 @@
   status: partial
   evidence:
   - apps/field-android/feature-swap/src/main/kotlin/com/scmtips/field/feature/swap/SwapScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
   tests:
   - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_031_replaceStagesDismantleThenInstallConsecutiveSameQueue
   - apps/field-android/feature-swap/src/test/kotlin/com/scmtips/field/feature/swap/SwapViewModelTest.kt::fr4_032_stagingRefusedUntilEverySerialisedBomItemCapturedNamesBalloon
@@ -608,14 +616,18 @@
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_13_invertibility_property
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_127_and_tc4_128_dismantle_and_replace
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_130_reversal_undo_and_double_reversal_blocked
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::swap_oldSerialMustMatch_newMustDiffer_postsAndChecksOut
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::swap_withoutAVisitChecksInFirst
   frs:
   - FR4.031
   - FR4.032
   - FR4.035
   verified_at: null
-  note: Swap view-model stages dismantle then install and has the BOM gate (JVM tests); server TC4.128 passes. No Compose
-    UI. Android module has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic
-    is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).
+  note: 'Swap view-model stages dismantle then install and has the BOM gate (JVM tests); server TC4.128 passes. No Compose UI. Android module
+    has never been built by Gradle (no Android SDK build has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM
+    (scripts/jobs/kotlin_jvm.py). M2 (2026-10-31): the phone swap job (old serial must equal expected_serial, new serial must differ, confirmations
+    with role old/new, touch or voice post, erp.posted) runs in JobRunner per the M2 contract; the BOM checklist of SwapScreen is not part of
+    the M2 phone flow and undo is not offered. JVM tests only.'
 - id: T4.039
   title: Implement climb state detector
   workstream: WS4.5
@@ -656,6 +668,7 @@
   status: partial
   evidence:
   - apps/field-android/core-safety/src/main/kotlin/com/scmtips/field/core/safety/HarnessCheck.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
   tests:
   - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_041_climbClearsPendingHalf
   - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_041_seededRandomCaptureGateMatchesEventHistory
@@ -664,12 +677,15 @@
   - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/HarnessCheckTest.kt::fr4_041_confidenceFloorAndWindowBounds
   - apps/field-android/core-safety/src/test/kotlin/com/scmtips/field/core/safety/PromptGateTest.kt::fr4_040_nonTaskPromptsReleasedWhileTaskPromptWaits
   - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/TowerGrammarTest.kt::fr4_041_harnessClippedNeedsConfidenceAtLeast080
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::harness_tapOnlyOrPhraseOnlyOrHalvesMoreThan10sApartConfirmNothing_fr4_041_tc4_136
   frs:
   - FR4.040
   - FR4.041
   verified_at: null
-  note: 'TC4.136 passes on JVM. Missing: PR4.05 in Kotest. Android module has never been built by Gradle (no Android SDK build
-    has run) and is not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py).'
+  note: 'TC4.136 passes on JVM. Missing: PR4.05 in Kotest. Android module has never been built by Gradle (no Android SDK build has run) and is
+    not exercised on a device; logic is proven only by JUnit 4 on the JVM (scripts/jobs/kotlin_jvm.py). M2 (2026-10-31): the app''s climb step
+    uses HarnessCheck: harness_confirmed is sent only after the phrase and a tap within 10 s (JVM test). The app has no climbing-state or barometer
+    input, so clearing on climb or altitude change is not wired.'
 - id: T4.042
   title: Detect rest platform checkpoints
   workstream: WS4.5

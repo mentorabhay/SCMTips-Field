@@ -55,7 +55,7 @@ SOURCES = [f"{APP}/{p}" for p in ("MainActivity.kt", "FieldApplication.kt", "Sli
                                    "ui/SliceScreens.kt", "ui/CrashScreen.kt", "CrashLog.kt", "ui/theme/Theme.kt", "ui/theme/Color.kt",
                                    "glasses/DatGlasses.kt", "net/FieldHttp.kt", "slice/ReceiveFlow.kt",
                                    "slice/Pairing.kt")]
-MODULES = ("core-common", "core-voice", "core-wearables")
+MODULES = ("core-common", "core-voice", "core-wearables", "core-safety")
 # --all: every module's main sources (the whole Gradle project, minus code generation such as Room/KSP)
 ALL_ROOTS = [
     "androidx.room:room-runtime:2.7.2", "androidx.room:room-ktx:2.7.2", "androidx.work:work-runtime-ktx:2.10.5",

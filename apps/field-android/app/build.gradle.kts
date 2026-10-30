@@ -75,6 +75,7 @@ dependencies {
     implementation(project(":core-common"))
     implementation(project(":core-voice"))
     implementation(project(":core-wearables"))
+    implementation(project(":core-safety")) // HarnessCheck: phrase + tap within 10 s before climb-safe prompts (FR4.041)
     implementation(project(":core-outbox")) // legacy phase-2 managers (auth, consent, pairing) still compile against it
 
     implementation(libs.androidx.core.ktx)

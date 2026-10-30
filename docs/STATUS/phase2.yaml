@@ -570,16 +570,23 @@
   status: partial
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/grammar/VoiceGrammarParser.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobGrammar.kt
   tests:
   - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/grammar/VoiceGrammarParserTest.kt::tc2_128_allFifteenCommandsParseToTheirIntent
   - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/grammar/VoiceGrammarParserTest.kt::tc2_128_outOfGrammarGivesMsg2_10AndIsNotAccepted
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobGrammarTest.kt::everyDesignPhraseMapsToItsCommand
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobGrammarTest.kt::m1PhrasesStayAccepted
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobGrammarTest.kt::numbersAsDigitsOrWordsUpTo9999
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobGrammarTest.kt::belowTheFloorOrOutsideTheGrammarIsNothing_fr2_032
   frs:
   - FR2.031
   - FR2.032
   verified_at: null
-  note: TC2.128 and the 0.80 floor (TC2.027) proven by VoiceGrammarParserTest (FR2.031, FR2.032). TC2.129 (session-level
-    "what is this"/"repeat") untested; PR2.09 no generator test. Gradle Android build (the build of record, rule
-    2.1) has never run, so the module is not proven to compile or link as an Android library.
+  note: 'TC2.128 and the 0.80 floor (TC2.027) proven by VoiceGrammarParserTest (FR2.031, FR2.032). TC2.129 (session-level "what is this"/"repeat")
+    untested; PR2.09 no generator test. Gradle Android build (the build of record, rule 2.1) has never run, so the module is not proven to compile
+    or link as an Android library. M2 (2026-10-31): app/jobs/JobGrammar.kt is the job grammar of the M2 design (capture, all here, <number>, next,
+    repeat, what is this, post, yes, cancel, clipped; M1''s ''count N'' and ''confirm'' still accepted) on VoiceGrammarParser''s 0.80 floor and
+    NumberWordParser; JobGrammarTest on the JVM. No device ASR run.'
 - id: T2.035
   title: Implement the number parser and locale hooks
   workstream: WS2.4
@@ -604,19 +611,26 @@
   status: partial
   evidence:
   - apps/field-android/core-voice/src/main/kotlin/com/scmtips/field/core/voice/ConfirmGate.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
   tests:
   - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ConfirmGateTest.kt::tc2_130_timeoutClearsStageWithMsg2_22AndSendsNothing
   - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ConfirmGateTest.kt::tc2_133_undoBeforePostRemovesLineAndUndoAfterPostStagesOneReversal
   - apps/field-android/core-voice/src/test/kotlin/com/scmtips/field/core/voice/ConfirmGateTest.kt::tc2_134_wrongOneSupersedesAndConditionToggles
   - services/field-api/tests/test_ws2_6.py::test_t2_052_voice_count_and_post_gate
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::receive_voiceFlowPostsOnlyAfterPostThenYesWithBothVoiceIds_fr2_033
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::receive_yesAfterTenSecondsIsRefusedAndNothingIsPosted_msg2_22
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::receive_belowFloorAndOutOfGrammarChangeNothing_fr2_032
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::receive_cancelOrAnotherCommandDropsTheVoiceStage
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerTest.kt::postOffline_retrySendsExactlyTheSameRequestAndKey
   frs:
   - FR2.033
   - FR2.037
   verified_at: null
-  note: Gate logic proven by ConfirmGateTest (TC2.130/TC2.133/TC2.134 gate parts, FR2.033). PR2.11 no Kotest generator;
-    TC2.130 "nothing in outbox" and TC2.133 fake-consumer integration untested; FR2.037 untested. Gradle Android
-    build (the build of record, rule 2.1) has never run, so the module is not proven to compile or link as an Android
-    library.
+  note: 'Gate logic proven by ConfirmGateTest (TC2.130/TC2.133/TC2.134 gate parts, FR2.033). PR2.11 no Kotest generator; TC2.130 "nothing in outbox"
+    and TC2.133 fake-consumer integration untested; FR2.037 untested. Gradle Android build (the build of record, rule 2.1) has never run, so the
+    module is not proven to compile or link as an Android library. M2 (2026-10-31): JobRunner applies the two-step post to every job type (spoken
+    post ... yes within 10 s, or the touch Yes on the review screen, M2 contract section 4) and sends the staged hash and voice ids; JVM tests
+    only, never run against the M2 backend.'
 - id: T2.037
   title: Record voice events
   workstream: WS2.4

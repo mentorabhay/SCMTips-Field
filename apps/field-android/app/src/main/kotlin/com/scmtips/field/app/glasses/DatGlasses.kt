@@ -8,7 +8,6 @@ import com.meta.wearable.dat.camera.Camera
 import com.meta.wearable.dat.camera.addCamera
 import com.meta.wearable.dat.camera.types.PhotoData
 import com.meta.wearable.dat.camera.types.StreamConfiguration
-import com.meta.wearable.dat.camera.types.StreamState
 import com.meta.wearable.dat.camera.types.VideoQuality
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.selectors.AutoDeviceSelector
@@ -25,19 +24,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-
-/** What the receive screen shows about the glasses. */
-data class GlassesStatus(
-    val registration: String = "not initialised",
-    val devices: Int = 0,
-    val session: String = "none",
-    val camera: String = "off",
-    val speech: String = "off",
-    val inputs: String = "off",
-    val lastError: String? = null,
-) {
-    val ready: Boolean get() = session == DeviceSessionState.STARTED.name && camera == StreamState.STREAMING.name
-}
 
 /**
  * Ray-Ban Meta (Gen 2) through Meta's Wearables Device Access Toolkit 1.0.1.
