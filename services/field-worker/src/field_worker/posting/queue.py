@@ -138,7 +138,7 @@ def enqueue_posting_job(
     }
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
+        cur.execute("SELECT set_config('app.tenant_id', %s, false), set_config('app.site_ids', '*', false)", (str(tenant_id),))
         cur.execute(
             """
             INSERT INTO field.posting_job (
@@ -174,6 +174,7 @@ def claim_next_job(
         SELECT j.id, j.queue_key, j.seq, j.ref_doc_no, j.payload, j.attempts, j.max_attempts, j.erp_doc_id
         FROM field.posting_job j
         WHERE j.tenant_id = %s
+          AND j.queue_key NOT LIKE 'EQUIP:%%'  -- tower equipment queues have their own processor
           AND j.status = 'pending'
           AND j.next_attempt_at <= NOW()
           AND NOT EXISTS (
@@ -298,7 +299,7 @@ class PostingQueueWorker:
             erp_pi = created.document_number
             payload = {**job.payload, "header_data": {**hdr, "ErpPhysicalInventoryDocument": erp_pi}}
             with psycopg.connect(self.db_url, autocommit=True) as c, c.cursor() as cur:
-                cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(job.tenant_id),))
+                cur.execute("SELECT set_config('app.tenant_id', %s, false), set_config('app.site_ids', '*', false)", (str(job.tenant_id),))
                 cur.execute("UPDATE field.posting_job SET payload = %s WHERE id = %s", (json.dumps(payload), job.job_id))
         for n, it in enumerate(req.items, start=1):
             await self.erp_port.enter_physical_inventory_count(
@@ -325,7 +326,7 @@ class PostingQueueWorker:
 
         # 1. Claim job within transactional lock
         with psycopg.connect(self.db_url, autocommit=False) as conn, conn.cursor() as cur:
-            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
+            cur.execute("SELECT set_config('app.tenant_id', %s, false), set_config('app.site_ids', '*', false)", (str(tenant_id),))
             claimed = claim_next_job(cur, tenant_id, worker_id=self.worker_id)
             if not claimed:
                 conn.rollback()
@@ -351,7 +352,7 @@ class PostingQueueWorker:
                     psycopg.connect(self.db_url, autocommit=False) as adopt_conn,
                     adopt_conn.cursor() as adopt_cur,
                 ):
-                    adopt_cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
+                    adopt_cur.execute("SELECT set_config('app.tenant_id', %s, false), set_config('app.site_ids', '*', false)", (str(tenant_id),))
                     adopt_cur.execute(
                         """
                             UPDATE field.posting_job
@@ -408,7 +409,7 @@ class PostingQueueWorker:
                 psycopg.connect(self.db_url, autocommit=False) as conn_done,
                 conn_done.cursor() as cur_done,
             ):
-                cur_done.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
+                cur_done.execute("SELECT set_config('app.tenant_id', %s, false), set_config('app.site_ids', '*', false)", (str(tenant_id),))
                 cur_done.execute(
                     """
                     UPDATE field.posting_job
@@ -440,7 +441,7 @@ class PostingQueueWorker:
                 psycopg.connect(self.db_url, autocommit=False) as conn_err,
                 conn_err.cursor() as cur_err,
             ):
-                cur_err.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
+                cur_err.execute("SELECT set_config('app.tenant_id', %s, false), set_config('app.site_ids', '*', false)", (str(tenant_id),))
 
                 if not is_retryable or claimed.attempts >= claimed.max_attempts:
                     # Final failure -> status = 'failed'

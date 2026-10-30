@@ -73,7 +73,7 @@ async def poll_and_import_outbound_deliveries(
         async with await psycopg.AsyncConnection.connect(db_url) as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    "SELECT set_config('app.tenant_id', %s, false);",
+                    "SELECT set_config('app.tenant_id', %s, false), set_config('app.site_ids', '*', false);",
                     (tenant_id,),
                 )
 

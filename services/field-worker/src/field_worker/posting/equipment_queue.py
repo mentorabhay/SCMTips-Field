@@ -19,6 +19,7 @@ from typing import Any
 import psycopg
 import structlog
 from field_common.uuid7 import uuid7_str
+from field_sap.equipment import SAPEquipmentAdapter
 
 logger = structlog.get_logger(__name__)
 
@@ -178,14 +179,23 @@ def process_next_tower_job(
             site_id = payload.get("site_id")
 
             try:
-                # 2. Invoke SAP Adapter or simulated port
-                change_doc = f"CD-{uuid.uuid4().hex[:8].upper()}"
-                if adapter is not None:
-                    if op == "install":
-                        res = adapter.install_equipment(eq_no, target_fl, idempotency_key=idem_key)
-                    else:
-                        res = adapter.dismantle_equipment(eq_no, idempotency_key=idem_key)
-                    change_doc = res.get("change_document", change_doc)
+                # 2. Post through the SAP equipment adapter (erp-sim or S/4 per config). C4: when no
+                # adapter was passed the job used to be marked completed with a fabricated change
+                # document and an erp.posted event, without any ERP call.
+                port = adapter if adapter is not None else SAPEquipmentAdapter()
+                if not isinstance(eq_no, str) or not eq_no:
+                    raise ValueError("tower job payload lacks equipment_no")
+                if op == "install":
+                    if not isinstance(target_fl, str) or not target_fl:
+                        raise ValueError("install job payload lacks target_fl")
+                    res = port.install_equipment(eq_no, target_fl, idempotency_key=idem_key)
+                elif op == "dismantle":
+                    res = port.dismantle_equipment(eq_no, idempotency_key=idem_key)
+                else:
+                    raise ValueError(f"unknown tower equipment operation {op!r}")
+                change_doc = res.get("change_document")
+                if not change_doc:
+                    raise RuntimeError("ERP returned no change document; not marking the job posted")
 
                 # Success: update posting_job to completed
                 cur.execute(

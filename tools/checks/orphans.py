@@ -7,7 +7,7 @@ Enforces:
 2. Every .py file lives in a recognized package, script, or test directory, and is imported or tested.
 """
 
-import contextlib
+import ast
 import re
 import sys
 from pathlib import Path
@@ -78,52 +78,46 @@ def check_kotlin_orphans() -> list[str]:
     return violations
 
 
-def check_python_orphans() -> list[str]:
-    violations: list[str] = []
-
-    # Collect all python imports across the codebase
-    all_content: list[str] = []
-    py_files = [p for p in ROOT.rglob("*.py") if not any(part in p.parts for part in EXCLUDED_PARTS)]
+def _imported_modules(py_files: list[Path]) -> set[str]:
+    """Every dotted module name imported anywhere (import a.b; from a.b import c -> a.b, a.b.c)."""
+    names: set[str] = set()
     for p in py_files:
-        with contextlib.suppress(Exception):
-            all_content.append(p.read_text(encoding="utf-8", errors="ignore"))
-    corpus = "\n".join(all_content)
+        try:
+            tree = ast.parse(p.read_text(encoding="utf-8", errors="ignore"))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names.update(a.name for a in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                names.add(node.module)
+                names.update(f"{node.module}.{a.name}" for a in node.names)
+    return names
 
-    [
-        ROOT / "services",
-        ROOT / "apps",
-        ROOT / "packages",
-        ROOT / "connectors",
-        ROOT / "tools",
-        ROOT / "scripts",
-        ROOT / "compat",
-    ]
 
+def check_python_orphans() -> list[str]:
+    """A module under */src/<pkg>/ must be imported by its dotted name (C4: the old check matched the
+    file stem as a bare word anywhere, so dead modules like erp_sim/routes/inbound_delivery.py passed)."""
+    violations: list[str] = []
+    py_files = [p for p in ROOT.rglob("*.py") if not any(part in p.parts for part in EXCLUDED_PARTS)]
+    imported = _imported_modules(py_files)
     for p in py_files:
         rel = p.relative_to(ROOT)
-        # Top-level scripts or root conftest.py are allowed
         if len(rel.parts) == 1:
-            continue
-        # Tests and scripts are valid entrypoints
+            continue  # root conftest / scripts
         if "tests" in rel.parts or rel.parts[0] in ("scripts", "tools", "compat") or "scripts" in rel.parts:
-            continue
-        # Alembic migration versions are entrypoints loaded dynamically
+            continue  # tests and CLIs are entry points
         if "alembic" in rel.parts or "versions" in rel.parts:
-            continue
-        # Check if under a recognized package src
+            continue  # migrations are loaded by alembic
         if "src" not in rel.parts:
             violations.append(f"Orphan Python file outside recognized src/ package: {rel}")
             continue
-
-        stem = p.stem
-        if stem == "__init__":
-            continue
-        # Verify the module is imported somewhere in corpus
-        # e.g. "import ...stem" or "from ... import stem" or "from ...stem import"
-        pattern = rf"\b(import\s+([a-zA-Z0-9_.]+\.)?{re.escape(stem)}\b|from\s+([a-zA-Z0-9_.]+\.)?{re.escape(stem)}\b|{re.escape(stem)}\.)"
-        if not re.search(pattern, corpus):
-            violations.append(f"Unimported Python module: {rel}")
-
+        if p.stem in ("__init__", "__main__", "app", "cli"):
+            continue  # package markers and service entry points (uvicorn/console scripts)
+        parts = rel.parts[rel.parts.index("src") + 1 :]
+        dotted = ".".join((*parts[:-1], p.stem))
+        if dotted not in imported and not any(i.startswith(dotted + ".") for i in imported):
+            violations.append(f"Unimported Python module: {rel} ({dotted})")
     return violations
 
 
