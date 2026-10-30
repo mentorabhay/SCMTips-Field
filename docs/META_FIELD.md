@@ -27,7 +27,7 @@ Owner hardware for field test: **Ray-Ban Meta Gen 2** (camera, microphones, open
 
 | # | Capability | Call / API | Device | Status | Tried / evidence |
 |---|---|---|---|---|---|
-| 1 | Resolve DAT 1.0.1 in a real Gradle build | Gradle | CI / owner PC | **UNVERIFIED** | Artifacts exist on Maven Central (HTTP check). No build yet: CI is blocked by a GitHub billing hold, and the agent's environment has no Android SDK until the owner accepts its licence. |
+| 1 | Resolve DAT 1.0.1 in a real Gradle build | Gradle | CI / owner PC | **UNVERIFIED** | Artifacts exist on Maven Central (HTTP check). No build yet: CI is blocked by a GitHub billing hold, and the agent's environment has no Android SDK until the owner accepts its licence. Partial evidence (2026-10-30): `tools/android_check/compile_check.py` compiles the whole slice (Kotlin 2.2.21 + Compose plugin) against the real DAT 1.0.1, AndroidX, ML Kit and android-all class files with zero errors; that is a type check, not a build. |
 | 2 | SDK init + device discovery | `Wearables.initialize`, `Wearables.devices` | Gen 2 | **UNVERIFIED** | Not tried. |
 | 3 | App registration via Meta AI (Developer Mode) | registration flow | Gen 2 + phone | **UNVERIFIED** | Not tried. |
 | 4 | Camera permission flow | `checkPermissionStatus(CAMERA)` | Gen 2 | **UNVERIFIED** | Not tried. |
