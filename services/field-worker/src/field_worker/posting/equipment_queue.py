@@ -73,7 +73,7 @@ def enqueue_tower_equipment_job(
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # Monotonic sequence allocation per (tenant_id, queue_key)
@@ -137,7 +137,7 @@ def process_next_tower_job(
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # Check if queue is held due to conflict (TC4.152 / PR4.12)

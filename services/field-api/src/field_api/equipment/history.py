@@ -48,7 +48,7 @@ def append_serial_event(
 
     def _execute_append(c: Any) -> dict[str, Any]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-        c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+        c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.site_ids', '*', true);")
 
         # Resolve or create equipment record
@@ -156,7 +156,7 @@ def get_serial_history(tenant_id: str, serial_no: str) -> list[dict[str, Any]]:
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             cur.execute(
@@ -209,7 +209,7 @@ def check_single_location_invariant(
 
     def _execute_check(c: Any) -> tuple[bool, str | None, str | None]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-        c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+        c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.site_ids', '*', true);")
 
         c.execute(

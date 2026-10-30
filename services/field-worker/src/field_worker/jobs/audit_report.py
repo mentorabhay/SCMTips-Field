@@ -99,7 +99,7 @@ def generate_audit_report(
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # 1. Check for running reports on same task (409 FIELD-RPT-409-RUNNING)
@@ -236,7 +236,7 @@ def generate_audit_report(
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             cur.execute(

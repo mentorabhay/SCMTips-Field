@@ -42,7 +42,7 @@ def sign_off_audit_task(
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # 1. Fetch task

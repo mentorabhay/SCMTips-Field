@@ -42,7 +42,7 @@ def is_queue_held(
 
     def _exec(c: Any) -> bool:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-        c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+        c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.site_ids', '*', true);")
 
         c.execute(
@@ -116,7 +116,7 @@ def check_and_handle_replay_conflict(
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # 1. Open S2 Exception Case in field.exception_case
@@ -244,7 +244,7 @@ def release_queue_hold(
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             cur.execute(

@@ -36,7 +36,7 @@ def checkin_lone_worker(
 
     def _execute(c: Any) -> dict[str, Any]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-        c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+        c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.site_ids', '*', true);")
 
         c.execute(
@@ -133,7 +133,7 @@ def acknowledge_lone_worker_escalation(
 
     def _execute(c: Any) -> dict[str, Any]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-        c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+        c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.site_ids', '*', true);")
 
         c.execute(
@@ -193,7 +193,7 @@ def run_lone_worker_escalation_sweep(
 
     def _execute(c: Any) -> list[dict[str, Any]]:
         c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
-        c.execute("SELECT set_config('app.current_tenant_id', %s, true);", (tenant_id,))
+        c.execute("SELECT set_config('app.tenant_id', %s, true);", (tenant_id,))
         c.execute("SELECT set_config('app.site_ids', '*', true);")
 
         c.execute(

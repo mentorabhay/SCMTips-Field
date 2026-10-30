@@ -73,7 +73,7 @@ def api_get_audit_report_metadata(
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (principal.tenant_id,))
             cur.execute(
-                "SELECT set_config('app.current_tenant_id', %s, true);", (principal.tenant_id,)
+                "SELECT set_config('app.tenant_id', %s, true);", (principal.tenant_id,)
             )
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 

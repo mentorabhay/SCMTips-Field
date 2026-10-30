@@ -85,7 +85,7 @@ def upload_climb_session_events(
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (t_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (t_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (t_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             # 1. Verify site visit exists
@@ -260,7 +260,7 @@ def api_list_active_safety_visits(
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT set_config('app.tenant_id', %s, true);", (t_id,))
-            cur.execute("SELECT set_config('app.current_tenant_id', %s, true);", (t_id,))
+            cur.execute("SELECT set_config('app.tenant_id', %s, true);", (t_id,))
             cur.execute("SELECT set_config('app.site_ids', '*', true);")
 
             cur.execute(
