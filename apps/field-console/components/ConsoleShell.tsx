@@ -46,6 +46,7 @@ function Nav() {
     { href: "/", label: "Right now" },
     { href: "/work", label: "Live work", count: tasks ? tasks.filter(isActive).length : null },
     { href: "/decisions", label: "Decisions", count: decisions, warn: true },
+    { href: "/warehouse/board", label: "Warehouse" },
     { href: "/sites", label: "Sites and towers" },
     { href: "/postings", label: "Postings to SAP", count: queues ? queues.filter((q) => q.is_blocked).length : null, warn: true },
     { href: "/devices", label: "Phones and glasses" },

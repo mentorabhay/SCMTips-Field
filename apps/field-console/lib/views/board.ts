@@ -121,6 +121,12 @@ export function buildBoard(tasks: readonly Task[], nowMs: number): BoardColumn[]
   }));
 }
 
+/** Jobs of the given types, in their original order. No types = every job. */
+export function filterByType(tasks: readonly Task[], types?: readonly string[]): Task[] {
+  if (!types || types.length === 0) return [...tasks];
+  return tasks.filter((t) => types.includes(t.type));
+}
+
 /** Not done, i.e. still in someone's hands or waiting. */
 export function isActive(t: Task): boolean {
   return t.status !== "done";

@@ -863,72 +863,87 @@
   role: Console
   status: partial
   evidence:
-  - "apps/field-console/app/(console)/work/page.tsx"
+  - "apps/field-console/app/warehouse/board/page.tsx"
+  - "apps/field-console/components/LiveBoardView.tsx"
   - "apps/field-console/lib/views/board.ts"
   tests:
   - "apps/field-console/tests/views-work.test.ts::property: every job lands in exactly one column; only done jobs from other days are left out"
   - "apps/field-console/tests/views-work.test.ts::a flagged line blocks an in-progress job and says where"
   - "apps/field-console/tests/views-work.test.ts::done jobs without a finish time are all shown, and the column says so"
+  - "services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_056_warehouse_board_contract"
+  - "apps/field-console/tests/views-accuracy.test.ts::keeps only the asked types, in order; no types keeps all"
   frs:
   - FR3.054
   verified_at: null
-  note: "M2 console pass (2026-10-31, branch m2/console): SAMPLE_TASKS removed; Live work polls GET /v1/tasks every 5 s (contract §7, no WebSocket) into Open, In progress, Blocked (failed, awaiting_approval or a flagged line, with the reason), Waiting for SAP, Done today. Gaps: operator name (not in the task list), 'Done today' needs a finish time the contract does not give (the column then shows all done jobs and says so), live topic taskboard.{site_id} not used, TC3.144 (2 s p95, 200 operators) not measured. Needs the M2 backend for audit/swap types and comma-list filters. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
+  note: "M2 console pass (2026-10-31, branch m2/console): SAMPLE_TASKS removed; Live work polls GET /v1/tasks every 5 s (contract §7, no WebSocket) into Open, In progress, Blocked (failed, awaiting_approval or a flagged line, with the reason), Waiting for SAP, Done today. Gaps: operator name (not in the task list), 'Done today' needs a finish time the contract does not give (the column then shows all done jobs and says so), live topic taskboard.{site_id} not used, TC3.144 (2 s p95, 200 operators) not measured. Needs the M2 backend for audit/swap types and comma-list filters. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run. Integration (2026-10-31): /warehouse/board restored as the same live board filtered to receive, putaway, pick, count (SCR3.01)."
 - id: T3.057
   title: Build the discrepancy queue
   workstream: WS3.7
   role: Console
   status: partial
   evidence:
-  - "apps/field-console/app/(console)/decisions/page.tsx"
+  - "apps/field-console/app/warehouse/discrepancies/page.tsx"
+  - "apps/field-console/components/DecisionsView.tsx"
   - "apps/field-console/lib/views/decisions.ts"
   tests:
   - "apps/field-console/tests/views-decisions.test.ts::property: the order is a permutation of the input, sorted by severity then age"
   - "apps/field-console/tests/views-decisions.test.ts::suggestion: recount first, approve once recounted; never claims to be AI"
   - "apps/field-console/tests/views-decisions.test.ts::separation of duties: API note wins; else excluded list; else unknown"
+  - "services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_057_warehouse_discrepancies_contract"
   frs:
   - FR3.055
   verified_at: null
-  note: "M2 console pass (2026-10-31, branch m2/console): SAMPLE_DISCREPANCIES removed. Decisions lists count differences (GET /v1/approval-requests?status=pending, new in M2, not yet verified against a running backend) and open tower findings (GET /v1/mismatches), with a rule-based suggestion (fixed rules, labelled as not AI), the separation-of-duties note, and approve / ask for a recount (POST /v1/tasks/{id}/recount, new) / reject with a required reason. Other exception kinds in FR3.055 (over, under, damaged, short pick, SSCC duplicate, posting failed) are not listed: no API. TC3.106/TC3.136 not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
+  note: "M2 console pass (2026-10-31, branch m2/console): SAMPLE_DISCREPANCIES removed. Decisions lists count differences (GET /v1/approval-requests?status=pending, new in M2, not yet verified against a running backend) and open tower findings (GET /v1/mismatches), with a rule-based suggestion (fixed rules, labelled as not AI), the separation-of-duties note, and approve / ask for a recount (POST /v1/tasks/{id}/recount, new) / reject with a required reason. Other exception kinds in FR3.055 (over, under, damaged, short pick, SSCC duplicate, posting failed) are not listed: no API. TC3.106/TC3.136 not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run. Integration (2026-10-31): /warehouse/discrepancies restored on live count approvals (DecisionsView only=approvals)."
 - id: T3.058
   title: Build the receiving dashboard
   workstream: WS3.7
   role: Console
-  status: missing
-  evidence: []
-  tests: []
+  status: partial
+  evidence:
+  - "apps/field-console/app/warehouse/receiving/page.tsx"
+  - "apps/field-console/components/LiveBoardView.tsx"
+  tests:
+  - "services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_058_warehouse_receiving_contract"
   frs:
   - FR3.056
   verified_at: null
-  note: "M2 console pass (2026-10-31, branch m2/console): the static receiving page (no data source) was removed; no dock-to-stock API exists. TC3.145 not run."
+  note: "M2 console pass (2026-10-31, branch m2/console): the static receiving page (no data source) was removed; no dock-to-stock API exists. TC3.145 not run. Integration (2026-10-31): /warehouse/receiving restored as a live board of receive and put-away jobs. Still no dock-to-stock time (no API), so partial."
 - id: T3.059
   title: Build the inventory accuracy KPI
   workstream: WS3.7
   role: Console
-  status: missing
-  evidence: []
-  tests: []
+  status: partial
+  evidence:
+  - "apps/field-console/app/warehouse/accuracy/page.tsx"
+  - "apps/field-console/lib/views/accuracy.ts"
+  tests:
+  - "services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_059_warehouse_accuracy_contract"
+  - "apps/field-console/tests/views-accuracy.test.ts::rate stays within 0..1 for any mix of lines and differences"
   frs:
   - FR3.057
   verified_at: null
-  note: "M2 console pass (2026-10-31, branch m2/console): the static accuracy page (no data source) was removed; no accuracy KPI API exists. TC3.145 not run."
+  note: "M2 console pass (2026-10-31, branch m2/console): the static accuracy page (no data source) was removed; no accuracy KPI API exists. TC3.145 not run. Integration (2026-10-31): /warehouse/accuracy computes bins counted vs count differences waiting for a decision from live tasks and approvals. Not the FR3.057 KPI: blind counts hide book qty and in-tolerance differences post without a record the console can read, so partial."
 - id: T3.060
   title: Build PI documents, approvals and posting queue pages
   workstream: WS3.7
   role: Console
   status: partial
   evidence:
-  - "apps/field-console/app/(console)/postings/page.tsx"
+  - "apps/field-console/app/warehouse/inventory/page.tsx"
+  - "apps/field-console/app/warehouse/approvals/page.tsx"
+  - "apps/field-console/app/warehouse/queues/page.tsx"
+  - "apps/field-console/components/PostingsView.tsx"
   - "apps/field-console/lib/views/postings.ts"
-  - "apps/field-console/app/(console)/decisions/page.tsx"
   tests:
   - "apps/field-console/tests/views-sites-ops.test.ts::blocked queue: SAP message when recorded, honest text when not; retry targets the failed head"
   - "apps/field-console/tests/views-sites-ops.test.ts::head job is the lowest open seq"
   - "apps/field-console/tests/api-client.test.ts::every write carries a UUIDv7 Idempotency-Key, a fresh one per call"
+  - "services/field-api/tests/test_warehouse_ws3_7_to_9.py::test_t3_060_warehouse_inventory_queues_contract"
   frs:
   - FR3.034
   - FR3.045
   verified_at: null
-  note: "M2 console pass (2026-10-31, branch m2/console): placeholders replaced. Postings to SAP: GET /v1/posting-queues, GET /v1/posting-queues/{key}/jobs for blocked queues, Retry now = POST /v1/posting-jobs/{id}/retry on the failed head job. Approvals are in Decisions (POST /v1/approval-requests/{id}/decide). Gaps: the worker does not store the SAP error text on the job, so the page says so instead of showing it; Cancel not offered; PI documents page and approval re-authentication not built. TC3.127/TC3.136 not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
+  note: "M2 console pass (2026-10-31, branch m2/console): placeholders replaced. Postings to SAP: GET /v1/posting-queues, GET /v1/posting-queues/{key}/jobs for blocked queues, Retry now = POST /v1/posting-jobs/{id}/retry on the failed head job. Approvals are in Decisions (POST /v1/approval-requests/{id}/decide). Gaps: the worker does not store the SAP error text on the job, so the page says so instead of showing it; Cancel not offered; PI documents page and approval re-authentication not built. TC3.127/TC3.136 not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run. Integration (2026-10-31): /warehouse/inventory (live count jobs), /warehouse/approvals (live count approvals) and /warehouse/queues (live posting queues) restored."
 - id: T3.061
   title: Export receipts, counts and variances for core guided load
   workstream: WS3.8
