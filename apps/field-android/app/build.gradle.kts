@@ -30,8 +30,24 @@ android {
         manifestPlaceholders["mwdat_client_token"] = localProperties.getProperty("mwdat_client_token", "")
     }
 
+    // One fixed DEBUG key for every build (CI and PCs alike), so a newer debug APK installs over the
+    // older one. Without it each CI runner signed with its own fresh debug key and Android refused the
+    // update ("App not installed"). Like Android's own debug.keystore this key is deliberately public
+    // (password "android"); it signs only debug builds and guards nothing. Release signing stays out of git (A-02).
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug-signing.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
-        debug { applicationIdSuffix = ".debug" }
+        debug {
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
         }
