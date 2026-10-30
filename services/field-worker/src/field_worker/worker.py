@@ -6,6 +6,7 @@ Every FIELD_WORKER_TICK_S (1 s):
   - drains due posting jobs per tenant through PostingQueueWorker (ordered, advisory-locked, ErpPort)
 Every FIELD_IBD_POLL_S (spec default 300 s; set lower for a field test):
   - imports open inbound deliveries for each active ERP site (receive tasks)
+  - imports open outbound deliveries of the same plant (pick tasks, FR3.017)
 Every 10 min:
   - purges expired idempotency records
 
@@ -36,6 +37,7 @@ from field_worker.material_sync import MaterialCacheSynchronizer
 from field_worker.posting.equipment_queue import process_next_tower_job
 from field_worker.posting.queue import PostingQueueWorker
 from field_worker.warehouse.ibd_import import poll_and_import_inbound_deliveries
+from field_worker.warehouse.obd_import import poll_and_import_outbound_deliveries
 
 logger = structlog.get_logger(__name__)
 
@@ -120,6 +122,14 @@ class FieldWorker:
                 created += c
             except Exception:  # one site's ERP failure must not stop the others
                 logger.exception("ibd_poll_failed", site_id=str(site))
+            try:  # pick tasks from open outbound deliveries of the same plant (FR3.017)
+                c_out, _ = await poll_and_import_outbound_deliveries(
+                    tenant_id=str(tenant), site_id=str(site), shipping_point=plant, erp_url=ERP_URL,
+                    db_url=self.db_url, client=self.ibd_client,
+                )
+                created += c_out
+            except Exception:
+                logger.exception("obd_poll_failed", site_id=str(site))
         self.tasks_imported += created
         return created
 

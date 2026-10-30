@@ -13,6 +13,7 @@ from typing import Any
 
 import structlog
 from field_api.db import get_conn
+from field_api.jobs.tower_tasks import position_label
 
 logger = structlog.get_logger(__name__)
 
@@ -23,8 +24,13 @@ def generate_audit_task(
     assigned_to: str | None = None,
     due_at: datetime | None = None,
     snapshot_version: str | None = None,
+    sector_code: str | None = None,
 ) -> dict[str, Any]:
-    """Generate an audit task with task_line per installed equipment at the site."""
+    """Generate an audit task with task_line per installed equipment at the site.
+
+    ``sector_code`` narrows it to one sector (the M2 "sector audit"). Each line carries its
+    ``position`` for the phone ("Sector A · slot 2", field_api.jobs.tower_tasks.position_label).
+    """
     task_id = str(uuid.uuid4())
     now = datetime.now(UTC)
     snap_ver = snapshot_version or f"erp-{now.strftime('%Y-%m-%dT%H:%MZ')}#{uuid.uuid4().hex[:4]}"
@@ -60,31 +66,34 @@ def generate_audit_task(
                     l.fl_code,
                     COALESCE(l.sector_code, '') AS sector_code,
                     COALESCE(l.height_m, 0.0) AS height_m,
-                    l.path
+                    l.path,
+                    e.erp_equipment_no
                 FROM field.equipment e
                 JOIN field.location l ON e.current_location_id = l.id
                 WHERE e.tenant_id = %s
                   AND l.site_id = %s
                   AND e.status = 'installed'
+                  AND (%s::text IS NULL OR l.sector_code = %s)
                 ORDER BY
                     COALESCE(l.sector_code, '') ASC,
                     COALESCE(l.height_m, 0.0) ASC,
+                    l.code ASC,
                     e.serial_no ASC;
                 """,
-                (tenant_id, site_id),
+                (tenant_id, site_id, sector_code, sector_code),
             )
             equipment_rows = cur.fetchall()
 
             # 4. Create the task record
-            task_title = f"Tower Audit - {site_code}"
+            task_title = f"Sector {sector_code} audit" if sector_code else f"Tower Audit - {site_code}"
             cur.execute(
                 """
                 INSERT INTO field.task (
                     id, tenant_id, site_id, type, status, priority,
-                    title, assigned_to, due_at, snapshot_version, version
+                    title, assigned_to, due_at, snapshot_version, version, subtitle, ref_doc_no
                 ) VALUES (
                     %s, %s, %s, 'audit', 'pending', 'medium',
-                    %s, %s, %s, %s, 1
+                    %s, %s, %s, %s, 1, %s, %s
                 );
                 """,
                 (
@@ -95,6 +104,8 @@ def generate_audit_task(
                     assigned_to,
                     due_at,
                     snap_ver,
+                    site_code,
+                    site_code,
                 ),
             )
 
@@ -110,7 +121,9 @@ def generate_audit_task(
                 loc_code = eq[5]
                 fl_code = eq[6]
                 sector_code = eq[7]
+                sector_code_l = sector_code or None
                 height_m = float(eq[8])
+                eq_no = eq[10]
 
                 # Resolve or query material_id if available
                 cur.execute(
@@ -125,11 +138,11 @@ def generate_audit_task(
                     INSERT INTO field.task_line (
                         id, tenant_id, site_id, task_id, line_no,
                         material_id, expected_qty, uom, captured_qty,
-                        status, expected_serial, location_id, version
+                        status, expected_serial, location_id, version, position, equipment_no
                     ) VALUES (
                         %s, %s, %s, %s, %s,
                         %s, 1, 'EA', 0,
-                        'pending', %s, %s, 1
+                        'pending', %s, %s, 1, %s, %s
                     );
                     """,
                     (
@@ -141,6 +154,8 @@ def generate_audit_task(
                         mat_id,
                         serial_no,
                         loc_id,
+                        position_label(sector_code_l, loc_code),
+                        eq_no,
                     ),
                 )
 

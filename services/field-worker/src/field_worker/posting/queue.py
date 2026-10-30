@@ -12,11 +12,13 @@ import os
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from types import MappingProxyType
 from typing import Any
 
 import psycopg
 import structlog
+from field_common.bin_stock import change_stock
 from field_common.uuid7 import uuid7_str
 from field_sap.ports.erp_port import ErpPort, ErpPostingRequest
 
@@ -27,6 +29,7 @@ from field_worker.posting.retry import (
     classify_error,
     compute_backoff_jitter,
 )
+from field_worker.warehouse.putaway_tasks import create_putaway_task
 
 logger = structlog.get_logger(__name__)
 
@@ -64,7 +67,9 @@ def finalize_erp_document(cur: psycopg.Cursor[Any], job: ClaimedJob, doc_no: str
     """Write the ERP document number back and close the task lines it posted (C4).
 
     erp_document.payload carries ``task_id``, ``line_ids`` and, for reversals, ``reverses``
-    (the original erp_document id) and ``line_status_after``.
+    (the original erp_document id) and ``line_status_after``. After a goods receipt the put-away
+    task is created; after a goods issue or a PI difference the field bin stock follows
+    (M2 jobs contract §4).
     """
     if not job.erp_doc_id:
         return
@@ -73,7 +78,7 @@ def finalize_erp_document(cur: psycopg.Cursor[Any], job: ClaimedJob, doc_no: str
         UPDATE field.erp_document
            SET status = 'posted', doc_number = %s, fiscal_year = %s, version = version + 1, updated_at = NOW()
          WHERE id = %s
-     RETURNING payload
+     RETURNING payload, doc_type, site_id, tenant_id
         """,
         (str(doc_no) or None, str(doc_year), job.erp_doc_id),
     )
@@ -81,6 +86,7 @@ def finalize_erp_document(cur: psycopg.Cursor[Any], job: ClaimedJob, doc_no: str
     if not row:
         return
     payload = row[0] if isinstance(row[0], dict) else json.loads(row[0] or "{}")
+    doc_type, site_id, tenant_id = row[1], str(row[2]), str(row[3])
     line_ids = payload.get("line_ids") or []
     reverses = payload.get("reverses")
     if reverses:
@@ -89,7 +95,18 @@ def finalize_erp_document(cur: psycopg.Cursor[Any], job: ClaimedJob, doc_no: str
             (reverses,),
         )
     notify_device(cur, job.tenant_id, job.erp_doc_id, "erp.posted",
-                  {"doc_number": str(doc_no), "fiscal_year": str(doc_year), "reversal": bool(reverses)})
+                  {"doc_number": str(doc_no), "doc_year": str(doc_year), "fiscal_year": str(doc_year),
+                   "doc_type": doc_type, "reversal": bool(reverses)})
+    if doc_type == "GI":
+        apply_goods_issue_to_bins(cur, tenant_id, site_id, line_ids)
+    elif doc_type == "PI_DIFF":
+        apply_count_to_bins(cur, tenant_id, site_id, line_ids)
+        if payload.get("pi_document_id"):
+            cur.execute(
+                "UPDATE field.pi_document SET status = 'posted', difference_doc_no = %s, closed_at = NOW()"
+                " WHERE id = %s",
+                (str(doc_no), payload["pi_document_id"]),
+            )
     line_status = payload.get("line_status_after", "posted")
     if line_ids:
         cur.execute(
@@ -102,13 +119,63 @@ def finalize_erp_document(cur: psycopg.Cursor[Any], job: ClaimedJob, doc_no: str
             """
             UPDATE field.task t SET status = CASE
                      WHEN NOT EXISTS (SELECT 1 FROM field.task_line l
-                                       WHERE l.task_id = t.id AND l.status NOT IN ('posted', 'cancelled'))
+                                       WHERE l.task_id = t.id AND l.status NOT IN ('posted', 'cancelled', 'done'))
                      THEN 'completed' ELSE 'in_progress' END,
                    version = version + 1, updated_at = NOW()
              WHERE t.id = %s
             """,
             (task_id,),
         )
+    if doc_type == "GR" and not reverses:
+        created = create_putaway_task(cur, tenant_id, payload, str(doc_no))
+        if created:
+            notify_device(cur, job.tenant_id, job.erp_doc_id, "task.assigned",
+                          {"task_id": created[0], "type": "putaway", "title": created[1]})
+
+
+def mark_erp_document_failed(cur: psycopg.Cursor[Any], erp_doc_id: str | None, message: str) -> None:
+    """A posting that will not be retried: the document and its task show ``failed`` (contract §2)."""
+    if not erp_doc_id:
+        return
+    cur.execute(
+        "UPDATE field.erp_document SET status = 'failed', updated_at = NOW() WHERE id = %s AND status = 'pending'"
+        " RETURNING payload->>'task_id'",
+        (erp_doc_id,),
+    )
+    row = cur.fetchone()
+    if row and row[0]:
+        cur.execute("UPDATE field.task SET status = 'failed', version = version + 1, updated_at = NOW()"
+                    " WHERE id = %s", (row[0],))
+
+
+def apply_goods_issue_to_bins(cur: psycopg.Cursor[Any], tenant_id: str, site_id: str, line_ids: list[str]) -> None:
+    """A posted goods issue takes the picked quantity out of each pick line's bin."""
+    if not line_ids:
+        return
+    cur.execute(
+        "SELECT l.storage_bin, m.erp_material_no, l.picked_qty, l.uom FROM field.task_line l"
+        " LEFT JOIN field.material m ON m.id = l.material_id WHERE l.id = ANY(%s::uuid[]) AND l.storage_bin IS NOT NULL",
+        (line_ids,),
+    )
+    for bin_, mat, qty, uom in cur.fetchall():
+        if mat:
+            change_stock(cur, tenant_id=tenant_id, site_id=site_id, storage_bin=bin_, material_no=mat,
+                         delta=-Decimal(qty), uom=uom)
+
+
+def apply_count_to_bins(cur: psycopg.Cursor[Any], tenant_id: str, site_id: str, line_ids: list[str]) -> None:
+    """A posted PI difference: the bin now holds what was counted."""
+    if not line_ids:
+        return
+    cur.execute(
+        "SELECT l.storage_bin, m.erp_material_no, l.counted_qty, l.uom, l.material_id FROM field.task_line l"
+        " LEFT JOIN field.material m ON m.id = l.material_id WHERE l.id = ANY(%s::uuid[]) AND l.storage_bin IS NOT NULL",
+        (line_ids,),
+    )
+    for bin_, mat, qty, uom, mat_id in cur.fetchall():
+        if mat:
+            change_stock(cur, tenant_id=tenant_id, site_id=site_id, storage_bin=bin_, material_no=mat,
+                         set_to=Decimal(qty), uom=uom, material_id=str(mat_id) if mat_id else None)
 
 
 def enqueue_posting_job(
@@ -355,7 +422,7 @@ class PostingQueueWorker:
                     adopt_cur.execute(
                         """
                             UPDATE field.posting_job
-                            SET status = 'completed', locked_by = NULL, locked_until = NULL, updated_at = NOW()
+                            SET status = 'completed', locked_by = NULL, locked_until = NULL, last_error = NULL, updated_at = NOW()
                             WHERE id = %s;
                         """,
                         (claimed.job_id,),
@@ -413,7 +480,7 @@ class PostingQueueWorker:
                 cur_done.execute(
                     """
                     UPDATE field.posting_job
-                    SET status = 'completed', locked_by = NULL, locked_until = NULL, updated_at = NOW()
+                    SET status = 'completed', locked_by = NULL, locked_until = NULL, last_error = NULL, updated_at = NOW()
                     WHERE id = %s;
                 """,
                     (claimed.job_id,),
@@ -448,13 +515,14 @@ class PostingQueueWorker:
                     cur_err.execute(
                         """
                         UPDATE field.posting_job
-                        SET status = 'failed', locked_by = NULL, locked_until = NULL, updated_at = NOW()
+                        SET status = 'failed', locked_by = NULL, locked_until = NULL, last_error = %s, updated_at = NOW()
                         WHERE id = %s;
                     """,
-                        (claimed.job_id,),
+                        (sap_msg, claimed.job_id),
                     )
                     notify_device(cur_err, tenant_id, claimed.erp_doc_id, "erp.failed",
                                   {"error_class": error_class, "message": sap_msg})
+                    mark_erp_document_failed(cur_err, claimed.erp_doc_id, sap_msg)
                     emit_erp_failed(
                         cur_err,
                         tenant_id=tenant_id,
@@ -472,10 +540,11 @@ class PostingQueueWorker:
                     cur_err.execute(
                         """
                         UPDATE field.posting_job
-                        SET status = 'pending', locked_by = NULL, locked_until = NULL, next_attempt_at = %s, updated_at = NOW()
+                        SET status = 'pending', locked_by = NULL, locked_until = NULL, next_attempt_at = %s,
+                            last_error = %s, updated_at = NOW()
                         WHERE id = %s;
                     """,
-                        (next_at, claimed.job_id),
+                        (next_at, sap_msg, claimed.job_id),
                     )
                 conn_err.commit()
             return True

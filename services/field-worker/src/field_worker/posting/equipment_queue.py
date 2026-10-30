@@ -18,8 +18,13 @@ from typing import Any
 
 import psycopg
 import structlog
+from field_api.equipment.history import append_serial_event
 from field_common.uuid7 import uuid7_str
 from field_sap.equipment import SAPEquipmentAdapter
+
+from field_worker.posting.conflicts import check_and_handle_replay_conflict
+from field_worker.posting.events import notify_device
+from field_worker.posting.queue import mark_erp_document_failed
 
 logger = structlog.get_logger(__name__)
 
@@ -123,6 +128,88 @@ def enqueue_tower_equipment_job(
     }
 
 
+def check_preconditions(port: Any, tenant_id: str, payload: dict[str, Any], db_url: str) -> str | None:
+    """None when the ERP state allows the job, else the conflict reason (queue now held).
+
+    dismantle: the unit must still be installed at ``expected_fl`` (the position the technician saw);
+    install: the unit must not be installed somewhere else. Jobs without a precondition pass.
+    """
+    op = payload.get("operation")
+    expected_fl = payload.get("expected_fl") if op == "dismantle" else payload.get("target_fl")
+    if op not in ("dismantle", "install") or not expected_fl or not hasattr(port, "get_equipment"):
+        return None
+    if op == "dismantle":
+        if not payload.get("equipment_no"):
+            return None
+        state = port.get_equipment(str(payload["equipment_no"]))
+    else:
+        if not payload.get("serial_no"):
+            return None
+        state = port.find_equipment_by_serial(str(payload["serial_no"]))
+    if state is None:
+        return None  # unknown unit: the post itself reports the ERP error
+    erp_state = {"status": "installed" if state.get("current_fl") else "dismantled", "current_fl": state.get("current_fl")}
+    res = check_and_handle_replay_conflict(
+        tenant_id=tenant_id, site_id=str(payload.get("site_id")), tower_fl=str(payload.get("tower_fl")),
+        equipment_no=str(state.get("equipment_no") or payload.get("equipment_no") or ""),
+        serial_no=str(payload.get("serial_no") or ""), operation=str(op), expected_precondition_fl=str(expected_fl),
+        current_erp_state=erp_state, db_url=db_url,
+    )
+    return str(res["reason"]) if res.get("conflict") else None
+
+
+def finalize_tower_document(cur: psycopg.Cursor[Any], tenant_id: str, erp_doc_id: str, change_doc: str,
+                            year: int) -> None:
+    """Last job of a swap posted: document number, installed base, line and task, and the phone hears it."""
+    cur.execute(
+        "UPDATE field.erp_document SET status = 'posted', doc_number = %s, fiscal_year = %s, updated_at = NOW()"
+        " WHERE id = %s RETURNING payload",
+        (change_doc, str(year), erp_doc_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        return
+    p = row[0] if isinstance(row[0], dict) else json.loads(row[0] or "{}")
+    loc = p.get("location_id")
+    cur.execute("SELECT payload FROM field.posting_job WHERE erp_doc_id = %s ORDER BY seq", (erp_doc_id,))
+    jobs = [r[0] if isinstance(r[0], dict) else json.loads(r[0]) for r in cur.fetchall()]
+    for j in jobs:
+        serial = j.get("serial_no")
+        if not serial:
+            continue
+        if j.get("operation") == "dismantle":
+            cur.execute("UPDATE field.equipment SET status = 'dismantled', current_location_id = NULL,"
+                        " updated_at = NOW() WHERE serial_no = %s RETURNING id", (serial,))
+            eq = cur.fetchone()
+            append_serial_event(tenant_id=tenant_id, serial_no=serial, event_type="dismantle", location_id=loc,
+                                equipment_id=str(eq[0]) if eq else None, idempotency_key=j.get("idempotency_key"),
+                                cur=cur)
+        elif j.get("operation") == "install":
+            cur.execute(
+                """
+                INSERT INTO field.equipment (tenant_id, erp_equipment_no, serial_no, material, current_location_id, status)
+                VALUES (%s, %s, %s, %s, %s, 'installed')
+                ON CONFLICT (tenant_id, material, serial_no) DO UPDATE SET current_location_id = EXCLUDED.current_location_id,
+                       status = 'installed', erp_equipment_no = EXCLUDED.erp_equipment_no, updated_at = NOW()
+                RETURNING id
+                """,
+                (tenant_id, j.get("equipment_no"), serial, j.get("material") or "UNKNOWN", loc),
+            )
+            eq = cur.fetchone()
+            append_serial_event(tenant_id=tenant_id, serial_no=serial, event_type="install", location_id=loc,
+                                equipment_id=str(eq[0]) if eq else None, idempotency_key=j.get("idempotency_key"),
+                                cur=cur)
+    line_ids = p.get("line_ids") or []
+    if line_ids:
+        cur.execute("UPDATE field.task_line SET status = 'done', version = version + 1, updated_at = NOW()"
+                    " WHERE id = ANY(%s::uuid[])", (line_ids,))
+    if p.get("task_id"):
+        cur.execute("UPDATE field.task SET status = 'completed', version = version + 1, updated_at = NOW()"
+                    " WHERE id = %s", (p["task_id"],))
+    notify_device(cur, tenant_id, erp_doc_id, "erp.posted",
+                  {"doc_number": change_doc, "doc_year": str(year), "doc_type": "EQ_SWAP"})
+
+
 def process_next_tower_job(
     tenant_id: str,
     queue_key: str,
@@ -165,7 +252,7 @@ def process_next_tower_job(
             #    so a job in backoff or failed was silently skipped.
             cur.execute(
                 """
-                SELECT id, seq, payload, attempts, status, (%s OR next_attempt_at <= NOW()) AS due
+                SELECT id, seq, payload, attempts, status, (%s OR next_attempt_at <= NOW()) AS due, erp_doc_id
                 FROM field.posting_job
                 WHERE tenant_id = %s AND queue_key = %s AND status NOT IN ('completed', 'cancelled')
                 ORDER BY seq ASC
@@ -182,6 +269,7 @@ def process_next_tower_job(
             if head[4] != "pending" or not head[5]:
                 return {"status": "waiting", "queue_key": queue_key, "seq": head[1]}
             job_row = head[:4]
+            erp_doc_id = str(head[6]) if head[6] else None
 
             job_id, seq, raw_payload, attempts = job_row
             payload = raw_payload if isinstance(raw_payload, dict) else json.loads(raw_payload)
@@ -190,12 +278,31 @@ def process_next_tower_job(
             target_fl = payload.get("target_fl")
             idem_key = payload.get("idempotency_key")
             site_id = payload.get("site_id")
+            port = adapter if adapter is not None else SAPEquipmentAdapter()
+
+            # 2a. Replay-conflict check (T4.064 / FR4.060): the job's precondition against the ERP state
+            #     read through the SAP adapter. On conflict the tower queue is held and a case opened;
+            #     the job stays pending until a supervisor releases the hold.
+            conflict = check_preconditions(port, tenant_id, payload, db_url)
+            if conflict:
+                cur.execute("UPDATE field.posting_job SET last_error = %s WHERE id = %s", (f"held: {conflict}", job_id))
+                conn.commit()
+                return {"status": "held", "queue_key": queue_key, "seq": seq, "reason": conflict}
 
             try:
                 # 2. Post through the SAP equipment adapter (erp-sim or S/4 per config). C4: when no
                 # adapter was passed the job used to be marked completed with a fabricated change
                 # document and an erp.posted event, without any ERP call.
-                port = adapter if adapter is not None else SAPEquipmentAdapter()
+                if (not isinstance(eq_no, str) or not eq_no) and op == "install" and payload.get("serial_no"):
+                    # A swap's new unit: SAP knows it by serial; its equipment number is read now.
+                    found = port.find_equipment_by_serial(str(payload["serial_no"]))
+                    if not found or not found.get("equipment_no"):
+                        raise ValueError(f"no ERP equipment carries serial {payload['serial_no']}")
+                    eq_no = str(found["equipment_no"])
+                    payload = {**payload, "equipment_no": eq_no, "material": found.get("material")
+                               or payload.get("material")}
+                    cur.execute("UPDATE field.posting_job SET payload = %s WHERE id = %s",
+                                (json.dumps(payload), job_id))
                 if not isinstance(eq_no, str) or not eq_no:
                     raise ValueError("tower job payload lacks equipment_no")
                 if op == "install":
@@ -216,6 +323,7 @@ def process_next_tower_job(
                     UPDATE field.posting_job
                     SET status = 'completed',
                         attempts = attempts + 1,
+                        last_error = NULL,
                         updated_at = NOW()
                     WHERE id = %s;
                     """,
@@ -239,6 +347,8 @@ def process_next_tower_job(
                     """,
                     (str(uuid.uuid4()), tenant_id, str(job_id), json.dumps(event_payload)),
                 )
+                if erp_doc_id and payload.get("final"):
+                    finalize_tower_document(cur, tenant_id, erp_doc_id, str(change_doc), now.year)
                 conn.commit()
 
                 return {
@@ -257,10 +367,11 @@ def process_next_tower_job(
                         UPDATE field.posting_job
                         SET status = 'failed',
                             attempts = %s,
+                            last_error = %s,
                             updated_at = NOW()
                         WHERE id = %s;
                         """,
-                        (new_attempts, job_id),
+                        (new_attempts, str(e), job_id),
                     )
 
                     # Emit erp.failed event
@@ -278,6 +389,9 @@ def process_next_tower_job(
                         """,
                         (str(uuid.uuid4()), tenant_id, str(job_id), json.dumps(err_event)),
                     )
+                    if erp_doc_id:
+                        notify_device(cur, tenant_id, erp_doc_id, "erp.failed", {"message": str(e)})
+                        mark_erp_document_failed(cur, erp_doc_id, str(e))
 
                     # Open S2 exception case. In a savepoint: if it cannot be opened (e.g. the site was
                     # deleted), the job must still end as failed instead of retrying forever.
@@ -330,10 +444,11 @@ def process_next_tower_job(
                         UPDATE field.posting_job
                         SET attempts = %s,
                             next_attempt_at = %s,
+                            last_error = %s,
                             updated_at = NOW()
                         WHERE id = %s;
                         """,
-                        (new_attempts, next_run, job_id),
+                        (new_attempts, next_run, str(e), job_id),
                     )
                     conn.commit()
 

@@ -243,3 +243,34 @@ class SAPEquipmentAdapter:
         if not isinstance(results, list):
             raise ValueError("SAP equipment response 'results' is not a list")
         return [r for r in results if isinstance(r, dict)]
+
+    def _query_one(self, filter_expr: str) -> dict[str, Any] | None:
+        client = self._get_client()
+        resp = client.get(
+            f"{self.api_root}/A_Equipment",
+            params={"$filter": filter_expr, "$top": 2},
+            headers={"Accept": "application/json", "sap-client": self.sap_client},
+        )
+        if resp.is_error:
+            try:
+                err_body = resp.json()
+            except Exception:
+                err_body = resp.text
+            raise map_sap_error_to_field_exception(resp.status_code, err_body)
+        results = resp.json().get("d", {}).get("results", [])
+        if len(results) > 1:
+            raise SAPEquipmentError(f"more than one equipment matches {filter_expr}", code="FIELD-EQ-409-AMBIGUOUS")
+        if not results or not isinstance(results[0], dict):
+            return None
+        r = results[0]
+        fl = r.get("FunctionalLocation") or None
+        return {"equipment_no": r.get("Equipment"), "serial_no": r.get("SerialNumber"), "material": r.get("Material"),
+                "current_fl": fl, "status": "installed" if fl else "available"}
+
+    def get_equipment(self, equipment_no: str) -> dict[str, Any] | None:
+        """Current ERP state of one equipment: equipment_no, serial_no, material, current_fl, status."""
+        return self._query_one(f"Equipment eq '{equipment_no}'")
+
+    def find_equipment_by_serial(self, serial_no: str) -> dict[str, Any] | None:
+        """The ERP equipment carrying this serial number (same shape as get_equipment), or None."""
+        return self._query_one(f"SerialNumber eq '{serial_no}'")

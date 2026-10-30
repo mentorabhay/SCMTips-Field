@@ -73,6 +73,8 @@ async def list_inbound_deliveries(
                 "OverallGoodsMovementStatus": "C" if hdr[3] in ("posted", "completed", "C") else "A",
                 "OverallGoodsReceiptStatus": "C" if hdr[3] in ("posted", "completed", "C") else "A",
                 "HeaderData": hdr[4],
+                "Supplier": (hdr[4] or {}).get("Supplier") or (hdr[4] or {}).get("Vendor", "")
+                if isinstance(hdr[4], dict) else "",
                 "LastChangeDateTime": hdr[5].isoformat() if hdr[5] else None,
             }
             if expand and "to_DeliveryDocumentItem" in expand:

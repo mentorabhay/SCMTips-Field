@@ -39,7 +39,7 @@ async def override_visit_geofence(
         cur.execute(
             """
             UPDATE field.site_visit
-            SET override_by = %s::uuid, override_reason = %s, updated_at = NOW()
+            SET override_by = %s, override_reason = %s, updated_at = NOW()
             WHERE id = %s::uuid AND tenant_id = %s::uuid
             RETURNING id, site_id, status;
             """,

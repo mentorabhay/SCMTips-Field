@@ -1,5 +1,6 @@
 """SCMTIPS Field Core API Application Factory (Task T1.011 / FR1.009)."""
 
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -7,6 +8,7 @@ from typing import Any
 import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from field_api.audit.api import router as audit_router
@@ -19,6 +21,8 @@ from field_api.errors import (
 )
 from field_api.graph.api import router as graph_router
 from field_api.installed_base.api import router as installed_base_router
+from field_api.jobs.confirmations import router as job_confirmations_router
+from field_api.jobs.console import router as job_console_router
 from field_api.logging import configure_logging
 from field_api.middleware.auth import AuthMiddleware
 from field_api.middleware.idempotency import IdempotencyMiddleware
@@ -63,6 +67,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     logger.info("SCMTIPS Field API shutting down")
 
 
+DEFAULT_CONSOLE_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+
+
+def console_origins() -> list[str]:
+    """Browser origins allowed to call the API (the field console). FIELD_CONSOLE_ORIGINS is a comma
+    list; a wildcard is refused so a token can never be used from an arbitrary page."""
+    raw = os.getenv("FIELD_CONSOLE_ORIGINS", DEFAULT_CONSOLE_ORIGINS)
+    origins = [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+    if any("*" in o for o in origins):
+        raise RuntimeError("FIELD_CONSOLE_ORIGINS must list explicit origins; '*' is not allowed")
+    return origins
+
+
 def create_app() -> FastAPI:
     """Build and configure the FastAPI application."""
     app = FastAPI(
@@ -76,6 +93,16 @@ def create_app() -> FastAPI:
     app.add_middleware(IdempotencyMiddleware)
     app.add_middleware(AuthMiddleware)
     app.add_middleware(RequestIdMiddleware)
+    # Outermost, so a browser preflight is answered before auth. Explicit origins only, never "*".
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=console_origins(),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "If-Match", "Last-Event-ID",
+                       "X-Request-ID"],
+        expose_headers=["ETag", "X-Request-ID", "Idempotent-Replayed"],
+    )
 
     # 2. RFC 9457 Problem+JSON Exception Handlers
     @app.exception_handler(FieldError)
@@ -201,6 +228,8 @@ def create_app() -> FastAPI:
     app.include_router(audit_reports_router)
     app.include_router(sitepack_router)
     app.include_router(installed_base_router)
+    app.include_router(job_confirmations_router)
+    app.include_router(job_console_router)
 
     return app
 

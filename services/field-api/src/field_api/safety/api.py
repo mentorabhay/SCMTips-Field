@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from field_api.db import get_conn
-from field_api.deps import Principal, require_principal
+from field_api.deps import Principal, require_permission, require_principal
 from field_api.safety.lone_worker import (
     acknowledge_lone_worker_escalation,
     checkin_lone_worker,
@@ -30,12 +30,13 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Safety & Climb Sessions"])
 
 
+ClimbEventType = Literal["state_changed", "harness_confirmed", "checkpoint_reached", "check_in",
+                         "climb_safe_activated", "climb_safe_released", "warning_deferred", "warning_emitted"]
+
+
 class SafetyEventItem(BaseModel):
     device_seq: int = Field(..., description="Monotonic per-device event sequence number")
-    type: str = Field(
-        ...,
-        description="Event type: state_changed, harness_confirmed, checkpoint_reached, check_in, climb_safe_activated, etc.",
-    )
+    type: ClimbEventType = Field(..., description="Event type (unknown types are 422, not a database error)")
     altitude_m: float | None = Field(None, description="Current barometric altitude in meters")
     occurred_at: str = Field(..., description="ISO 8601 timestamp when event occurred")
     payload: dict[str, Any] | None = Field(default_factory=dict, description="Additional context")
@@ -227,9 +228,9 @@ def api_lone_worker_checkin(
 def api_lone_worker_acknowledge(
     visit_id: str,
     req: AcknowledgeRequest,
-    principal: Principal = Depends(require_principal),
+    principal: Principal = Depends(require_permission("field.visit.ack")),
 ) -> dict[str, Any]:
-    """Acknowledge escalated visit from supervisor console (SCR4.13 / FR4.044)."""
+    """Acknowledge escalated visit from supervisor console (SCR4.13 / FR4.044). Needs field.visit.ack."""
     t_id = principal.tenant_id
     try:
         return acknowledge_lone_worker_escalation(
