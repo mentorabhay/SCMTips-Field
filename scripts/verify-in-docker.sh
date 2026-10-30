@@ -26,6 +26,8 @@ docker build -t "${IMAGE_TAG}" -f "${ROOT_DIR}/deploy/docker/verify.Dockerfile" 
 echo "Running honest verification suite in Linux Docker container..."
 docker run --rm \
     -v "${ROOT_DIR}:/workspace" \
+    -v "scmtips-trivy-cache:/root/.cache" \
+    -v "scmtips-uv-cache:/root/.cache/uv" \
     -w /workspace \
     "${IMAGE_TAG}" \
     bash -c "uv run python scripts/verify_all.py $*"

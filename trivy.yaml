@@ -16,3 +16,5 @@ scan:
     - .git
     - .pytest_cache
     - reports
+    - .dev_pgdata
+    - .gradle
