@@ -2,29 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --field-bg: #0B0F19;
-  --field-surface: #111827;
-  --field-border: #1F2937;
-  --field-text: #F9FAFB;
-  --field-text-muted: #9CA3AF;
-  --field-primary: #0284C7;
-  --field-success: #15803D;
-  --field-warning: #B45309;
-  --field-danger: #B91C1C;
+html,
+body {
+  background-color: #f0f2f5;
+  color: #1c1e21;
 }
 
 body {
-  background-color: var(--field-bg);
-  color: var(--field-text);
-  font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
 }
 
-/* CRT scanlines effect for HUD simulator */
-.hud-crt-scanlines {
-  background: linear-gradient(
-    rgba(18, 16, 16, 0) 50%,
-    rgba(0, 0, 0, 0.35) 50%
-  );
-  background-size: 100% 4px;
+a {
+  color: #1567d3;
+}
+a:hover {
+  color: #0e4ba0;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  outline-offset: 2px;
+}
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid #1567d3;
+}
+
+.sr-only-focusable:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

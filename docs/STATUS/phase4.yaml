@@ -762,15 +762,18 @@
   role: Console
   status: partial
   evidence:
-  - apps/field-console/app/safety/page.tsx
+  - "apps/field-console/app/(console)/sites/page.tsx"
+  - "apps/field-console/components/SafetyBannerView.tsx"
+  - "apps/field-console/lib/views/safety.ts"
   tests:
-  - services/field-api/tests/test_safety_ws4_5.py::test_tc4_139_escalation_sweep
-  - services/field-api/tests/test_safety_ws4_5.py::test_scr4_13_active_visits_and_ack
+  - "services/field-api/tests/test_safety_ws4_5.py::test_tc4_139_escalation_sweep"
+  - "services/field-api/tests/test_safety_ws4_5.py::test_scr4_13_active_visits_and_ack"
+  - "apps/field-console/tests/views-sites-ops.test.ts::unacknowledged escalation -> alert with MSG4.10 copy and an acknowledge"
+  - "apps/field-console/tests/views-sites-ops.test.ts::checked in on the ground is not a structure banner; alerts sort first"
   frs:
   - FR4.044
   verified_at: null
-  note: 'Escalation backend tested (TC4.139, SCR4.13 API). Missing: Playwright test of the banner within 5 s; Console page
-    renders hard-coded sample data / is not wired to field-api and no Playwright test has ever run.'
+  note: "M2 console pass (2026-10-31, branch m2/console): the monitor polls GET /v1/safety/active-visits every 5 s; banners on Right now and Sites and towers (SCR4.13 'Overdue check-in at {site}', MSG4.10 body) and Acknowledge = POST /v1/safety/visits/{id}/ack. The API gives a user id, not a name. Banner-within-5-s Playwright test not run. Note: the ack route accepts any principal although the spec names field.visit.ack (which field.supervisor does not hold). No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
 - id: T4.047
   title: Build sensor replay harness for climb tests
   workstream: WS4.5
@@ -883,16 +886,14 @@
   title: Build console 3D explorer and trail replay
   workstream: WS4.6
   role: Console
-  status: partial
-  evidence:
-  - apps/field-console/app/sites/[id]/graph/page.tsx
+  status: missing
+  evidence: []
   tests: []
   frs:
   - FR4.049
   - FR4.050
   verified_at: null
-  note: 'Missing: TC4.144 never run; page builds mockNodes/mockPoints. Console page renders hard-coded sample data / is not
-    wired to field-api and no Playwright test has ever run.'
+  note: "M2 console pass (2026-10-31, branch m2/console): sites/[id]/graph (3D explorer and trail replay) was removed: it showed hard-coded mockNodes and mockPoints. Not rebuilt; TC4.144 not run."
 - id: T4.055
   title: Build asset model upload and validation
   workstream: WS4.7
@@ -939,7 +940,7 @@
   - FR4.056
   - FR4.068
   verified_at: null
-  note: 'Fixed 2026-10-30: the viewer now computes offsets with lib/exploded.ts and PR4.09 is a fast-check property (1,000 runs) on that function, run by the verify-all vitest job. Still missing: TC4.148 and >= 50 fps never measured; FR4.068 untested; no real WebGL renderer (SVG canvas).'
+  note: "Fixed 2026-10-30: the viewer now computes offsets with lib/exploded.ts and PR4.09 is a fast-check property (1,000 runs) on that function, run by the verify-all vitest job. Still missing: TC4.148 and >= 50 fps never measured; FR4.068 untested; no real WebGL renderer (SVG canvas). M2 console pass (2026-10-31): the models page moved into the console shell, sends the console token and no longer falls back to a hard-coded BOM when the API fails."
 - id: T4.058
   title: Build phone exploded view
   workstream: WS4.7
@@ -1061,42 +1062,49 @@
   role: Console
   status: partial
   evidence:
-  - apps/field-console/app/sites/page.tsx
+  - "apps/field-console/app/(console)/sites/page.tsx"
+  - "apps/field-console/app/(console)/sites/[id]/towers/page.tsx"
+  - "apps/field-console/lib/views/sites.ts"
   tests:
-  - services/field-api/tests/test_release_ws4_9.py::test_tc4_154_site_explorer_and_last_audit_contract
+  - "services/field-api/tests/test_release_ws4_9.py::test_tc4_154_site_explorer_and_last_audit_contract"
+  - "apps/field-console/tests/views-sites-ops.test.ts::rows: escalation first, climbing tag, complete audit, empty audit note, unknown site still shown"
   frs:
   - FR4.062
   verified_at: null
-  note: Backend contract for the explorer passes (TC4.154 API test); console UI untested. Console page renders hard-coded
-    sample data / is not wired to field-api and no Playwright test has ever run.
+  note: "M2 console pass (2026-10-31, branch m2/console): Sites and towers lists GET /v1/sites with who is on site and audit state; each site links to the existing tower tree page, which now sends the console token (it read a localStorage key nobody set). Last audit date not shown (no field). TC4.154 UI part not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
 - id: T4.066
   title: Build console audit progress board
   workstream: WS4.9
   role: Console
   status: partial
   evidence:
-  - apps/field-console/app/audits/page.tsx
-  tests: []
+  - "apps/field-console/app/(console)/sites/page.tsx"
+  - "apps/field-console/lib/views/sites.ts"
+  - "apps/field-console/components/ui.tsx"
+  tests:
+  - "apps/field-console/tests/views-sites-ops.test.ts::sector bars: SCR4.09 copy, percent, complete; tower prefix only with several towers"
+  - "apps/field-console/tests/views-sites-ops.test.ts::property: captured never shows above expected and pct stays in 0..100"
   frs:
   - FR4.063
   verified_at: null
-  note: 'Missing: TC4.155 / FR4.063 never tested. Console page renders hard-coded sample data / is not wired to field-api
-    and no Playwright test has ever run.'
+  note: "M2 console pass (2026-10-31, branch m2/console): the audits page (sample data) is merged into Sites and towers: sector bars '{n} of {m} captured' from GET /v1/audits/{task_id}/progress for audit tasks in GET /v1/tasks; 'Data is {n} min old' after 2 min. Polling every 5 s, not SSE. An audit with no lines (the API answers 100 % for an empty scope) is shown as planned, not complete. Findings counts by class not shown. TC4.155 not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
 - id: T4.067
   title: Build console mismatch queue
   workstream: WS4.3
   role: Console
   status: partial
   evidence:
-  - apps/field-console/app/mismatches/page.tsx
+  - "apps/field-console/app/(console)/decisions/page.tsx"
+  - "apps/field-console/lib/views/decisions.ts"
   tests:
-  - services/field-api/tests/test_audit_ws4_3.py::test_tc4_123_update_erp_decision_with_sod
+  - "services/field-api/tests/test_audit_ws4_3.py::test_tc4_123_update_erp_decision_with_sod"
+  - "apps/field-console/tests/views-decisions.test.ts::case: facts, suggested decision first and all five decisions offered once"
+  - "apps/field-console/tests/views-decisions.test.ts::SoD: the person who captured it cannot decide"
   frs:
   - FR4.027
   - FR4.064
   verified_at: null
-  note: 'Page uses SAMPLE_FINDINGS. Missing: TC4.156 / FR4.064 never tested. Console page renders hard-coded sample data /
-    is not wired to field-api and no Playwright test has ever run.'
+  note: "M2 console pass (2026-10-31, branch m2/console): SAMPLE_FINDINGS removed; tower findings from GET /v1/mismatches appear in Decisions with SAP-expected vs found serial, photo check, confidence and OCR text; decisions Re-capture / Accept ERP / Update ERP / Record move / Waive = POST /v1/mismatches/{id}/decision with a note. Gaps: no filters (site, class, age, verify status); evidence crop not shown (crop_url is an unsigned raw S3 URL); the API does not return who captured, so SoD is only enforced server-side when the client sends it. TC4.156 not run. No Playwright/axe run: the build environment has no browser and the Playwright download host is blocked by the egress policy, so no TC Playwright test has run."
 - id: T4.068
   title: Write Python property tests
   workstream: WS4.9

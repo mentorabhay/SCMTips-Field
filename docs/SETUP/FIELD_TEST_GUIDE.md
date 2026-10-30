@@ -81,6 +81,33 @@ Barcodes, speech and voice prompts run on the phone and glasses for free. Cloud 
 3. Caps are enforced in Postgres: `AI_BUDGET_LLAMA_USD=40`, `AI_BUDGET_BASETEN_USD=25`, `AI_DAILY_CAP_USD=3`. Spend is shown at `GET /v1/system/ai-usage`.
 4. Don't deploy dedicated Baseten models; they bill while idle.
 
+## Step 7: Watch from the PC: the supervisor console (optional)
+
+The web console shows live work, decisions, postings to SAP, phones and glasses, and who is on a tower. It runs on the same PC as the backend (Step 2 must be running).
+
+**Once:** install **Node.js 22 LTS** from nodejs.org, then in PowerShell run `corepack enable` (this gives you `pnpm`). Then, in `<repo>`:
+```powershell
+pnpm install
+```
+
+**Each time**, in PowerShell at `<repo>`:
+```powershell
+$env:NEXT_PUBLIC_DEV_SIGNIN = "1"
+pnpm --dir apps\field-console dev
+```
+Open **http://localhost:3000** in your browser. To skip the first line every time, create `apps\field-console\.env.local` with the single line `NEXT_PUBLIC_DEV_SIGNIN=1` (the file is git-ignored).
+
+**Sign in:** the page says **Development sign-in**. Pick **Supervisor** (or Inventory controller / Administrator). Keep the suggested id `dev-supervisor`: it must differ from the phone user, or separation of duties stops you approving their counts. For **Tenant id**, open `<repo>\var\dev_stack.json` in Notepad and copy the value of `"tenant"` (a long id with dashes). Sign-in lasts until you close the tab.
+
+**If the stack is not on the default ports** (the stack skips busy ports; `var\dev_stack_ports.json` shows what it chose), set the addresses before `pnpm … dev`, for example:
+```powershell
+$env:NEXT_PUBLIC_FIELD_API_URL = "http://127.0.0.1:8000"
+$env:NEXT_PUBLIC_FAKE_CORE_URL = "http://127.0.0.1:8011"
+```
+The browser only talks to `localhost:3000`; the console forwards the calls to field-api and fake-core. After changing these values, stop the console (Ctrl+C) and start it again.
+
+**What works today:** pages refresh every 5 seconds. Count differences (Decisions) and **Ask for a recount** need the M2 backend (`GET /v1/approval-requests`, `POST /v1/tasks/{id}/recount`); until it is deployed, Decisions says the list is not offered yet and still shows tower findings. Recalls and Industry packs are placeholders for later phases.
+
 ---
 
 ## What to send the agent (no secrets)
@@ -89,3 +116,4 @@ Barcodes, speech and voice prompts run on the phone and glasses for free. Cloud 
 | Step 1 | phone model + Android version, Meta AI version, glasses firmware |
 | Step 2 | the last 5 lines of `run-field-stack.ps1 smoke` |
 | Steps 3–5 | what you heard and saw, and the app's log card (screenshot is fine) |
+| Step 7 | a screenshot of each console page, and any red error box text |
