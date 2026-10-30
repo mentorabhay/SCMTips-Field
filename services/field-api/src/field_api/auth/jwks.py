@@ -18,7 +18,7 @@ logger = structlog.get_logger(__name__)
 
 DEFAULT_JWKS_URL = os.getenv("FIELD_CORE_JWKS_URL", "http://127.0.0.1:8001/.well-known/jwks.json")
 JWKS_TTL_SECONDS = int(os.getenv("FIELD_JWKS_TTL_S", "300"))
-ALLOWED_ALGORITHMS = ["EdDSA", "RS256", "ES256"]
+ALLOWED_ALGORITHMS = ("EdDSA", "RS256", "ES256")
 
 
 class JwksCache:

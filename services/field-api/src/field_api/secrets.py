@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 # Sensitive dictionary keys to scrub
-SENSITIVE_KEYS = {
+SENSITIVE_KEYS = frozenset({
     "password",
     "pass",
     "pwd",
@@ -22,7 +22,7 @@ SENSITIVE_KEYS = {
     "client_secret",
     "access_token",
     "refresh_token",
-}
+})
 
 # Regex patterns for string scrubbing
 URI_PASSWORD_PATTERN = re.compile(r"://([^:]+):([^@]+)@")

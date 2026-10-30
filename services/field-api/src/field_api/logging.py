@@ -6,14 +6,14 @@ from typing import Any
 
 import structlog
 
-REDACT_KEYS = {
+REDACT_KEYS = frozenset({
     "authorization",
     "token",
     "password",
     "secret",
     "device_token",
     "access_token",
-}
+})
 EMAIL_REGEX = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
 
 

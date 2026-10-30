@@ -8,22 +8,24 @@ from __future__ import annotations
 
 import itertools
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 
 # Confusable character substitutions: (Letter, Digit)
-CONFUSABLE_PAIRS = [
+CONFUSABLE_PAIRS = (
     ("O", "0"),
     ("I", "1"),
     ("S", "5"),
     ("B", "8"),
     ("Z", "2"),
-]
+)
 
-LETTER_TO_DIGIT = dict(CONFUSABLE_PAIRS)
-DIGIT_TO_LETTER = {digit: letter for letter, digit in CONFUSABLE_PAIRS}
+LETTER_TO_DIGIT = MappingProxyType(dict(CONFUSABLE_PAIRS))
+DIGIT_TO_LETTER = MappingProxyType({digit: letter for letter, digit in CONFUSABLE_PAIRS})
 
 # Standard equipment class serial patterns
-EQUIPMENT_PATTERNS: dict[str, str] = {
+EQUIPMENT_PATTERNS: Mapping[str, str] = MappingProxyType({
     "RRU": r"^([0-9]{2}[A-Z][0-9][A-Z][0-9]{4}|RRU-[A-Z0-9-]{4,16})$",
     "BBU": r"^BBU-[A-Z0-9-]{4,16}$",
     "TMA": r"^TMA-[A-Z0-9-]{4,16}$",
@@ -33,7 +35,7 @@ EQUIPMENT_PATTERNS: dict[str, str] = {
     "ROUTER": r"^RTR-[A-Z0-9-]{4,16}$",
     "CABINET": r"^CAB-[A-Z0-9-]{4,16}$",
     "UNKNOWN": r"^[A-Z0-9-]{6,24}$",
-}
+})
 
 DEFAULT_PATTERN = r"^[A-Z0-9-]{6,24}$"
 

@@ -663,10 +663,23 @@ def test_tc3_112_putaway_proposal_and_scan():
             """,
             (hu_id, tenant_id, f"00890123{uuid.uuid4().hex[:10]}"),
         )
+        # C4: bins come from the site's location tree, not a hard-coded list
+        cur.execute("INSERT INTO field.site (id, tenant_id, code, name, kind, status)"
+                    " VALUES (%s, %s, 'PUT-1', 'DC', 'warehouse', 'active')", (site_id, tenant_id))
+        for code in ("03-05-01", "03-05-02", "03-05-03", "Q-HOLD-01"):
+            cur.execute("INSERT INTO field.location (tenant_id, site_id, kind, code, path, depth, erp_ref_type)"
+                        " VALUES (%s, %s, 'position', %s, %s, 1, 'storage_bin')", (tenant_id, site_id, code, code))
+        cur.execute("INSERT INTO field.handling_unit (id, tenant_id, sscc, quantity, status, storage_bin)"
+                    " VALUES (%s, %s, %s, 5, 'active', '03-05-01')",
+                    (uuid7_str(), tenant_id, f"00890124{uuid.uuid4().hex[:10]}"))
 
-    # Propose standard bin
+    # Propose: lowest free standard bin (03-05-01 is occupied), hold bins only for quality hold
     proposed = propose_putaway_bin(tenant_id=tenant_id, site_id=site_id, hu_id=hu_id)
-    assert proposed == "03-05-01"
+    assert proposed == "03-05-02"
+    assert propose_putaway_bin(tenant_id=tenant_id, site_id=site_id, hu_id=hu_id, is_quality_hold=True) == "Q-HOLD-01"
+    with pytest.raises(FieldError):  # never an occupied bin: every standard bin taken -> 409
+        propose_putaway_bin(tenant_id=tenant_id, site_id=site_id, hu_id=hu_id,
+                            occupied_bins={"03-05-02", "03-05-03"})
 
     # Confirm matching bin: succeeds immediately
     c1 = confirm_putaway_scan(
@@ -724,51 +737,4 @@ def test_tc3_113_dock_to_stock_duration_metrics():
 # =========================================================================
 # T3.028: Warehouse API Endpoints Integration Test
 # =========================================================================
-@pytest.mark.unit
-def test_t3_028_warehouse_api_routes(auth_headers):
-    """T3.028: Warehouse endpoints respond with valid schemas."""
-    headers = {"Authorization": auth_headers["Authorization"]}
-    site_id = str(uuid.uuid4())
-
-    # 1. SSCC validate endpoint
-    base17 = "00890123000000005"
-    check = compute_gs1_mod10_check_digit(base17)
-    valid_sscc = f"{base17}{check}"
-
-    res = client.post(
-        "/v1/warehouse/receiving/sscc/validate",
-        headers=headers,
-        json={
-            "delivery_ref": "DELIV_API_TEST",
-            "sscc": valid_sscc,
-            "quantity": 24.0,
-            "uom": "EA",
-        },
-    )
-    assert res.status_code == 200, res.text
-    data = res.json()
-    assert data["sscc"] == valid_sscc
-    hu_id = data["hu_id"]
-
-    # 2. Putaway propose endpoint
-    res_prop = client.post(
-        "/v1/warehouse/putaway/propose",
-        headers=headers,
-        json={"site_id": site_id, "hu_id": hu_id, "is_quality_hold": False},
-    )
-    assert res_prop.status_code == 200
-    prop_bin = res_prop.json()["proposed_bin"]
-
-    # 3. Putaway confirm endpoint
-    res_conf = client.post(
-        "/v1/warehouse/putaway/confirm",
-        headers=headers,
-        json={
-            "site_id": site_id,
-            "hu_id": hu_id,
-            "scanned_bin": prop_bin,
-            "proposed_bin": prop_bin,
-        },
-    )
-    assert res_conf.status_code == 200
-    assert res_conf.json()["status"] == "confirmed"
+# test_t3_028_warehouse_api_routes: removed in C4 (it drove the retired /v1/warehouse router, which ran as the Postgres superuser and bypassed RLS; receive/flags/confirm/reverse are API3.04-3.07 (tests/integration/test_slice_receive_e2e.py); putaway API3.08 is open in the ledger; the domain functions stay tested above).

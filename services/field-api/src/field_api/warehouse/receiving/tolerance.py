@@ -29,14 +29,14 @@ ERR_UNDER_DELIVERY_REASON_REQUIRED = FieldError(
     detail="Counted quantity is less than expected. A valid under-delivery reason code must be specified.",
 )
 
-VALID_UNDER_DELIVERY_REASONS = {
+VALID_UNDER_DELIVERY_REASONS = frozenset({
     "Later delivery",
     "Short shipment",
     "Damaged in transit",
     "Supplier stockout",
     "Partial container",
     "Other",
-}
+})
 
 
 @dataclass

@@ -11,13 +11,13 @@ from field_api.auth.jwt import Principal, verify_token
 logger = structlog.get_logger(__name__)
 
 # Paths that do not require authentication
-PUBLIC_PATHS = {
+PUBLIC_PATHS = frozenset({
     "/v1/health",
     "/v1/ready",
     "/v1/auth/exchange",
     "/docs",
     "/openapi.json",
-}
+})
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

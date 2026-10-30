@@ -16,7 +16,7 @@ from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
 
-ALLOWED_DECISIONS = {"re_capture", "accept_erp", "update_erp", "record_move", "waived"}
+ALLOWED_DECISIONS = frozenset({"re_capture", "accept_erp", "update_erp", "record_move", "waived"})
 
 
 class SoDViolationError(PermissionError):

@@ -121,43 +121,4 @@ def test_t3_048_position_fusion_and_snapping():
 # -----------------------------------------------------------------------------
 # FastApi Endpoint Routing Tests
 # -----------------------------------------------------------------------------
-@pytest.mark.unit
-def test_sitegraph_api_endpoints(client):
-    headers = auth_headers("field.supervisor")
-
-    # 1. Add nodes
-    client.post(
-        "/v1/sitegraph/nodes",
-        json={"id": "node-1", "name": "Start Waypoint", "x_m": 0.0, "y_m": 0.0},
-        headers=headers,
-    )
-    client.post(
-        "/v1/sitegraph/nodes",
-        json={"id": "node-2", "name": "End Bin", "x_m": 10.0, "y_m": 0.0, "bin_id": "BIN-01"},
-        headers=headers,
-    )
-
-    # 2. Add edge
-    client.post(
-        "/v1/sitegraph/edges",
-        json={"from_node_id": "node-1", "to_node_id": "node-2", "distance_m": 10.0},
-        headers=headers,
-    )
-
-    # 3. Shortest path
-    path_resp = client.post(
-        "/v1/sitegraph/shortest-path",
-        json={"start_node_id": "node-1", "target_node_id": "node-2"},
-        headers=headers,
-    )
-    assert path_resp.status_code == 200
-    assert path_resp.json()["total_distance_m"] == 10.0
-
-    # 4. Snap position
-    snap_resp = client.post(
-        "/v1/sitegraph/snap",
-        json={"raw_x": 4.0, "raw_y": 0.2},
-        headers=headers,
-    )
-    assert snap_resp.status_code == 200
-    assert snap_resp.json()["is_on_graph"] is True
+# test_sitegraph_api_endpoints: removed in C4 (it drove the retired in-memory /v1/sitegraph router; spec API3.14/3.15 (graph draft/publish, routes) are open in the ledger; Dijkstra/A* engines stay tested above).

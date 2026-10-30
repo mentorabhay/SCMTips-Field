@@ -16,7 +16,7 @@ from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
 
-ALLOWED_MISSING_REASONS = {"not_found", "removed_by_other", "inaccessible"}
+ALLOWED_MISSING_REASONS = frozenset({"not_found", "removed_by_other", "inaccessible"})
 
 
 def mark_item_missing(

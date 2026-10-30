@@ -26,9 +26,15 @@ DATABASE_URL = (
     .replace("@localhost:", "@127.0.0.1:")
 )
 
-# Standard sample bin layout
-DEFAULT_STANDARD_BINS = ["03-05-01", "03-05-02", "03-05-03", "03-05-04", "03-05-05"]
-DEFAULT_HOLD_BINS = ["Q-HOLD-01", "Q-HOLD-02", "Q-HOLD-03"]
+# Bins come from the site's location tree (erp_ref_type = 'storage_bin'); a bin whose code or path
+# starts with FIELD_HOLD_ZONE_PREFIX is a quality-hold bin. (C4: was a hard-coded sample list.)
+HOLD_ZONE_PREFIX = os.getenv("FIELD_HOLD_ZONE_PREFIX", "Q-HOLD")
+ERR_NO_FREE_BIN = FieldError(
+    status=409,
+    code="FIELD-PUT-409-NO-FREE-BIN",
+    title="No free bin",
+    detail="Every storage bin of the required kind at this site is occupied or none is configured.",
+)
 
 ERR_DIFFERENT_BIN_REASON_REQUIRED = FieldError(
     status=422,
@@ -51,29 +57,33 @@ def propose_putaway_bin(
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
-        # Fetch bins currently occupied in handling_unit or target_bin in task_line
+        cur.execute("SELECT set_config('app.site_ids', %s, false)", (str(site_id),))
         cur.execute(
             """
             SELECT storage_bin FROM field.handling_unit
-            WHERE tenant_id = %s AND storage_bin IS NOT NULL AND status = 'active'
+             WHERE tenant_id = %s AND storage_bin IS NOT NULL AND status = 'active'
             UNION
             SELECT target_bin FROM field.task_line
-            WHERE tenant_id = %s AND target_bin IS NOT NULL AND status IN ('pending', 'in_progress');
+             WHERE tenant_id = %s AND site_id = %s AND target_bin IS NOT NULL AND status IN ('pending', 'in_progress')
             """,
-            (tenant_id, tenant_id),
+            (tenant_id, tenant_id, site_id),
         )
-        for r in cur.fetchall():
-            if r[0]:
-                in_use.add(r[0])
+        in_use |= {r[0] for r in cur.fetchall() if r[0]}
+        cur.execute(
+            """
+            SELECT code FROM field.location
+             WHERE tenant_id = %s AND site_id = %s AND erp_ref_type = 'storage_bin' AND status = 'active'
+               AND ((code LIKE %s OR path LIKE %s) = %s)
+             ORDER BY code
+            """,
+            (tenant_id, site_id, HOLD_ZONE_PREFIX + "%", "%" + HOLD_ZONE_PREFIX + "%", is_quality_hold),
+        )
+        candidates = [r[0] for r in cur.fetchall()]
 
-    candidate_bins = DEFAULT_HOLD_BINS if is_quality_hold else DEFAULT_STANDARD_BINS
-
-    for b in candidate_bins:
+    for b in candidates:
         if b not in in_use:
-            return b
-
-    # Fallback to default
-    return candidate_bins[0]
+            return str(b)
+    raise ERR_NO_FREE_BIN  # never propose an occupied bin
 
 
 def confirm_putaway_scan(

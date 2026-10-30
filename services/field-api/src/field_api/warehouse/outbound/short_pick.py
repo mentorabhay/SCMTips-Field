@@ -29,7 +29,7 @@ class ShortPickResult(BaseModel):
     material_id: str
 
 
-VALID_SHORT_PICK_REASONS = {"bin_empty", "damaged", "not_found"}
+VALID_SHORT_PICK_REASONS = frozenset({"bin_empty", "damaged", "not_found"})
 
 
 def handle_short_pick(

@@ -13,14 +13,20 @@ Implements:
   2. Confirm: creates tasks and task_lines after review decisions.
 """
 
+import base64
+import binascii
 import csv
 import difflib
+import hashlib
+import hmac
 import io
+import json
 import os
-import uuid
+import time
 from typing import Any
 
 import psycopg
+from field_api.config import settings
 from field_common.uuid7 import uuid7_str
 from pydantic import BaseModel
 
@@ -68,8 +74,32 @@ class CsvImportPreview(BaseModel):
     rows: list[ImportedRow]
 
 
-# In-memory preview cache for confirm stage: token -> (tenant_id, site_id, rows)
-_PREVIEWS: dict[str, tuple[str, str, list[dict[str, Any]]]] = {}
+PREVIEW_TTL_S = 3600
+
+
+def _sign(payload: bytes) -> str:
+    return hmac.new(settings.FIELD_CURSOR_HMAC_SECRET.encode(), payload, hashlib.sha256).hexdigest()
+
+
+def _encode_preview(tenant_id: str, site_id: str, rows: list[dict[str, Any]]) -> str:
+    """Self-contained, HMAC-signed preview token (C4: was a process-local dict, lost on restart)."""
+    body = json.dumps({"t": tenant_id, "s": site_id, "r": rows, "exp": int(time.time()) + PREVIEW_TTL_S},
+                      separators=(",", ":"), default=str).encode()
+    return "prev_" + base64.urlsafe_b64encode(body).decode() + "." + _sign(body)
+
+
+def _decode_preview(token: str) -> tuple[str, str, list[dict[str, Any]]]:
+    try:
+        b64, sig = token.removeprefix("prev_").rsplit(".", 1)
+        body = base64.urlsafe_b64decode(b64.encode())
+    except (ValueError, binascii.Error) as e:
+        raise ValueError("Invalid or expired preview token") from e
+    if not hmac.compare_digest(_sign(body), sig):
+        raise ValueError("Invalid or expired preview token")
+    data = json.loads(body)
+    if data["exp"] < time.time():
+        raise ValueError("Invalid or expired preview token")
+    return data["t"], data["s"], data["r"]
 
 
 def match_material_ladder(
@@ -188,8 +218,7 @@ def parse_and_preview_csv(
             )
         )
 
-    token = f"prev_{uuid.uuid4().hex}"
-    _PREVIEWS[token] = (tenant_id, site_id, [r.model_dump() for r in rows])
+    token = _encode_preview(tenant_id, site_id, [r.model_dump() for r in rows])
 
     return CsvImportPreview(
         preview_token=token,
@@ -206,10 +235,7 @@ def confirm_csv_import(
     db_url: str = DATABASE_URL,
 ) -> tuple[int, int]:
     """Confirm preview and create receive tasks and task_lines."""
-    if preview_token not in _PREVIEWS:
-        raise ValueError("Invalid or expired preview token")
-
-    tenant_id, site_id, rows = _PREVIEWS[preview_token]
+    tenant_id, site_id, rows = _decode_preview(preview_token)
     overrides = approved_overrides or {}
 
     tasks_by_delivery: dict[str, list[dict[str, Any]]] = {}
@@ -234,6 +260,12 @@ def confirm_csv_import(
         cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
         for deliv, items in tasks_by_delivery.items():
+            cur.execute(
+                "SELECT 1 FROM field.task WHERE tenant_id = %s AND ref_doc_no = %s AND type = 'receive'",
+                (tenant_id, deliv),
+            )
+            if cur.fetchone():
+                continue  # already imported (re-confirm or worker import): never duplicate a receive task
             task_id = uuid7_str()
             cur.execute(
                 """
@@ -268,6 +300,5 @@ def confirm_csv_import(
                 )
                 lines_created += 1
 
-    # Invalidate token after confirmation
-    _PREVIEWS.pop(preview_token, None)
+    # Re-confirming the same token is harmless: deliveries that already have a receive task are skipped.
     return tasks_created, lines_created

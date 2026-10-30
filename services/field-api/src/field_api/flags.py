@@ -22,12 +22,12 @@ FLAG_GLASSES_ENABLED = "field.glasses.enabled"
 FLAG_ERP_LIVE_POSTING = "field.erp.live_posting"
 FLAG_CONSOLE_ENABLED = "field.console.enabled"
 
-KNOWN_FLAGS = {
+KNOWN_FLAGS = frozenset({
     FLAG_ADDON_ENABLED,
     FLAG_GLASSES_ENABLED,
     FLAG_ERP_LIVE_POSTING,
     FLAG_CONSOLE_ENABLED,
-}
+})
 
 
 def is_flag_enabled(tenant_id: str, flag_key: str) -> bool:

@@ -8,7 +8,7 @@ Only field.pi.book.read role sees book quantities in the supervisor console afte
 
 from typing import Any
 
-FORBIDDEN_OPERATOR_FIELDS = {
+FORBIDDEN_OPERATOR_FIELDS = frozenset({
     "book_qty",
     "book_quantity",
     "book_value",
@@ -18,7 +18,7 @@ FORBIDDEN_OPERATOR_FIELDS = {
     "difference_value",
     "diff_value",
     "expected_qty",
-}
+})
 
 
 def project_operator_count_line(raw_line: dict[str, Any]) -> dict[str, Any]:
