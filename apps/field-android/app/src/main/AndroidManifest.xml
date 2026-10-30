@@ -1,60 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Permissions required by WS2.1 (T2.007, T2.008) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Meta Wearables DAT talks to the glasses over Bluetooth through the Meta AI app -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!-- Only for the phone-microphone fallback; glasses speech needs the DAT MICROPHONE permission instead -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
 
     <application
         android:name=".FieldApplication"
         android:allowBackup="false"
-        android:icon="@mipmap/ic_launcher"
-        android:label="SCMTIPS Field"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:icon="@drawable/ic_launcher"
+        android:label="SCMTips Field"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SCMTipsField">
+        android:theme="@android:style/Theme.Material.NoActionBar">
 
-        <!-- MDM Managed Configuration Metadata (T2.005) -->
         <meta-data
-            android:name="android.content.APP_RESTRICTIONS"
-            android:resource="@xml/app_restrictions" />
+            android:name="com.meta.wearable.mwdat.APPLICATION_ID"
+            android:value="${mwdat_application_id}" />
+        <meta-data
+            android:name="com.meta.wearable.mwdat.CLIENT_TOKEN"
+            android:value="${mwdat_client_token}" />
+        <!-- ML Kit: download the barcode model at install time (also works with the bundled model) -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode_ui" />
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.SCMTipsField">
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
-            <!-- Deep link enrolment (T2.004): scmtips-field://enrol -->
+            <!-- Callback from the Meta AI app after glasses registration -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="scmtips-field"
-                    android:host="enrol" />
+                <data android:scheme="scmtipsfield" />
             </intent-filter>
         </activity>
-
-        <!-- Foreground Capture Session Service (T2.007) -->
-        <service
-            android:name=".session.CaptureSessionService"
-            android:exported="false"
-            android:foregroundServiceType="connectedDevice|camera|microphone" />
-
     </application>
-
 </manifest>

@@ -87,9 +87,6 @@ jobs:
     defaults:
       run:
         working-directory: apps/field-android
-    env:
-      # Read-only PAT for Meta's GitHub Packages feed (DAT SDK). Never printed.
-      MWDAT_GITHUB_TOKEN: ${{ secrets.MWDAT_GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 

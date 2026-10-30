@@ -2,39 +2,34 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.scmtips.field.core.outbox"
-    compileSdk = 35
-
-    defaultConfig {
-        minSdk = 29
-    }
-
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    defaultConfig { minSdk = libs.versions.minSdk.get().toInt() }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 }
 
+kotlin { jvmToolchain(17) }
+
 dependencies {
-    implementation(libs.androidx.core.ktx)
+    implementation(project(":core-common"))
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.sqlcipher.android)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
-
     testImplementation(libs.junit4)
-    testImplementation(libs.kotest.assertions.core)
-    testImplementation(libs.kotest.property)
+    testImplementation(libs.kotlinx.coroutines.android)
 }

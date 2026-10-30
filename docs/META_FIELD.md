@@ -10,31 +10,38 @@
 Facts from Meta's public docs, checked 2026-10-30:
 - Supported glasses: Ray-Ban Meta (Gen 1 and Gen 2), Ray-Ban Meta Optics, Meta Ray-Ban Display.
 - Phones: Android 10+, with the Meta AI app and glasses firmware v20+ (Ray-Ban Meta).
-- Distribution: GitHub Packages `https://maven.pkg.github.com/facebook/meta-wearables-dat-android`. Needs a PAT (classic) with `read:packages`.
-- Artifacts: group `com.meta.wearable`, names `mwdat-core`, `mwdat-camera`, `mwdat-display`, `mwdat-mockdevice`.
+- Distribution (updated 2026-10-30): **Maven Central**, group `com.meta.wearable`, no token needed
+  (facebook/meta-wearables-dat-android README and getting-started skill, commit `f4371bc`, 2026-10-09).
+  The earlier GitHub Packages + PAT route is obsolete.
+- Artifacts used by the M1 app: `mwdat-core`, `mwdat-camera`, `mwdat-speech` (experimental), `mwdat-inputs` (experimental).
+- Version **1.0.1** is in `apps/field-android/gradle/libs.versions.toml`. Its POMs and AARs exist on Maven Central
+  (HTTP 200, checked 2026-10-30); the public API used by the app was read from the 1.0.1 class files with `javap`.
+  **No Gradle build has resolved it yet**, so row 1 stays UNVERIFIED. (Owner note: rule 2.4 forbids writing an
+  unresolved version; it is written so a build *can* resolve it, and is marked here until one does.)
+- 1.0.1 needs Kotlin metadata 2.2 (Kotlin 2.2.x) and compileSdk 36; the project toolchain was raised to AGP 8.11.1 / Kotlin 2.2.21.
 - Developer Mode in the Meta AI app lets an unpublished app register with `com.meta.wearable.mwdat.APPLICATION_ID = "0"`.
-
-The version is **not written here** until a real build resolves it (rule 2.4).
+- Speech, Inputs and standalone Photo are **experimental**: allowed for development, may need Wearables Developer
+  Center enablement, not publishable yet. The app falls back to phone buttons and the phone microphone.
 
 Owner hardware for field test: **Ray-Ban Meta Gen 2** (camera, microphones, open-ear speakers; **no display**).
 
 | # | Capability | Call / API | Device | Status | Tried / evidence |
 |---|---|---|---|---|---|
-| 1 | Resolve DAT artifacts in a real Gradle build | Gradle | CI | **UNVERIFIED** | Not tried. Needs the `MWDAT_GITHUB_TOKEN` Actions secret, and Actions is blocked by a GitHub billing hold (2026-10-30). |
+| 1 | Resolve DAT 1.0.1 in a real Gradle build | Gradle | CI / owner PC | **UNVERIFIED** | Artifacts exist on Maven Central (HTTP check). No build yet: CI is blocked by a GitHub billing hold, and the agent's environment has no Android SDK until the owner accepts its licence. |
 | 2 | SDK init + device discovery | `Wearables.initialize`, `Wearables.devices` | Gen 2 | **UNVERIFIED** | Not tried. |
 | 3 | App registration via Meta AI (Developer Mode) | registration flow | Gen 2 + phone | **UNVERIFIED** | Not tried. |
 | 4 | Camera permission flow | `checkPermissionStatus(CAMERA)` | Gen 2 | **UNVERIFIED** | Not tried. |
-| 5 | Still photo capture | DAT camera | Gen 2 | **UNVERIFIED** | Not tried. |
+| 5 | Still photo capture | `camera.stream.capturePhoto()` while a 720x1280 @ 2 fps stream is open | Gen 2 | **UNVERIFIED** | Implemented in `DatGlasses.kt`; never run. |
 | 6 | Live video stream | DAT camera stream | Gen 2 | **UNVERIFIED** | Not tried. |
-| 7 | Mic audio into phone ASR | Bluetooth HFP/SCO + Android `SpeechRecognizer` | Gen 2 + phone | **UNVERIFIED** | Not tried. |
+| 7 | Speech from the glasses mics | `session.addSpeech()` → `transcriptions` (experimental) | Gen 2 | **UNVERIFIED** | Implemented in `app/.../glasses/DatGlasses.kt`; never run. Fallback: phone `SpeechRecognizer` (hold-to-talk). |
 | 8 | Spoken prompts / earcons to glasses speakers | Android TTS / `AudioTrack` over Bluetooth | Gen 2 + phone | **UNVERIFIED** | Not tried. |
-| 9 | Capture-button / touch-pad events to app | DAT / AVRCP | Gen 2 | **UNVERIFIED** | Not tried. Availability to third-party apps unknown. |
+| 9 | Capture-button events to app | `session.addInputs()` → `InputEvent.Capture` (experimental) | Gen 2 | **UNVERIFIED** | Implemented in `DatGlasses.kt`; never run. Fallback: on-screen Capture button and the spoken "capture". |
 | 10 | Privacy LED behaviour during capture | firmware | Gen 2 | **UNVERIFIED** | Not tried. Controlled by firmware, not the app. |
 | 11 | Mock Device Kit (Meta's) | `mwdat-mockdevice` | CI / phone | **UNVERIFIED** | Not tried. The repo's own `MockWearablesKit` is a project test double, not Meta's kit. |
 | 12 | Lens display rendering | `mwdat-display` | Ray-Ban **Display** only | **BLOCKED (hardware)** | The owner's Gen 2 has no display. Display features are out of scope for the field test; prompts are spoken instead. |
-| 13 | Phone-camera fallback (no glasses) | CameraX | phone | **UNVERIFIED** | The app has never been built. |
+| 13 | Phone-camera fallback (no glasses) | CameraX | phone | **UNVERIFIED** | Not in the M1 app (CameraX dependency removed; capture is glasses-only). |
 | 14 | On-device barcode (GS1/SSCC) | ML Kit barcode | phone | **UNVERIFIED** | The app has never been built. |
-| 15 | On-device text (labels/nameplates) | ML Kit text recognition | phone | **UNVERIFIED** | The app has never been built. |
+| 15 | On-device text (labels/nameplates) | ML Kit text recognition | phone | **UNVERIFIED** | Not in the M1 app; core-ocr parses OCR lines but has no ML Kit binding. |
 | 16 | On-device object detector `detector_v1.tflite` | MediaPipe | phone | **UNVERIFIED (no model)** | No model exists. The former 67-byte placeholder and its invented metrics were removed (C0). |
 
 ## 2. Cloud model APIs

@@ -4,7 +4,7 @@ services:
     container_name: scmtips-field-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: devpassword
+      POSTGRES_PASSWORD: dev-postgres-password
       POSTGRES_MULTIPLE_DATABASES: field,erpsim
     ports:
       - "5450:5432"

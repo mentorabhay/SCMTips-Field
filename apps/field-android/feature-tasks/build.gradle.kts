@@ -6,37 +6,23 @@ plugins {
 
 android {
     namespace = "com.scmtips.field.feature.tasks"
-    compileSdk = 35
-
-    defaultConfig {
-        minSdk = 29
-    }
-
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    defaultConfig { minSdk = libs.versions.minSdk.get().toInt() }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
-    buildFeatures {
-        compose = true
-    }
+    buildFeatures { compose = true }
 }
 
-dependencies {
-    implementation(project(":core-capture"))
-    implementation(project(":core-voice"))
-    implementation(project(":core-outbox"))
-    implementation(project(":core-wearables"))
-    implementation(project(":core-positioning-stub"))
+kotlin { jvmToolchain(17) }
 
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+dependencies {
+    implementation(project(":core-outbox"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
     implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.junit4)
+    testImplementation(libs.kotlinx.coroutines.android)
 }

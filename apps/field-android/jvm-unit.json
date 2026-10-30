@@ -1,6 +1,7 @@
 {
   "_doc": "Modules and sources compiled by scripts/jobs/kotlin_jvm.py (kotlinc + JUnit 4 from the Gradle distribution, no Android SDK). Gradle (scripts/jobs/android.py) remains the build of record; this job runs the pure-JVM logic and its tests where Gradle cannot resolve dependencies. Every excluded file states why.",
   "modules": [
+    "core-common",
     "app",
     "core-safety",
     "core-capture",
@@ -18,14 +19,18 @@
   "android_bound": {
     "app/src/main/kotlin/com/scmtips/field/app/FieldApplication.kt": "android",
     "app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt": "android, androidx",
+    "app/src/main/kotlin/com/scmtips/field/app/SliceController.kt": "androidx.security, android",
     "app/src/main/kotlin/com/scmtips/field/app/auth/CryptoManager.kt": "android, javax.crypto",
     "app/src/main/kotlin/com/scmtips/field/app/auth/RevocationHandler.kt": "uses TokenManager (android.net)",
     "app/src/main/kotlin/com/scmtips/field/app/auth/TokenManager.kt": "android",
     "app/src/main/kotlin/com/scmtips/field/app/consent/ConsentManager.kt": "uses the Retrofit FieldApiService",
-    "app/src/main/kotlin/com/scmtips/field/app/navigation/NavGraph.kt": "androidx",
+    "app/src/main/kotlin/com/scmtips/field/app/device/DeviceIo.kt": "android.speech, ML Kit",
+    "app/src/main/kotlin/com/scmtips/field/app/glasses/DatGlasses.kt": "Meta DAT SDK",
+    "app/src/main/kotlin/com/scmtips/field/app/net/FieldHttp.kt": "okhttp3",
     "app/src/main/kotlin/com/scmtips/field/app/pairing/GlassesPairingManager.kt": "uses the Retrofit FieldApiService",
     "app/src/main/kotlin/com/scmtips/field/app/session/CaptureSessionService.kt": "android, androidx",
     "app/src/main/kotlin/com/scmtips/field/app/session/PowerGovernor.kt": "uses SessionController from RevocationHandler.kt",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/SliceScreens.kt": "androidx.compose",
     "app/src/main/kotlin/com/scmtips/field/app/ui/theme/Color.kt": "androidx",
     "app/src/main/kotlin/com/scmtips/field/app/ui/theme/Theme.kt": "androidx",
     "core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/OutboxWriter.kt": "uses the Room DAO",

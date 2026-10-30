@@ -1,124 +1,93 @@
-# Field-test setup guide — Ray-Ban Meta Gen 2 + Android + your PC
+# Field-test guide: Ray-Ban Meta Gen 2, Android phone, your PC
 
-**Audience:** the owner (owner). **Goal:** test SCMTips-Field on real Ray-Ban Meta Gen 2 glasses, with the backend on your Windows PC, without the agent ever seeing a real credential.
+**For:** the owner (owner). **Goal:** receive an inbound delivery hands-free with your glasses. You look at a carton label, the glasses take a photo, the phone reads the barcode, you count by voice, and you post with "post" … "confirm". You then hear the ERP document number. The backend (field-api, worker, ERP simulator) runs on your Windows PC on the same Wi-Fi.
 
-**The secrets rule (owner amendment A-02).** You paste secrets in exactly two places, and the agent never reads either:
+**Secrets rule (A-02):** real credentials go only in git-ignored files on your PC (`.env.local`, `apps\field-android\local.properties`) or in GitHub Actions secrets. Never paste a key into chat; if you do, revoke it.
 
-1. **GitHub → repo Settings → Secrets and variables → Actions.** CI injects these at build time and GitHub masks them in logs. The agent can only *use* them by triggering a build.
-2. **Git-ignored files on your PC:** `<repo>\.env.local` and `apps\field-android\local.properties`. The agent never opens these files; code refers to them only by variable name.
-
-What you send back to the agent is only **non-secret facts** (versions, pass/fail lines). Never paste a token into chat. If you do by accident, revoke it and create a new one.
+**What changed on 2026-10-30:** Meta's glasses toolkit (DAT 1.0.1) is now on **Maven Central**, so **no GitHub token is needed** (the old Step 1 is gone).
 
 ---
 
-## Step 0 — Unblock GitHub Actions (blocking everything else) ⏱ 5 min
+## Step 0: Get an APK (pick one)
 
-**Why:** every CI job on your account is refused with *"recent account payments have failed or your spending limit needs to be increased."* Without CI, no Android APK can be built for you, because the agent's own environment can't reach Gradle or Maven.
+**A. CI builds it.** Fix GitHub billing: github.com → avatar → Settings → **Billing and plans** → fix the failed payment or the spending limit. The free quota is plenty. Tell the agent "Step 0 done". It re-runs CI, and you download the **field-debug-apk** artifact from the newest green run.
 
-1. Open github.com and sign in as **mentorabhay**.
-2. Click your avatar → **Settings** → **Billing and plans**.
-3. Fix whichever is flagged: update or retry the **payment method** (a failed card charge, often from Copilot or another subscription), or raise the **Actions spending limit** from $0.
-4. Cost note: private repos on the Free plan include 2,000 Linux minutes per month. An Android build is about 6–12 minutes, so roughly 150+ builds a month for free. You can leave the Actions spending limit at **$0** once the payment problem is cleared; it then just stops at the free quota.
-5. Tell the agent: **"Step 0 done."** It will re-run CI and read the results.
+**B. Build it on your PC.**
+1. Install **Android Studio**. During setup you accept Google's Android SDK licence.
+2. In Android Studio, open the folder `<repo>\apps\field-android` and wait for Gradle sync.
+3. Choose **Build → Build App Bundle(s)/APK(s) → Build APK(s)**. The APK is written to `app\build\outputs\apk\debug\app-debug.apk`.
+4. If sync or the build fails, copy the **first error lines** (no secrets in them) to the agent.
 
----
+**C. The agent builds it.** Reply "I accept the Android SDK license — install it". The agent can then build and unit-test the APK in its own environment and send you the file.
 
-## Step 1 — Read-only token for Meta's SDK feed ⏱ 5 min
+## Step 1: Glasses and the Meta AI app (10 min)
+1. On the phone, install or update **Meta AI** and pair your Ray-Ban Meta Gen 2.
+2. Firmware must be **v20 or newer**. To check: Meta AI → Devices → your glasses → gear icon → General → About.
+3. **Developer Mode:**
+   1. Go to Meta AI → Settings → App info.
+   2. Tap the **App version** number **5 times**.
+   3. Turn **Developer Mode** on.
 
-Meta distributes the Wearables Device Access Toolkit (DAT) through GitHub Packages, which requires a token even for read access.
+   This lets our unpublished app connect, with Meta's developer value `APPLICATION_ID = 0`.
+4. Send the agent: phone model, Android version, Meta AI app version, glasses firmware.
 
-1. github.com → avatar → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)**.
-2. Note: `scmtips-field DAT read`. Expiration: **90 days**.
-3. Tick **only** `read:packages`. Nothing else.
-4. **Generate token** and copy it. Don't paste it anywhere except the next step.
-5. Open the repo **mentorabhay/SCMTips-Field** → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
-   - Name: `MWDAT_GITHUB_TOKEN`
-   - Secret: paste the token → **Add secret**.
-6. *(Optional, only if you also build in Android Studio on your PC)*: in `<repo>\apps\field-android\local.properties` (git-ignored) add the line `github_token=<paste>`.
-7. Tell the agent: **"Step 1 done."** The next CI run resolves `com.meta.wearable:mwdat-*`. The resolved version is then recorded as VERIFIED in `docs/META_FIELD.md` (rule 2.4).
+## Step 2: Start the backend on your PC (15 min the first time)
 
-The token is read-only on packages. It cannot touch your code or account. Revoke it any time on the same page.
+You need **uv** and PostgreSQL 16 on port **5450**. For Postgres, either run Docker Desktop with `docker compose -f docker-compose.dev.yml up -d postgres`, or use your existing local Postgres.
 
----
+In PowerShell at `<repo>`:
+```powershell
+.\scripts\dev\run-field-stack.ps1            # first run creates .env.local with fresh signing keys
+.\scripts\dev\run-field-stack.ps1 smoke      # proves phone -> ERP without a phone; must end with "PASS: ERP material document 49…"
+.\scripts\dev\run-field-stack.ps1 delivery   # creates a new inbound delivery to receive
+.\scripts\dev\run-field-stack.ps1 pair       # shows the QR code for the phone (also saved as var\pairing-qr.svg)
+.\scripts\dev\run-field-stack.ps1 down       # stops everything
+```
+- If PostgreSQL is not reachable, the script says so. `docker-compose.dev.yml` and `.env.example` both use `dev-postgres-password`. A Docker volume created before 2026-10-30 keeps its old password `devpassword`; in that case, change `FIELD_ADMIN_DATABASE_URL` / `ERPSIM_DATABASE_URL` in `.env.local` to match.
+- When Windows Firewall asks about Python, allow it on **Private networks** only. The phone reaches `http://<your-PC-IP>:8000`.
+- Logs are in `var\log\*.log`.
 
-## Step 2 — Prepare the glasses and Meta AI app ⏱ 10 min
+## Step 3: Install the app and pair (5 min)
+1. Install the APK. Two ways:
+   - **USB:** turn on USB debugging (Settings → About phone → tap Build number 7 times → Developer options → USB debugging), then run `adb install -r app-debug.apk`.
+   - **No cable:** copy the APK to Drive and open it on the phone.
+2. Open **SCMTips Field** and allow Bluetooth, microphone and notifications.
+3. Tap **Scan pairing QR** and scan the QR from `run-field-stack.ps1 pair`. The app registers the phone, then lists the open inbound deliveries.
 
-1. On the Android phone, install or update the **Meta AI** app and pair your Ray-Ban Meta Gen 2.
-2. Check glasses firmware: Meta AI app → **Devices** tab (glasses icon) → your glasses → gear icon → **General → About → Version**. Meta's docs require **v20 or newer** for Ray-Ban Meta; update if lower.
-3. Enable **Developer Mode**: Meta AI app → **Settings → App Info** → tap the **App version** number **five times** → turn on the **Developer Mode** toggle.
-   With Developer Mode on, our unpublished app can register with your glasses without a Meta app ID or client token. Our manifest uses Meta's developer-mode value `APPLICATION_ID = 0`. No Meta Developer Center registration is needed for this test stage.
-4. Send the agent: **phone model, Android version, Meta AI app version, glasses firmware version.**
+## Step 4: Connect the glasses (5 min)
+1. Tap **Register**. The Meta AI app opens; approve SCMTips Field.
+2. Tap **Connect**. Meta AI asks for **camera** and **microphone** access to the glasses; allow both.
+3. The status should read: session **STARTED**, camera **STREAMING**. The capture button and glasses speech are experimental. If either shows "unavailable" or "refused", use the phone buttons and **Hold to talk**.
 
-> **Gen 2 has no display.** Everything the spec shows on a "lens HUD" will be delivered as **short spoken prompts and earcons through the glasses' open-ear speakers**, with voice confirmation through the glasses' microphones. Display features are only for Meta Ray-Ban Display glasses and are out of scope for your test.
+## Step 5: Receive a delivery
+1. Tap a delivery. You hear: *"Receiving 1800 0002 2. 2 lines. Scan a label or say next."*
+2. Look at a label and **press the glasses capture button** (or tap Capture, or say "capture"). The phone reads the barcode and says the line, the material and the expected quantity.
+3. Say **"count twelve"**. You hear *"Line 10: 12."*
+4. When all lines are counted, say **"post"**. You hear: *"Post 2 lines, 36 items? Say confirm or cancel."* Then, within **10 seconds**, say **"confirm"**.
+5. After a few seconds you hear: *"Posted. Document 4900 0000 25."* The goods receipt is now in the ERP simulator.
 
----
+Other phrases: **next** (next uncounted line, no scan needed), **repeat**, **what is this**, **cancel**.
 
-## Step 3 — Install the test APK on the phone ⏱ 10 min (after the agent says a build is green)
+**Test labels:** SAMPLE materials are named `SAMPLE-MAT-0001`…`0050`. Any Code 128 or QR barcode that contains exactly that text works. You can print one from a free online barcode generator, or show it on a second screen.
 
-1. Repo → **Actions** → workflow **android** → the newest green run → **Artifacts** → download **field-debug-apk** (a zip) on your PC and unzip it to get `app-debug.apk`.
-2. Install it with either option:
-   - **USB (recommended):** on the phone, enable Developer options (Settings → About phone → tap **Build number** 7 times) → **USB debugging** on. On the PC, run `adb install -r app-debug.apk` (adb ships with Android Studio, in `platform-tools`).
-   - **No cable:** copy the APK to Google Drive, open it on the phone, and allow "Install unknown apps" for Drive when asked.
-3. First launch: grant Bluetooth, camera, microphone and notification permissions. Then tap **Connect glasses**. The Meta AI app opens to approve the connection; approve it.
+**Safety rules built in:**
+- Nothing posts on speech alone. "post" must be followed by "confirm" within 10 s.
+- Low-confidence or unknown speech changes nothing.
+- The server re-checks the post/confirm pair and a hash of exactly the counted lines.
 
----
-
-## Step 4 — Run the backend on your PC (same Wi-Fi as the phone) ⏱ 15 min first time
-
-*The agent will add a one-command script `scripts\dev\run-field-stack.ps1`. Until then, these are the manual steps.*
-
-1. Requirements: Python via **uv** (you already use it), and PostgreSQL 16 on port **5450** (your existing `.dev_pgdata` setup, or Docker Desktop with `docker compose -f docker-compose.dev.yml up -d postgres`).
-2. In PowerShell at `<repo>`:
-   ```powershell
-   uv sync
-   uv run python scripts/jobs/alembic.py          # migrations up
-   uv run uvicorn field_api.app:app --host 0.0.0.0 --port 8000
-   ```
-3. When Windows Firewall asks, allow it on **Private networks** only.
-4. Find your PC's address with `ipconfig` and look for the **IPv4 Address** of your Wi-Fi adapter (e.g. `192.168.1.23`).
-5. In the app → **Settings → Server**, enter `http://192.168.1.23:8000`. Debug builds allow plain HTTP only to private LAN addresses.
-6. *(Optional, for testing away from home)*: a free Cloudflare quick tunnel (`cloudflared tunnel --url http://localhost:8000`) gives an `https://…trycloudflare.com` URL that needs no account. Use that URL in the app instead.
-
----
-
-## Step 5 — AI credits (optional; the slice works without them) ⏱ 10 min
-
-**Default design: no paid AI calls.** Barcodes (GS1/SSCC), label and nameplate text, and speech run **on the phone for free** (Google ML Kit, Android speech recognizer and text-to-speech). Cloud AI is only a **fallback you trigger** when on-device reading fails, and every call passes a hard budget guard.
-
-### 5a. Identify the "$150 Meta API credits"
-- Sign in at **llama.developer.meta.com**. If you see **API keys** and a credit balance there, it's the **Llama API**, which we can use for vision reading of hard labels.
-- If not, check **developers.facebook.com → your app → Billing**. Graph or Ads credits can't be used for AI inference; tell the agent which you found.
-
-### 5b. Create the keys and store them locally only
-1. Llama API → **API keys** → create key `scmtips-field-dev`.
-2. Baseten → **app.baseten.co → Settings → API keys** → create key `scmtips-field-dev`.
-3. Create `<repo>\.env.local` (it is git-ignored by the `.env*` rule) by copying `.env.example` and filling in:
-   ```
-   LLAMA_API_KEY=<paste>
-   BASETEN_API_KEY=<paste>
-   AI_CLOUD_ENABLED=false            # flip to true only when you want the fallback
-   AI_BUDGET_LLAMA_USD=40            # hard stop for this project (of your $150)
-   AI_BUDGET_BASETEN_USD=25          # hard stop (of your $100)
-   ```
-4. **Baseten safety:** don't deploy any dedicated model yourself. Dedicated deployments bill per GPU-minute even when idle unless they scale to zero. The agent will use only per-token Model APIs, or a scale-to-zero deployment it tells you about first, with its cost.
-
-### 5c. Verify without revealing anything
-Run `uv run python scripts/dev/smoke_ai.py` (added by the agent). It prints only lines like `llama: OK (model …, est. $0.0003)` or `baseten: SKIPPED (AI_CLOUD_ENABLED=false)`. Paste **that output** to the agent.
-
-### Budget guard (enforced in code)
-- Every paid call is pre-priced from token and image counts. The call is **refused** if the month-to-date spend (stored in Postgres) plus the estimate would exceed the cap.
-- Caps default to **$40 Llama and $25 Baseten** for development, leaving about $110 and $75 in reserve.
-- A daily cap of **$3 per provider**, and at most 1 cloud call per capture.
-- Spend is visible at `GET /v1/system/ai-usage` and shown in the app.
+## Step 6: AI credits (optional; the slice does not use them)
+Barcodes, speech and voice prompts run on the phone and glasses for free. Cloud AI is off (`AI_CLOUD_ENABLED=false`). If you later want the cloud fallback:
+1. Find out which product the "$150 Meta credits" belong to. If **llama.developer.meta.com** shows API keys and a balance, they are Llama API credits.
+2. Put `LLAMA_API_KEY=` / `BASETEN_API_KEY=` in `.env.local`. Also add prices to `config\ai_pricing.yaml` from your provider console; unpriced models are refused.
+3. Caps are enforced in Postgres: `AI_BUDGET_LLAMA_USD=40`, `AI_BUDGET_BASETEN_USD=25`, `AI_DAILY_CAP_USD=3`. Spend is shown at `GET /v1/system/ai-usage`.
+4. Don't deploy dedicated Baseten models; they bill while idle.
 
 ---
 
 ## What to send the agent (no secrets)
-| When | Send |
+| After | Send |
 |---|---|
-| After Step 0 | "Step 0 done" |
-| After Step 1 | "Step 1 done" |
-| After Step 2 | phone model + Android version, Meta AI app version, glasses firmware |
-| After Step 3 | does the app open; does "Connect glasses" reach the Meta AI approval screen |
-| After Step 4 | the PC's server URL works from the phone's browser (`http://<ip>:8000/v1/health` shows JSON) |
-| After Step 5 | the output of `smoke_ai.py` and which product the Meta credits are |
+| Step 0 | "Step 0 done" (A), the first build error lines (B), or the licence sentence (C) |
+| Step 1 | phone model + Android version, Meta AI version, glasses firmware |
+| Step 2 | the last 5 lines of `run-field-stack.ps1 smoke` |
+| Steps 3–5 | what you heard and saw, and the app's log card (screenshot is fine) |

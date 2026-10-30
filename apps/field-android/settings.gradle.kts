@@ -11,13 +11,13 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = java.net.URI("https://jitpack.io") }
     }
 }
 
 rootProject.name = "field-android"
 
 include(":app")
+include(":core-common")
 include(":core-capture")
 include(":core-voice")
 include(":core-outbox")

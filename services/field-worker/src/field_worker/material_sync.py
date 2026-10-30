@@ -31,6 +31,7 @@ class MaterialCacheSynchronizer:
     ) -> dict[str, Any]:
         """Fetch all materials for plant and upsert into field.material."""
         seen_materials: set[str] = set()
+        items_by_no: dict[str, Any] = {}
         cursor: str | None = None
         upsert_count = 0
         now = datetime.now(UTC)
@@ -40,6 +41,7 @@ class MaterialCacheSynchronizer:
             page = await self.erp_port.list_materials(plant=plant, cursor=cursor, limit=page_size)
             for item in page.items:
                 seen_materials.add(item.material_no)
+                items_by_no[item.material_no] = item
                 upsert_count += 1
 
             if not page.next_cursor or not page.items:
@@ -80,14 +82,17 @@ class MaterialCacheSynchronizer:
                             tenant_id, plant, erp_material_no, description, base_uom,
                             source, deleted_in_erp_at, status, updated_at
                         )
-                        VALUES (%s, %s, %s, %s, 'EA', 'erp_sync', NULL, 'active', %s)
+                        VALUES (%s, %s, %s, %s, %s, 'erp_sync', NULL, 'active', %s)
                         ON CONFLICT (tenant_id, plant, erp_material_no)
                         DO UPDATE SET
+                            description = EXCLUDED.description,
+                            base_uom = EXCLUDED.base_uom,
                             deleted_in_erp_at = NULL,
                             status = 'active',
                             updated_at = EXCLUDED.updated_at;
                     """,
-                        (tenant_id, plant, mat_no, f"Material {mat_no}", now),
+                        (tenant_id, plant, mat_no, items_by_no[mat_no].description or None,
+                         items_by_no[mat_no].base_uom or "EA", now),
                     )
 
                 # Check absences: if existing in DB was not seen across 3 syncs

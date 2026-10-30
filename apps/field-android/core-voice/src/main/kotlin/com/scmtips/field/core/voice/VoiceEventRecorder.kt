@@ -1,6 +1,6 @@
 package com.scmtips.field.core.voice
 
-import com.scmtips.field.core.outbox.api.UUIDv7
+import com.scmtips.field.core.common.UUIDv7
 import com.scmtips.field.core.voice.grammar.ParsedUtterance
 
 data class VoiceEventRecord(

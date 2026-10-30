@@ -1,6 +1,6 @@
 package com.scmtips.field.core.capture.motion
 
-import com.scmtips.field.core.outbox.api.UUIDv7
+import com.scmtips.field.core.common.UUIDv7
 
 sealed class LookState {
     object Idle : LookState()

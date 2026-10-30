@@ -2,6 +2,7 @@ package com.scmtips.field.core.outbox.api
 
 import okhttp3.Interceptor
 import okhttp3.Response
+import com.scmtips.field.core.common.UUIDv7
 import java.util.UUID
 
 /**

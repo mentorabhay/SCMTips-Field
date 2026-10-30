@@ -10,7 +10,7 @@ import com.scmtips.field.core.capture.rank.RankCandidate
 import com.scmtips.field.core.capture.rank.RankOutcome
 import com.scmtips.field.core.capture.rank.Ranker
 import com.scmtips.field.core.capture.rank.ScoredCandidate
-import com.scmtips.field.core.outbox.api.UUIDv7
+import com.scmtips.field.core.common.UUIDv7
 import com.scmtips.field.core.wearables.LensRenderer
 import com.scmtips.field.core.wearables.LensState
 

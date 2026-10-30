@@ -32,6 +32,7 @@ import structlog
 from field_sap.ports.erp_port import ErpPort
 from field_sap.sim.adapter import SimAdapter
 
+from field_worker.material_sync import MaterialCacheSynchronizer
 from field_worker.posting.equipment_queue import process_next_tower_job
 from field_worker.posting.queue import PostingQueueWorker
 from field_worker.warehouse.ibd_import import poll_and_import_inbound_deliveries
@@ -43,6 +44,7 @@ ERP_URL = os.getenv("FIELD_ERP_SIM_URL", "http://127.0.0.1:8002")
 TICK_S = float(os.getenv("FIELD_WORKER_TICK_S", "1"))
 IBD_POLL_S = float(os.getenv("FIELD_IBD_POLL_S", "300"))
 PURGE_S = 600.0
+MATERIAL_SYNC_S = float(os.getenv("FIELD_MATERIAL_SYNC_S", "900"))
 
 
 def build_erp_port() -> ErpPort:
@@ -60,11 +62,13 @@ class FieldWorker:
         self.ibd_client = ibd_client
         self.erp_port = erp_port or build_erp_port()
         self.posting = PostingQueueWorker(erp_port=self.erp_port, db_url=db_url)
+        self.materials = MaterialCacheSynchronizer(db_url=db_url, erp_port=self.erp_port)
         self.is_running = False
         self.jobs_processed = 0
         self.tasks_imported = 0
         self._last_ibd = 0.0
         self._last_purge = 0.0
+        self._last_material_sync: dict[tuple[str, str], float] = {}
         self.last_heartbeat: str | None = None
 
     def _query(self, sql: str) -> list[tuple[Any, ...]]:
@@ -100,6 +104,14 @@ class FieldWorker:
     async def poll_inbound_deliveries(self) -> int:
         created = 0
         for tenant, site, plant, slocs in self._query("SELECT * FROM field.worker_erp_sites()"):
+            key = (str(tenant), str(plant))
+            if time.monotonic() - self._last_material_sync.get(key, -MATERIAL_SYNC_S) >= MATERIAL_SYNC_S:
+                try:
+                    # Materials first, so imported lines resolve material_id (T1.029 / FR1.031)
+                    await self.materials.sync_plant_materials(tenant_id=str(tenant), plant=plant)
+                    self._last_material_sync[key] = time.monotonic()
+                except Exception:
+                    logger.exception("material_sync_failed", site_id=str(site))
             try:
                 c, _lines, _conf = await poll_and_import_inbound_deliveries(
                     tenant_id=str(tenant), site_id=str(site), plant=plant, storage_locations=list(slocs or []) or None,

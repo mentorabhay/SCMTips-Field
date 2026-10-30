@@ -1,6 +1,6 @@
 package com.scmtips.field.core.outbox
 
-import com.scmtips.field.core.outbox.api.UUIDv7
+import com.scmtips.field.core.common.UUIDv7
 import com.scmtips.field.core.outbox.crypto.CropEncryptedStorage
 import com.scmtips.field.core.outbox.db.CropFileEntity
 import com.scmtips.field.core.outbox.db.OutboxDao
