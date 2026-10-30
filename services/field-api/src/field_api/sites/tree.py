@@ -21,7 +21,7 @@ def build_site_tree(tenant_id: str, site_id: str) -> tuple[dict[str, Any], str]:
     """Query site hierarchy from database and build nested tree with ETag."""
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             cur.execute("SET app.site_ids = '*';")
             # 1. Fetch site
             cur.execute(

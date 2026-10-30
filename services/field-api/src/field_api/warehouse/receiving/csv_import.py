@@ -138,7 +138,7 @@ def parse_and_preview_csv(
     if materials is None:
         materials = []
         with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             cur.execute(
                 "SELECT id, erp_material_no, description, gtin FROM field.material WHERE tenant_id = %s;",
                 (tenant_id,),
@@ -231,7 +231,7 @@ def confirm_csv_import(
     lines_created = 0
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
         for deliv, items in tasks_by_delivery.items():
             task_id = uuid7_str()

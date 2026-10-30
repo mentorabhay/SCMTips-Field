@@ -85,7 +85,7 @@ def validate_and_record_sscc(
     hu_id = uuid7_str()
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
         # Check for duplicate within this delivery (PR3.12 / MSG3.03)
         cur.execute(

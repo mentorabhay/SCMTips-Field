@@ -56,9 +56,11 @@ class SimAdapter:
             "/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/$metadata",
             headers={"x-csrf-token": "fetch", "sap-client": self.sap_client},
         )
-        token = resp.headers.get("x-csrf-token", "sim-csrf-token")
-        self._csrf_token = token
-        return token
+        token = resp.headers.get("x-csrf-token")
+        if not token:
+            raise RuntimeError(f"erp-sim did not return x-csrf-token (HTTP {resp.status_code})")
+        self._csrf_token = str(token)
+        return self._csrf_token
 
     def _parse_error(self, resp: httpx.Response) -> ErpError:
         """Map HTTP and SAP JSON error envelopes to typed ErpError."""

@@ -62,6 +62,21 @@ def classify_sap_error(status_code: int, response_data: dict[str, Any] | str | N
     )
 
 
+class SapCsrfError(RuntimeError):
+    """SAP did not issue a CSRF token; posting must not proceed with a fabricated one."""
+
+
+def _odata_d(res: httpx.Response) -> dict[str, Any]:
+    """Return the OData V2 ``d`` object of a response, validating its shape."""
+    body = res.json()
+    if not isinstance(body, dict):
+        raise ValueError(f"SAP response is not a JSON object (HTTP {res.status_code})")
+    d = body.get("d", {})
+    if not isinstance(d, dict):
+        raise ValueError(f"SAP response 'd' is not an object (HTTP {res.status_code})")
+    return d
+
+
 class SapWarehouseAdapter:
     """OData client adapter for SAP warehouse logistics services."""
 
@@ -96,10 +111,10 @@ class SapWarehouseAdapter:
             # Capture cookies if any
             if "set-cookie" in res.headers:
                 self.session_cookie = res.headers.get("set-cookie")
-            return token
-        # Fallback dummy token for test environments
-        self.csrf_token = f"csrf-token-{self.sap_client}"
-        return self.csrf_token
+            return str(token)
+        # Never fabricate a CSRF token (C1, review 3.13): a real S/4 rejects it with 403 and
+        # the failure would surface far from its cause.
+        raise SapCsrfError(f"SAP did not return x-csrf-token (HTTP {res.status_code})")
 
     def _get_headers(self, require_csrf: bool = False, etag: str | None = None) -> dict[str, str]:
         headers: dict[str, str] = {
@@ -131,7 +146,7 @@ class SapWarehouseAdapter:
 
         res = self.client.get(endpoint, headers=self._get_headers())
         if res.status_code == 200:
-            return res.json().get("d", {})
+            return _odata_d(res)
         return {}
 
     def patch_delivery_item(
@@ -148,7 +163,7 @@ class SapWarehouseAdapter:
         headers = self._get_headers(require_csrf=True, etag=etag)
         res = self.client.patch(url, headers=headers, json=data)
         if res.status_code in (200, 204):
-            return res.json().get("d", {}) if res.content else {"status": "ok"}
+            return _odata_d(res) if res.content else {"status": "ok"}
 
         classification = classify_sap_error(res.status_code, res.json() if res.content else None)
         raise RuntimeError(f"SAP PATCH failed [{classification.code}]: {classification.message} (status={res.status_code})")
@@ -162,7 +177,7 @@ class SapWarehouseAdapter:
 
         res = self.client.post(url, headers=headers, params={"DeliveryDocument": delivery_document})
         if res.status_code == 200:
-            return res.json().get("d", {})
+            return _odata_d(res)
 
         classification = classify_sap_error(res.status_code, res.json() if res.content else None)
         raise RuntimeError(f"PostGoodsReceipt failed [{classification.code}]: {classification.message} (status={res.status_code})")
@@ -182,7 +197,7 @@ class SapWarehouseAdapter:
             params={"DeliveryDocument": delivery_document, "AllowPartial": allow_partial},
         )
         if res.status_code == 200:
-            return res.json().get("d", {})
+            return _odata_d(res)
 
         classification = classify_sap_error(res.status_code, res.json() if res.content else None)
         raise RuntimeError(f"PostGoodsIssue failed [{classification.code}]: {classification.message} (status={res.status_code})")
@@ -193,7 +208,7 @@ class SapWarehouseAdapter:
         headers = self._get_headers(require_csrf=True)
         res = self.client.post(url, headers=headers, params={"DeliveryDocument": delivery_document})
         if res.status_code == 200:
-            return res.json().get("d", {})
+            return _odata_d(res)
 
         classification = classify_sap_error(res.status_code, res.json() if res.content else None)
         raise RuntimeError(f"ReverseGoodsIssue failed [{classification.code}]: {classification.message} (status={res.status_code})")
@@ -213,7 +228,7 @@ class SapWarehouseAdapter:
             params={"PhysicalInventoryDocument": pi_document, "FiscalYear": fiscal_year},
         )
         if res.status_code == 200:
-            return res.json().get("d", {})
+            return _odata_d(res)
 
         classification = classify_sap_error(res.status_code, res.json() if res.content else None)
         raise RuntimeError(f"PostDifferences failed [{classification.code}]: {classification.message} (status={res.status_code})")
@@ -233,7 +248,7 @@ class SapWarehouseAdapter:
             params={"MaterialDocument": material_document, "MaterialDocumentYear": fiscal_year},
         )
         if res.status_code == 200:
-            return res.json().get("d", {})
+            return _odata_d(res)
 
         classification = classify_sap_error(res.status_code, res.json() if res.content else None)
         raise RuntimeError(f"Cancel failed [{classification.code}]: {classification.message} (status={res.status_code})")

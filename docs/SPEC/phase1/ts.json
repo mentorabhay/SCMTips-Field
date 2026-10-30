@@ -42,12 +42,36 @@
       "details": "Permission field.site.read Idempotent yes, Idempotency-Key required SLO p95 60 ms Errors 400 FIELD-PAGE-400-LIMIT: limit > 200 400 FIELD-PAGE-400-CURSOR: tampered or filter changed Request Response {\"items\":[{\"id\":\"0192...\",\"code\":\"SAMPLE-WH-01\",\"name\":\"SAMPLE Warehouse 01\",\"kind\":\"warehouse\",\"erp_plant\":\"1010\",\"version\":1}],\"next_cursor\":\"eyJr...\"}"
     },
     {
+      "id": "API1.06",
+      "phase": 1,
+      "method": "POST",
+      "path": "/v1/sites",
+      "summary": "\u2014 Create a site.",
+      "details": "Permission field.site.edit Idempotent yes, Idempotency-Key required SLO p95 120 ms Errors 400 FIELD-IDEM-400-MISSING-KEY 409 FIELD-SITE-409-CODE-EXISTS: code taken 409 FIELD-IDEM-409-IN-PROGRESS 422 FIELD-IDEM-422-KEY-REUSED Request Idempotency-Key: 0192f1c4-8b22-7d01-a3f4-5e6f7a8b9c0d {\"code\":\"SAMPLE-WH-01\",\"name\":\"SAMPLE Warehouse 01\",\"kind\":\"warehouse\",\"erp_plant\":\"1010\",\"timezone\":\"Asia/Kolkata\"} Response 201 Location: /v1/sites/0192...; ETag: \"s-1a2b3c\" {\"id\":\"0192...\",\"code\":\"SAMPLE-WH-01\",\"version\":1}"
+    },
+    {
+      "id": "API1.07",
+      "phase": 1,
+      "method": "PATCH",
+      "path": "/v1/sites/{id}",
+      "summary": "\u2014 Update a site.",
+      "details": "Permission field.site.edit Idempotent yes, Idempotency-Key required SLO p95 100 ms Errors 428 FIELD-ETAG-428-REQUIRED 412 FIELD-ETAG-412-STALE 404 FIELD-SITE-404-NOT-FOUND Request If-Match: \"s-1a2b3c\" {\"name\":\"SAMPLE Warehouse 01 North\"} Response 200 ETag: \"s-4d5e6f\" {\"id\":\"0192...\",\"version\":2}"
+    },
+    {
       "id": "API1.08",
       "phase": 1,
       "method": "GET",
       "path": "/v1/locations?site_id=&amp;parent_id=&amp;kind=&amp;cursor=&amp;limit=",
       "summary": "\u2014 List locations.",
       "details": "Permission field.location.read Idempotent yes, Idempotency-Key required SLO p95 60 ms Errors 400 FIELD-PAGE-400-LIMIT Request Response {\"items\":[{\"id\":\"0192...\",\"kind\":\"rack\",\"code\":\"R12\",\"path\":\"Z01/A03/R12\",\"erp_ref\":\"101A-03-12\"}],\"next_cursor\":null}"
+    },
+    {
+      "id": "API1.09",
+      "phase": 1,
+      "method": "POST",
+      "path": "/v1/locations",
+      "summary": "\u2014 Create a location; PATCH /v1/locations/{id} (If-Match) renames or moves with the same checks plus 422 FIELD-LOC-422-CYCLE.",
+      "details": "Permission field.location.edit Idempotent yes, Idempotency-Key required SLO p95 120 ms Errors 422 FIELD-LOC-422-PARENT-KIND: parent kind not allowed 422 FIELD-LOC-422-DEPTH: depth > 6 409 FIELD-LOC-409-PATH-EXISTS Request Idempotency-Key: ... {\"site_id\":\"0192...\",\"parent_id\":\"0192...\",\"kind\":\"sector\",\"code\":\"SEC-A\",\"erp_ref\":\"SAMPLE-TWR-0001-SEC-A\",\"erp_ref_type\":\"functional_location\"} Response 201 {\"id\":\"0192...\",\"path\":\"TWR-0001/SEC-A\",\"depth\":2}"
     },
     {
       "id": "API1.10",
@@ -58,12 +82,36 @@
       "details": "Permission field.material.read Idempotent yes, Idempotency-Key required SLO p95 60 ms Errors 400 FIELD-PAGE-400-LIMIT Request Response {\"items\":[{\"erp_material_no\":\"SAMPLE-MAT-0007\",\"plant\":\"1010\",\"description\":\"SAMPLE Carton 40x30\",\"base_uom\":\"EA\",\"batch_managed\":true,\"synced_at\":\"2026-11-02T08:00:00Z\"}],\"next_cursor\":null}"
     },
     {
+      "id": "API1.11",
+      "phase": 1,
+      "method": "POST",
+      "path": "/v1/devices",
+      "summary": "\u2014 Register a device binding; POST /v1/devices/{id}/revoke (If-Match, field.device.revoke) revokes locally and emits device.revoked.",
+      "details": "Permission field.device.register Idempotent yes, Idempotency-Key required SLO p95 120 ms Errors 409 FIELD-DEV-409-EXISTS: core device already bound 403 FIELD-AUTH-403-PERMISSION Request Idempotency-Key: ... {\"kind\":\"glasses\",\"core_device_ref\":\"dev_SAMPLE_0042\",\"parent_device_id\":\"0192...\",\"model\":\"to record\",\"sdk_version\":\"to record\"} Response 201 {\"id\":\"0192...\",\"status\":\"active\"}"
+    },
+    {
+      "id": "API1.12",
+      "phase": 1,
+      "method": "POST",
+      "path": "/v1/diagnostics/probe",
+      "summary": "\u2014 Latency probe: full middleware stack plus idempotent capture write (is_probe).",
+      "details": "Permission field.diagnostics.probe Idempotent yes, Idempotency-Key required SLO p95 120 ms at 50 rps Errors 403 FIELD-DIAG-403-DISABLED: diagnostics off Request Idempotency-Key: ... traceparent: 00-<trace>-<span>-01 {\"device_id\":\"0192...\",\"site_id\":\"0192...\",\"captured_at\":\"2026-11-04T09:00:00.120Z\",\"crop_bytes\":40960} Response 201 {\"capture_id\":\"0192...\",\"server_ms\":{\"auth\":2,\"idem\":6,\"write\":9,\"total\":21}}"
+    },
+    {
       "id": "API1.13",
       "phase": 1,
       "method": "GET",
       "path": "/v1/system/status",
       "summary": "\u2014 Ready checks, compat matrix, ERP reachability for console.",
       "details": "Permission field.system.read Idempotent yes, Idempotency-Key required SLO p95 300 ms Errors None. Request Response {\"ready\":true,\"compat\":{\"core-p13\":\"PASS\",\"core-p14\":\"SKIPPED-PENDING\"},\"erp\":{\"system\":\"erp-sim\",\"reachable\":true,\"p95_ms\":410}}"
+    },
+    {
+      "id": "API1.14",
+      "phase": 1,
+      "method": "POST",
+      "path": "/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/PostGoodsReceipt?DeliveryDocument=&#x27;180000012&#x27; (erp-sim)",
+      "summary": "\u2014 Post GR for an inbound delivery (illustrative name).",
+      "details": "Permission X-CSRF-Token + sim basic auth Idempotent yes, Idempotency-Key required SLO sim p50 420 ms Errors 400 ZSIM/LOCKED: delivery locked 400 ZSIM/QTY-EXCEEDS: quantity above open quantity 400 ZSIM/IDEM-CONFLICT: key reused with other payload 500/503 injected faults Request sap-client: 100 X-CSRF-Token: <token> {\"HeaderText\":\"FIELD:0192f1c4-8b22-7d01\",\"Items\":[{\"DeliveryDocumentItem\":\"000010\",\"Quantity\":\"24.000\",\"Batch\":\"SAMPLE-B-0412\"}]} Response 201 {\"d\":{\"MaterialDocument\":\"4900000101\",\"MaterialDocumentYear\":\"2026\",\"GoodsMovementType\":\"101\"}}"
     },
     {
       "id": "API1.15",

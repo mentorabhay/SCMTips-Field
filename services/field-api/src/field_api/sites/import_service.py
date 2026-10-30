@@ -34,9 +34,9 @@ def stage_fl_import(
 
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             cur.execute("SET app.site_ids = '*';")
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             cur.execute("SET app.site_ids = '*';")
             # Query existing locations under this prefix for this tenant
             cur.execute(
@@ -172,7 +172,7 @@ def apply_fl_import_job(
     """Apply staged import job, upserting locations and equipment in one transaction per site."""
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             cur.execute("SET app.site_ids = '*';")
             cur.execute(
                 """

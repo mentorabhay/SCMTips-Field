@@ -49,7 +49,7 @@ def stage_goods_receipt_reversal(
     }
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
         cur.execute(
             """

@@ -80,7 +80,7 @@ def enqueue_posting_job(
     }
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute(
             """
             INSERT INTO field.posting_job (
@@ -214,7 +214,7 @@ class PostingQueueWorker:
 
         # 1. Claim job within transactional lock
         with psycopg.connect(self.db_url, autocommit=False) as conn, conn.cursor() as cur:
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             claimed = claim_next_job(cur, tenant_id, worker_id=self.worker_id)
             if not claimed:
                 conn.rollback()
@@ -240,7 +240,7 @@ class PostingQueueWorker:
                     psycopg.connect(self.db_url, autocommit=False) as adopt_conn,
                     adopt_conn.cursor() as adopt_cur,
                 ):
-                    adopt_cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+                    adopt_cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
                     adopt_cur.execute(
                         """
                             UPDATE field.posting_job
@@ -293,7 +293,7 @@ class PostingQueueWorker:
                 psycopg.connect(self.db_url, autocommit=False) as conn_done,
                 conn_done.cursor() as cur_done,
             ):
-                cur_done.execute(f"SET app.tenant_id = '{tenant_id}';")
+                cur_done.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
                 cur_done.execute(
                     """
                     UPDATE field.posting_job
@@ -323,7 +323,7 @@ class PostingQueueWorker:
                 psycopg.connect(self.db_url, autocommit=False) as conn_err,
                 conn_err.cursor() as cur_err,
             ):
-                cur_err.execute(f"SET app.tenant_id = '{tenant_id}';")
+                cur_err.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
                 if not is_retryable or claimed.attempts >= claimed.max_attempts:
                     # Final failure -> status = 'failed'

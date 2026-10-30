@@ -239,4 +239,7 @@ class SAPEquipmentAdapter:
             raise map_sap_error_to_field_exception(resp.status_code, err_body)
 
         data = resp.json().get("d", {})
-        return data.get("results", [])
+        results = data.get("results", []) if isinstance(data, dict) else []
+        if not isinstance(results, list):
+            raise ValueError("SAP equipment response 'results' is not a list")
+        return [r for r in results if isinstance(r, dict)]

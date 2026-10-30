@@ -158,7 +158,7 @@ def test_t3_010_ordered_queue_claim_and_predecessor_blocking():
     )
 
     with psycopg.connect(DATABASE_URL, autocommit=False) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         # 1. First claim must get j1 (seq 1), despite j2 being enqueued first
         claimed1 = claim_next_job(cur, tenant_id)
         assert claimed1 is not None
@@ -168,19 +168,19 @@ def test_t3_010_ordered_queue_claim_and_predecessor_blocking():
 
     # 2. While j1 is 'running', j2 cannot be claimed (at most one worker per queue_key)
     with psycopg.connect(DATABASE_URL, autocommit=False) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         claimed_while_running = claim_next_job(cur, tenant_id)
         assert claimed_while_running is None
         conn.rollback()
 
     # 3. Complete j1
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute("UPDATE field.posting_job SET status = 'completed' WHERE id = %s;", (j1,))
 
     # 4. Now j2 (seq 2) can be claimed
     with psycopg.connect(DATABASE_URL, autocommit=False) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         claimed2 = claim_next_job(cur, tenant_id)
         assert claimed2 is not None
         assert claimed2.job_id == j2
@@ -217,24 +217,24 @@ def test_t3_010_failed_job_blocks_later_jobs_until_retried():
 
     # Set j1 to failed
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute("UPDATE field.posting_job SET status = 'failed' WHERE id = %s;", (j1,))
 
     # Attempt to claim next job: j2 must NOT be claimed because queue is blocked by j1
     with psycopg.connect(DATABASE_URL, autocommit=False) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         claimed = claim_next_job(cur, tenant_id)
         assert claimed is None, "Queue must be blocked by failed predecessor"
         conn.rollback()
 
     # Retry j1 (set status back to pending)
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute("UPDATE field.posting_job SET status = 'pending' WHERE id = %s;", (j1,))
 
     # Now j1 can be claimed
     with psycopg.connect(DATABASE_URL, autocommit=False) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         claimed_j1 = claim_next_job(cur, tenant_id)
         assert claimed_j1 is not None
         assert claimed_j1.job_id == j1
@@ -248,7 +248,7 @@ def test_t3_014_outbox_events_emission():
     job_id = uuid7_str()
 
     with psycopg.connect(DATABASE_URL, autocommit=False) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
         # 1. EV3.01 posting.requested
         ev1 = emit_posting_requested(
@@ -304,7 +304,7 @@ def test_t3_014_outbox_events_emission():
 
     # Verify rows in outbox
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute(
             "SELECT event_type FROM field.outbox WHERE tenant_id = %s ORDER BY created_at ASC;",
             (tenant_id,),
@@ -347,7 +347,7 @@ async def test_t3_012_pre_post_probe_adoption():
 
     # Set attempts = 1 so worker runs probe on retry
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute("UPDATE field.posting_job SET attempts = 1 WHERE id = %s;", (job_id,))
 
     port = MockErpPortWS32()
@@ -360,7 +360,7 @@ async def test_t3_012_pre_post_probe_adoption():
 
     # Check job status is completed
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute("SELECT status FROM field.posting_job WHERE id = %s;", (job_id,))
         assert cur.fetchone()[0] == "completed"
 

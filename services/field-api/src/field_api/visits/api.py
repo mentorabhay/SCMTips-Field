@@ -79,7 +79,7 @@ async def check_in(
     # 2. Query site geofence
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             cur.execute("SET app.site_ids = '*';")
             cur.execute(
                 """
@@ -207,7 +207,7 @@ async def check_out(
     """Check out of site, stop timer, and return warning if outbox items remain unsynced."""
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             cur.execute("SET app.site_ids = '*';")
             cur.execute(
                 """

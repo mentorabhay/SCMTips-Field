@@ -121,7 +121,7 @@ def test_t3_013_retry_posting_job(auth_headers):
 
     # Set to failed
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{t_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(t_id),))
         cur.execute("UPDATE field.posting_job SET status = 'failed' WHERE id = %s;", (job_id,))
 
     res = client.post(f"/v1/posting-jobs/{job_id}/retry", headers=headers)
@@ -130,7 +130,7 @@ def test_t3_013_retry_posting_job(auth_headers):
 
     # Verify status in database
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{t_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(t_id),))
         cur.execute("SELECT status FROM field.posting_job WHERE id = %s;", (job_id,))
         assert cur.fetchone()[0] == "pending"
 
@@ -188,7 +188,7 @@ def test_t3_013_cancel_posting_job_and_cascade_dependent_jobs(auth_headers):
 
     # Verify database statuses
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{t_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(t_id),))
         cur.execute(
             "SELECT id, status FROM field.posting_job WHERE tenant_id = %s AND queue_key = %s ORDER BY seq ASC;",
             (t_id, q),

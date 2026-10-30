@@ -1,0 +1,184 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "slice/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # only used to publish sanitized build logs to the ci-logs branch
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: dev-postgres-password
+        ports: ["5450:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: dev-postgres-password
+      # App and tests connect as the non-superuser, NOBYPASSRLS role so RLS is really exercised.
+      FIELD_DATABASE_URL: postgresql://field_app:devpassword@127.0.0.1:5450/field
+      FIELD_ADMIN_DATABASE_URL: postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Init databases and roles
+        run: psql -h 127.0.0.1 -p 5450 -U postgres -v ON_ERROR_STOP=1 -f tools/initdb/01-init.sql
+      - name: Install (frozen lockfile)
+        run: uv sync --frozen
+      - name: Tool versions
+        run: uv run python --version && uv run pytest --version && uv run ruff --version && uv run mypy --version
+      - name: Lint
+        run: uv run ruff check .
+      - name: Alembic round-trip (migrator = admin role)
+        env:
+          FIELD_DATABASE_URL: postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field
+        run: uv run python scripts/jobs/alembic.py
+      - name: Typecheck (mypy --strict, first-party Python)
+        run: uv run mypy --strict services/field-api/src services/field-worker/src services/erp-sim/src connectors/sap/src tools/
+      - name: OpenAPI contract drift
+        run: uv run python tools/export_openapi.py && git diff --exit-code -- packages/field-contract/
+      - name: Honesty gates
+        run: |
+          uv run python tools/checks/no_fake_gates.py
+          uv run python tools/checks/orphans.py
+          uv run python tools/checks/firewall.py
+          uv run python tools/checks/no_inmemory_stores.py
+          uv run python tools/checks/test_exercises_prod.py
+      - name: Tests (all collected)
+        if: always()
+        run: uv run pytest -p no:cacheprovider --junitxml=reports/junit.xml
+      - name: Upload junit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-junit
+          path: reports/junit.xml
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/field-android
+    env:
+      # Read-only PAT for Meta's GitHub Packages feed (DAT SDK). Never printed.
+      MWDAT_GITHUB_TOKEN: ${{ secrets.MWDAT_GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      # Validates gradle-wrapper.jar against Gradle's published checksums (rule 2.1)
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      - name: Record Gradle distribution checksum (published by Gradle)
+        run: |
+          url=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | cut -d= -f2 | sed 's#\\##g')
+          mkdir -p ../../ci-out
+          { echo "distributionUrl=$url"; echo "published sha256: $(curl -fsSL "${url}.sha256")"; } | tee ../../ci-out/gradle-dist-sha.log
+
+      - name: Tool versions
+        run: |
+          mkdir -p ../../ci-out
+          { java -version 2>&1; ./gradlew --version; } | tee ../../ci-out/versions.log
+
+      - name: Assemble debug APK
+        run: |
+          set -o pipefail
+          mkdir -p ../../ci-out
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee ../../ci-out/assembleDebug.log
+
+      - name: Unit tests (JUnit5 + Kotest)
+        run: |
+          set -o pipefail
+          mkdir -p ../../ci-out
+          ./gradlew testDebugUnitTest --stacktrace 2>&1 | tee ../../ci-out/testDebugUnitTest.log
+
+      - name: Android lint
+        run: |
+          set -o pipefail
+          mkdir -p ../../ci-out
+          ./gradlew lintDebug --stacktrace 2>&1 | tee ../../ci-out/lintDebug.log
+
+      - name: Enforce pinned distribution checksum (rule 2.1)
+        run: |
+          grep -q distributionSha256Sum gradle/wrapper/gradle-wrapper.properties \
+            || { echo "::error::gradle-wrapper.properties lacks distributionSha256Sum"; exit 1; }
+
+      - name: Upload APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: field-debug-apk
+          path: apps/field-android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+      - name: Upload test & lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reports
+          path: |
+            apps/field-android/**/build/reports/**
+            apps/field-android/**/build/test-results/**
+          if-no-files-found: ignore
+
+      - name: Publish sanitized logs to ci-logs branch (agent-readable)
+        if: always()
+        working-directory: .
+        run: |
+          mkdir -p ci-out
+          # Defence in depth: scrub any secret value from log files before publishing
+          if [ -n "$MWDAT_GITHUB_TOKEN" ]; then
+            grep -rlF "$MWDAT_GITHUB_TOKEN" ci-out | xargs -r sed -i "s|$MWDAT_GITHUB_TOKEN|***|g"
+          fi
+          sed -i -E 's/(gh[pousr]_[A-Za-z0-9]{20,})/***/g' ci-out/*.log 2>/dev/null || true
+          dest="runs/android/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git config user.name "ci-logs-bot"; git config user.email "ci@users.noreply.github.com"
+          git fetch origin ci-logs:ci-logs 2>/dev/null && git worktree add /tmp/logs ci-logs \
+            || { git worktree add --detach /tmp/logs && git -C /tmp/logs checkout --orphan ci-logs && git -C /tmp/logs rm -rqf . ; }
+          mkdir -p "/tmp/logs/$dest"
+          cp ci-out/*.log "/tmp/logs/$dest/" 2>/dev/null || echo "no logs" > "/tmp/logs/$dest/EMPTY"
+          echo "${GITHUB_SHA} ${GITHUB_REF_NAME} ${{ job.status }}" > "/tmp/logs/$dest/META"
+          git -C /tmp/logs add -A && git -C /tmp/logs commit -qm "logs: android ${GITHUB_RUN_ID}" && git -C /tmp/logs push origin ci-logs
+
+  trace:
+    needs: [backend, android]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-junit
+          path: reports/
+      - uses: actions/download-artifact@v4
+        continue-on-error: true   # absent only when the android job failed before tests; trace then fails D2
+        with:
+          name: android-reports
+          path: apps/field-android/
+      - name: Trace (rule 2.3)
+        run: uv run python tools/checks/trace.py --junit "reports/junit*.xml" --junit "apps/field-android/**/build/test-results/**/*.xml"

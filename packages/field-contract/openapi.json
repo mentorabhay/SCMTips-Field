@@ -221,6 +221,47 @@
       }
     },
     "/v1/sites/{site_id}": {
+      "get": {
+        "tags": [
+          "Sites"
+        ],
+        "summary": "Get Site",
+        "description": "Retrieve details for a single site.",
+        "operationId": "get_site_v1_sites__site_id__get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "Sites"
@@ -1350,10 +1391,3320 @@
           }
         }
       }
+    },
+    "/v1/posting-queues": {
+      "get": {
+        "tags": [
+          "Posting Queues"
+        ],
+        "summary": "List Posting Queues",
+        "description": "List posting queues with health status, failure counts, and blocking status.",
+        "operationId": "list_posting_queues_v1_posting_queues_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QueueSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Posting Queues V1 Posting Queues Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posting-queues/{queue_key}/jobs": {
+      "get": {
+        "tags": [
+          "Posting Queues"
+        ],
+        "summary": "List Queue Jobs",
+        "description": "List jobs within a specific posting queue in sequence order.",
+        "operationId": "list_queue_jobs_v1_posting_queues__queue_key__jobs_get",
+        "parameters": [
+          {
+            "name": "queue_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Queue Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PostingJobRecord"
+                  },
+                  "title": "Response List Queue Jobs V1 Posting Queues  Queue Key  Jobs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posting-jobs/{job_id}/retry": {
+      "post": {
+        "tags": [
+          "Posting Queues"
+        ],
+        "summary": "Retry Posting Job",
+        "description": "Retry a failed or blocked job immediately.",
+        "operationId": "retry_posting_job_v1_posting_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Retry Posting Job V1 Posting Jobs  Job Id  Retry Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posting-jobs/{job_id}/cancel": {
+      "post": {
+        "tags": [
+          "Posting Queues"
+        ],
+        "summary": "Cancel Posting Job",
+        "description": "Cancel a posting job and cascade cancel dependent subsequent jobs per BR3.14.",
+        "operationId": "cancel_posting_job_v1_posting_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancel Posting Job V1 Posting Jobs  Job Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/receiving/imports/csv/preview": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Preview Csv Import",
+        "description": "Parse CSV delivery export and compute material match ladder.",
+        "operationId": "preview_csv_import_v1_warehouse_receiving_imports_csv_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CsvPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvImportPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/receiving/imports/csv/confirm": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Confirm Csv",
+        "description": "Confirm CSV preview and generate receive tasks.",
+        "operationId": "confirm_csv_v1_warehouse_receiving_imports_csv_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CsvConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Confirm Csv V1 Warehouse Receiving Imports Csv Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/receiving/sscc/validate": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Validate Sscc",
+        "description": "Validate 18-digit SSCC with GS1 mod-10 and attach to delivery task line.",
+        "operationId": "validate_sscc_v1_warehouse_receiving_sscc_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateSsccRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Validate Sscc V1 Warehouse Receiving Sscc Validate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/receiving/damage": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Mark Damaged",
+        "description": "Mark handling unit as damaged with crop evidence.",
+        "operationId": "mark_damaged_v1_warehouse_receiving_damage_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkDamageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Mark Damaged V1 Warehouse Receiving Damage Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/receiving/post": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Post Goods Receipt",
+        "description": "Stage and post goods receipt with ordered delivery jobs.",
+        "operationId": "post_goods_receipt_v1_warehouse_receiving_post_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostGoodsReceiptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Post Goods Receipt V1 Warehouse Receiving Post Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/receiving/undo": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Undo Goods Receipt",
+        "description": "Undo goods receipt by staging a 102 reversal document.",
+        "operationId": "undo_goods_receipt_v1_warehouse_receiving_undo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UndoReceiptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Undo Goods Receipt V1 Warehouse Receiving Undo Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/receiving/quality/release": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Release Quality Hold",
+        "description": "Release quality hold receipt to unrestricted stock via 321 movement.",
+        "operationId": "release_quality_hold_v1_warehouse_receiving_quality_release_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QualityReleaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Release Quality Hold V1 Warehouse Receiving Quality Release Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/putaway/propose": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Propose Bin",
+        "description": "Propose deterministic putaway bin.",
+        "operationId": "propose_bin_v1_warehouse_putaway_propose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutawayProposeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Propose Bin V1 Warehouse Putaway Propose Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/putaway/confirm": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Confirm Putaway",
+        "description": "Confirm putaway bin scan.",
+        "operationId": "confirm_putaway_v1_warehouse_putaway_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutawayConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Confirm Putaway V1 Warehouse Putaway Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/metrics/dock-to-stock": {
+      "post": {
+        "tags": [
+          "Warehouse Receiving & Putaway"
+        ],
+        "summary": "Compute D2S Metrics",
+        "description": "Compute dock-to-stock duration metrics.",
+        "operationId": "compute_d2s_metrics_v1_warehouse_metrics_dock_to_stock_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array",
+                "title": "Records"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Compute D2S Metrics V1 Warehouse Metrics Dock To Stock Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/outbound/pick": {
+      "post": {
+        "tags": [
+          "warehouse-outbound"
+        ],
+        "summary": "Confirm Pick",
+        "description": "T3.030 / TC3.115 / TC3.116: Confirm product pick with bin and barcode verification.",
+        "operationId": "confirm_pick_v1_warehouse_outbound_pick_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickConfirmationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Confirm Pick V1 Warehouse Outbound Pick Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/outbound/short-pick": {
+      "post": {
+        "tags": [
+          "warehouse-outbound"
+        ],
+        "summary": "Record Short Pick",
+        "description": "T3.031 / TC3.117: Handle short pick exception and trigger cycle-count.",
+        "operationId": "record_short_pick_v1_warehouse_outbound_short_pick_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortPickRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Record Short Pick V1 Warehouse Outbound Short Pick Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/outbound/pack": {
+      "post": {
+        "tags": [
+          "warehouse-outbound"
+        ],
+        "summary": "Pack Items",
+        "description": "T3.033 / TC3.119 / PR3.12: Pack picked lines into outbound handling units with SSCC.",
+        "operationId": "pack_items_v1_warehouse_outbound_pack_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Pack Items V1 Warehouse Outbound Pack Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/outbound/goods-issue": {
+      "post": {
+        "tags": [
+          "warehouse-outbound"
+        ],
+        "summary": "Post Delivery Goods Issue",
+        "description": "T3.034 / TC3.120 / PR3.08: Post 601 goods issue.",
+        "operationId": "post_delivery_goods_issue_v1_warehouse_outbound_goods_issue_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoodsIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Post Delivery Goods Issue V1 Warehouse Outbound Goods Issue Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/outbound/reverse-issue": {
+      "post": {
+        "tags": [
+          "warehouse-outbound"
+        ],
+        "summary": "Reverse Delivery Goods Issue",
+        "description": "T3.034 / PR3.01: Post 602 goods issue reversal.",
+        "operationId": "reverse_delivery_goods_issue_v1_warehouse_outbound_reverse_issue_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Reverse Delivery Goods Issue V1 Warehouse Outbound Reverse Issue Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/outbound/optimize-path": {
+      "post": {
+        "tags": [
+          "warehouse-outbound"
+        ],
+        "summary": "Optimize Picking Path",
+        "description": "T3.035 / FR3.026: 2-opt shortest-path routing over pick stops.",
+        "operationId": "optimize_picking_path_v1_warehouse_outbound_optimize_path_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizePathRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Optimize Picking Path V1 Warehouse Outbound Optimize Path Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/inventory/documents": {
+      "post": {
+        "tags": [
+          "warehouse-inventory"
+        ],
+        "summary": "Create Pi Document",
+        "description": "T3.036 / TC3.121: Create a physical inventory document.",
+        "operationId": "create_pi_document_v1_warehouse_inventory_documents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PiDocumentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Pi Document V1 Warehouse Inventory Documents Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/inventory/documents/{doc_id}/lines": {
+      "get": {
+        "tags": [
+          "warehouse-inventory"
+        ],
+        "summary": "Get Pi Document Lines",
+        "description": "T3.038 / PR3.03: Get PI lines. Strictly redacts book quantities for operator sessions.",
+        "operationId": "get_pi_document_lines_v1_warehouse_inventory_documents__doc_id__lines_get",
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Get Pi Document Lines V1 Warehouse Inventory Documents  Doc Id  Lines Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/inventory/count": {
+      "post": {
+        "tags": [
+          "warehouse-inventory"
+        ],
+        "summary": "Submit Count",
+        "description": "T3.039 / TC3.124: Record an inventory count entry (committed on confirm).",
+        "operationId": "submit_count_v1_warehouse_inventory_count_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InventoryCountEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Submit Count V1 Warehouse Inventory Count Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/inventory/recount/validate": {
+      "post": {
+        "tags": [
+          "warehouse-inventory"
+        ],
+        "summary": "Validate Recount Counter",
+        "description": "T3.040 / PR3.04: Validates recount counter differs from initial counter.",
+        "operationId": "validate_recount_counter_v1_warehouse_inventory_recount_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecountValidationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Validate Recount Counter V1 Warehouse Inventory Recount Validate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/inventory/differences/post": {
+      "post": {
+        "tags": [
+          "warehouse-inventory"
+        ],
+        "summary": "Post Inventory Difference",
+        "description": "T3.042 / PR3.05: Post 701/702 difference document with variance approval gate.",
+        "operationId": "post_inventory_difference_v1_warehouse_inventory_differences_post_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostDifferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Post Inventory Difference V1 Warehouse Inventory Differences Post Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/warehouse/inventory/documents/{doc_id}/export": {
+      "get": {
+        "tags": [
+          "warehouse-inventory"
+        ],
+        "summary": "Export Audit Csv",
+        "description": "T3.044 / PR3.18: Export quantity-conserving physical inventory audit CSV.",
+        "operationId": "export_audit_csv_v1_warehouse_inventory_documents__doc_id__export_get",
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sitegraph/nodes": {
+      "post": {
+        "tags": [
+          "site-graph"
+        ],
+        "summary": "Add Node",
+        "description": "T3.046: Add a site graph waypoint or bin node.",
+        "operationId": "add_node_v1_sitegraph_nodes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Add Node V1 Sitegraph Nodes Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sitegraph/edges": {
+      "post": {
+        "tags": [
+          "site-graph"
+        ],
+        "summary": "Add Edge",
+        "description": "T3.046: Add a site graph corridor edge.",
+        "operationId": "add_edge_v1_sitegraph_edges_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Add Edge V1 Sitegraph Edges Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sitegraph/shortest-path": {
+      "post": {
+        "tags": [
+          "site-graph"
+        ],
+        "summary": "Get Shortest Path",
+        "description": "T3.047 / PR3.09: Calculate exact Dijkstra shortest path between nodes.",
+        "operationId": "get_shortest_path_v1_sitegraph_shortest_path_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortestPathRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Shortest Path V1 Sitegraph Shortest Path Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sitegraph/snap": {
+      "post": {
+        "tags": [
+          "site-graph"
+        ],
+        "summary": "Snap User Position",
+        "description": "T3.048 / PR3.17: Snap raw GPS/sensor coordinates to nearest site graph edge.",
+        "operationId": "snap_user_position_v1_sitegraph_snap_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapPositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Snap User Position V1 Sitegraph Snap Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/tree": {
+      "get": {
+        "tags": [
+          "Sites"
+        ],
+        "summary": "Get Site Tree Endpoint",
+        "description": "GET /v1/sites/{id}/tree returning nested hierarchy with height order and ETag.",
+        "operationId": "get_site_tree_endpoint_v1_sites__site_id__tree_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "tenant-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "if-none-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Site Tree Endpoint V1 Sites  Site Id  Tree Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/visits": {
+      "post": {
+        "tags": [
+          "Visits"
+        ],
+        "summary": "Check In",
+        "description": "Check in to a site validating geofence distance and permit validity window.",
+        "operationId": "check_in_v1_sites__site_id__visits_post",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "tenant-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "e8eb2a80-d529-4bdd-b669-d21fe847cb74",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/field_api__visits__api__CheckInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Check In V1 Sites  Site Id  Visits Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}": {
+      "patch": {
+        "tags": [
+          "Visits"
+        ],
+        "summary": "Check Out",
+        "description": "Check out of site, stop timer, and return warning if outbox items remain unsynced.",
+        "operationId": "check_out_v1_visits__visit_id__patch",
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          },
+          {
+            "name": "tenant-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "e8eb2a80-d529-4bdd-b669-d21fe847cb74",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckOutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Check Out V1 Visits  Visit Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/override": {
+      "post": {
+        "tags": [
+          "Visits"
+        ],
+        "summary": "Override Visit Geofence",
+        "description": "Supervisor endpoint to override geofence failure on an existing visit record.",
+        "operationId": "override_visit_geofence_v1_visits__visit_id__override_post",
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          },
+          {
+            "name": "tenant-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "e8eb2a80-d529-4bdd-b669-d21fe847cb74",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Override Visit Geofence V1 Visits  Visit Id  Override Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audits/{task_id}/progress": {
+      "get": {
+        "tags": [
+          "audits",
+          "reconciliation",
+          "mismatches"
+        ],
+        "summary": "Api Get Audit Progress",
+        "description": "API4.07: Audit completeness per site, tower, sector, and level.",
+        "operationId": "api_get_audit_progress_v1_audits__task_id__progress_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Get Audit Progress V1 Audits  Task Id  Progress Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{id}/audit/reconcile": {
+      "post": {
+        "tags": [
+          "audits",
+          "reconciliation",
+          "mismatches"
+        ],
+        "summary": "Api Reconcile Audit",
+        "description": "API4.06: Run reconciliation for a tower or whole audit task.",
+        "operationId": "api_reconcile_audit_v1_tasks__id__audit_reconcile_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ReconcileRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Reconcile Audit V1 Tasks  Id  Audit Reconcile Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{id}/audit/signoff": {
+      "post": {
+        "tags": [
+          "audits",
+          "reconciliation",
+          "mismatches"
+        ],
+        "summary": "Api Signoff Audit",
+        "description": "Sign-off an audit task enforcing completeness or supervisor waiver (FR4.028 / TC4.122).",
+        "operationId": "api_signoff_audit_v1_tasks__id__audit_signoff_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignoffRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Signoff Audit V1 Tasks  Id  Audit Signoff Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{id}/audit/findings/missing": {
+      "post": {
+        "tags": [
+          "audits",
+          "reconciliation",
+          "mismatches"
+        ],
+        "summary": "Api Mark Missing Finding",
+        "description": "Record an expected equipment item as missing (FR4.023 / TC4.121).",
+        "operationId": "api_mark_missing_finding_v1_tasks__id__audit_findings_missing_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissingFindingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Mark Missing Finding V1 Tasks  Id  Audit Findings Missing Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{id}/audit/findings/unknown": {
+      "post": {
+        "tags": [
+          "audits",
+          "reconciliation",
+          "mismatches"
+        ],
+        "summary": "Api Record Unknown Finding",
+        "description": "Record unknown unexpected equipment found on tower (FR4.022 / TC4.120).",
+        "operationId": "api_record_unknown_finding_v1_tasks__id__audit_findings_unknown_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnknownFindingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Record Unknown Finding V1 Tasks  Id  Audit Findings Unknown Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mismatches": {
+      "get": {
+        "tags": [
+          "audits",
+          "reconciliation",
+          "mismatches"
+        ],
+        "summary": "Api List Mismatches",
+        "description": "API4.16: Mismatch queue with filters and cursor pagination (FR4.064).",
+        "operationId": "api_list_mismatches_v1_mismatches_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "class",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Class"
+            }
+          },
+          {
+            "name": "verify_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Verify Status"
+            }
+          },
+          {
+            "name": "min_age_h",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Age H"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api List Mismatches V1 Mismatches Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mismatches/{id}/decision": {
+      "post": {
+        "tags": [
+          "audits",
+          "reconciliation",
+          "mismatches"
+        ],
+        "summary": "Api Submit Mismatch Decision",
+        "description": "API4.16: Submit mismatch decision with Segregation of Duties (SoD) (FR4.027 / TC4.123).",
+        "operationId": "api_submit_mismatch_decision_v1_mismatches__id__decision_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MismatchDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Submit Mismatch Decision V1 Mismatches  Id  Decision Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mismatches/approvals/{id}/approve": {
+      "post": {
+        "tags": [
+          "audits",
+          "reconciliation",
+          "mismatches"
+        ],
+        "summary": "Api Approve Mismatch",
+        "description": "Approve a pending mismatch decision.",
+        "operationId": "api_approve_mismatch_v1_mismatches_approvals__id__approve_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Approve Mismatch V1 Mismatches Approvals  Id  Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/equipment-events": {
+      "post": {
+        "tags": [
+          "equipment",
+          "equipment-events"
+        ],
+        "summary": "Api Record Equipment Event",
+        "description": "API4.08: Execute equipment lifecycle event (install, dismantle, replace, move, issue).",
+        "operationId": "api_record_equipment_event_v1_equipment_events_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EquipmentEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Record Equipment Event V1 Equipment Events Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/equipment-events/{id}/reverse": {
+      "post": {
+        "tags": [
+          "equipment",
+          "equipment-events"
+        ],
+        "summary": "Api Reverse Equipment Event",
+        "description": "API4.09: Reverse a posted equipment event with compensating operation and ref_doc_no.",
+        "operationId": "api_reverse_equipment_event_v1_equipment_events__id__reverse_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ReverseEventRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Reverse Equipment Event V1 Equipment Events  Id  Reverse Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/equipment/{serial_no}/history": {
+      "get": {
+        "tags": [
+          "equipment",
+          "equipment-events"
+        ],
+        "summary": "Api Get Equipment History",
+        "description": "API4.10: Retrieve full chronological history of serial events.",
+        "operationId": "api_get_equipment_history_v1_equipment__serial_no__history_get",
+        "parameters": [
+          {
+            "name": "serial_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Serial No"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Api Get Equipment History V1 Equipment  Serial No  History Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/climb-sessions/{visit_id}/events": {
+      "post": {
+        "tags": [
+          "Safety & Climb Sessions"
+        ],
+        "summary": "Upload summarised safety events in device order (API4.15)",
+        "description": "Upload summarized climb safety events enforcing strict device sequence (API4.15 / FR4.067).",
+        "operationId": "upload_climb_session_events_v1_climb_sessions__visit_id__events_post",
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClimbEventsUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Upload Climb Session Events V1 Climb Sessions  Visit Id  Events Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/safety/visits/{visit_id}/check-in": {
+      "post": {
+        "tags": [
+          "Safety & Climb Sessions"
+        ],
+        "summary": "Technician lone-worker check-in",
+        "description": "Restart lone-worker countdown timer on verbal or manual check-in (FR4.043).",
+        "operationId": "api_lone_worker_checkin_v1_safety_visits__visit_id__check_in_post",
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/field_api__safety__api__CheckInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Lone Worker Checkin V1 Safety Visits  Visit Id  Check In Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/safety/visits/{visit_id}/ack": {
+      "post": {
+        "tags": [
+          "Safety & Climb Sessions"
+        ],
+        "summary": "Supervisor acknowledge lone-worker escalation",
+        "description": "Acknowledge escalated visit from supervisor console (SCR4.13 / FR4.044).",
+        "operationId": "api_lone_worker_acknowledge_v1_safety_visits__visit_id__ack_post",
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcknowledgeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Lone Worker Acknowledge V1 Safety Visits  Visit Id  Ack Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/safety/active-visits": {
+      "get": {
+        "tags": [
+          "Safety & Climb Sessions"
+        ],
+        "summary": "List active site visits for lone-worker console monitor (SCR4.13)",
+        "description": "Retrieve active visits with timer countdowns and escalation banners (SCR4.13).",
+        "operationId": "api_list_active_safety_visits_v1_safety_active_visits_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Api List Active Safety Visits V1 Safety Active Visits Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/safety/sweep": {
+      "post": {
+        "tags": [
+          "Safety & Climb Sessions"
+        ],
+        "summary": "Trigger lone-worker escalation sweep (TC4.139)",
+        "description": "Execute sweep of active visits and escalate overdue workers (TC4.139).",
+        "operationId": "api_trigger_lone_worker_sweep_v1_safety_sweep_post",
+        "parameters": [
+          {
+            "name": "time_offset_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Virtual minute offset for testing time advance",
+              "default": 0,
+              "title": "Time Offset Min"
+            },
+            "description": "Virtual minute offset for testing time advance"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Trigger Lone Worker Sweep V1 Safety Sweep Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/equipment/{serial}/trail": {
+      "get": {
+        "tags": [
+          "Equipment Trails"
+        ],
+        "summary": "Ordered trail of locations for a serial (API4.10)",
+        "description": "Retrieve ordered equipment trail points (API4.10 / FR4.049 / PR4.06).",
+        "operationId": "api_get_equipment_trail_v1_equipment__serial__trail_get",
+        "parameters": [
+          {
+            "name": "serial",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Serial"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EquipmentTrailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{id}/route": {
+      "get": {
+        "tags": [
+          "Site Graph & Routing"
+        ],
+        "summary": "3D route with climb weighting and guidance (API4.11)",
+        "description": "Compute 3D route between two nodes with climb weighting and safety guidance (API4.11).",
+        "operationId": "api_get_3d_route_v1_sites__id__route_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Source node name or UUID",
+              "title": "From"
+            },
+            "description": "Source node name or UUID"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Target node name or UUID",
+              "title": "To"
+            },
+            "description": "Target node name or UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Route3DResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/asset-models": {
+      "post": {
+        "tags": [
+          "Asset Models & 3D BOM"
+        ],
+        "summary": "Upload a draft model version (multipart .glb + BOM CSV - API4.12)",
+        "description": "API4.12: Upload and validate .glb model and BOM CSV.",
+        "operationId": "api_upload_asset_model_v1_asset_models_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Upload Asset Model V1 Asset Models Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/asset-models/{id}/publish": {
+      "post": {
+        "tags": [
+          "Asset Models & 3D BOM"
+        ],
+        "summary": "Publish a validated version with step-up verification (API4.13)",
+        "description": "API4.13: Publish model version, allocate stable balloons, and emit outbox event.",
+        "operationId": "api_publish_asset_model_v1_asset_models__id__publish_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Stepup-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Stepup-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Publish Asset Model V1 Asset Models  Id  Publish Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/asset-models/{id}/bom": {
+      "get": {
+        "tags": [
+          "Asset Models & 3D BOM"
+        ],
+        "summary": "Get BOM with balloons, node mapping, explode vectors (API4.14)",
+        "description": "API4.14: Retrieve BOM hierarchy, balloons, and explode vectors.",
+        "operationId": "api_get_asset_model_bom_v1_asset_models__id__bom_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Get Asset Model Bom V1 Asset Models  Id  Bom Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Asset Models & 3D BOM"
+        ],
+        "summary": "Update model BOM (rejected with 409 if published - TC4.146)",
+        "description": "TC4.146: Immutability enforcement on published models.",
+        "operationId": "api_patch_asset_model_bom_v1_asset_models__id__bom_patch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BomPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Patch Asset Model Bom V1 Asset Models  Id  Bom Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audits/{task_id}/report": {
+      "post": {
+        "tags": [
+          "Audit Reports & Authenticated Evidence"
+        ],
+        "summary": "Request PDF or CSV audit report export (API4.17)",
+        "description": "API4.17: Generate audit findings report with authenticated evidence links.",
+        "operationId": "api_request_audit_report_v1_audits__task_id__report_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/AuditReportRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Request Audit Report V1 Audits  Task Id  Report Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports/{id}": {
+      "get": {
+        "tags": [
+          "Audit Reports & Authenticated Evidence"
+        ],
+        "summary": "Get audit report metadata",
+        "operationId": "api_get_audit_report_metadata_v1_reports__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Get Audit Report Metadata V1 Reports  Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/evidence/{id}": {
+      "get": {
+        "tags": [
+          "Audit Reports & Authenticated Evidence"
+        ],
+        "summary": "Access authenticated audit evidence (TC4.153)",
+        "description": "TC4.153: Evidence access gate. Requires either valid tenant bearer session OR valid HMAC signature.",
+        "operationId": "api_access_evidence_v1_evidence__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "tenant",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant"
+            }
+          },
+          {
+            "name": "exp",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exp"
+            }
+          },
+          {
+            "name": "sig",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sig"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{id}/pack": {
+      "get": {
+        "tags": [
+          "Offline Site Pack"
+        ],
+        "summary": "Offline site pack manifest with chunk URLs and snapshot version (API4.05)",
+        "description": "API4.05: Generate signed offline site pack manifest with delta ETag support.",
+        "operationId": "api_get_site_pack_v1_sites__id__pack_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Api Get Site Pack V1 Sites  Id  Pack Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{id}/pack/chunks/{chunk_name}": {
+      "get": {
+        "tags": [
+          "Offline Site Pack"
+        ],
+        "summary": "Download individual site pack chunk",
+        "description": "Serve content for individual chunk.",
+        "operationId": "api_download_site_pack_chunk_v1_sites__id__pack_chunks__chunk_name__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "chunk_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Chunk Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/installed-base": {
+      "get": {
+        "tags": [
+          "Installed Base"
+        ],
+        "summary": "Get Installed Base",
+        "description": "GET /v1/installed-base: Query installed base by serial or site_id (API4.18).",
+        "operationId": "get_installed_base_v1_installed_base_get",
+        "parameters": [
+          {
+            "name": "serial",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Equipment serial number filter",
+              "title": "Serial"
+            },
+            "description": "Equipment serial number filter"
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Site UUID filter",
+              "title": "Site Id"
+            },
+            "description": "Site UUID filter"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Installed Base V1 Installed Base Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AcknowledgeRequest": {
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Optional supervisor acknowledgment notes"
+          }
+        },
+        "type": "object",
+        "title": "AcknowledgeRequest"
+      },
+      "AuditReportRequest": {
+        "properties": {
+          "format": {
+            "type": "string",
+            "title": "Format",
+            "description": "'csv' or 'pdf'",
+            "default": "csv"
+          }
+        },
+        "type": "object",
+        "title": "AuditReportRequest"
+      },
       "Body_ingest_capture_v1_captures_post": {
         "properties": {
           "metadata": {
@@ -1368,6 +4719,24 @@
         },
         "type": "object",
         "title": "Body_ingest_capture_v1_captures_post"
+      },
+      "BomPatchRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of BOM item updates (part_no, description, etc.)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "BomPatchRequest"
       },
       "CaptureResponse": {
         "properties": {
@@ -1448,6 +4817,35 @@
         ],
         "title": "CaptureResponse"
       },
+      "CheckOutRequest": {
+        "properties": {
+          "unsynced_count": {
+            "type": "integer",
+            "title": "Unsynced Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "CheckOutRequest"
+      },
+      "ClimbEventsUploadRequest": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/SafetyEventItem"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Events",
+            "description": "List of safety events in device order"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "title": "ClimbEventsUploadRequest"
+      },
       "CompatItem": {
         "properties": {
           "component": {
@@ -1511,7 +4909,14 @@
             "title": "Granted"
           },
           "granted_at": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Granted At"
           },
           "withdrawn_at": {
@@ -1540,7 +4945,6 @@
           "consent_version",
           "consent_type",
           "granted",
-          "granted_at",
           "created_at"
         ],
         "title": "ConsentRecord"
@@ -1697,6 +5101,138 @@
           "created_at"
         ],
         "title": "CountRecordResponse"
+      },
+      "CsvColumnMapping": {
+        "properties": {
+          "delivery_document": {
+            "type": "string",
+            "title": "Delivery Document",
+            "default": "DeliveryDocument"
+          },
+          "item_no": {
+            "type": "string",
+            "title": "Item No",
+            "default": "DeliveryDocumentItem"
+          },
+          "material": {
+            "type": "string",
+            "title": "Material",
+            "default": "Material"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity",
+            "default": "ActualDeliveryQuantity"
+          },
+          "uom": {
+            "type": "string",
+            "title": "Uom",
+            "default": "DeliveryQuantityUnit"
+          },
+          "plant": {
+            "type": "string",
+            "title": "Plant",
+            "default": "ReceivingPlant"
+          },
+          "storage_location": {
+            "type": "string",
+            "title": "Storage Location",
+            "default": "StorageLocation"
+          }
+        },
+        "type": "object",
+        "title": "CsvColumnMapping"
+      },
+      "CsvConfirmRequest": {
+        "properties": {
+          "preview_token": {
+            "type": "string",
+            "title": "Preview Token"
+          },
+          "approved_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Overrides"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preview_token"
+        ],
+        "title": "CsvConfirmRequest"
+      },
+      "CsvImportPreview": {
+        "properties": {
+          "preview_token": {
+            "type": "string",
+            "title": "Preview Token"
+          },
+          "total_rows": {
+            "type": "integer",
+            "title": "Total Rows"
+          },
+          "auto_accepted_count": {
+            "type": "integer",
+            "title": "Auto Accepted Count"
+          },
+          "review_count": {
+            "type": "integer",
+            "title": "Review Count"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preview_token",
+          "total_rows",
+          "auto_accepted_count",
+          "review_count",
+          "rows"
+        ],
+        "title": "CsvImportPreview"
+      },
+      "CsvPreviewRequest": {
+        "properties": {
+          "csv_text": {
+            "type": "string",
+            "title": "Csv Text"
+          },
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CsvColumnMapping"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "csv_text",
+          "site_id"
+        ],
+        "title": "CsvPreviewRequest"
       },
       "DeviceConfigResponse": {
         "properties": {
@@ -2021,6 +5557,207 @@
         ],
         "title": "DeviceRegister"
       },
+      "EdgeCreate": {
+        "properties": {
+          "from_node_id": {
+            "type": "string",
+            "title": "From Node Id"
+          },
+          "to_node_id": {
+            "type": "string",
+            "title": "To Node Id"
+          },
+          "distance_m": {
+            "type": "number",
+            "title": "Distance M"
+          },
+          "is_one_way": {
+            "type": "boolean",
+            "title": "Is One Way",
+            "default": false
+          },
+          "is_forklift_zone": {
+            "type": "boolean",
+            "title": "Is Forklift Zone",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_node_id",
+          "to_node_id",
+          "distance_m"
+        ],
+        "title": "EdgeCreate"
+      },
+      "EquipmentEventRequest": {
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "title": "Event Type",
+            "description": "'install', 'dismantle', 'replace', 'move', or 'issue'"
+          },
+          "serial_no": {
+            "type": "string",
+            "title": "Serial No"
+          },
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material"
+          },
+          "old_serial_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Serial No"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "evidence_crop_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Crop Ref"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "source_plant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Plant"
+          },
+          "source_storage_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Storage Location"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "model_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version Id"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_type",
+          "serial_no",
+          "site_id"
+        ],
+        "title": "EquipmentEventRequest"
+      },
+      "EquipmentTrailResponse": {
+        "properties": {
+          "serial": {
+            "type": "string",
+            "title": "Serial",
+            "description": "Equipment serial number"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TrailPoint"
+            },
+            "type": "array",
+            "title": "Points",
+            "description": "Chronological trail points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serial",
+          "points"
+        ],
+        "title": "EquipmentTrailResponse"
+      },
       "ExchangeRequest": {
         "properties": {
           "device_token": {
@@ -2121,6 +5858,34 @@
         ],
         "title": "ExchangeResponse"
       },
+      "GoodsIssueRequest": {
+        "properties": {
+          "delivery_no": {
+            "type": "string",
+            "title": "Delivery No"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "delivery_no"
+        ],
+        "title": "GoodsIssueRequest"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2156,6 +5921,136 @@
           "status"
         ],
         "title": "HealthResponse"
+      },
+      "ImportedRow": {
+        "properties": {
+          "row_index": {
+            "type": "integer",
+            "title": "Row Index"
+          },
+          "delivery_document": {
+            "type": "string",
+            "title": "Delivery Document"
+          },
+          "item_no": {
+            "type": "integer",
+            "title": "Item No"
+          },
+          "raw_material": {
+            "type": "string",
+            "title": "Raw Material"
+          },
+          "matched_material_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Material Id"
+          },
+          "matched_material_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Material Code"
+          },
+          "match_score": {
+            "type": "number",
+            "title": "Match Score",
+            "default": 0.0
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "auto_accepted"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "uom": {
+            "type": "string",
+            "title": "Uom",
+            "default": "EA"
+          },
+          "plant": {
+            "type": "string",
+            "title": "Plant",
+            "default": "1010"
+          },
+          "storage_location": {
+            "type": "string",
+            "title": "Storage Location",
+            "default": "101A"
+          },
+          "rival_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rival Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "row_index",
+          "delivery_document",
+          "item_no",
+          "raw_material",
+          "quantity"
+        ],
+        "title": "ImportedRow"
+      },
+      "InventoryCountEntry": {
+        "properties": {
+          "pi_doc_id": {
+            "type": "string",
+            "title": "Pi Doc Id"
+          },
+          "line_id": {
+            "type": "string",
+            "title": "Line Id"
+          },
+          "counted_qty": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Counted Qty"
+          },
+          "is_zero_count": {
+            "type": "boolean",
+            "title": "Is Zero Count",
+            "default": false
+          },
+          "counter_operator_id": {
+            "type": "string",
+            "title": "Counter Operator Id"
+          },
+          "is_confirmed": {
+            "type": "boolean",
+            "title": "Is Confirmed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "pi_doc_id",
+          "line_id",
+          "counted_qty",
+          "counter_operator_id"
+        ],
+        "title": "InventoryCountEntry"
       },
       "LocationCreate": {
         "properties": {
@@ -2353,6 +6248,35 @@
         "type": "object",
         "title": "LocationUpdate"
       },
+      "MarkDamageRequest": {
+        "properties": {
+          "hu_id": {
+            "type": "string",
+            "title": "Hu Id"
+          },
+          "evidence_crop_id": {
+            "type": "string",
+            "title": "Evidence Crop Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hu_id",
+          "evidence_crop_id"
+        ],
+        "title": "MarkDamageRequest"
+      },
       "MeResponse": {
         "properties": {
           "id": {
@@ -2415,6 +6339,212 @@
         ],
         "title": "MeResponse"
       },
+      "MismatchDecisionRequest": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "title": "Decision"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "capturing_technician_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capturing Technician Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "MismatchDecisionRequest"
+      },
+      "MissingFindingRequest": {
+        "properties": {
+          "expected_serial": {
+            "type": "string",
+            "title": "Expected Serial"
+          },
+          "equipment_class": {
+            "type": "string",
+            "title": "Equipment Class"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_serial",
+          "equipment_class",
+          "reason"
+        ],
+        "title": "MissingFindingRequest"
+      },
+      "NodeCreate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "x_m": {
+            "type": "number",
+            "title": "X M",
+            "default": 0.0
+          },
+          "y_m": {
+            "type": "number",
+            "title": "Y M",
+            "default": 0.0
+          },
+          "z_m": {
+            "type": "number",
+            "title": "Z M",
+            "default": 0.0
+          },
+          "node_type": {
+            "type": "string",
+            "title": "Node Type",
+            "default": "waypoint"
+          },
+          "bin_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bin Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "NodeCreate"
+      },
+      "OptimizePathRequest": {
+        "properties": {
+          "stops": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Stops"
+          },
+          "graph_coordinates": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Coordinates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stops"
+        ],
+        "title": "OptimizePathRequest"
+      },
+      "OverrideRequest": {
+        "properties": {
+          "supervisor_id": {
+            "type": "string",
+            "title": "Supervisor Id"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "title": "Reason",
+            "description": "Mandatory reason for geofence override"
+          }
+        },
+        "type": "object",
+        "required": [
+          "supervisor_id",
+          "reason"
+        ],
+        "title": "OverrideRequest"
+      },
+      "PackRequest": {
+        "properties": {
+          "task_line_id": {
+            "type": "string",
+            "title": "Task Line Id"
+          },
+          "pack_quantity": {
+            "type": "number",
+            "title": "Pack Quantity"
+          },
+          "existing_sscc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Sscc"
+          },
+          "serial_counter": {
+            "type": "integer",
+            "title": "Serial Counter",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_line_id",
+          "pack_quantity"
+        ],
+        "title": "PackRequest"
+      },
       "PaginatedResponse": {
         "properties": {
           "items": {
@@ -2444,6 +6574,185 @@
           "total_in_page"
         ],
         "title": "PaginatedResponse"
+      },
+      "PiDocumentCreate": {
+        "properties": {
+          "plant": {
+            "type": "string",
+            "title": "Plant"
+          },
+          "storage_location": {
+            "type": "string",
+            "title": "Storage Location"
+          },
+          "bins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Bins"
+          },
+          "materials": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Materials"
+          },
+          "planned_count_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Planned Count Date"
+          },
+          "freeze_book": {
+            "type": "boolean",
+            "title": "Freeze Book",
+            "default": true
+          },
+          "posting_blocked": {
+            "type": "boolean",
+            "title": "Posting Blocked",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "plant",
+          "storage_location"
+        ],
+        "title": "PiDocumentCreate"
+      },
+      "PickConfirmationRequest": {
+        "properties": {
+          "task_line_id": {
+            "type": "string",
+            "title": "Task Line Id"
+          },
+          "scanned_bin": {
+            "type": "string",
+            "title": "Scanned Bin"
+          },
+          "scanned_code": {
+            "type": "string",
+            "title": "Scanned Code"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity",
+            "default": 1.0
+          },
+          "batch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch"
+          },
+          "serial": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serial"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_line_id",
+          "scanned_bin",
+          "scanned_code"
+        ],
+        "title": "PickConfirmationRequest"
+      },
+      "PostDifferenceRequest": {
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "title": "Line Id"
+          },
+          "counted_qty": {
+            "type": "number",
+            "title": "Counted Qty"
+          },
+          "book_qty": {
+            "type": "number",
+            "title": "Book Qty"
+          },
+          "unit_price": {
+            "type": "number",
+            "title": "Unit Price",
+            "default": 100.0
+          },
+          "counter_id": {
+            "type": "string",
+            "title": "Counter Id",
+            "default": "counter-01"
+          },
+          "approval_record": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Record"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "counted_qty",
+          "book_qty"
+        ],
+        "title": "PostDifferenceRequest"
+      },
+      "PostGoodsReceiptRequest": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "delivery_document": {
+            "type": "string",
+            "title": "Delivery Document"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "plant": {
+            "type": "string",
+            "title": "Plant",
+            "default": "1010"
+          },
+          "storage_location": {
+            "type": "string",
+            "title": "Storage Location",
+            "default": "101A"
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id",
+          "delivery_document",
+          "items"
+        ],
+        "title": "PostGoodsReceiptRequest"
       },
       "PostRequestIn": {
         "properties": {
@@ -2516,6 +6825,84 @@
           "created_at"
         ],
         "title": "PostRequestResponse"
+      },
+      "PostingJobRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "queue_key": {
+            "type": "string",
+            "title": "Queue Key"
+          },
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "ref_doc_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Doc No"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts"
+          },
+          "max_attempts": {
+            "type": "integer",
+            "title": "Max Attempts"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "queue_key",
+          "seq",
+          "ref_doc_no",
+          "status",
+          "attempts",
+          "max_attempts",
+          "next_attempt_at",
+          "payload",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PostingJobRecord"
       },
       "PresignUploadRequest": {
         "properties": {
@@ -2638,6 +7025,201 @@
         ],
         "title": "ProbeResponse"
       },
+      "PutawayConfirmRequest": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "hu_id": {
+            "type": "string",
+            "title": "Hu Id"
+          },
+          "scanned_bin": {
+            "type": "string",
+            "title": "Scanned Bin"
+          },
+          "proposed_bin": {
+            "type": "string",
+            "title": "Proposed Bin"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "site_putaway_in_erp": {
+            "type": "boolean",
+            "title": "Site Putaway In Erp",
+            "default": false
+          },
+          "delivery_document": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Document"
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id",
+          "hu_id",
+          "scanned_bin",
+          "proposed_bin"
+        ],
+        "title": "PutawayConfirmRequest"
+      },
+      "PutawayProposeRequest": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "hu_id": {
+            "type": "string",
+            "title": "Hu Id"
+          },
+          "is_quality_hold": {
+            "type": "boolean",
+            "title": "Is Quality Hold",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id",
+          "hu_id"
+        ],
+        "title": "PutawayProposeRequest"
+      },
+      "QualityReleaseRequest": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "hu_id": {
+            "type": "string",
+            "title": "Hu Id"
+          },
+          "material_code": {
+            "type": "string",
+            "title": "Material Code"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "plant": {
+            "type": "string",
+            "title": "Plant",
+            "default": "1010"
+          },
+          "storage_location": {
+            "type": "string",
+            "title": "Storage Location",
+            "default": "101A"
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id",
+          "hu_id",
+          "material_code",
+          "quantity"
+        ],
+        "title": "QualityReleaseRequest"
+      },
+      "QueueSummary": {
+        "properties": {
+          "queue_key": {
+            "type": "string",
+            "title": "Queue Key"
+          },
+          "pending_count": {
+            "type": "integer",
+            "title": "Pending Count"
+          },
+          "running_count": {
+            "type": "integer",
+            "title": "Running Count"
+          },
+          "failed_count": {
+            "type": "integer",
+            "title": "Failed Count"
+          },
+          "completed_count": {
+            "type": "integer",
+            "title": "Completed Count"
+          },
+          "cancelled_count": {
+            "type": "integer",
+            "title": "Cancelled Count"
+          },
+          "is_blocked": {
+            "type": "boolean",
+            "title": "Is Blocked"
+          },
+          "min_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Seq"
+          },
+          "max_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Seq"
+          },
+          "oldest_pending_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Pending At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "queue_key",
+          "pending_count",
+          "running_count",
+          "failed_count",
+          "completed_count",
+          "cancelled_count",
+          "is_blocked",
+          "min_seq",
+          "max_seq",
+          "oldest_pending_at"
+        ],
+        "title": "QueueSummary"
+      },
       "ReadinessCheck": {
         "properties": {
           "name": {
@@ -2693,6 +7275,169 @@
         ],
         "title": "ReadinessResponse"
       },
+      "ReconcileRequest": {
+        "properties": {
+          "tower_location_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tower Location Id"
+          }
+        },
+        "type": "object",
+        "title": "ReconcileRequest"
+      },
+      "RecountValidationRequest": {
+        "properties": {
+          "initial_counter_id": {
+            "type": "string",
+            "title": "Initial Counter Id"
+          },
+          "recount_counter_id": {
+            "type": "string",
+            "title": "Recount Counter Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "initial_counter_id",
+          "recount_counter_id"
+        ],
+        "title": "RecountValidationRequest"
+      },
+      "ReverseEventRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "title": "ReverseEventRequest"
+      },
+      "ReverseIssueRequest": {
+        "properties": {
+          "original_goods_issue": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Original Goods Issue"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": "supervisor_reversal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "original_goods_issue"
+        ],
+        "title": "ReverseIssueRequest"
+      },
+      "Route3DResponse": {
+        "properties": {
+          "cost": {
+            "type": "number",
+            "title": "Cost",
+            "description": "Weighted route cost: walk_m + 3 * climb_m"
+          },
+          "climb_m": {
+            "type": "number",
+            "title": "Climb M",
+            "description": "Total vertical climb distance in meters"
+          },
+          "walk_m": {
+            "type": "number",
+            "title": "Walk M",
+            "description": "Total horizontal walk distance in meters"
+          },
+          "nodes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Nodes",
+            "description": "Ordered list of node names along the path"
+          },
+          "guidance": {
+            "type": "string",
+            "title": "Guidance",
+            "description": "Pre-climb spoken newcomer guidance text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cost",
+          "climb_m",
+          "walk_m",
+          "nodes",
+          "guidance"
+        ],
+        "title": "Route3DResponse"
+      },
+      "SafetyEventItem": {
+        "properties": {
+          "device_seq": {
+            "type": "integer",
+            "title": "Device Seq",
+            "description": "Monotonic per-device event sequence number"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Event type: state_changed, harness_confirmed, checkpoint_reached, check_in, climb_safe_activated, etc."
+          },
+          "altitude_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Altitude M",
+            "description": "Current barometric altitude in meters"
+          },
+          "occurred_at": {
+            "type": "string",
+            "title": "Occurred At",
+            "description": "ISO 8601 timestamp when event occurred"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload",
+            "description": "Additional context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_seq",
+          "type",
+          "occurred_at"
+        ],
+        "title": "SafetyEventItem"
+      },
       "ServiceHealth": {
         "properties": {
           "name": {
@@ -2715,6 +7460,81 @@
           "latency_ms"
         ],
         "title": "ServiceHealth"
+      },
+      "ShortPickRequest": {
+        "properties": {
+          "task_line_id": {
+            "type": "string",
+            "title": "Task Line Id"
+          },
+          "short_qty": {
+            "type": "number",
+            "title": "Short Qty"
+          },
+          "reason_code": {
+            "type": "string",
+            "title": "Reason Code",
+            "description": "One of: bin_empty, damaged, not_found"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_line_id",
+          "short_qty",
+          "reason_code"
+        ],
+        "title": "ShortPickRequest"
+      },
+      "ShortestPathRequest": {
+        "properties": {
+          "start_node_id": {
+            "type": "string",
+            "title": "Start Node Id"
+          },
+          "target_node_id": {
+            "type": "string",
+            "title": "Target Node Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start_node_id",
+          "target_node_id"
+        ],
+        "title": "ShortestPathRequest"
+      },
+      "SignoffRequest": {
+        "properties": {
+          "waiver_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiver Reason"
+          },
+          "supervisor_waiver": {
+            "type": "boolean",
+            "title": "Supervisor Waiver",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "SignoffRequest"
       },
       "SiteCreate": {
         "properties": {
@@ -2936,6 +7756,24 @@
         "type": "object",
         "title": "SiteUpdate"
       },
+      "SnapPositionRequest": {
+        "properties": {
+          "raw_x": {
+            "type": "number",
+            "title": "Raw X"
+          },
+          "raw_y": {
+            "type": "number",
+            "title": "Raw Y"
+          }
+        },
+        "type": "object",
+        "required": [
+          "raw_x",
+          "raw_y"
+        ],
+        "title": "SnapPositionRequest"
+      },
       "SystemStatusResponse": {
         "properties": {
           "overall_status": {
@@ -2964,6 +7802,191 @@
           "compatibility"
         ],
         "title": "SystemStatusResponse"
+      },
+      "TrailPoint": {
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "title": "Seq",
+            "description": "Monotonic event sequence number"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Event type: issue, install, dismantle, move, etc."
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Human-readable location label (e.g. Plant 1100 / SL 0001 or IN01-TWR-0042 T01 Sector A L3 P02)"
+          },
+          "at": {
+            "type": "string",
+            "title": "At",
+            "description": "ISO 8601 occurred_at timestamp"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id",
+            "description": "Location UUID if bound to a structure location"
+          },
+          "altitude_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Altitude M",
+            "description": "Height in meters if available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seq",
+          "type",
+          "label",
+          "at"
+        ],
+        "title": "TrailPoint"
+      },
+      "UndoReceiptRequest": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "material_document": {
+            "type": "string",
+            "title": "Material Document"
+          },
+          "fiscal_year": {
+            "type": "string",
+            "title": "Fiscal Year",
+            "default": "2026"
+          },
+          "item_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item No"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": "Undo receipt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id",
+          "material_document"
+        ],
+        "title": "UndoReceiptRequest"
+      },
+      "UnknownFindingRequest": {
+        "properties": {
+          "found_serial": {
+            "type": "string",
+            "title": "Found Serial"
+          },
+          "equipment_class": {
+            "type": "string",
+            "title": "Equipment Class"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "crop_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "found_serial",
+          "equipment_class"
+        ],
+        "title": "UnknownFindingRequest"
+      },
+      "ValidateSsccRequest": {
+        "properties": {
+          "delivery_ref": {
+            "type": "string",
+            "title": "Delivery Ref"
+          },
+          "sscc": {
+            "type": "string",
+            "title": "Sscc"
+          },
+          "task_line_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Line Id"
+          },
+          "material_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Id"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity",
+            "default": 1.0
+          },
+          "uom": {
+            "type": "string",
+            "title": "Uom",
+            "default": "EA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "delivery_ref",
+          "sscc"
+        ],
+        "title": "ValidateSsccRequest"
       },
       "ValidationError": {
         "properties": {
@@ -3115,6 +8138,138 @@
           "created_at"
         ],
         "title": "VoiceEventResponse"
+      },
+      "field_api__safety__api__CheckInRequest": {
+        "properties": {
+          "altitude_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Altitude M",
+            "description": "Current altitude in meters"
+          },
+          "tower_fl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tower Fl",
+            "description": "Current tower functional location code"
+          }
+        },
+        "type": "object",
+        "title": "CheckInRequest"
+      },
+      "field_api__visits__api__CheckInRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          },
+          "permit_ref": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 4,
+            "title": "Permit Ref"
+          },
+          "permit_valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Permit Valid Until"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "accuracy_m": {
+            "type": "number",
+            "title": "Accuracy M"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "baro_baseline_hpa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baro Baseline Hpa"
+          },
+          "timer_interval_min": {
+            "type": "integer",
+            "title": "Timer Interval Min",
+            "default": 20
+          },
+          "override_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override By"
+          },
+          "override_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "permit_ref",
+          "permit_valid_until",
+          "lat",
+          "lon",
+          "accuracy_m"
+        ],
+        "title": "CheckInRequest"
       }
     }
   }

@@ -64,7 +64,7 @@ def create_test_tower_site(
 ) -> None:
     code = site_code or f"TWR-{site_id[:8].upper()}"
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute("SET app.site_ids = '*';")
         cur.execute(
             """

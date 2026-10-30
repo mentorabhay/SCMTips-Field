@@ -87,7 +87,7 @@ def auth_headers() -> dict[str, Any]:
 
 def create_test_site(tenant_id: str, site_id: str) -> None:
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute(
             """
             INSERT INTO field.site (id, tenant_id, code, name, kind, status)
@@ -212,7 +212,7 @@ async def test_tc3_101_and_tc3_103_ibd_polling_and_conflict():
 
     # TC3.103: Simulate line 10 has captures, and SAP changes qty 24 -> 30, line 20 has no captures
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute(
             """
             SELECT l.id FROM field.task_line l
@@ -278,7 +278,7 @@ async def test_tc3_101_and_tc3_103_ibd_polling_and_conflict():
 
     # Verify line 10 expected_qty is still 24, but uncaptured line 20 was updated to 15
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute(
             """
             SELECT l.line_no, l.expected_qty FROM field.task_line l
@@ -322,7 +322,7 @@ def test_tc3_102_csv_import_with_match_ladder():
 
     # Pre-seed materials in database for foreign key constraint
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         for m in known_materials:
             cur.execute(
                 """
@@ -501,7 +501,7 @@ def test_tc3_108_damaged_carton_handling():
 
     # Pre-create active handling unit in DB
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute(
             """
             INSERT INTO field.handling_unit (id, tenant_id, sscc, quantity, status)
@@ -608,7 +608,7 @@ def test_tc3_111_quality_hold_and_321_release():
 
     # Pre-create HU
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute(
             """
             INSERT INTO field.handling_unit (id, tenant_id, sscc, quantity, status)
@@ -655,7 +655,7 @@ def test_tc3_112_putaway_proposal_and_scan():
 
     # Pre-create HU
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute(
             """
             INSERT INTO field.handling_unit (id, tenant_id, sscc, quantity, status)

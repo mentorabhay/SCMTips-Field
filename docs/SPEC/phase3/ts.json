@@ -42,6 +42,22 @@
       "details": "Permission field.capture.create Idempotent yes, Idempotency-Key required SLO p95 <= 120 ms Errors 422 FIELD-RCV-422-EVIDENCE: photo required Request {\"flag\":\"damaged\",\"capture_id\":\"...\",\"evidence_id\":\"...\"} Response {\"line_id\":\"...\",\"damaged_qty\":12,\"status\":\"in_progress\"}"
     },
     {
+      "id": "API3.06",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/confirm",
+      "summary": "\u2014 Confirm staged lines; creates erp_document and posting jobs.",
+      "details": "Permission field.post.confirm Idempotent yes, Idempotency-Key required SLO p95 <= 150 ms Errors 409 FIELD-RCV-409-OVER-TOLERANCE: supervisor decision needed 422 FIELD-RCV-422-REASON: reason code missing 423 FIELD-PI-423-POSTING-BLOCKED: bin under count Request Idempotency-Key: 0192f3a0-7c1e-7b2a-9d1e-1f2a3b4c5d6e {\"stage_id\":\"...\",\"lines\":[\"...\"]} Response {\"erp_document_id\":\"...\",\"queue_key\":\"IBD:180000123\",\"jobs\":3,\"status\":\"queued\"}"
+    },
+    {
+      "id": "API3.07",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/erp-documents/{id}/reverse",
+      "summary": "\u2014 Undo after post: create 102/602 reversal.",
+      "details": "Permission field.post.confirm (own, window) or field.supervisor Idempotent yes, Idempotency-Key required SLO p95 <= 150 ms Errors 409 FIELD-ERP-409-ALREADY-REVERSED 409 FIELD-ERP-409-NOT-POSTED Request Idempotency-Key: ... {\"items\":[\"000010\"],\"reason\":\"wrong_material\"} Response {\"erp_document_id\":\"...\",\"doc_type\":\"GR_REV\",\"status\":\"queued\"}"
+    },
+    {
       "id": "API3.08",
       "phase": 3,
       "method": "POST",
@@ -66,12 +82,36 @@
       "details": "Permission field.pi.create Idempotent yes, Idempotency-Key required SLO p95 <= 300 ms Errors 422 FIELD-PI-422-TOO-MANY-ITEMS: > FIELD_PI_MAX_ITEMS Request {\"site_id\":\"...\",\"plant\":\"1000\",\"storage_location\":\"0001\",\"bins\":[\"03-05-*\"],\"planned_count_date\":\"2026-11-27\",\"freeze\":true,\"posting_block\":true} Response {\"id\":\"...\",\"status\":\"draft\",\"items\":42,\"queue_key\":\"PID:pending\"}"
     },
     {
+      "id": "API3.11",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/pi-documents/{id}/items/{item}/counts",
+      "summary": "\u2014 Commit a blind count (after &#x27;confirm&#x27;).",
+      "details": "Permission field.capture.create Idempotent yes, Idempotency-Key required SLO p95 <= 150 ms Errors 409 FIELD-PI-409-RECOUNT-SAME-OPERATOR 409 FIELD-PI-409-NOT-ASSIGNED Request Idempotency-Key: ... {\"qty\":48,\"is_zero\":false,\"source\":\"mixed\",\"capture_ids\":[\"...\"]} Response {\"item\":\"...\",\"count_no\":1,\"status\":\"committed\"} // never contains book_qty, difference or recount reason"
+    },
+    {
+      "id": "API3.12",
+      "phase": 3,
+      "method": "POST",
+      "path": "/v1/pi-documents/{id}/post-differences",
+      "summary": "\u2014 Request difference posting; returns approval need.",
+      "details": "Permission field.pi.post Idempotent yes, Idempotency-Key required SLO p95 <= 200 ms Errors 409 FIELD-PI-409-OPEN-RECOUNTS 403 FIELD-APR-403-SOD: approver excluded 401 FIELD-APR-401-REAUTH: re-authentication older than 300 s Request Idempotency-Key: ... {} Response {\"status\":\"awaiting_approval\",\"approval_request_id\":\"...\",\"band\":\"B2\",\"value_abs\":\"72000.00\",\"currency\":\"INR\"}"
+    },
+    {
       "id": "API3.13",
       "phase": 3,
       "method": "POST",
       "path": "/v1/posting-jobs/{id}/retry",
       "summary": "\u2014 Retry now a failed or waiting job (also /cancel).",
       "details": "Permission field.queue.manage Idempotent yes, Idempotency-Key required SLO p95 <= 100 ms Errors 409 FIELD-Q-409-NOT-HEAD: only the head job can be retried Request {\"reason\":\"SAP lock released\"} Response {\"id\":\"...\",\"state\":\"pending\",\"next_attempt_at\":\"2026-11-24T09:12:00Z\"}"
+    },
+    {
+      "id": "API3.14",
+      "phase": 3,
+      "method": "PUT",
+      "path": "/v1/sites/{site_id}/graph/draft",
+      "summary": "\u2014 Save graph draft; POST .../graph/publish publishes it.",
+      "details": "Permission field.graph.edit Idempotent yes, Idempotency-Key required SLO p95 <= 800 ms for 20k nodes Errors 412 FIELD-GRAPH-412-ETAG 422 FIELD-GRAPH-422-CYCLE: location hierarchy cycle Request If-Match: \"v12-draft-3\" {\"nodes\":[...],\"edges\":[...],\"anchors\":[...]} Response {\"version\":13,\"status\":\"draft\",\"problems\":[{\"code\":\"BIN_NO_NODE\",\"ref\":\"03-05-02\"}]}"
     },
     {
       "id": "API3.15",

@@ -54,7 +54,7 @@ def cmd_grant(args: argparse.Namespace) -> int:
         with psycopg.connect(get_db_url(), autocommit=False) as conn:
             with conn.cursor() as cur:
                 # Set tenant context
-                cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+                cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
                 # Upsert into field.role_grant
                 cur.execute(

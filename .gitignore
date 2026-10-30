@@ -64,3 +64,5 @@ Thumbs.db
 # Gradle
 .gradle/
 build/
+reports/junit*.xml
+reports/trace.json

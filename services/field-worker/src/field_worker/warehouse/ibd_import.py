@@ -76,7 +76,7 @@ async def poll_and_import_inbound_deliveries(
     conflicts: list[dict[str, Any]] = []
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
         for d in deliveries:
             deliv_doc = d.get("DeliveryDocument")

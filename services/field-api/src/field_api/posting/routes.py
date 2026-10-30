@@ -70,7 +70,7 @@ async def list_posting_queues(
 ) -> list[QueueSummary]:
     """List posting queues with health status, failure counts, and blocking status."""
     with get_db_conn() as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{principal.tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(principal.tenant_id),))
         cur.execute(
             """
             SELECT
@@ -117,7 +117,7 @@ async def list_queue_jobs(
 ) -> list[PostingJobRecord]:
     """List jobs within a specific posting queue in sequence order."""
     with get_db_conn() as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{principal.tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(principal.tenant_id),))
         cur.execute(
             """
             SELECT id, queue_key, seq, ref_doc_no, status, attempts, max_attempts, next_attempt_at, payload, created_at, updated_at
@@ -155,7 +155,7 @@ async def retry_posting_job(
 ) -> dict[str, Any]:
     """Retry a failed or blocked job immediately."""
     with get_db_conn() as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{principal.tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(principal.tenant_id),))
         cur.execute(
             """
             SELECT id, status, queue_key, seq FROM field.posting_job
@@ -207,7 +207,7 @@ async def cancel_posting_job(
 ) -> dict[str, Any]:
     """Cancel a posting job and cascade cancel dependent subsequent jobs per BR3.14."""
     with get_db_conn() as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{principal.tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(principal.tenant_id),))
         cur.execute(
             """
             SELECT id, status, queue_key, seq, ref_doc_no FROM field.posting_job

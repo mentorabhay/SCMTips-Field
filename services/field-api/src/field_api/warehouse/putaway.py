@@ -50,7 +50,7 @@ def propose_putaway_bin(
     in_use = set(occupied_bins or [])
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         # Fetch bins currently occupied in handling_unit or target_bin in task_line
         cur.execute(
             """
@@ -96,7 +96,7 @@ def confirm_putaway_scan(
         raise ERR_DIFFERENT_BIN_REASON_REQUIRED
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
         cur.execute(
             """

@@ -1,0 +1,4172 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SCMTIPS Simulated ERP Service (erp-sim)",
+    "description": "Local S/4HANA OData simulator for dev, testing and contract verification",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/A_InbDeliveryHeader": {
+      "get": {
+        "tags": [
+          "Inbound Delivery"
+        ],
+        "summary": "List Inbound Deliveries",
+        "operationId": "list_inbound_deliveries_sap_opu_odata_sap_API_INBOUND_DELIVERY_SRV_A_InbDeliveryHeader_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Filter"
+            }
+          },
+          {
+            "name": "$expand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Expand"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Inbound Deliveries Sap Opu Odata Sap Api Inbound Delivery Srv A Inbdeliveryheader Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/A_InbDeliveryHeader('{delivery_document}')": {
+      "get": {
+        "tags": [
+          "Inbound Delivery"
+        ],
+        "summary": "Get Inbound Delivery",
+        "operationId": "get_inbound_delivery_sap_opu_odata_sap_API_INBOUND_DELIVERY_SRV_A_InbDeliveryHeader___delivery_document____get",
+        "parameters": [
+          {
+            "name": "delivery_document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Document"
+            }
+          },
+          {
+            "name": "$expand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Expand"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Inbound Delivery Sap Opu Odata Sap Api Inbound Delivery Srv A Inbdeliveryheader   Delivery Document    Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/A_InbDeliveryItem(DeliveryDocument='{delivery_document}',DeliveryDocumentItem='{item_no}')": {
+      "get": {
+        "tags": [
+          "Inbound Delivery"
+        ],
+        "summary": "Get Inbound Delivery Item",
+        "operationId": "get_inbound_delivery_item_sap_opu_odata_sap_API_INBOUND_DELIVERY_SRV_A_InbDeliveryItem_DeliveryDocument___delivery_document___DeliveryDocumentItem___item_no____get",
+        "parameters": [
+          {
+            "name": "delivery_document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Document"
+            }
+          },
+          {
+            "name": "item_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item No"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Inbound Delivery Item Sap Opu Odata Sap Api Inbound Delivery Srv A Inbdeliveryitem Deliverydocument   Delivery Document   Deliverydocumentitem   Item No    Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Inbound Delivery"
+        ],
+        "summary": "Patch Inbound Delivery Item",
+        "operationId": "patch_inbound_delivery_item_sap_opu_odata_sap_API_INBOUND_DELIVERY_SRV_A_InbDeliveryItem_DeliveryDocument___delivery_document___DeliveryDocumentItem___item_no____patch",
+        "parameters": [
+          {
+            "name": "delivery_document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Document"
+            }
+          },
+          {
+            "name": "item_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item No"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchItemBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Patch Inbound Delivery Item Sap Opu Odata Sap Api Inbound Delivery Srv A Inbdeliveryitem Deliverydocument   Delivery Document   Deliverydocumentitem   Item No    Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/PostGoodsReceipt": {
+      "post": {
+        "tags": [
+          "Inbound Delivery"
+        ],
+        "summary": "Post Goods Receipt",
+        "operationId": "post_goods_receipt_sap_opu_odata_sap_API_INBOUND_DELIVERY_SRV_PostGoodsReceipt_post",
+        "parameters": [
+          {
+            "name": "DeliveryDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Deliverydocument"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Post Goods Receipt Sap Opu Odata Sap Api Inbound Delivery Srv Postgoodsreceipt Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/PutawayItem": {
+      "post": {
+        "tags": [
+          "Inbound Delivery"
+        ],
+        "summary": "Putaway Item",
+        "operationId": "putaway_item_sap_opu_odata_sap_API_INBOUND_DELIVERY_SRV_PutawayItem_post",
+        "parameters": [
+          {
+            "name": "DeliveryDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Deliverydocument"
+            }
+          },
+          {
+            "name": "DeliveryDocumentItem",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Deliverydocumentitem"
+            }
+          },
+          {
+            "name": "StorageBin",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Storagebin"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Putaway Item Sap Opu Odata Sap Api Inbound Delivery Srv Putawayitem Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/A_OutbDeliveryHeader('{delivery_document}')": {
+      "get": {
+        "tags": [
+          "Outbound Delivery"
+        ],
+        "summary": "Get Outbound Delivery",
+        "operationId": "get_outbound_delivery_sap_opu_odata_sap_API_OUTBOUND_DELIVERY_SRV_A_OutbDeliveryHeader___delivery_document____get",
+        "parameters": [
+          {
+            "name": "delivery_document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Document"
+            }
+          },
+          {
+            "name": "$expand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Expand"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Outbound Delivery Sap Opu Odata Sap Api Outbound Delivery Srv A Outbdeliveryheader   Delivery Document    Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/A_OutbDeliveryItem(DeliveryDocument='{delivery_document}',DeliveryDocumentItem='{item_no}')": {
+      "patch": {
+        "tags": [
+          "Outbound Delivery"
+        ],
+        "summary": "Patch Item Picked",
+        "operationId": "patch_item_picked_sap_opu_odata_sap_API_OUTBOUND_DELIVERY_SRV_A_OutbDeliveryItem_DeliveryDocument___delivery_document___DeliveryDocumentItem___item_no____patch",
+        "parameters": [
+          {
+            "name": "delivery_document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Document"
+            }
+          },
+          {
+            "name": "item_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item No"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchItemPicked"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Patch Item Picked Sap Opu Odata Sap Api Outbound Delivery Srv A Outbdeliveryitem Deliverydocument   Delivery Document   Deliverydocumentitem   Item No    Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/PickOneItem": {
+      "post": {
+        "tags": [
+          "Outbound Delivery"
+        ],
+        "summary": "Pick One Item",
+        "operationId": "pick_one_item_sap_opu_odata_sap_API_OUTBOUND_DELIVERY_SRV_PickOneItem_post",
+        "parameters": [
+          {
+            "name": "DeliveryDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Deliverydocument"
+            }
+          },
+          {
+            "name": "DeliveryDocumentItem",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Deliverydocumentitem"
+            }
+          },
+          {
+            "name": "PickedQuantity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pickedquantity"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pick One Item Sap Opu Odata Sap Api Outbound Delivery Srv Pickoneitem Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/ConfirmPickingOneItem": {
+      "post": {
+        "tags": [
+          "Outbound Delivery"
+        ],
+        "summary": "Confirm Picking One Item",
+        "operationId": "confirm_picking_one_item_sap_opu_odata_sap_API_OUTBOUND_DELIVERY_SRV_ConfirmPickingOneItem_post",
+        "parameters": [
+          {
+            "name": "DeliveryDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Deliverydocument"
+            }
+          },
+          {
+            "name": "DeliveryDocumentItem",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Deliverydocumentitem"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Confirm Picking One Item Sap Opu Odata Sap Api Outbound Delivery Srv Confirmpickingoneitem Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/PostGoodsIssue": {
+      "post": {
+        "tags": [
+          "Outbound Delivery"
+        ],
+        "summary": "Post Goods Issue",
+        "operationId": "post_goods_issue_sap_opu_odata_sap_API_OUTBOUND_DELIVERY_SRV_PostGoodsIssue_post",
+        "parameters": [
+          {
+            "name": "DeliveryDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Deliverydocument"
+            }
+          },
+          {
+            "name": "AllowPartial",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Allowpartial"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Session-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Post Goods Issue Sap Opu Odata Sap Api Outbound Delivery Srv Postgoodsissue Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/ReverseGoodsIssue": {
+      "post": {
+        "tags": [
+          "Outbound Delivery"
+        ],
+        "summary": "Reverse Goods Issue",
+        "operationId": "reverse_goods_issue_sap_opu_odata_sap_API_OUTBOUND_DELIVERY_SRV_ReverseGoodsIssue_post",
+        "parameters": [
+          {
+            "name": "DeliveryDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Deliverydocument"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reverse Goods Issue Sap Opu Odata Sap Api Outbound Delivery Srv Reversegoodsissue Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader(MaterialDocument='{doc_number}',MaterialDocumentYear='{fiscal_year}')": {
+      "get": {
+        "tags": [
+          "Material Document"
+        ],
+        "summary": "Get Material Document",
+        "operationId": "get_material_document_sap_opu_odata_sap_API_MATERIAL_DOCUMENT_SRV_A_MaterialDocumentHeader_MaterialDocument___doc_number___MaterialDocumentYear___fiscal_year____get",
+        "parameters": [
+          {
+            "name": "doc_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Number"
+            }
+          },
+          {
+            "name": "fiscal_year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fiscal Year"
+            }
+          },
+          {
+            "name": "$expand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Expand"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Material Document Sap Opu Odata Sap Api Material Document Srv A Materialdocumentheader Materialdocument   Doc Number   Materialdocumentyear   Fiscal Year    Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader": {
+      "post": {
+        "tags": [
+          "Material Document"
+        ],
+        "summary": "Create Material Document",
+        "operationId": "create_material_document_sap_opu_odata_sap_API_MATERIAL_DOCUMENT_SRV_A_MaterialDocumentHeader_post",
+        "parameters": [
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialDocumentCreateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Material Document Sap Opu Odata Sap Api Material Document Srv A Materialdocumentheader Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/Cancel": {
+      "post": {
+        "tags": [
+          "Material Document"
+        ],
+        "summary": "Cancel Material Document",
+        "operationId": "cancel_material_document_sap_opu_odata_sap_API_MATERIAL_DOCUMENT_SRV_Cancel_post",
+        "parameters": [
+          {
+            "name": "MaterialDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Materialdocument"
+            }
+          },
+          {
+            "name": "MaterialDocumentYear",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Materialdocumentyear"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancel Material Document Sap Opu Odata Sap Api Material Document Srv Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/CancelItem": {
+      "post": {
+        "tags": [
+          "Material Document"
+        ],
+        "summary": "Cancel Material Document Item",
+        "operationId": "cancel_material_document_item_sap_opu_odata_sap_API_MATERIAL_DOCUMENT_SRV_CancelItem_post",
+        "parameters": [
+          {
+            "name": "MaterialDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Materialdocument"
+            }
+          },
+          {
+            "name": "MaterialDocumentYear",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Materialdocumentyear"
+            }
+          },
+          {
+            "name": "MaterialDocumentItem",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Materialdocumentitem"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancel Material Document Item Sap Opu Odata Sap Api Material Document Srv Cancelitem Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_PHYSICAL_INVENTORY_DOC_SRV/A_PhysInventoryDocHeader": {
+      "post": {
+        "tags": [
+          "Physical Inventory"
+        ],
+        "summary": "Create Pi Doc",
+        "operationId": "create_pi_doc_sap_opu_odata_sap_API_PHYSICAL_INVENTORY_DOC_SRV_A_PhysInventoryDocHeader_post",
+        "parameters": [
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PiDocCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Pi Doc Sap Opu Odata Sap Api Physical Inventory Doc Srv A Physinventorydocheader Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_PHYSICAL_INVENTORY_DOC_SRV/A_PhysInventoryDocHeader(PhysicalInventoryDocument='{pi_doc}',FiscalYear='{fiscal_year}')": {
+      "get": {
+        "tags": [
+          "Physical Inventory"
+        ],
+        "summary": "Get Pi Doc",
+        "operationId": "get_pi_doc_sap_opu_odata_sap_API_PHYSICAL_INVENTORY_DOC_SRV_A_PhysInventoryDocHeader_PhysicalInventoryDocument___pi_doc___FiscalYear___fiscal_year____get",
+        "parameters": [
+          {
+            "name": "pi_doc",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pi Doc"
+            }
+          },
+          {
+            "name": "fiscal_year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fiscal Year"
+            }
+          },
+          {
+            "name": "$expand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Expand"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Pi Doc Sap Opu Odata Sap Api Physical Inventory Doc Srv A Physinventorydocheader Physicalinventorydocument   Pi Doc   Fiscalyear   Fiscal Year    Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_PHYSICAL_INVENTORY_DOC_SRV/A_PhysInventoryDocItem(PhysicalInventoryDocument='{pi_doc}',FiscalYear='{fiscal_year}',PhysicalInventoryDocumentItem='{line_no}')": {
+      "patch": {
+        "tags": [
+          "Physical Inventory"
+        ],
+        "summary": "Enter Count",
+        "operationId": "enter_count_sap_opu_odata_sap_API_PHYSICAL_INVENTORY_DOC_SRV_A_PhysInventoryDocItem_PhysicalInventoryDocument___pi_doc___FiscalYear___fiscal_year___PhysicalInventoryDocumentItem___line_no____patch",
+        "parameters": [
+          {
+            "name": "pi_doc",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pi Doc"
+            }
+          },
+          {
+            "name": "fiscal_year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fiscal Year"
+            }
+          },
+          {
+            "name": "line_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Line No"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PiItemCountPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Enter Count Sap Opu Odata Sap Api Physical Inventory Doc Srv A Physinventorydocitem Physicalinventorydocument   Pi Doc   Fiscalyear   Fiscal Year   Physicalinventorydocumentitem   Line No    Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_PHYSICAL_INVENTORY_DOC_SRV/InitiateRecount": {
+      "post": {
+        "tags": [
+          "Physical Inventory"
+        ],
+        "summary": "Initiate Recount",
+        "operationId": "initiate_recount_sap_opu_odata_sap_API_PHYSICAL_INVENTORY_DOC_SRV_InitiateRecount_post",
+        "parameters": [
+          {
+            "name": "PhysicalInventoryDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Physicalinventorydocument"
+            }
+          },
+          {
+            "name": "FiscalYear",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fiscalyear"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Initiate Recount Sap Opu Odata Sap Api Physical Inventory Doc Srv Initiaterecount Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_PHYSICAL_INVENTORY_DOC_SRV/PostDifferences": {
+      "post": {
+        "tags": [
+          "Physical Inventory"
+        ],
+        "summary": "Post Differences",
+        "operationId": "post_differences_sap_opu_odata_sap_API_PHYSICAL_INVENTORY_DOC_SRV_PostDifferences_post",
+        "parameters": [
+          {
+            "name": "PhysicalInventoryDocument",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Physicalinventorydocument"
+            }
+          },
+          {
+            "name": "FiscalYear",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fiscalyear"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Post Differences Sap Opu Odata Sap Api Physical Inventory Doc Srv Postdifferences Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/A_Equipment": {
+      "get": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "List Equipment",
+        "description": "OData v2 endpoint to list installed equipment with details.",
+        "operationId": "list_equipment_sap_opu_odata_sap_API_EQUIPMENT_A_Equipment_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Filter"
+            }
+          },
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 1000,
+              "title": "$Top"
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 0,
+              "title": "$Skip"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Equipment Sap Opu Odata Sap Api Equipment A Equipment Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Create Equipment",
+        "operationId": "create_equipment_sap_opu_odata_sap_API_EQUIPMENT_A_Equipment_post",
+        "parameters": [
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EquipmentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Equipment Sap Opu Odata Sap Api Equipment A Equipment Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/Equipment": {
+      "get": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "List Equipment",
+        "description": "OData v2 endpoint to list installed equipment with details.",
+        "operationId": "list_equipment_sap_opu_odata_sap_API_EQUIPMENT_Equipment_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Filter"
+            }
+          },
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 1000,
+              "title": "$Top"
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 0,
+              "title": "$Skip"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Equipment Sap Opu Odata Sap Api Equipment Equipment Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/A_Equipment('{equipment}')/TimeSegments": {
+      "get": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Get Equipment Time Segments",
+        "description": "Retrieve historical equipment installation time segments (T4.020 / FR4.030).",
+        "operationId": "get_equipment_time_segments_sap_opu_odata_sap_API_EQUIPMENT_A_Equipment___equipment____TimeSegments_get",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Equipment Time Segments Sap Opu Odata Sap Api Equipment A Equipment   Equipment    Timesegments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/Equipment/{equipment}/time-segments": {
+      "get": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Get Equipment Time Segments",
+        "description": "Retrieve historical equipment installation time segments (T4.020 / FR4.030).",
+        "operationId": "get_equipment_time_segments_sap_opu_odata_sap_API_EQUIPMENT_Equipment__equipment__time_segments_get",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Equipment Time Segments Sap Opu Odata Sap Api Equipment Equipment  Equipment  Time Segments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/Equipment('{equipment}')/TimeSegments": {
+      "get": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Get Equipment Time Segments",
+        "description": "Retrieve historical equipment installation time segments (T4.020 / FR4.030).",
+        "operationId": "get_equipment_time_segments_sap_opu_odata_sap_API_EQUIPMENT_Equipment___equipment____TimeSegments_get",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Equipment Time Segments Sap Opu Odata Sap Api Equipment Equipment   Equipment    Timesegments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/A_Equipment('{equipment}')/Install": {
+      "post": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Install Equipment",
+        "description": "Install equipment at functional location with change document, dedupe, and fault checks (T4.020).",
+        "operationId": "install_equipment_sap_opu_odata_sap_API_EQUIPMENT_A_Equipment___equipment____Install_post",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Sim-Fault-Profile",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Fault-Profile"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/InstallRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Install Equipment Sap Opu Odata Sap Api Equipment A Equipment   Equipment    Install Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/Equipment('{equipment}')/Install": {
+      "post": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Install Equipment",
+        "description": "Install equipment at functional location with change document, dedupe, and fault checks (T4.020).",
+        "operationId": "install_equipment_sap_opu_odata_sap_API_EQUIPMENT_Equipment___equipment____Install_post",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Sim-Fault-Profile",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Fault-Profile"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/InstallRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Install Equipment Sap Opu Odata Sap Api Equipment Equipment   Equipment    Install Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/Install?Equipment={equipment}": {
+      "post": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Install Equipment",
+        "description": "Install equipment at functional location with change document, dedupe, and fault checks (T4.020).",
+        "operationId": "install_equipment_sap_opu_odata_sap_API_EQUIPMENT_Install_Equipment__equipment__post",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Sim-Fault-Profile",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Fault-Profile"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/InstallRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Install Equipment Sap Opu Odata Sap Api Equipment Install Equipment  Equipment  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/Install": {
+      "post": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Install Equipment",
+        "description": "Install equipment at functional location with change document, dedupe, and fault checks (T4.020).",
+        "operationId": "install_equipment_sap_opu_odata_sap_API_EQUIPMENT_Install_post",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Sim-Fault-Profile",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Fault-Profile"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/InstallRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Install Equipment Sap Opu Odata Sap Api Equipment Install Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/A_Equipment('{equipment}')/Dismantle": {
+      "post": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Dismantle Equipment",
+        "description": "Dismantle equipment from functional location with change document and dedupe (T4.020).",
+        "operationId": "dismantle_equipment_sap_opu_odata_sap_API_EQUIPMENT_A_Equipment___equipment____Dismantle_post",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Sim-Fault-Profile",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Fault-Profile"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DismantleRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Dismantle Equipment Sap Opu Odata Sap Api Equipment A Equipment   Equipment    Dismantle Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/Equipment('{equipment}')/Dismantle": {
+      "post": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Dismantle Equipment",
+        "description": "Dismantle equipment from functional location with change document and dedupe (T4.020).",
+        "operationId": "dismantle_equipment_sap_opu_odata_sap_API_EQUIPMENT_Equipment___equipment____Dismantle_post",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Sim-Fault-Profile",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Fault-Profile"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DismantleRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Dismantle Equipment Sap Opu Odata Sap Api Equipment Equipment   Equipment    Dismantle Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/Dismantle?Equipment={equipment}": {
+      "post": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Dismantle Equipment",
+        "description": "Dismantle equipment from functional location with change document and dedupe (T4.020).",
+        "operationId": "dismantle_equipment_sap_opu_odata_sap_API_EQUIPMENT_Dismantle_Equipment__equipment__post",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Sim-Fault-Profile",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Fault-Profile"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DismantleRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Dismantle Equipment Sap Opu Odata Sap Api Equipment Dismantle Equipment  Equipment  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_EQUIPMENT/Dismantle": {
+      "post": {
+        "tags": [
+          "Equipment"
+        ],
+        "summary": "Dismantle Equipment",
+        "description": "Dismantle equipment from functional location with change document and dedupe (T4.020).",
+        "operationId": "dismantle_equipment_sap_opu_odata_sap_API_EQUIPMENT_Dismantle_post",
+        "parameters": [
+          {
+            "name": "equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Equipment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "X-Sim-Fault-Profile",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Fault-Profile"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DismantleRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Dismantle Equipment Sap Opu Odata Sap Api Equipment Dismantle Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_MAINTENANCEORDER/MaintenanceOrder": {
+      "post": {
+        "tags": [
+          "Plant Maintenance"
+        ],
+        "summary": "Create Maintenance Order",
+        "operationId": "create_maintenance_order_sap_opu_odata_sap_API_MAINTENANCEORDER_MaintenanceOrder_post",
+        "parameters": [
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Maintenance Order Sap Opu Odata Sap Api Maintenanceorder Maintenanceorder Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_MAINTNOTIFICATION/MaintenanceNotification": {
+      "post": {
+        "tags": [
+          "Plant Maintenance"
+        ],
+        "summary": "Create Maintenance Notification",
+        "operationId": "create_maintenance_notification_sap_opu_odata_sap_API_MAINTNOTIFICATION_MaintenanceNotification_post",
+        "parameters": [
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotifCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Maintenance Notification Sap Opu Odata Sap Api Maintnotification Maintenancenotification Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_MEASUREMENTDOCUMENT_SRV/MeasurementDocument": {
+      "post": {
+        "tags": [
+          "Plant Maintenance"
+        ],
+        "summary": "Create Measurement Doc",
+        "operationId": "create_measurement_doc_sap_opu_odata_sap_API_MEASUREMENTDOCUMENT_SRV_MeasurementDocument_post",
+        "parameters": [
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasDocCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Measurement Doc Sap Opu Odata Sap Api Measurementdocument Srv Measurementdocument Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/faults": {
+      "get": {
+        "tags": [
+          "Simulator Admin"
+        ],
+        "summary": "List Faults",
+        "operationId": "list_faults__sim_faults_get",
+        "parameters": [
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Faults  Sim Faults Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Simulator Admin"
+        ],
+        "summary": "Create Fault",
+        "operationId": "create_fault__sim_faults_post",
+        "parameters": [
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FaultRuleIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Fault  Sim Faults Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/faults/{rule_id}": {
+      "delete": {
+        "tags": [
+          "Simulator Admin"
+        ],
+        "summary": "Delete Fault",
+        "operationId": "delete_fault__sim_faults__rule_id__delete",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Fault  Sim Faults  Rule Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_FUNCTIONALLOCATION/A_FunctionalLocation": {
+      "get": {
+        "tags": [
+          "FunctionalLocation"
+        ],
+        "summary": "Get Functional Locations",
+        "description": "OData v2 endpoint to list functional locations with prefix and change date filtering.",
+        "operationId": "get_functional_locations_sap_opu_odata_sap_API_FUNCTIONALLOCATION_A_FunctionalLocation_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Filter"
+            }
+          },
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 1000,
+              "title": "$Top"
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 0,
+              "title": "$Skip"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Functional Locations Sap Opu Odata Sap Api Functionallocation A Functionallocation Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_FUNCTIONALLOCATION/FunctionalLocation": {
+      "get": {
+        "tags": [
+          "FunctionalLocation"
+        ],
+        "summary": "Get Functional Locations",
+        "description": "OData v2 endpoint to list functional locations with prefix and change date filtering.",
+        "operationId": "get_functional_locations_sap_opu_odata_sap_API_FUNCTIONALLOCATION_FunctionalLocation_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Filter"
+            }
+          },
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 1000,
+              "title": "$Top"
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 0,
+              "title": "$Skip"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Functional Locations Sap Opu Odata Sap Api Functionallocation Functionallocation Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/ui": {
+      "get": {
+        "tags": [
+          "Simulator UI"
+        ],
+        "summary": "Admin Overview",
+        "operationId": "admin_overview__sim_ui_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/ui/stock": {
+      "get": {
+        "tags": [
+          "Simulator UI"
+        ],
+        "summary": "Admin Stock",
+        "operationId": "admin_stock__sim_ui_stock_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health__sim_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health  Sim Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/reset": {
+      "post": {
+        "summary": "Reset Endpoint",
+        "description": "Deterministic database truncate and reseed.",
+        "operationId": "reset_endpoint__sim_reset_post",
+        "parameters": [
+          {
+            "name": "client",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reset Endpoint  Sim Reset Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DismantleRequest": {
+        "properties": {
+          "Equipment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipment"
+          },
+          "FunctionalLocation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Functionallocation"
+          },
+          "LongText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longtext"
+          }
+        },
+        "type": "object",
+        "title": "DismantleRequest"
+      },
+      "EquipmentCreate": {
+        "properties": {
+          "Material": {
+            "type": "string",
+            "title": "Material"
+          },
+          "SerialNumber": {
+            "type": "string",
+            "title": "Serialnumber"
+          },
+          "FunctionalLocation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Functionallocation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "Material",
+          "SerialNumber"
+        ],
+        "title": "EquipmentCreate"
+      },
+      "FaultRuleIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "description": "latency, http_5xx, lock, timeout, partial"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service"
+          },
+          "operation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation"
+          },
+          "doc_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Key"
+          },
+          "probability": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Probability",
+            "default": 1.0
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Count",
+            "default": 1
+          },
+          "ttl_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Ttl S",
+            "default": 300
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "FaultRuleIn"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "InstallRequest": {
+        "properties": {
+          "FunctionalLocation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Functionallocation"
+          },
+          "Equipment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipment"
+          },
+          "LongText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longtext"
+          }
+        },
+        "type": "object",
+        "title": "InstallRequest"
+      },
+      "MaterialDocumentCreateIn": {
+        "properties": {
+          "GoodsMovementCode": {
+            "type": "string",
+            "title": "Goodsmovementcode",
+            "default": "01"
+          },
+          "DocumentDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentdate"
+          },
+          "PostingDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postingdate"
+          },
+          "to_MaterialDocumentItem": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "$ref": "#/components/schemas/MaterialDocumentItemIn"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MaterialDocumentItemIn"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Materialdocumentitem"
+          }
+        },
+        "type": "object",
+        "title": "MaterialDocumentCreateIn"
+      },
+      "MaterialDocumentItemIn": {
+        "properties": {
+          "Material": {
+            "type": "string",
+            "title": "Material"
+          },
+          "Plant": {
+            "type": "string",
+            "title": "Plant",
+            "default": "1010"
+          },
+          "StorageLocation": {
+            "type": "string",
+            "title": "Storagelocation",
+            "default": "101A"
+          },
+          "GoodsMovementType": {
+            "type": "string",
+            "title": "Goodsmovementtype",
+            "default": "101"
+          },
+          "QuantityInEntryUnit": {
+            "type": "string",
+            "title": "Quantityinentryunit"
+          },
+          "EntryUnit": {
+            "type": "string",
+            "title": "Entryunit",
+            "default": "EA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "Material",
+          "QuantityInEntryUnit"
+        ],
+        "title": "MaterialDocumentItemIn"
+      },
+      "MeasDocCreate": {
+        "properties": {
+          "MeasuringPoint": {
+            "type": "string",
+            "title": "Measuringpoint"
+          },
+          "CharacteristicValue": {
+            "type": "string",
+            "title": "Characteristicvalue"
+          },
+          "MeasurementReading": {
+            "type": "string",
+            "title": "Measurementreading"
+          },
+          "MeasurementReadingUnit": {
+            "type": "string",
+            "title": "Measurementreadingunit",
+            "default": "CEL"
+          }
+        },
+        "type": "object",
+        "required": [
+          "MeasuringPoint",
+          "CharacteristicValue",
+          "MeasurementReading"
+        ],
+        "title": "MeasDocCreate"
+      },
+      "NotifCreate": {
+        "properties": {
+          "NotificationText": {
+            "type": "string",
+            "title": "Notificationtext"
+          },
+          "Equipment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "NotificationText"
+        ],
+        "title": "NotifCreate"
+      },
+      "OrderCreate": {
+        "properties": {
+          "OrderDescription": {
+            "type": "string",
+            "title": "Orderdescription"
+          },
+          "Equipment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipment"
+          },
+          "FunctionalLocation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Functionallocation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "OrderDescription"
+        ],
+        "title": "OrderCreate"
+      },
+      "PatchItemBody": {
+        "properties": {
+          "ActualDeliveryQuantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actualdeliveryquantity"
+          },
+          "StorageBin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storagebin"
+          }
+        },
+        "type": "object",
+        "title": "PatchItemBody"
+      },
+      "PatchItemPicked": {
+        "properties": {
+          "ActualDeliveryQuantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actualdeliveryquantity"
+          },
+          "PickedQuantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickedquantity"
+          }
+        },
+        "type": "object",
+        "title": "PatchItemPicked"
+      },
+      "PiDocCreate": {
+        "properties": {
+          "Plant": {
+            "type": "string",
+            "title": "Plant",
+            "default": "1010"
+          },
+          "StorageLocation": {
+            "type": "string",
+            "title": "Storagelocation",
+            "default": "101A"
+          },
+          "PhysicalInventoryDocumentFiscalYear": {
+            "type": "string",
+            "title": "Physicalinventorydocumentfiscalyear",
+            "default": "2026"
+          },
+          "PostingBlocked": {
+            "type": "boolean",
+            "title": "Postingblocked",
+            "default": true
+          },
+          "FreezeBookInventory": {
+            "type": "boolean",
+            "title": "Freezebookinventory",
+            "default": true
+          },
+          "to_PhysicalInventoryDocItem": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "$ref": "#/components/schemas/PiItemCreate"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PiItemCreate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Physicalinventorydocitem"
+          }
+        },
+        "type": "object",
+        "title": "PiDocCreate"
+      },
+      "PiItemCountPatch": {
+        "properties": {
+          "QuantityInEntryUnit": {
+            "type": "string",
+            "title": "Quantityinentryunit"
+          },
+          "EntryUnit": {
+            "type": "string",
+            "title": "Entryunit",
+            "default": "EA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "QuantityInEntryUnit"
+        ],
+        "title": "PiItemCountPatch"
+      },
+      "PiItemCreate": {
+        "properties": {
+          "Material": {
+            "type": "string",
+            "title": "Material"
+          },
+          "Plant": {
+            "type": "string",
+            "title": "Plant",
+            "default": "1010"
+          },
+          "StorageLocation": {
+            "type": "string",
+            "title": "Storagelocation",
+            "default": "101A"
+          }
+        },
+        "type": "object",
+        "required": [
+          "Material"
+        ],
+        "title": "PiItemCreate"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

@@ -46,11 +46,15 @@ def run_mypy() -> int:
         "services/field-api/src",
         "services/field-worker/src",
         "services/erp-sim/src",
-        "connectors/sap-s4/src",
+        "connectors/sap/src",
         "tools/",
     ]
-    existing_targets = [t for t in targets if (ROOT / t).exists()]
-    cmd = ["uv", "run", "mypy", "--strict"] + existing_targets
+    missing = [t for t in targets if not (ROOT / t).exists()]
+    if missing:
+        # Rule 2.1: a gate that cannot find its target FAILS; it never narrows scope silently.
+        print(f"[FAIL] typecheck targets missing: {missing}")
+        return 1
+    cmd = ["uv", "run", "mypy", "--strict"] + targets
     print(f"Command: {' '.join(cmd)}")
     proc = subprocess.run(cmd, cwd=ROOT)
     return proc.returncode

@@ -37,6 +37,13 @@ JOBS: list[tuple[str, str, list[str]]] = [
     ("firewall", "Architectural firewall & boundary check", ["uv", "run", "python", "tools/checks/firewall.py"]),
     ("names", "Naming denylist & sample data check", ["uv", "run", "python", "tools/checks/names.py"]),
     ("conventions", "Branch & commit conventions check", ["uv", "run", "python", "tools/checks/conventions.py"]),
+    ("no-inmemory-stores", "No module-level state stores in API code", ["uv", "run", "python", "tools/checks/no_inmemory_stores.py"]),
+    ("tests-exercise-prod", "Tests exercise production code", ["uv", "run", "python", "tools/checks/test_exercises_prod.py"]),
+    (
+        "openapi-drift",
+        "Committed OpenAPI matches the app",
+        ["bash", "-c", "uv run python tools/export_openapi.py && git diff --exit-code -- packages/field-contract/"],
+    ),
     # 3. Security Vulnerability Scans
     (
         "semgrep",
@@ -69,14 +76,15 @@ JOBS: list[tuple[str, str, list[str]]] = [
     # 6. Test Collection Completeness Check
     ("test-collection", "Pytest suite collection completeness check", ["uv", "run", "python", "tools/checks/test_collection.py"]),
     # 7. Automated Test Suites
-    ("unit", "Unit tests (Pytest)", ["uv", "run", "pytest", "-m", "unit", "--capture=no"]),
-    ("property", "Property invariant tests (Hypothesis)", ["uv", "run", "pytest", "-m", "property", "--capture=no"]),
-    ("contract", "Contract verification tests", ["uv", "run", "pytest", "-m", "contract", "--capture=no"]),
-    ("compat", "Core contract compatibility tests", ["uv", "run", "pytest", "compat/tests", "--capture=no"]),
+    ("unit", "Unit tests (Pytest)", ["uv", "run", "pytest", "-m", "unit", "--capture=no", "--junitxml=reports/junit-unit.xml"]),
+    ("property", "Property invariant tests (Hypothesis)", ["uv", "run", "pytest", "-m", "property", "--capture=no", "--junitxml=reports/junit-property.xml"]),
+    ("contract", "Contract verification tests", ["uv", "run", "pytest", "-m", "contract", "--capture=no", "--junitxml=reports/junit-contract.xml"]),
+    ("compat", "Core contract compatibility tests", ["uv", "run", "pytest", "compat/tests", "--capture=no", "--junitxml=reports/junit-compat.xml"]),
     # 8. Status Trace & Acceptance Criteria Verification
-    ("trace", "Spec requirement status trace check", ["uv", "run", "python", "tools/checks/trace.py"]),
     # 9. Real Android Build & Verification
     ("field-android", "Android multi-module compile, unit tests & lint", ["uv", "run", "python", "scripts/jobs/android.py"]),
+    # 10. Trace runs last: it needs junit from every test job, including Kotlin
+    ("trace", "Spec requirement status trace check", ["uv", "run", "python", "tools/checks/trace.py"]),
 ]
 
 

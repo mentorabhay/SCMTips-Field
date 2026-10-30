@@ -60,7 +60,7 @@ class MaterialCacheSynchronizer:
         # 3. Database batch upsert
         with psycopg.connect(self.db_url, autocommit=False) as conn:
             with conn.cursor() as cur:
-                cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+                cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
                 # Fetch all existing active materials for this plant
                 cur.execute(

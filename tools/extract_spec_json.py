@@ -126,7 +126,8 @@ def parse_apis(text: str) -> dict[int, list[dict[str, Any]]]:
     pattern = re.compile(
         r'<details id="id-(API([1-4])\.\d{2})">\s*'
         r'<summary><span[^>]*>([^<]+)</span><span class="m ([^"]+)">([^<]+)</span><span class="p">([^<]+)(?:<span[^>]*>(.*?)</span>)?</span></summary>\s*'
-        r'<div class="inner">(.*?)</div>\s*</details>'
+        r'<div class="inner">(.*?)</div>\s*</details>',
+        re.S,  # details often contain multi-line <pre> examples; without DOTALL they were dropped
     )
 
     for m in pattern.finditer(text):
@@ -155,7 +156,8 @@ def parse_properties(text: str) -> dict[int, list[dict[str, Any]]]:
     pattern = re.compile(
         r'<details[^>]*id="id-(PR([1-4])\.\d{2})">\s*'
         r'<summary><b>([^<]+)</b><span[^>]*>([^<]+)</span><span class="pill[^"]*">([^<]+)</span><span[^>]*>([^<]+)</span></summary>\s*'
-        r'<div class="inner">(.*?)</div>\s*</details>'
+        r'<div class="inner">(.*?)</div>\s*</details>',
+        re.S,  # details often contain multi-line <pre> examples; without DOTALL they were dropped
     )
 
     for m in pattern.finditer(text):

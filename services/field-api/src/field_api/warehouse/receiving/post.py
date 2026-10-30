@@ -40,7 +40,7 @@ def stage_and_post_goods_receipt(
     erp_doc_id = uuid7_str()
 
     with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
         # 1. Create erp_document tracking row
         cur.execute(

@@ -96,7 +96,7 @@ async def test_posting_worker_successful_claim_and_outbox():
     # Check j1 status in database
     with psycopg.connect(DATABASE_URL) as conn:
         with conn.cursor() as cur:
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             cur.execute("SELECT status FROM field.posting_job WHERE id = %s;", (j1,))
             status = cur.fetchone()[0]
             assert status == "completed"
@@ -133,7 +133,7 @@ async def test_posting_worker_business_failure_marked_failed():
     # Check status is failed
     with psycopg.connect(DATABASE_URL) as conn:
         with conn.cursor() as cur:
-            cur.execute(f"SET app.tenant_id = '{tenant_id}';")
+            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
             cur.execute("SELECT status FROM field.posting_job WHERE id = %s;", (job_id,))
             status = cur.fetchone()[0]
             assert status == "failed"
