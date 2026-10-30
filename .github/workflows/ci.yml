@@ -13,10 +13,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Every step runs through scripts/ci/logged.sh, which keeps the step's full output in ci-out/<name>.log;
+# the last step of each job publishes ci-out/ to the ci-logs branch (runs/<job>/<run>-<attempt>/), so the
+# build can be diagnosed from git without the Actions log API.
+# Setup actions use `if: success() || failure()` so one failing check never hides the others.
+
 jobs:
   backend:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
     services:
       postgres:
         image: postgres:16-alpine
@@ -37,49 +42,6 @@ jobs:
         with:
           fetch-depth: 20   # conventions checks the last 10 commits
       - uses: astral-sh/setup-uv@v6
-      - name: Init databases and roles
-        run: psql -h 127.0.0.1 -p 5450 -U postgres -v ON_ERROR_STOP=1 -f tools/initdb/01-init.sql
-      - name: Install (frozen lockfile)
-        run: uv sync --frozen
-      - name: Tool versions
-        run: uv run python --version && uv run pytest --version && uv run ruff --version && uv run mypy --version
-      - name: Lint
-        run: uv run ruff check .
-      - name: Alembic round-trip (migrator = admin role)
-        env:
-          FIELD_DATABASE_URL: postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field
-        run: uv run python scripts/jobs/alembic.py
-      - name: Typecheck (mypy --strict, first-party Python)
-        run: uv run mypy --strict services/field-api/src services/field-worker/src services/erp-sim/src connectors/sap/src tools/
-      - name: OpenAPI contract drift
-        run: uv run python tools/export_openapi.py && git diff --exit-code -- packages/field-contract/
-      - name: Honesty gates
-        run: |
-          uv run python tools/checks/no_fake_gates.py
-          uv run python tools/checks/orphans.py
-          uv run python tools/checks/firewall.py
-          uv run python tools/checks/no_inmemory_stores.py
-          uv run python tools/checks/test_exercises_prod.py
-          uv run python tools/checks/names.py
-          uv run python tools/checks/route_auth.py
-          uv run python tools/checks/test_collection.py
-      - name: Conventions (branch + last 10 commits)
-        if: success() || failure()
-        run: uv run python tools/checks/conventions.py
-      - name: Semgrep (same rule packs as verify-all)
-        if: success() || failure()
-        run: uvx semgrep==1.181.0 --config p/python --config p/javascript --config p/typescript --config p/java --config p/secrets --error
-      - name: Trivy filesystem scan (trivy.yaml)
-        if: success() || failure()
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0 (tag resolved via git ls-remote 2026-10-30)
-        with:
-          scan-type: fs
-          scan-ref: .
-          trivy-config: trivy.yaml
-          exit-code: "1"
-      - name: Tests (all collected)
-        if: always()
-        run: uv run pytest -p no:cacheprovider --junitxml=reports/junit.xml
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -88,9 +50,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.14.3"
-      - name: Kotlin JVM unit tests (kotlinc + JUnit 4)
-        if: success() || failure()
-        run: uv run python scripts/jobs/kotlin_jvm.py
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -98,15 +57,67 @@ jobs:
         with:
           node-version: "22"
           cache: pnpm
+
+      - name: Init databases and roles
+        run: scripts/ci/logged.sh initdb psql -h 127.0.0.1 -p 5450 -U postgres -v ON_ERROR_STOP=1 -f tools/initdb/01-init.sql
+      - name: Install Python (frozen lockfile)
+        run: scripts/ci/logged.sh uv-sync uv sync --frozen
       - name: Install JS (frozen lockfile)
         if: success() || failure()
-        run: pnpm install --frozen-lockfile
-      - name: Typecheck (tsc --noEmit, console + packages)
+        run: scripts/ci/logged.sh pnpm-install pnpm install --frozen-lockfile
+      - name: Tool versions
         if: success() || failure()
-        run: uv run python scripts/jobs/typecheck.py
+        run: scripts/ci/logged.sh versions bash -c 'uv run python --version; uv run pytest --version; uv run ruff --version; uv run mypy --version; java -version 2>&1; gradle --version; node --version; pnpm --version; uvx semgrep==1.181.0 --version'
+      - name: Lint
+        if: success() || failure()
+        run: scripts/ci/logged.sh lint uv run ruff check .
+      - name: Alembic round-trip (migrator = admin role)
+        if: success() || failure()
+        env:
+          FIELD_DATABASE_URL: postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field
+        run: scripts/ci/logged.sh alembic uv run python scripts/jobs/alembic.py
+      - name: Typecheck (mypy --strict + tsc --noEmit)
+        if: success() || failure()
+        run: scripts/ci/logged.sh typecheck uv run python scripts/jobs/typecheck.py
+      - name: OpenAPI contract drift
+        if: success() || failure()
+        run: scripts/ci/logged.sh openapi-drift bash -c 'uv run python tools/export_openapi.py && git diff --exit-code -- packages/field-contract/'
+      - name: Honesty gates
+        if: success() || failure()
+        run: >-
+          scripts/ci/logged.sh honesty-gates bash -c 'set -e;
+          uv run python tools/checks/no_fake_gates.py;
+          uv run python tools/checks/orphans.py;
+          uv run python tools/checks/firewall.py;
+          uv run python tools/checks/no_inmemory_stores.py;
+          uv run python tools/checks/test_exercises_prod.py;
+          uv run python tools/checks/names.py;
+          uv run python tools/checks/route_auth.py;
+          uv run python tools/checks/test_collection.py'
+      - name: Conventions (branch + last 10 commits)
+        if: success() || failure()
+        run: scripts/ci/logged.sh conventions uv run python tools/checks/conventions.py
+      - name: Semgrep (same rule packs as verify-all)
+        if: success() || failure()
+        run: scripts/ci/logged.sh semgrep uvx semgrep==1.181.0 --config p/python --config p/javascript --config p/typescript --config p/java --config p/secrets --error
+      - name: Trivy filesystem scan (trivy.yaml)
+        if: success() || failure()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0 (tag resolved via git ls-remote 2026-10-30)
+        with:
+          scan-type: fs
+          scan-ref: .
+          trivy-config: trivy.yaml
+          exit-code: "1"
+          output: ci-out/trivy.log
+      - name: Tests (all collected)
+        if: success() || failure()
+        run: scripts/ci/logged.sh pytest uv run pytest -p no:cacheprovider --junitxml=reports/junit.xml
+      - name: Kotlin JVM unit tests (kotlinc + JUnit 4)
+        if: success() || failure()
+        run: scripts/ci/logged.sh kotlin-jvm uv run python scripts/jobs/kotlin_jvm.py
       - name: Console/package tests (vitest + fast-check)
         if: success() || failure()
-        run: pnpm exec vitest run --reporter=default --reporter=junit --outputFile.junit=reports/junit-vitest.xml
+        run: scripts/ci/logged.sh vitest pnpm exec vitest run --reporter=default --reporter=junit --outputFile.junit=reports/junit-vitest.xml
       - name: Upload junit
         if: always()
         uses: actions/upload-artifact@v4
@@ -116,9 +127,12 @@ jobs:
             reports/junit.xml
             reports/junit-kotlin-jvm.xml
             reports/junit-vitest.xml
+      - name: Publish logs to ci-logs branch (agent-readable)
+        if: always()
+        run: scripts/ci/publish_logs.sh backend "${{ job.status }}"
 
   android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     defaults:
       run:
@@ -131,46 +145,47 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      # The ubuntu-24.04 runner image ships the Android SDK (ANDROID_HOME) with its licences already
+      # accepted by the image. AGP downloads any missing platform (compileSdk 36) itself.
+      - name: Android SDK (runner image)
+        run: >-
+          ../../scripts/ci/logged.sh android-sdk bash -c 'set -e; echo "ANDROID_HOME=$ANDROID_HOME";
+          test -d "$ANDROID_HOME"; ls "$ANDROID_HOME"; ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools";
+          ls "$ANDROID_HOME/licenses"; echo "sdk.dir=$ANDROID_HOME" > local.properties'
 
       # Validates gradle-wrapper.jar against Gradle's published checksums (rule 2.1)
       - uses: gradle/actions/setup-gradle@v4
+        if: success() || failure()
         with:
           validate-wrappers: true
 
       - name: Record Gradle distribution checksum (published by Gradle)
-        run: |
-          url=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | cut -d= -f2 | sed 's#\\##g')
-          mkdir -p ../../ci-out
-          { echo "distributionUrl=$url"; echo "published sha256: $(curl -fsSL "${url}.sha256")"; } | tee ../../ci-out/gradle-dist-sha.log
+        if: success() || failure()
+        run: >-
+          ../../scripts/ci/logged.sh gradle-dist-sha bash -c 'url=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | cut -d= -f2 | sed "s#\\\\##g");
+          echo "distributionUrl=$url"; echo "published sha256: $(curl -fsSL "${url}.sha256")"'
 
       - name: Tool versions
-        run: |
-          mkdir -p ../../ci-out
-          { java -version 2>&1; ./gradlew --version; } | tee ../../ci-out/versions.log
+        if: success() || failure()
+        run: ../../scripts/ci/logged.sh versions bash -c 'java -version 2>&1; ./gradlew --version'
 
       - name: Assemble debug APK
-        run: |
-          set -o pipefail
-          mkdir -p ../../ci-out
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee ../../ci-out/assembleDebug.log
+        if: success() || failure()
+        run: ../../scripts/ci/logged.sh assembleDebug ./gradlew assembleDebug --stacktrace
 
       - name: Unit tests (JUnit 4)
-        run: |
-          set -o pipefail
-          mkdir -p ../../ci-out
-          ./gradlew testDebugUnitTest --stacktrace 2>&1 | tee ../../ci-out/testDebugUnitTest.log
+        if: success() || failure()
+        run: ../../scripts/ci/logged.sh testDebugUnitTest ./gradlew testDebugUnitTest --stacktrace --continue
 
       - name: Android lint
-        run: |
-          set -o pipefail
-          mkdir -p ../../ci-out
-          ./gradlew lintDebug --stacktrace 2>&1 | tee ../../ci-out/lintDebug.log
+        if: success() || failure()
+        run: ../../scripts/ci/logged.sh lintDebug ./gradlew lintDebug --stacktrace --continue
 
       - name: Enforce pinned distribution checksum (rule 2.1)
-        run: |
-          grep -q distributionSha256Sum gradle/wrapper/gradle-wrapper.properties \
-            || { echo "::error::gradle-wrapper.properties lacks distributionSha256Sum"; exit 1; }
+        if: success() || failure()
+        run: >-
+          ../../scripts/ci/logged.sh dist-sha-pinned bash -c 'grep -q distributionSha256Sum gradle/wrapper/gradle-wrapper.properties
+          || { echo "::error::gradle-wrapper.properties lacks distributionSha256Sum"; false; }'
 
       - name: Upload APK
         if: always()
@@ -190,29 +205,15 @@ jobs:
             apps/field-android/**/build/test-results/**
           if-no-files-found: ignore
 
-      - name: Publish sanitized logs to ci-logs branch (agent-readable)
+      - name: Publish logs to ci-logs branch (agent-readable)
         if: always()
         working-directory: .
-        run: |
-          mkdir -p ci-out
-          # Defence in depth: scrub any secret value from log files before publishing
-          if [ -n "$MWDAT_GITHUB_TOKEN" ]; then
-            grep -rlF "$MWDAT_GITHUB_TOKEN" ci-out | xargs -r sed -i "s|$MWDAT_GITHUB_TOKEN|***|g"
-          fi
-          sed -i -E 's/(gh[pousr]_[A-Za-z0-9]{20,})/***/g' ci-out/*.log 2>/dev/null || true
-          dest="runs/android/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          git config user.name "ci-logs-bot"; git config user.email "ci@users.noreply.github.com"
-          git fetch origin ci-logs:ci-logs 2>/dev/null && git worktree add /tmp/logs ci-logs \
-            || { git worktree add --detach /tmp/logs && git -C /tmp/logs checkout --orphan ci-logs && git -C /tmp/logs rm -rqf . ; }
-          mkdir -p "/tmp/logs/$dest"
-          cp ci-out/*.log "/tmp/logs/$dest/" 2>/dev/null || echo "no logs" > "/tmp/logs/$dest/EMPTY"
-          echo "${GITHUB_SHA} ${GITHUB_REF_NAME} ${{ job.status }}" > "/tmp/logs/$dest/META"
-          git -C /tmp/logs add -A && git -C /tmp/logs commit -qm "logs: android ${GITHUB_RUN_ID}" && git -C /tmp/logs push origin ci-logs
+        run: scripts/ci/publish_logs.sh android "${{ job.status }}"
 
   trace:
     needs: [backend, android]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
