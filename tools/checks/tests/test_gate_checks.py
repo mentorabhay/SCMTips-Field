@@ -7,7 +7,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from tools.checks import no_inmemory_stores, test_exercises_prod, trace
 

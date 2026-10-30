@@ -9,7 +9,15 @@ Automatically assigns pytest markers by file path and test characteristics:
 Registers all known custom markers to avoid PytestUnknownMarkWarning.
 """
 
+import os
+import secrets
+
 import pytest
+
+# Signing keys have no built-in defaults (A-02). Tests get fresh random ones per run unless the
+# environment already provides them.
+for _name in ("FIELD_JWT_SECRET", "FIELD_CURSOR_HMAC_SECRET", "FIELD_P13F_WEBHOOK_SECRET", "FIELD_EVIDENCE_SECRET"):
+    os.environ.setdefault(_name, secrets.token_hex(32))
 
 
 def pytest_configure(config: pytest.Config) -> None:

@@ -19,9 +19,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
 /**
- * Mock Device Kit implementation simulating Meta smart glasses for CI and unit testing
- * (Task T2.017 / TC2.117 / FR2.015).
- * Isolated inside :core-wearables-testing to preserve architectural firewall (Rule 2.2 / Finding F-07).
+ * Hand-written in-memory [GlassesSession] test double (rule 2.4). It is NOT Meta's Mock Device Kit
+ * (com.meta.wearable:mwdat-mockdevice); TC2.117 needs that kit and stays open until it is wired.
+ * Glasses report a display only when the model name contains "Display" (Ray-Ban Meta Gen 2 does not).
+ * Lives in :core-wearables-testing so production modules cannot depend on it.
  */
 class MockWearablesKit(
     val fakeRenderer: FakeLensRenderer = FakeLensRenderer()
@@ -56,6 +57,14 @@ class MockWearablesKit(
 
     val playedEarcons = mutableListOf<EarconCue>()
     val playedSpeeches = mutableListOf<String>()
+    /** Every speech request in order, never cleared by a queue flush. */
+    val speechLog = mutableListOf<String>()
+    var stopAudioCalls = 0
+        private set
+    /** Number of upcoming connect() calls that fail, to exercise reconnect backoff. */
+    var failNextConnects = 0
+    /** Address passed to every connect() call, in order. */
+    val connectAddresses = mutableListOf<String>()
 
     override val audioOut: AudioOut = object : AudioOut {
         override suspend fun playEarcon(cue: EarconCue) {
@@ -65,16 +74,24 @@ class MockWearablesKit(
         override suspend fun playSpeech(text: String, flushQueue: Boolean) {
             if (flushQueue) playedSpeeches.clear()
             playedSpeeches.add(text)
+            speechLog.add(text)
         }
 
         override fun stopAudio() {
-            // Stop active playback
+            stopAudioCalls++
+            playedSpeeches.clear()
         }
     }
 
     override val lensRenderer: LensRenderer = fakeRenderer
 
     override suspend fun connect(deviceAddress: String, model: String) {
+        connectAddresses.add(deviceAddress)
+        if (failNextConnects > 0) {
+            failNextConnects--
+            _connectionState.value = ConnectionState.Error("INJECTED_CONNECT_FAILURE")
+            return
+        }
         val hasDisplay = model.contains("Display", ignoreCase = true)
         _connectionState.value = ConnectionState.Connected(
             model = model,
@@ -107,6 +124,7 @@ class MockWearablesKit(
 
     fun injectDisconnect(reason: String = "INJECTED_TEST_DISCONNECT") {
         _connectionState.value = ConnectionState.Error(reason)
+        isStreamingActive = false
     }
 
     fun injectBattery(batteryPct: Int) {

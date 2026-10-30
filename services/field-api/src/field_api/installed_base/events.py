@@ -12,40 +12,31 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-import os
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
 import structlog
+from field_api.db import DATABASE_URL
+from field_api.secrets import required_secret
 from field_common.uuid7 import uuid7_str
 
 logger = structlog.get_logger(__name__)
 
-DATABASE_URL = (
-    os.getenv(
-        "FIELD_DATABASE_URL",
-        "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field",
-    )
-    .replace("postgresql+psycopg://", "postgresql://")
-    .replace("@localhost:", "@127.0.0.1:")
-)
-
-P13F_WEBHOOK_SECRET = os.getenv(
-    "FIELD_P13F_WEBHOOK_SECRET", "dev-p13f-webhook-secret-min32bytes-field"
-)
 
 
-def compute_webhook_signature(payload_bytes: bytes, secret: str = P13F_WEBHOOK_SECRET) -> str:
+
+def compute_webhook_signature(payload_bytes: bytes, secret: str | None = None) -> str:
     """Compute HMAC-SHA256 hex signature for P13f webhook payload (TC4.158)."""
-    return hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
+    key = secret if secret is not None else required_secret("FIELD_P13F_WEBHOOK_SECRET")
+    return hmac.new(key.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
 
 
 def verify_p13f_webhook_signature(
     payload_bytes: bytes,
     signature: str,
-    secret: str = P13F_WEBHOOK_SECRET,
+    secret: str | None = None,
 ) -> bool:
     """Verify HMAC-SHA256 signature on received P13f webhook."""
     expected = compute_webhook_signature(payload_bytes, secret)

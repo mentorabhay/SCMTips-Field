@@ -36,9 +36,14 @@ DATABASE_URL = (
     .replace("@localhost:", "@127.0.0.1:")
 )
 
-EVIDENCE_HMAC_SECRET = os.getenv(
-    "FIELD_EVIDENCE_SECRET", "dev-evidence-hmac-secret-min32bytes-field-phase4"
-)
+
+
+def _evidence_secret() -> bytes:
+    """HMAC key for signed evidence URLs. Required; no built-in fallback (A-02)."""
+    val = os.getenv("FIELD_EVIDENCE_SECRET")
+    if not val or len(val.encode("utf-8")) < 32:
+        raise RuntimeError("FIELD_EVIDENCE_SECRET is not set or shorter than 32 bytes (see .env.example)")
+    return val.encode("utf-8")
 
 
 def generate_signed_evidence_url(
@@ -51,7 +56,7 @@ def generate_signed_evidence_url(
     expires_at = int((datetime.now(UTC) + timedelta(hours=expires_in_hours)).timestamp())
     signature_payload = f"{tenant_id}:{evidence_id}:{expires_at}".encode()
     sig = hmac.new(
-        EVIDENCE_HMAC_SECRET.encode("utf-8"), signature_payload, hashlib.sha256
+        _evidence_secret(), signature_payload, hashlib.sha256
     ).hexdigest()
     return f"{base_url}/v1/evidence/{evidence_id}?tenant={tenant_id}&exp={expires_at}&sig={sig}"
 
@@ -70,7 +75,7 @@ def verify_signed_evidence_url(
 
     signature_payload = f"{tenant_id}:{evidence_id}:{expires_at_timestamp}".encode()
     expected_sig = hmac.new(
-        EVIDENCE_HMAC_SECRET.encode("utf-8"), signature_payload, hashlib.sha256
+        _evidence_secret(), signature_payload, hashlib.sha256
     ).hexdigest()
     return hmac.compare_digest(expected_sig, provided_signature)
 

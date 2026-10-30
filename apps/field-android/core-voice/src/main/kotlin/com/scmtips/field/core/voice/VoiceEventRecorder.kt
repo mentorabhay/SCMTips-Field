@@ -21,7 +21,8 @@ data class VoiceEventRecord(
  * Audio bytes are NEVER recorded or transmitted.
  */
 class VoiceEventRecorder(
-    private val outboxSink: (VoiceEventRecord) -> Unit = {}
+    private val outboxSink: (VoiceEventRecord) -> Unit = {},
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val recordedEvents = mutableListOf<VoiceEventRecord>()
 
@@ -39,7 +40,7 @@ class VoiceEventRecorder(
             intent = utterance.intent.name,
             isAccepted = utterance.isAccepted,
             locale = locale,
-            timestampMs = System.currentTimeMillis()
+            timestampMs = clock()
         )
 
         synchronized(recordedEvents) {

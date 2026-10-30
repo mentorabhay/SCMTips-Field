@@ -1525,7 +1525,6 @@
           "System"
         ],
         "summary": "Get System Status",
-        "description": "Return system readiness, component health, and core compatibility matrix.",
         "operationId": "get_system_status_v1_system_status_get",
         "responses": {
           "200": {
@@ -1534,6 +1533,30 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SystemStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/system/ai-usage": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Get Ai Usage",
+        "description": "Cloud AI spend vs. the hard caps (A-02).",
+        "operationId": "get_ai_usage_v1_system_ai_usage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Ai Usage V1 System Ai Usage Get"
                 }
               }
             }
@@ -4335,6 +4358,40 @@
         ],
         "title": "BomPatchRequest"
       },
+      "Check": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "probe_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probe Ms"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "ok"
+        ],
+        "title": "Check"
+      },
       "CheckOutRequest": {
         "properties": {
           "unsynced_count": {
@@ -4363,34 +4420,6 @@
           "events"
         ],
         "title": "ClimbEventsUploadRequest"
-      },
-      "CompatItem": {
-        "properties": {
-          "component": {
-            "type": "string",
-            "title": "Component"
-          },
-          "current_version": {
-            "type": "string",
-            "title": "Current Version"
-          },
-          "target_contract": {
-            "type": "string",
-            "title": "Target Contract"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          }
-        },
-        "type": "object",
-        "required": [
-          "component",
-          "current_version",
-          "target_contract",
-          "status"
-        ],
-        "title": "CompatItem"
       },
       "ConfirmIn": {
         "properties": {
@@ -5200,6 +5229,46 @@
         ],
         "title": "EquipmentTrailResponse"
       },
+      "ErpStatus": {
+        "properties": {
+          "system": {
+            "type": "string",
+            "title": "System"
+          },
+          "reachable": {
+            "type": "boolean",
+            "title": "Reachable"
+          },
+          "probe_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probe Ms"
+          },
+          "p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "system",
+          "reachable"
+        ],
+        "title": "ErpStatus"
+      },
       "ExchangeRequest": {
         "properties": {
           "device_token": {
@@ -5217,7 +5286,7 @@
               }
             ],
             "title": "Device Id",
-            "description": "Client device UUID / hardware identifier"
+            "description": "Field device id (from POST /v1/devices)"
           },
           "client_id": {
             "anyOf": [
@@ -6416,29 +6485,6 @@
         ],
         "title": "SafetyEventItem"
       },
-      "ServiceHealth": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "latency_ms": {
-            "type": "number",
-            "title": "Latency Ms"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "status",
-          "latency_ms"
-        ],
-        "title": "ServiceHealth"
-      },
       "SignoffRequest": {
         "properties": {
           "waiver_reason": {
@@ -6764,30 +6810,34 @@
       },
       "SystemStatusResponse": {
         "properties": {
-          "overall_status": {
-            "type": "string",
-            "title": "Overall Status"
+          "ready": {
+            "type": "boolean",
+            "title": "Ready"
           },
-          "services": {
+          "compat": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Compat"
+          },
+          "erp": {
+            "$ref": "#/components/schemas/ErpStatus"
+          },
+          "checks": {
             "items": {
-              "$ref": "#/components/schemas/ServiceHealth"
+              "$ref": "#/components/schemas/Check"
             },
             "type": "array",
-            "title": "Services"
-          },
-          "compatibility": {
-            "items": {
-              "$ref": "#/components/schemas/CompatItem"
-            },
-            "type": "array",
-            "title": "Compatibility"
+            "title": "Checks"
           }
         },
         "type": "object",
         "required": [
-          "overall_status",
-          "services",
-          "compatibility"
+          "ready",
+          "compat",
+          "erp",
+          "checks"
         ],
         "title": "SystemStatusResponse"
       },

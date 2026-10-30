@@ -49,10 +49,18 @@ class SecureAudioRamBuffer(val capacityBytes: Int = 16000 * 2 * 10) { // 10 seco
     }
 
     fun bytesWritten(): Int = writePos
+
+    /** True when every byte of the backing RAM buffer is zero (FR2.035 evidence for tests and diagnostics). */
+    @Synchronized
+    fun isZeroed(): Boolean = writePos == 0 && buffer.all { it == 0.toByte() }
 }
 
 /**
- * Push-to-Talk controller managing physical & gesture triggers (Task T2.032 / TC2.111 / TC2.131).
+ * Push-to-talk controller (T2.032; FR2.011, FR2.035). Audio is recorded only while held.
+ *
+ * On release the captured PCM is handed to [onPttStopped] (the recogniser) and then zeroed: both the
+ * ring buffer and the snapshot array are wiped when the callback returns, so the callback must finish
+ * recognition (or copy what it needs) before returning. No audio is ever written to storage here.
  */
 class PttController(
     val audioBuffer: SecureAudioRamBuffer = SecureAudioRamBuffer(),
@@ -80,8 +88,12 @@ class PttController(
         // Zero the RAM buffer immediately after capturing snapshot for ASR (FR2.035)
         audioBuffer.zeroAndReset()
 
-        onPttStopped(audioSnapshot)
-        _state.value = PttState.IDLE
+        try {
+            onPttStopped(audioSnapshot)
+        } finally {
+            Arrays.fill(audioSnapshot, 0.toByte())
+            _state.value = PttState.IDLE
+        }
         activeSource = null
     }
 

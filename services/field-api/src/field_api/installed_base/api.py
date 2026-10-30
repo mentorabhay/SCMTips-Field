@@ -10,27 +10,19 @@ Features:
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from typing import Any
 
 import psycopg
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from field_api.db import DATABASE_URL
 from field_api.deps import Principal, require_principal
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/v1/installed-base", tags=["Installed Base"])
 
-DATABASE_URL = (
-    os.getenv(
-        "FIELD_DATABASE_URL",
-        "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field",
-    )
-    .replace("postgresql+psycopg://", "postgresql://")
-    .replace("@localhost:", "@127.0.0.1:")
-)
 
 
 @router.get("", response_model=dict[str, Any])

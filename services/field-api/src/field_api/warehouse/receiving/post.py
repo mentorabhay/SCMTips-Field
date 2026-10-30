@@ -1,128 +1,36 @@
-"""Goods Receipt Staging and Posting Orchestrator (Task T3.022 / FR3.010 / TC3.109).
+"""Goods receipt staging (T3.022 / FR3.010 / TC3.109).
 
-On confirm:
-1. Creates field.erp_document with doc_type 'GR' (mvt 101).
-2. Builds ordered posting jobs in queue IBD:<delivery>:
-   - Seq 1..N: PATCH ActualDeliveryQuantity per line item.
-   - Seq N+1: PostGoodsReceipt for the delivery.
-3. Enqueues jobs into field.posting_job using ordered claim semantics.
+On confirm (API3.06, field_api.tasks.api.confirm_task) the receive task is staged as one
+field.erp_document (doc_type GR, movement 101) with ordered posting jobs in queue IBD:<delivery>:
+one PATCH ActualDeliveryQuantity per line in confirm order, then PostGoodsReceipt. The worker posts
+them through ErpPort and writes the material document number back (field_worker.posting.queue).
+
+This module builds the job list; staging itself is field_api.posting.staging.stage_document.
 """
 
-import json
-import os
-from typing import Any
+from collections.abc import Sequence
 
-import psycopg
-from field_common.uuid7 import uuid7_str
-from field_worker.posting import enqueue_posting_job
+from field_api.posting.staging import JobSpec
 
-DATABASE_URL = (
-    os.getenv(
-        "FIELD_DATABASE_URL",
-        "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field",
-    )
-    .replace("postgresql+psycopg://", "postgresql://")
-    .replace("@localhost:", "@127.0.0.1:")
-)
+GR_DOC_TYPE = "GR"
+GR_MOVEMENT_TYPE = "101"
 
 
-def stage_and_post_goods_receipt(
-    tenant_id: str,
-    site_id: str,
-    delivery_document: str,
-    items: list[dict[str, Any]],  # [{item_no, actual_qty, storage_bin, stock_type}]
-    plant: str = "1010",
-    storage_location: str = "101A",
-    db_url: str = DATABASE_URL,
-) -> dict[str, Any]:
-    """Stage goods receipt into field.erp_document and enqueue ordered posting jobs."""
-    queue_key = f"IBD:{delivery_document}"
-    erp_doc_id = uuid7_str()
+def goods_receipt_queue_key(delivery_document: str) -> str:
+    return f"IBD:{delivery_document}"
 
-    with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
 
-        # 1. Create erp_document tracking row
-        cur.execute(
-            """
-            INSERT INTO field.erp_document (
-                id, tenant_id, site_id, doc_type, status, doc_number, fiscal_year, movement_type, payload, created_at, updated_at
-            )
-            VALUES (%s, %s, %s, 'GoodsReceipt', 'pending', %s, '2026', '101', %s, NOW(), NOW());
-            """,
-            (
-                erp_doc_id,
-                tenant_id,
-                site_id,
-                delivery_document,
-                json.dumps(
-                    {
-                        "delivery_document": delivery_document,
-                        "plant": plant,
-                        "storage_location": storage_location,
-                        "items": items,
-                    }
-                ),
-            ),
-        )
-
-    # 2. Build ordered posting jobs
-    job_ids = []
-    current_seq = 1
-
-    # Stage item quantity patches
-    for it in items:
-        item_no = str(it.get("item_no", "000010")).zfill(6)
-        qty = it.get("actual_qty", 0.0)
-        bin_code = it.get("storage_bin")
-
-        patch_job_id = enqueue_posting_job(
-            tenant_id=tenant_id,
-            queue_key=queue_key,
-            doc_family="InboundDeliveryItem",
-            site_id=site_id,
-            plant=plant,
-            header_data={
-                "delivery_document": delivery_document,
-                "item_no": item_no,
-            },
-            items=[
-                {
-                    "item_no": item_no,
-                    "ActualDeliveryQuantity": qty,
-                    "StorageBin": bin_code,
-                }
-            ],
-            seq=current_seq,
-            ref_doc_no=delivery_document,
-            db_url=db_url,
-        )
-        job_ids.append(patch_job_id)
-        current_seq += 1
-
-    # Stage PostGoodsReceipt job
-    pgr_job_id = enqueue_posting_job(
-        tenant_id=tenant_id,
-        queue_key=queue_key,
-        doc_family="GoodsReceipt",
-        site_id=site_id,
-        plant=plant,
-        header_data={
+def goods_receipt_jobs(delivery_document: str, received: Sequence[tuple[int | str, float]]) -> list[JobSpec]:
+    """PATCH per (line_no, received_qty) in the given order, then one PostGoodsReceipt."""
+    if not received:
+        raise ValueError("a goods receipt needs at least one line")
+    jobs = [
+        JobSpec("InboundDeliveryItem", {
             "DeliveryDocument": delivery_document,
-            "PostingDate": "2026-10-27",
-        },
-        items=items,
-        seq=current_seq,
-        ref_doc_no=delivery_document,
-        db_url=db_url,
-    )
-    job_ids.append(pgr_job_id)
-
-    return {
-        "status": "staged",
-        "erp_document_id": erp_doc_id,
-        "delivery_document": delivery_document,
-        "queue_key": queue_key,
-        "job_ids": job_ids,
-        "total_jobs": len(job_ids),
-    }
+            "DeliveryDocumentItem": str(line_no).zfill(6),
+            "ActualDeliveryQuantity": f"{max(0.0, qty):.3f}",
+        })
+        for line_no, qty in received
+    ]
+    jobs.append(JobSpec("GoodsReceipt", {"DeliveryDocument": delivery_document}))
+    return jobs

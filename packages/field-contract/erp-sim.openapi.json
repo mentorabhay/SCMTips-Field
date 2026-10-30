@@ -880,6 +880,121 @@
         }
       }
     },
+    "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader": {
+      "get": {
+        "tags": [
+          "Material Document"
+        ],
+        "summary": "Find Material Documents",
+        "description": "Find documents by header text ``FIELD:<idempotency key>`` (timeout recovery, FR1.011).\n\nOnly this filter is supported. The sim keeps the key in its dedupe store rather than a header\ntext column; the response shape matches the S/4 collection read.",
+        "operationId": "find_material_documents_sap_opu_odata_sap_API_MATERIAL_DOCUMENT_SRV_A_MaterialDocumentHeader_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Filter"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Find Material Documents Sap Opu Odata Sap Api Material Document Srv A Materialdocumentheader Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Material Document"
+        ],
+        "summary": "Create Material Document",
+        "operationId": "create_material_document_sap_opu_odata_sap_API_MATERIAL_DOCUMENT_SRV_A_MaterialDocumentHeader_post",
+        "parameters": [
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialDocumentCreateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Material Document Sap Opu Odata Sap Api Material Document Srv A Materialdocumentheader Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader(MaterialDocument='{doc_number}',MaterialDocumentYear='{fiscal_year}')": {
       "get": {
         "tags": [
@@ -942,61 +1057,6 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Get Material Document Sap Opu Odata Sap Api Material Document Srv A Materialdocumentheader Materialdocument   Doc Number   Materialdocumentyear   Fiscal Year    Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader": {
-      "post": {
-        "tags": [
-          "Material Document"
-        ],
-        "summary": "Create Material Document",
-        "operationId": "create_material_document_sap_opu_odata_sap_API_MATERIAL_DOCUMENT_SRV_A_MaterialDocumentHeader_post",
-        "parameters": [
-          {
-            "name": "sap-client",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "100",
-              "title": "Sap-Client"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaterialDocumentCreateIn"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Create Material Document Sap Opu Odata Sap Api Material Document Srv A Materialdocumentheader Post"
                 }
               }
             }
@@ -1148,6 +1208,90 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Cancel Material Document Item Sap Opu Odata Sap Api Material Document Srv Cancelitem Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_PRODUCT_SRV/A_ProductPlant": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "List Product Plant",
+        "operationId": "list_product_plant_sap_opu_odata_sap_API_PRODUCT_SRV_A_ProductPlant_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Filter"
+            }
+          },
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "$Top"
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "$Skip"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Product Plant Sap Opu Odata Sap Api Product Srv A Productplant Get"
                 }
               }
             }

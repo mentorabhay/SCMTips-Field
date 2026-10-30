@@ -24,9 +24,15 @@ ALLOWED_ALGORITHMS = ("EdDSA", "RS256", "ES256")
 class JwksCache:
     """In-memory cache for remote JWKS keys."""
 
-    def __init__(self, jwks_url: str = DEFAULT_JWKS_URL, ttl: int = JWKS_TTL_SECONDS) -> None:
+    def __init__(
+        self,
+        jwks_url: str = DEFAULT_JWKS_URL,
+        ttl: int = JWKS_TTL_SECONDS,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
         self.jwks_url = jwks_url
         self.ttl = ttl
+        self._transport = transport  # tests: httpx.ASGITransport(app=fake_core.app)
         self._keys_by_kid: dict[str, Any] = {}
         self._last_fetched: float = 0.0
 
@@ -54,8 +60,8 @@ class JwksCache:
     async def refresh(self) -> None:
         """Fetch and parse JWKS from endpoint."""
         try:
-            timeout_s = float(os.getenv("FIELD_JWKS_TIMEOUT_S", "0.2"))
-            async with httpx.AsyncClient(timeout=timeout_s) as client:
+            timeout_s = float(os.getenv("FIELD_JWKS_TIMEOUT_S", "2.0"))
+            async with httpx.AsyncClient(timeout=timeout_s, transport=self._transport) as client:
                 resp = await client.get(self.jwks_url)
                 resp.raise_for_status()
                 data = resp.json()
@@ -93,7 +99,7 @@ async def verify_core_jwt(token: str, expected_audience: str = "scmtips-core") -
     kid = unverified_header.get("kid")
     alg = unverified_header.get("alg")
 
-    if alg not in ALLOWED_ALGORITHMS and alg != "HS256":
+    if alg not in ALLOWED_ALGORITHMS:  # never HS256: core tokens are asymmetric
         raise ValueError(f"Algorithm '{alg}' is not in allowed list: {ALLOWED_ALGORITHMS}")
 
     key = await jwks_cache.get_key_for_kid(kid)

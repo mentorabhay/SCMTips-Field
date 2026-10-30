@@ -1,13 +1,16 @@
 package com.scmtips.field.core.voice.numbers
 
 /**
- * Natural language number word parser for warehouse voice count entry
- * (Task T2.035 / FR2.034 / FR2.036 / PR2.10 / TC2.132).
+ * Spoken-number parser for counts and readings (T2.035; FR2.034).
  *
- * Supports range [0, 9999] across:
- * - Direct digits ("12", "125")
- * - English number words ("twelve", "one hundred twenty five", "one thousand two hundred and five")
- * - Digit-by-digit sequences ("one two five" -> 125)
+ * Accepts, for 0..9999 only:
+ * - digits: "12", "1205"
+ * - English number words in the standard form
+ *   `[unit thousand] [unit hundred] [and] [0..19 | tens [unit]]`, e.g. "one thousand two hundred and five"
+ * - digit-by-digit words of length 2..4: "one two five" -> 125
+ *
+ * Everything else returns null so the caller changes nothing (TC2.030: "twelve hundred" is not a
+ * supported form). The lexicon is English; locale lexicons (FR2.036) are not implemented yet.
  */
 class NumberWordParser {
 
@@ -18,64 +21,68 @@ class NumberWordParser {
             "ten" to 10, "eleven" to 11, "twelve" to 12, "thirteen" to 13,
             "fourteen" to 14, "fifteen" to 15, "sixteen" to 16, "seventeen" to 17,
             "eighteen" to 18, "nineteen" to 19,
-            // Hindi fallback aliases
-            "ek" to 1, "do" to 2, "teen" to 3, "char" to 4, "paanch" to 5
         )
 
         val TENS = mapOf(
             "twenty" to 20, "thirty" to 30, "forty" to 40, "fifty" to 50,
-            "sixty" to 60, "seventy" to 70, "eighty" to 80, "ninety" to 90
+            "sixty" to 60, "seventy" to 70, "eighty" to 80, "ninety" to 90,
         )
+
+        private val DIGITS = Regex("^\\d{1,4}$")
     }
 
     fun parse(input: String): Int? {
         val clean = input.trim().lowercase().replace("-", " ")
         if (clean.isEmpty()) return null
+        if (DIGITS.matches(clean)) return clean.toInt()
 
-        // 1. Direct digit integer
-        clean.toIntOrNull()?.let {
-            return if (it in 0..9999) it else null
+        val tokens = clean.split(Regex("\\s+"))
+        if (tokens.size in 2..4 && tokens.all { (SMALL_NUMBERS[it] ?: 99) <= 9 }) {
+            return tokens.joinToString("") { SMALL_NUMBERS.getValue(it).toString() }.toInt()
         }
+        return parseWords(tokens)
+    }
 
-        val tokens = clean.split("\\s+".toRegex()).filter { it != "and" }
-        if (tokens.isEmpty()) return null
+    private fun unit(token: String?): Int? = SMALL_NUMBERS[token]?.takeIf { it in 1..9 }
 
-        // 2. Try digit-by-digit ("one two five" -> 125)
-        if (tokens.all { it in SMALL_NUMBERS && SMALL_NUMBERS[it]!! in 0..9 }) {
-            val digitStr = tokens.map { SMALL_NUMBERS[it]!! }.joinToString("")
-            val value = digitStr.toIntOrNull()
-            if (value != null && value in 0..9999) {
-                return value
-            }
-        }
-
-        // 3. Try standard composite English number ("one thousand two hundred and five")
+    private fun parseWords(tokens: List<String>): Int? {
+        var i = 0
         var total = 0
-        var current = 0
+        var sawScale = false
 
-        for (token in tokens) {
+        if (tokens.size > i + 1 && tokens[i + 1] == "thousand") {
+            total += (unit(tokens[i]) ?: return null) * 1000
+            i += 2
+            sawScale = true
+        }
+        if (tokens.size > i + 1 && tokens[i + 1] == "hundred") {
+            total += (unit(tokens[i]) ?: return null) * 100
+            i += 2
+            sawScale = true
+        }
+        if (i < tokens.size && tokens[i] == "and") {
+            if (!sawScale || i == tokens.size - 1) return null
+            i += 1
+        }
+        if (i < tokens.size) {
+            val t = tokens[i]
+            val small = SMALL_NUMBERS[t]
+            val tens = TENS[t]
             when {
-                token in SMALL_NUMBERS -> {
-                    current += SMALL_NUMBERS[token]!!
+                small != null -> {
+                    if (sawScale && small == 0) return null
+                    total += small
+                    i += 1
                 }
-                token in TENS -> {
-                    current += TENS[token]!!
+                tens != null -> {
+                    total += tens
+                    i += 1
+                    unit(tokens.getOrNull(i))?.let { total += it; i += 1 }
                 }
-                token == "hundred" -> {
-                    current = (if (current == 0) 1 else current) * 100
-                }
-                token == "thousand" -> {
-                    total += (if (current == 0) 1 else current) * 1000
-                    current = 0
-                }
-                else -> {
-                    // Unknown token in number string
-                    return null
-                }
+                else -> return null
             }
         }
-
-        total += current
-        return if (total in 0..9999) total else null
+        if (i != tokens.size || (!sawScale && tokens.isEmpty())) return null
+        return total.takeIf { it in 0..9999 }
     }
 }

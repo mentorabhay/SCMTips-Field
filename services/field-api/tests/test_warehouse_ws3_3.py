@@ -45,7 +45,7 @@ from field_api.warehouse.receiving.damage import (
     mark_handling_unit_damaged,
     resolve_damaged_carton_posting,
 )
-from field_api.warehouse.receiving.post import stage_and_post_goods_receipt
+from field_api.warehouse.receiving.post import goods_receipt_jobs, goods_receipt_queue_key
 from field_api.warehouse.receiving.quality import (
     evaluate_quality_inspection_need,
     release_quality_hold_to_unrestricted,
@@ -544,28 +544,21 @@ def test_tc3_108_damaged_carton_handling():
 # TC3.109: Stage and Post Goods Receipt 101
 # =========================================================================
 @pytest.mark.unit
-def test_tc3_109_stage_and_post_goods_receipt():
-    """TC3.109: Staging GR 101 creates erp_document and ordered jobs in queue IBD:<delivery>."""
-    tenant_id = str(uuid.uuid4())
-    site_id = str(uuid.uuid4())
-    create_test_site(tenant_id, site_id)
-    deliv = f"180000{uuid.uuid4().hex[:4]}"
+def test_tc3_109_goods_receipt_jobs_in_confirm_order():
+    """TC3.109: GR 101 jobs are one PATCH per line in confirm order, then PostGoodsReceipt, in IBD:<delivery>.
 
-    items = [
-        {"item_no": "000010", "actual_qty": 24.0, "storage_bin": "03-05-02"},
-        {"item_no": "000020", "actual_qty": 12.0, "storage_bin": "03-05-03"},
-    ]
-
-    res = stage_and_post_goods_receipt(
-        tenant_id=tenant_id,
-        site_id=site_id,
-        delivery_document=deliv,
-        items=items,
-    )
-
-    assert res["status"] == "staged"
-    assert res["queue_key"] == f"IBD:{deliv}"
-    assert res["total_jobs"] == 3  # 2 item patches (seq 1, 2) + 1 PostGoodsReceipt (seq 3)
+    The end-to-end proof (confirm -> worker -> erp-sim material document 49xxxxxxxx) is
+    tests/e2e/test_slice_receive_e2e.py::test_slice_goods_receipt_round_trip.
+    """
+    deliv = "1800000042"
+    jobs = goods_receipt_jobs(deliv, [(20, 12.0), (10, 24.5), (30, -1.0)])
+    assert goods_receipt_queue_key(deliv) == "IBD:1800000042"
+    assert [j.doc_family for j in jobs] == ["InboundDeliveryItem"] * 3 + ["GoodsReceipt"]
+    assert [j.header_data.get("DeliveryDocumentItem") for j in jobs[:3]] == ["000020", "000010", "000030"]
+    assert [j.header_data["ActualDeliveryQuantity"] for j in jobs[:3]] == ["12.000", "24.500", "0.000"]
+    assert jobs[-1].header_data == {"DeliveryDocument": deliv}
+    with pytest.raises(ValueError):
+        goods_receipt_jobs(deliv, [])
 
 
 # =========================================================================

@@ -40,6 +40,7 @@ from field_api.routes.sites import router as sites_router
 from field_api.routes.status import router as status_router
 from field_api.routes.voice import router as voice_router
 from field_api.safety.api import router as safety_router
+from field_api.secrets import missing_required_secrets
 from field_api.sitepack.api import router as sitepack_router
 from field_api.sites.tree import router as site_tree_router
 from field_api.tasks.api import router as tasks_router
@@ -54,6 +55,9 @@ logger = structlog.get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifecycle manager."""
     configure_logging()
+    missing = missing_required_secrets()
+    if missing:
+        raise RuntimeError("field-api refuses to start: " + "; ".join(missing))
     logger.info("SCMTIPS Field API starting up")
     yield
     logger.info("SCMTIPS Field API shutting down")

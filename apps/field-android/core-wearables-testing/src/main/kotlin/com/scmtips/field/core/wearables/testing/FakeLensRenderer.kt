@@ -4,30 +4,18 @@ import com.scmtips.field.core.wearables.DrawCall
 import com.scmtips.field.core.wearables.lens.RayBanLensRenderer
 
 /**
- * FakeLensRenderer for unit and instrumented tests (T2.014 / TC2.113).
- * Records every render call in memory because Mock Device Kit does not simulate display hardware.
- * Resides in :core-wearables-testing to preserve architectural firewall (Rule 2.2 / Finding F-07).
+ * Test double for the display drawing toolkit (T2.014; TC2.113): records every draw call that the
+ * production [RayBanLensRenderer] layout produces. Lives in :core-wearables-testing (rule 2.4).
  */
-class FakeLensRenderer : RayBanLensRenderer() {
-    private val recordedDrawCalls = mutableListOf<DrawCall>()
+class FakeLensRenderer private constructor(
+    private val recordedDrawCalls: MutableList<DrawCall>,
+) : RayBanLensRenderer({ call -> synchronized(recordedDrawCalls) { recordedDrawCalls.add(call) } }) {
 
-    override fun executeHardwareDraw(drawCall: DrawCall) {
-        synchronized(recordedDrawCalls) {
-            recordedDrawCalls.add(drawCall)
-        }
-    }
+    constructor() : this(mutableListOf())
 
-    fun getDrawCalls(): List<DrawCall> = synchronized(recordedDrawCalls) {
-        recordedDrawCalls.toList()
-    }
+    fun getDrawCalls(): List<DrawCall> = synchronized(recordedDrawCalls) { recordedDrawCalls.toList() }
 
-    fun getLastDrawCall(): DrawCall? = synchronized(recordedDrawCalls) {
-        recordedDrawCalls.lastOrNull()
-    }
+    fun getLastDrawCall(): DrawCall? = synchronized(recordedDrawCalls) { recordedDrawCalls.lastOrNull() }
 
-    fun clear() {
-        synchronized(recordedDrawCalls) {
-            recordedDrawCalls.clear()
-        }
-    }
+    fun clear() = synchronized(recordedDrawCalls) { recordedDrawCalls.clear() }
 }

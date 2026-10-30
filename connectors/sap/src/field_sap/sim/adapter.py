@@ -27,6 +27,16 @@ logger = structlog.get_logger(__name__)
 DEFAULT_ERPSIM_URL = os.getenv("ERPSIM_BASE_URL", "http://127.0.0.1:8000")
 
 
+def _odata_d(resp: httpx.Response) -> dict[str, Any]:
+    """OData V2 ``d`` object of an erp-sim response; a malformed body is a hard error, never empty data."""
+    body = resp.json()
+    d = body.get("d") if isinstance(body, dict) else None
+    if not isinstance(d, dict):
+        raise ErpError(kind=ErpErrorKind.BUSINESS, code="ZSIM_BAD_RESPONSE",
+                       message=f"erp-sim response has no OData 'd' object (HTTP {resp.status_code})")
+    return d
+
+
 class SimAdapter:
     """ErpPort implementation communicating with erp-sim via HTTP/OData."""
 
@@ -107,9 +117,28 @@ class SimAdapter:
         return ErpError(kind=ErpErrorKind.BUSINESS, message=err_msg, code=err_code, retryable=False)
 
     async def find_by_idempotency_key(self, idempotency_key: str) -> ErpResult | None:
-        """Query existing document by idempotency key."""
-        # Querying dedupe store via simulated probe
-        return None
+        """Look the key up by header text FIELD:<key> (used after a timeout before reporting failure)."""
+        url = "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader"
+        params = {"$filter": f"MaterialDocumentHeaderText eq 'FIELD:{idempotency_key}'"}
+        async with self._get_client() as client:
+            try:
+                resp = await client.get(url, params=params, headers={"sap-client": self.sap_client})
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                raise ErpError(kind=ErpErrorKind.TIMEOUT, message=f"ERP timeout: {e}", retryable=True) from e
+        if resp.status_code != 200:
+            raise self._parse_error(resp)
+        results = _odata_d(resp).get("results") or []
+        if not results:
+            return None
+        doc = results[0]
+        return ErpResult(
+            idempotency_key=idempotency_key,
+            document_number=str(doc["MaterialDocument"]),
+            fiscal_year=str(doc["MaterialDocumentYear"]),
+            document_family="MaterialDocument",
+            posted_at=datetime.now(UTC),
+            raw_response=doc,
+        )
 
     async def list_materials(
         self,
@@ -117,23 +146,31 @@ class SimAdapter:
         cursor: str | None = None,
         limit: int = 100,
     ) -> MaterialPage:
-        """List materials for plant from erp-sim."""
+        """Page A_ProductPlant for a plant; the cursor is the $skip offset of the next page."""
+        skip = int(cursor) if cursor else 0
+        url = "/sap/opu/odata/sap/API_PRODUCT_SRV/A_ProductPlant"
+        params = {"$filter": f"Plant eq '{plant}'", "$top": str(limit), "$skip": str(skip), "$inlinecount": "allpages"}
         async with self._get_client() as client:
-            await client.get(
-                f"/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/A_InbDeliveryHeader?$top={limit}",
-                headers={"sap-client": self.sap_client},
+            try:
+                resp = await client.get(url, params=params, headers={"sap-client": self.sap_client})
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                raise ErpError(kind=ErpErrorKind.TIMEOUT, message=f"ERP timeout: {e}", retryable=True) from e
+        if resp.status_code != 200:
+            raise self._parse_error(resp)
+        d = _odata_d(resp)
+        rows = d.get("results") or []
+        total = int(d.get("__count") or 0)
+        items = tuple(
+            MaterialItem(
+                material_no=str(r["Product"]),
+                description=str(r.get("ProductDescription") or ""),
+                plant=str(r.get("Plant") or plant),
+                base_uom=str(r.get("BaseUnit") or "EA"),
             )
-            # In sim dev, return standard sample materials
-            items = tuple(
-                MaterialItem(
-                    material_no=f"SAMPLE-MAT-{i:04d}",
-                    description=f"Industrial Component {i}",
-                    plant=plant,
-                    base_uom="EA",
-                )
-                for i in range(1, min(limit + 1, 51))
-            )
-            return MaterialPage(items=items, next_cursor=None, total_count=len(items))
+            for r in rows
+        )
+        nxt = skip + len(items)
+        return MaterialPage(items=items, next_cursor=str(nxt) if items and nxt < total else None, total_count=total)
 
     async def update_inbound_delivery_item(self, req: ErpPostingRequest) -> ErpResult:
         """PATCH ActualDeliveryQuantity on one inbound delivery item."""

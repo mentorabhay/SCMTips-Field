@@ -20,13 +20,15 @@ data class LensDisplayOutput(
     val timerText: String,
     val minTextSizeSp: Int = 24,
     val isHighContrast: Boolean = true,
-    val rendered: Boolean
+    val rendered: Boolean,
+    /** Measured render time; FR4.015 budget is [SectorChecklistRenderer.MAX_UPDATE_BUDGET_MS]. */
+    val renderNanos: Long = 0L,
 )
 
 /**
  * Lens Sector Checklist Renderer (Task T4.031 / FR4.015, FR4.068 / TC4.113).
  * Renders SCR4.02 when stationary, capping missing classes at 4, enforcing >= 24 sp text,
- * and maintaining <= 400 ms state update latency.
+ * and reporting its render time against the 400 ms update budget (no throw on a slow frame).
  */
 class SectorChecklistRenderer {
 
@@ -61,13 +63,6 @@ class SectorChecklistRenderer {
             "Missing: " + truncatedMissing.joinToString(", ")
         }
 
-        val elapsedMs = (System.nanoTime() - startNs) / 1_000_000
-
-        // Ensure update budget <= 400 ms
-        require(elapsedMs <= MAX_UPDATE_BUDGET_MS) {
-            "Sector checklist render exceeded 400 ms budget: took ${elapsedMs}ms"
-        }
-
         return LensDisplayOutput(
             title = "${state.sectorName} • ${state.levelName}",
             counterText = "${state.capturedCount} of ${state.expectedCount}",
@@ -76,7 +71,8 @@ class SectorChecklistRenderer {
             timerText = "${state.loneWorkerTimerMinutes}m",
             minTextSizeSp = 24,
             isHighContrast = true,
-            rendered = true
+            rendered = true,
+            renderNanos = System.nanoTime() - startNs,
         )
     }
 }

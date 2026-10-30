@@ -8,17 +8,42 @@ data class FaceBox(
     val confidence: Float
 )
 
+/** Decoded crop pixels, ARGB_8888, row-major. On Android this comes from a Bitmap. */
+class PixelCrop(val width: Int, val height: Int, val argb: IntArray) {
+    init {
+        require(width > 0 && height > 0) { "crop must be non-empty" }
+        require(argb.size == width * height) { "argb has ${argb.size} pixels, expected ${width * height}" }
+    }
+
+    fun pixel(x: Int, y: Int): Int = argb[y * width + x]
+    fun copy(): PixelCrop = PixelCrop(width, height, argb.copyOf())
+}
+
+/** Face detector on the device (ML Kit on Android). Throwing means detection failed. */
+fun interface FaceDetector {
+    fun detect(crop: PixelCrop): List<FaceBox>
+}
+
+/** JPEG encoder on the device (Bitmap.compress on Android, which writes no EXIF). */
+fun interface CropEncoder {
+    fun encodeJpeg(crop: PixelCrop): ByteArray
+}
+
 /**
- * Verified Uploadable Crop. Can ONLY be created by FaceBlurStage,
- * guaranteeing that un-blurred crops never leave the device (FR2.022 / PR2.13 / TC2.123).
+ * Verified uploadable crop. Can only be created by FaceBlurStage, so crops that did not pass the
+ * blur stage cannot reach the upload path (FR2.022 / PR2.13 / TC2.123).
+ *
+ * blurApplied is true for every crop the stage produced (capture.blur_applied; the server rejects
+ * false with FIELD-CAP-422-BLUR-MISSING); facesBlurred is the number of faces pixelated
+ * (capture.faces_blurred, 0 when none were found).
  */
 class UploadableCrop internal constructor(
     val jpegBytes: ByteArray,
     val width: Int,
     val height: Int,
-    val facesDetectedCount: Int,
+    val facesBlurred: Int,
     val blurApplied: Boolean,
-    val timestampMs: Long = System.currentTimeMillis()
+    val timestampMs: Long
 )
 
 sealed class BlurResult {
@@ -27,27 +52,27 @@ sealed class BlurResult {
 }
 
 /**
- * Bystander privacy face detector and 16px block pixelation stage (Task T2.028 / FR2.022 / PR2.13).
+ * Bystander privacy stage (Task T2.028 / FR2.022): face detection at score >= 0.30, each face box
+ * expanded by 10% on every side, pixelated with 16 px blocks (each block filled with its mean
+ * colour) before JPEG encoding. If the detector fails the crop is withheld (evidence_withheld).
+ * Crops larger than 640 x 640 px are withheld (FR2.066 / TC2.110: crops are at most 640 x 640).
  */
 class FaceBlurStage(
-    private val faceDetectorStub: (ByteArray) -> List<FaceBox> = { emptyList() },
-    private val shouldSimulateDetectorFailure: Boolean = false
+    private val detector: FaceDetector,
+    private val encoder: CropEncoder,
+    private val clock: () -> Long = System::currentTimeMillis
 ) {
     companion object {
         const val FACE_SCORE_THRESHOLD = 0.30f
-        const val MARGIN_PERCENT = 0.10f // 10% bounding box margin expansion
-        const val PIXELATION_BLOCK_SIZE = 16 // 16px pixelation blocks
+        const val MARGIN_PERCENT = 0.10f
+        const val PIXELATION_BLOCK_SIZE = 16
+        const val MAX_CROP_DIMENSION = 640
     }
 
-    /**
-     * Expands face bounding box by 10% on each side.
-     */
+    /** Expands a face box by 10% of its size on each side, clamped to the image. */
     fun expandMargin(box: FaceBox, imageWidth: Int, imageHeight: Int): FaceBox {
-        val w = box.right - box.left
-        val h = box.bottom - box.top
-        val dx = (w * MARGIN_PERCENT).toInt()
-        val dy = (h * MARGIN_PERCENT).toInt()
-
+        val dx = ((box.right - box.left) * MARGIN_PERCENT).toInt()
+        val dy = ((box.bottom - box.top) * MARGIN_PERCENT).toInt()
         return FaceBox(
             left = (box.left - dx).coerceAtLeast(0),
             top = (box.top - dy).coerceAtLeast(0),
@@ -57,60 +82,57 @@ class FaceBlurStage(
         )
     }
 
-    /**
-     * Applies privacy redaction to the crop before constructing UploadableCrop.
-     */
-    fun processCrop(
-        rawJpegBytes: ByteArray,
-        width: Int = 640,
-        height: Int = 480
-    ): BlurResult {
-        if (shouldSimulateDetectorFailure) {
-            return BlurResult.Withheld(
-                reason = "Face detector failed. Withholding crop for bystander privacy.",
-                evidenceStatus = "evidence_withheld"
-            )
+    fun processCrop(crop: PixelCrop): BlurResult {
+        if (crop.width > MAX_CROP_DIMENSION || crop.height > MAX_CROP_DIMENSION) {
+            return BlurResult.Withheld("Crop ${crop.width}x${crop.height} exceeds 640x640.")
         }
-
-        try {
-            val detected = faceDetectorStub(rawJpegBytes)
-                .filter { it.confidence >= FACE_SCORE_THRESHOLD }
-                .map { expandMargin(it, width, height) }
-
-            // Synthetic or real pixelation on detected face blocks
-            val processedBytes = if (detected.isNotEmpty()) {
-                applyBlockPixelation(rawJpegBytes, detected)
-            } else {
-                rawJpegBytes
-            }
-
-            val uploadable = UploadableCrop(
-                jpegBytes = processedBytes,
-                width = width,
-                height = height,
-                facesDetectedCount = detected.size,
-                blurApplied = detected.isNotEmpty()
-            )
-            return BlurResult.Success(uploadable)
+        val faces = try {
+            detector.detect(crop)
         } catch (e: Exception) {
-            return BlurResult.Withheld(
-                reason = "Face detection error (${e.message}). Withholding crop.",
-                evidenceStatus = "evidence_withheld"
-            )
+            return BlurResult.Withheld("Face detection failed. Crop withheld for bystander privacy.")
         }
+        val boxes = faces.filter { it.confidence >= FACE_SCORE_THRESHOLD }
+            .map { expandMargin(it, crop.width, crop.height) }
+            .filter { it.right > it.left && it.bottom > it.top }
+        val redacted = crop.copy()
+        for (b in boxes) pixelate(redacted, b)
+        val bytes = try {
+            encoder.encodeJpeg(redacted)
+        } catch (e: Exception) {
+            return BlurResult.Withheld("Crop encoding failed. Crop withheld.")
+        }
+        return BlurResult.Success(
+            UploadableCrop(
+                jpegBytes = bytes,
+                width = crop.width,
+                height = crop.height,
+                facesBlurred = boxes.size,
+                blurApplied = true,
+                timestampMs = clock()
+            )
+        )
     }
 
-    private fun applyBlockPixelation(bytes: ByteArray, faces: List<FaceBox>): ByteArray {
-        // Pixelates face boxes using 16px blocks (simulated by byte masking)
-        val copy = bytes.clone()
-        for (f in faces) {
-            val offset = (f.top * 10).coerceAtMost(copy.size - 32)
-            for (i in 0 until 16) {
-                if (offset + i < copy.size) {
-                    copy[offset + i] = 0x55.toByte() // Pixelated block mask
+    /** Fills each 16 x 16 block of the box (aligned to the box origin) with the block's mean colour. */
+    private fun pixelate(img: PixelCrop, box: FaceBox) {
+        val bs = PIXELATION_BLOCK_SIZE
+        var by = box.top
+        while (by < box.bottom) {
+            val yEnd = minOf(by + bs, box.bottom)
+            var bx = box.left
+            while (bx < box.right) {
+                val xEnd = minOf(bx + bs, box.right)
+                var a = 0L; var r = 0L; var g = 0L; var bl = 0L
+                val n = (yEnd - by) * (xEnd - bx)
+                for (y in by until yEnd) for (x in bx until xEnd) {
+                    val p = img.argb[y * img.width + x]
+                    a += (p ushr 24) and 0xFF; r += (p ushr 16) and 0xFF; g += (p ushr 8) and 0xFF; bl += p and 0xFF
                 }
+                val mean = ((a / n).toInt() shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (bl / n).toInt()
+                for (y in by until yEnd) for (x in bx until xEnd) img.argb[y * img.width + x] = mean
+                bx += bs
             }
+            by += bs
         }
-        return copy
     }
 }

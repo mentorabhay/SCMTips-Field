@@ -21,23 +21,13 @@ import hashlib
 import hmac
 import io
 import json
-import os
 import time
 from typing import Any
 
-import psycopg
-from field_api.config import settings
+from field_api.db import DATABASE_URL, tenant_tx
+from field_api.secrets import required_secret
 from field_common.uuid7 import uuid7_str
 from pydantic import BaseModel
-
-DATABASE_URL = (
-    os.getenv(
-        "FIELD_DATABASE_URL",
-        "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field",
-    )
-    .replace("postgresql+psycopg://", "postgresql://")
-    .replace("@localhost:", "@127.0.0.1:")
-)
 
 
 class CsvColumnMapping(BaseModel):
@@ -78,7 +68,7 @@ PREVIEW_TTL_S = 3600
 
 
 def _sign(payload: bytes) -> str:
-    return hmac.new(settings.FIELD_CURSOR_HMAC_SECRET.encode(), payload, hashlib.sha256).hexdigest()
+    return hmac.new(required_secret("FIELD_CURSOR_HMAC_SECRET").encode(), payload, hashlib.sha256).hexdigest()
 
 
 def _encode_preview(tenant_id: str, site_id: str, rows: list[dict[str, Any]]) -> str:
@@ -167,8 +157,7 @@ def parse_and_preview_csv(
     materials = known_materials
     if materials is None:
         materials = []
-        with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-            cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
+        with tenant_tx(str(tenant_id), ("*",), db_url=db_url) as cur:
             cur.execute(
                 "SELECT id, erp_material_no, description, gtin FROM field.material WHERE tenant_id = %s;",
                 (tenant_id,),
@@ -256,9 +245,7 @@ def confirm_csv_import(
     tasks_created = 0
     lines_created = 0
 
-    with psycopg.connect(db_url, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
-
+    with tenant_tx(str(tenant_id), (str(site_id),), db_url=db_url) as cur:
         for deliv, items in tasks_by_delivery.items():
             cur.execute(
                 "SELECT 1 FROM field.task WHERE tenant_id = %s AND ref_doc_no = %s AND type = 'receive'",

@@ -3,7 +3,14 @@ package com.scmtips.field.feature.towerAudit
 import java.util.UUID
 
 sealed class ManualEntryResult {
-    data class Success(val captureId: String, val verifyStatus: String, val photoAttached: Boolean) : ManualEntryResult()
+    data class Success(
+        val captureId: String,
+        val serialNo: String,
+        val equipmentClass: String,
+        val photoRef: String,
+        val verifyStatus: String,
+        val photoAttached: Boolean,
+    ) : ManualEntryResult()
     data class Blocked(val messageCode: String, val messageText: String) : ManualEntryResult()
 }
 
@@ -38,6 +45,7 @@ class ManualEntryManager {
         equipmentClass: String,
         photoCropRef: String?
     ): ManualEntryResult {
+        require(typedSerial.isNotBlank()) { "typed serial is blank" }
         if (photoCropRef.isNullOrBlank()) {
             return ManualEntryResult.Blocked(
                 messageCode = "MSG4.16",
@@ -48,6 +56,9 @@ class ManualEntryManager {
         val captureId = UUID.randomUUID().toString()
         return ManualEntryResult.Success(
             captureId = captureId,
+            serialNo = typedSerial.trim().uppercase(),
+            equipmentClass = equipmentClass,
+            photoRef = photoCropRef,
             verifyStatus = "queued",
             photoAttached = true
         )
@@ -62,6 +73,11 @@ class ManualEntryManager {
         photoRef: String,
         locationRef: String
     ): TowerFinding {
+        // FR4.022: class, serial, position and photo evidence are all required.
+        require(serialNo.isNotBlank()) { "serial is required" }
+        require(equipmentClass.isNotBlank()) { "equipment class is required" }
+        require(photoRef.isNotBlank()) { "photo evidence is required" }
+        require(locationRef.isNotBlank()) { "position is required" }
         return TowerFinding(
             findingClass = "tower_only",
             equipmentClass = equipmentClass,

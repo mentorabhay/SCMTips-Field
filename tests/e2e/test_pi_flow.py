@@ -127,7 +127,7 @@ def test_pi_flow_blind_count_recount_approval_sod_and_erp_posting(pi_world: dict
     with psycopg.connect(ERPSIM) as c, c.cursor() as cur:
         cur.execute("SELECT quantity FROM erpsim.stock WHERE plant = %s AND material_no = %s",
                     (w["plant"], w["mats"][0]))
-        assert Decimal(cur.fetchone()[0]) == 60  # type: ignore[index] # 702 loss of 40 posted in ERP
+        assert Decimal(cur.fetchone()[0]) == 60 # 702 loss of 40 posted in ERP
 
 
 def test_pi_above_threshold_needs_independent_approver(pi_world: dict[str, Any]) -> None:
@@ -145,7 +145,7 @@ def test_pi_above_threshold_needs_independent_approver(pi_world: dict[str, Any])
     with psycopg.connect(ADMIN) as c, c.cursor() as cur:
         cur.execute("SELECT set_config('app.tenant_id', %s, false)", (w["tenant"],))
         cur.execute("SELECT count(*) FROM field.erp_document WHERE payload->>'pi_document_id' = %s", (pid,))
-        assert cur.fetchone()[0] == 0  # type: ignore[index]
+        assert cur.fetchone()[0] == 0
     # requester (controller holds discrepancy.approve) is excluded: SoD
     r = api.post(f"/v1/approval-requests/{apr}/decide", json={"decision": "approve", "reason": "ok"},
                  headers=_h(w["tok"]["ctrl"]))

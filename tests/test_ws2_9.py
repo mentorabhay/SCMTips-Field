@@ -45,19 +45,7 @@ def test_t2_065_latency_dashboard_json():
     assert "field_lens_tick_ms" in text
 
 
-@pytest.mark.unit
-def test_t2_066_latency_campaign_report():
-    """T2.066 / TC2.152: Latency campaign proves p95 <= 400ms on 5G."""
-    report_path = ROOT / "docs" / "perf" / "F1-latency.md"
-    assert report_path.exists()
-
-    text = report_path.read_text(encoding="utf-8")
-    assert "500 Captures" in text
-    assert "345 ms" in text  # measured p95
-    assert "400 ms" in text
-    assert "TC2.152" in text
-    assert "PASS" in text
-
+# test_t2_066_latency_campaign_report removed (C5): asserted a hand-written p95 "345 ms" in docs/perf/F1-latency.md; no measurement exists (TC2.152 unproven).
 
 @pytest.mark.unit
 def test_t2_067_k6_load_test_script():
@@ -72,18 +60,7 @@ def test_t2_067_k6_load_test_script():
     assert "40 * 1024" in content  # 40 KB crop
 
 
-@pytest.mark.unit
-def test_t2_068_chaos_campaign_report():
-    """T2.068: Chaos report proves zero duplicates, zero losses, and per-task FIFO order."""
-    chaos_path = ROOT / "docs" / "perf" / "F1-chaos.md"
-    assert chaos_path.exists()
-
-    text = chaos_path.read_text(encoding="utf-8")
-    assert "500 captures" in text or "500 Captures" in text
-    assert "0 duplicates" in text
-    assert "0 lost items" in text
-    assert "Preserved across all 500 items" in text
-
+# test_t2_068_chaos_campaign_report removed (C5): asserted hand-written "0 duplicates / 0 lost" text in docs/perf/F1-chaos.md; no chaos run exists.
 
 @pytest.mark.unit
 def test_t2_069_maestro_e2e_flow():
@@ -112,47 +89,7 @@ def test_t2_070_privacy_scan_passes():
     assert len(log_findings) == 0, f"Unredacted log leaks found: {log_findings}"
 
 
-@pytest.mark.unit
-def test_t2_071_quiet_mode_policy():
-    """T2.071 / TC2.110, TC2.156: Quiet mode suppresses audio/visual prompts at >1.2m/s, permits errors."""
-    quiet_kt = (
-        ROOT
-        / "apps"
-        / "field-android"
-        / "core-capture"
-        / "src"
-        / "main"
-        / "kotlin"
-        / "com"
-        / "scmtips"
-        / "field"
-        / "core"
-        / "capture"
-        / "safety"
-        / "QuietModePolicy.kt"
-    )
-    assert quiet_kt.exists()
-    content = quiet_kt.read_text(encoding="utf-8")
-
-    assert "SPEED_THRESHOLD_MPS = 1.2f" in content
-    assert "MAX_CROP_DIMENSION = 640" in content
-    assert "shouldSpeakAudio" in content
-    assert "shouldRenderPromptOnLens" in content
-    assert "validateCropDimensions" in content
-    assert "allowStorage" in content
-
-    # Python reference oracle for QuietModePolicy logic
-    def should_speak(speed: float, is_error: bool) -> bool:
-        if is_error:
-            return True
-        return speed <= 1.2
-
-    # Normal standing/slow walk -> speech allowed
-    assert should_speak(0.5, False) is True
-    # Fast walking (> 1.2 m/s) -> conversational speech suppressed
-    assert should_speak(1.5, False) is False
-    # Critical error -> speech ALWAYS allowed even while walking
-    assert should_speak(1.8, True) is True
+# T2.071 quiet-mode policy: moved to core-capture/src/test/kotlin/.../safety/QuietModePolicyTest.kt (C5).
 
 
 @pytest.mark.unit
@@ -172,14 +109,4 @@ def test_t2_072_stride_threat_model():
     assert "0 High, 0 Critical findings open" in text
 
 
-@pytest.mark.unit
-def test_t2_073_release_report():
-    """T2.073: Phase 2 completion report confirms all 73 tasks verified and release ready."""
-    report_path = ROOT / "docs" / "reports" / "F1-report.md"
-    assert report_path.exists()
-
-    text = report_path.read_text(encoding="utf-8")
-    assert "RELEASE READY" in text
-    assert "ALL 73 TASKS VERIFIED" in text
-    assert "WS2.1" in text and "WS2.9" in text
-    assert "PASS" in text
+# test_t2_073_release_report removed (C5): asserted a hand-written "ALL 73 TASKS VERIFIED" claim (rule 2.3: reports come from the ledger).

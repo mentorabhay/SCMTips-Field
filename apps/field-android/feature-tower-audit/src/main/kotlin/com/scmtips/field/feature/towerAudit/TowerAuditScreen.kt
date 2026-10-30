@@ -30,8 +30,8 @@ data class TowerAuditUiState(
  * and nameplate OCR extraction.
  */
 class TowerAuditController(
+    private val evidenceManager: EvidenceManager,
     private val ocrReader: NameplateReader = NameplateReader(),
-    private val evidenceManager: EvidenceManager = EvidenceManager()
 ) {
 
     /**
@@ -42,41 +42,42 @@ class TowerAuditController(
     }
 
     /**
-     * Processes a captured nameplate frame from Phase 2 capture pipeline.
+     * Processes a captured nameplate frame from the capture pipeline: OCR, evidence (only with
+     * consent, blurred when a face is in frame), and matching against the expected task lines.
+     * Returns null when OCR finds no serial candidate.
      */
     fun processCapture(
         state: TowerAuditUiState,
         candidateOcrLines: List<String>,
         equipmentClass: String,
         cropBytes: ByteArray,
-        faceDetected: Boolean = false
-    ): NameplateOcrResult? {
+        faceDetected: Boolean = false,
+    ): TowerCaptureResult? {
         val ocrResult = ocrReader.readNameplate(
             candidateLines = candidateOcrLines,
-            equipmentClass = equipmentClass
+            equipmentClass = equipmentClass,
         ) ?: return null
 
         val captureId = UUID.randomUUID().toString()
-
-        // Secure photo evidence if consent recorded
-        if (evidenceManager.hasConsent()) {
-            evidenceManager.processEvidenceCrop(
-                captureId = captureId,
-                rawCropBytes = cropBytes,
-                faceDetectedInFrame = faceDetected
-            )
+        val evidence = if (evidenceManager.hasConsent()) {
+            evidenceManager.processEvidenceCrop(captureId, cropBytes, faceDetected)
+        } else {
+            null
         }
 
-        // Match against expected task lines in current sector
-        val matchedLine = state.taskLines.firstOrNull {
-            it.serialNo.equals(ocrResult.serialNo, ignoreCase = true)
-        }
-
+        val matchedLine = state.taskLines.firstOrNull { it.serialNo.equals(ocrResult.serialNo, ignoreCase = true) }
         if (matchedLine != null) {
             matchedLine.status = "captured"
             matchedLine.captureId = captureId
         }
-
-        return ocrResult
+        return TowerCaptureResult(captureId, ocrResult, evidence, matchedLine)
     }
 }
+
+data class TowerCaptureResult(
+    val captureId: String,
+    val ocr: NameplateOcrResult,
+    /** Null when no consent is recorded: nothing is prepared for upload (FR4.020). */
+    val evidence: EvidenceResult?,
+    val matchedLine: AuditTaskLineItem?,
+)

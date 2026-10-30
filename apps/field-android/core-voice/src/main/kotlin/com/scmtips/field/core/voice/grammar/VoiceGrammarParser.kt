@@ -39,7 +39,7 @@ class VoiceGrammarParser(
 ) {
     companion object {
         const val CONFIDENCE_FLOOR = 0.80f
-        const val MSG2_10 = "Not sure. Say again or tap."
+        const val MSG2_10 = "Did not catch that. Nothing changed. Hold the button and say it again."
     }
 
     fun parse(transcript: String, confidence: Float): ParsedUtterance {

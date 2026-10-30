@@ -11,15 +11,9 @@ import psycopg
 
 from field_api.config import settings
 
+# The app role (field_app, NOBYPASSRLS). Never default to a superuser: RLS must always apply.
 DATABASE_URL = (
-    os.getenv(
-        "FIELD_DATABASE_URL",
-        getattr(
-            settings,
-            "FIELD_DATABASE_URL",
-            "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field",
-        ),
-    )
+    os.getenv("FIELD_DATABASE_URL", settings.FIELD_DATABASE_URL)
     .replace("postgresql+psycopg://", "postgresql://")
     .replace("@localhost:", "@127.0.0.1:")
 )
@@ -36,7 +30,9 @@ def get_conn(db_url: str | None = None) -> psycopg.Connection[Any]:
 
 
 @contextmanager
-def tenant_tx(tenant_id: str, site_ids: Sequence[str] = ("*",)) -> Iterator[psycopg.Cursor[Any]]:
+def tenant_tx(
+    tenant_id: str, site_ids: Sequence[str] = ("*",), db_url: str | None = None
+) -> Iterator[psycopg.Cursor[Any]]:
     """One transaction with RLS context set transaction-locally (C4 foundation).
 
     Sets ``app.tenant_id`` and ``app.site_ids`` with ``set_config(..., true)`` so the scope
@@ -44,7 +40,7 @@ def tenant_tx(tenant_id: str, site_ids: Sequence[str] = ("*",)) -> Iterator[psyc
     always closes the connection. Connect as the application role (NOBYPASSRLS) so RLS
     really applies; never as a superuser.
     """
-    conn = get_conn()
+    conn = get_conn(db_url)
     try:
         with conn.cursor() as cur:
             cur.execute(

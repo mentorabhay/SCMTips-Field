@@ -62,4 +62,6 @@ dependencies {
 
     implementation(libs.hilt.android)
     annotationProcessor(libs.hilt.compiler)
+
+    testImplementation(libs.junit4)
 }

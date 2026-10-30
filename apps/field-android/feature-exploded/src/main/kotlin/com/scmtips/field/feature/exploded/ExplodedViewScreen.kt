@@ -4,14 +4,11 @@ import java.io.File
 import kotlin.math.roundToInt
 
 /**
- * Android Phone Exploded View with SceneView/Filament (Task T4.058 / FR4.055 / PR4.09 / TC4.147).
+ * Exploded-view state and transforms for the phone (Task T4.058 / FR4.055 / PR4.09).
  *
- * Implements:
- * - SceneView/Filament 3D rendering contract for glTF 2.0 asset models loaded from offline site pack.
- * - Explode slider t in [0.0, 1.0] where part offset = t * explode_vector (PR4.09 / FR4.055).
- * - Interactive balloon badges anchored to part transforms.
- * - Part checklist with serialised component flags and isolate/focus toggle.
- * - Frame rate monitor enforcing >= 30 fps for 150k-triangle models (TC4.147).
+ * This is the view-model only: slider t in [0, 1] with part offset = t x explode_vector, part
+ * selection, balloon/serialised toggles and per-node transforms. The SceneView/Filament renderer
+ * and the TC4.147 frame-rate measurement are NOT implemented here (no UI exists yet).
  */
 
 data class Vector3(val x: Float, val y: Float, val z: Float) {
@@ -59,7 +56,8 @@ data class ExplodedViewState(
     val selectedPartNo: String? = null,
     val showBalloons: Boolean = true,
     val highlightSerialised: Boolean = true,
-    val currentFps: Double = 60.0,
+    /** Last frame rate reported by the renderer; null until one reports. */
+    val currentFps: Double? = null,
     val bomItems: List<ExplodedBomItem> = emptyList(),
     val errorMessage: String? = null
 )
@@ -87,11 +85,12 @@ class ExplodedViewModel(
         val file = if (sitePackDirectory != null) File(sitePackDirectory, glbFileName) else null
         val exists = file?.exists() == true
 
+        val missing = file == null || !exists
         _state = _state.copy(
-            glbFilePath = file?.absolutePath ?: glbFileName,
-            isLoaded = true,
-            bomItems = bomItems,
-            errorMessage = if (file != null && !exists) "Model file not found in site pack: $glbFileName" else null
+            glbFilePath = file?.absolutePath,
+            isLoaded = !missing,
+            bomItems = if (missing) emptyList() else bomItems,
+            errorMessage = if (missing) "Model file not found in site pack: $glbFileName" else null
         )
     }
 

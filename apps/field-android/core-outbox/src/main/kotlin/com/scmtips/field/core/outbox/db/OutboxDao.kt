@@ -23,6 +23,15 @@ interface OutboxDao {
         insertItem(item)
     }
 
+    /** Assigns the next per-task client_seq and inserts item and crop in the same transaction (FR2.044). */
+    @Transaction
+    suspend fun insertCaptureWithNextSeq(item: OutboxItemEntity, cropFile: CropFileEntity?): OutboxItemEntity {
+        val seq = (getMaxClientSeqForTask(item.taskId) ?: 0L) + 1L
+        val withSeq = item.copy(clientSeq = seq)
+        insertCaptureAtomic(withSeq, cropFile)
+        return withSeq
+    }
+
     @Query("SELECT * FROM outbox_item WHERE id = :id LIMIT 1")
     suspend fun getItemById(id: String): OutboxItemEntity?
 

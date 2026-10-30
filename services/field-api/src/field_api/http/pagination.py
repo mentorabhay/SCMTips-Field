@@ -10,6 +10,7 @@ from fastapi import Query
 from pydantic import BaseModel
 
 from field_api.config import settings
+from field_api.secrets import required_secret
 
 
 class PaginatedResponse(BaseModel):
@@ -22,7 +23,7 @@ def encode_cursor(last_id: str, filter_hash: str = "") -> str:
     """Encode an HMAC-signed opaque cursor string."""
     payload = json.dumps({"id": last_id, "fh": filter_hash}).encode("utf-8")
     signature = hmac.new(
-        settings.FIELD_CURSOR_HMAC_SECRET.encode("utf-8"), payload, hashlib.sha256
+        required_secret("FIELD_CURSOR_HMAC_SECRET").encode("utf-8"), payload, hashlib.sha256
     ).hexdigest()[:16]
     token = f"{base64.urlsafe_b64encode(payload).decode('utf-8')}.{signature}"
     return token
@@ -39,7 +40,7 @@ def decode_cursor(cursor_str: str | None) -> str | None:
         b64_payload, signature = parts
         payload = base64.urlsafe_b64decode(b64_payload.encode("utf-8"))
         expected_sig = hmac.new(
-            settings.FIELD_CURSOR_HMAC_SECRET.encode("utf-8"), payload, hashlib.sha256
+            required_secret("FIELD_CURSOR_HMAC_SECRET").encode("utf-8"), payload, hashlib.sha256
         ).hexdigest()[:16]
 
         if not hmac.compare_digest(signature, expected_sig):

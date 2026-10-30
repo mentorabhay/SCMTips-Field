@@ -7,71 +7,37 @@ import com.scmtips.field.core.wearables.LensState
 data class AudioCueMapping(
     val earcon: EarconCue?,
     val spokenPhrase: String?,
-    val isSilentInWalkingQuiet: Boolean = true
+    val isSilentInWalkingQuiet: Boolean = true,
 )
 
 /**
- * Maps lens states to earcons and optional spoken phrases for audio-only glasses (Task T2.015 / SCR2.08 / FR2.014).
- * Suppresses spoken phrases during walking-quiet mode except for critical errors.
+ * Audio-only cue set for glasses without a display, e.g. Ray-Ban Meta Gen 2 (T2.015; FR2.014; SCR2.08).
+ *
+ * Ready and moving are silent. Tie, duplicate, offline-queued and error carry the SCR2.08 phrases;
+ * captured is an earcon only. In walking-quiet mode phrases are suppressed except for errors.
  */
 class AudioCueManager(
     private val audioOut: AudioOut,
-    private val isWalkingQuietActive: () -> Boolean = { false }
+    private val isWalkingQuietActive: () -> Boolean = { false },
 ) {
     companion object {
-        val STATE_CUE_MAP = mapOf(
-            LensState.READY to AudioCueMapping(
-                earcon = null,
-                spokenPhrase = null, // Ready is silent
-                isSilentInWalkingQuiet = true
-            ),
-            LensState.MOVING to AudioCueMapping(
-                earcon = null,
-                spokenPhrase = null, // Moving is silent
-                isSilentInWalkingQuiet = true
-            ),
-            LensState.TIE to AudioCueMapping(
-                earcon = EarconCue.CONFIRM_PROMPT,
-                spokenPhrase = "Two found. Say left or right.",
-                isSilentInWalkingQuiet = true
-            ),
-            LensState.CAPTURED to AudioCueMapping(
-                earcon = EarconCue.CAPTURED,
-                spokenPhrase = "Captured",
-                isSilentInWalkingQuiet = true
-            ),
-            LensState.DUPLICATE to AudioCueMapping(
-                earcon = EarconCue.DUPLICATE,
-                spokenPhrase = "Already counted",
-                isSilentInWalkingQuiet = true
-            ),
-            LensState.OFFLINE_QUEUED to AudioCueMapping(
-                earcon = EarconCue.OFFLINE_QUEUED,
-                spokenPhrase = "Saved offline",
-                isSilentInWalkingQuiet = true
-            ),
-            LensState.ERROR to AudioCueMapping(
-                earcon = EarconCue.ERROR,
-                spokenPhrase = "Error. Check display.",
-                isSilentInWalkingQuiet = false // Never suppressed, even in walking-quiet mode (SCR2.08)
-            )
+        val STATE_CUE_MAP: Map<LensState, AudioCueMapping> = mapOf(
+            LensState.READY to AudioCueMapping(earcon = null, spokenPhrase = null),
+            LensState.MOVING to AudioCueMapping(earcon = null, spokenPhrase = null),
+            LensState.TIE to AudioCueMapping(EarconCue.CONFIRM_PROMPT, "Two items. Left or right?"),
+            LensState.CAPTURED to AudioCueMapping(EarconCue.CAPTURED, null),
+            LensState.DUPLICATE to AudioCueMapping(EarconCue.DUPLICATE, "Already captured"),
+            LensState.OFFLINE_QUEUED to AudioCueMapping(EarconCue.OFFLINE_QUEUED, "Saved offline"),
+            LensState.ERROR to AudioCueMapping(EarconCue.ERROR, "Problem. Check phone.", isSilentInWalkingQuiet = false),
         )
     }
 
     suspend fun emitStateCue(state: LensState) {
         val mapping = STATE_CUE_MAP[state] ?: return
-
-        // 1. Play 16-bit PCM earcon (under 300 ms)
-        mapping.earcon?.let { earcon ->
-            audioOut.playEarcon(earcon)
-        }
-
-        // 2. Play spoken phrase if not suppressed
-        val walkingQuiet = isWalkingQuietActive()
-        val shouldSpeak = mapping.spokenPhrase != null && (!walkingQuiet || !mapping.isSilentInWalkingQuiet)
-
-        if (shouldSpeak) {
-            audioOut.playSpeech(mapping.spokenPhrase!!)
+        mapping.earcon?.let { audioOut.playEarcon(it) }
+        val phrase = mapping.spokenPhrase ?: return
+        if (!isWalkingQuietActive() || !mapping.isSilentInWalkingQuiet) {
+            audioOut.playSpeech(phrase)
         }
     }
 }

@@ -27,6 +27,12 @@ from field_api.deps import require_permission
 from field_api.errors import FieldError
 from field_api.http.pagination import decode_cursor, encode_cursor
 from field_api.posting.staging import JobSpec, StagedDocument, stage_document
+from field_api.warehouse.receiving.post import (
+    GR_DOC_TYPE,
+    GR_MOVEMENT_TYPE,
+    goods_receipt_jobs,
+    goods_receipt_queue_key,
+)
 from field_api.warehouse.receiving.tolerance import (
     VALID_UNDER_DELIVERY_REASONS,
     evaluate_receipt_tolerance,
@@ -323,6 +329,7 @@ def confirm_task(
         job_specs: list[JobSpec] = []
         over_where: str | None = None
         if ttype == "receive":
+            received: list[tuple[int | str, float]] = []
             for r in lines:
                 counted, damaged = float(r[4]), float(r[6])
                 decision = evaluate_receipt_tolerance(
@@ -343,16 +350,10 @@ def confirm_task(
                     break
                 if decision.status == "UNDER_DELIVERY_NEEDS_REASON":
                     raise _err(422, "FIELD-RCV-422-REASON", "Reason code missing", f"line {r[1]} is under-delivered")
-                receive_qty = max(0.0, counted - damaged)  # FIELD_DAMAGED_MODE=reject (spec default)
-                job_specs.append(JobSpec("InboundDeliveryItem", {
-                    "DeliveryDocument": ref_doc,
-                    "DeliveryDocumentItem": str(r[1]).zfill(6),
-                    "ActualDeliveryQuantity": f"{receive_qty:.3f}",
-                }))
-            job_specs.append(JobSpec("GoodsReceipt", {"DeliveryDocument": ref_doc}))
-            doc_type, mvt, queue_key = "GR", "101", f"IBD:{ref_doc}"
-            if over_where:
-                job_specs = []
+                received.append((r[1], counted - damaged))  # FIELD_DAMAGED_MODE=reject (spec default)
+            doc_type, mvt, queue_key = GR_DOC_TYPE, GR_MOVEMENT_TYPE, goods_receipt_queue_key(ref_doc)
+            if not over_where:
+                job_specs = goods_receipt_jobs(ref_doc, received)
         else:
             for r in lines:
                 job_specs.append(JobSpec("OutboundDeliveryPick", {

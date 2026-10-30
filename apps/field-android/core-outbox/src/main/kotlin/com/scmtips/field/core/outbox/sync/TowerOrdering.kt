@@ -5,7 +5,8 @@ package com.scmtips.field.core.outbox.sync
  *
  * Implements:
  * - Room outbox partitioned by tower functional location (towerFl).
- * - Strictly monotonic FIFO execution per tower based on seq.
+ * - Strictly monotonic FIFO execution per tower based on seq: an event is eligible only when every
+ *   lower seq of the same tower is COMPLETED.
  * - Non-blocking multi-tower replay: a held or failed tower queue does NOT block
  *   independent progress on any other tower (PR4.12).
  */
@@ -38,25 +39,17 @@ class TowerOutboxReplayCoordinator {
      */
     fun selectNextBatch(events: List<TowerOutboxEvent>): List<TowerOutboxEvent> {
         val eligible = mutableListOf<TowerOutboxEvent>()
-        val byTower = events.groupBy { it.towerFl }
-
-        for ((towerFl, towerEvents) in byTower) {
-            // If tower is held, skip completely - does NOT block other towers (PR4.12)
-            if (heldTowers.contains(towerFl)) {
-                continue
-            }
-
-            // Find lowest pending seq
-            val nextPending = towerEvents
-                .filter { it.status == TowerEventStatus.PENDING }
-                .minByOrNull { it.seq }
-
-            if (nextPending != null) {
-                eligible.add(nextPending)
-            }
+        for ((towerFl, towerEvents) in events.groupBy { it.towerFl }) {
+            // A held tower is skipped without blocking any other tower (FR4.059)
+            if (heldTowers.contains(towerFl)) continue
+            // Strict FIFO: only the lowest not-yet-completed seq may go. If that head is uploading,
+            // held or failed, nothing later in the same tower is sent.
+            val head = towerEvents
+                .filter { it.status != TowerEventStatus.COMPLETED }
+                .minByOrNull { it.seq } ?: continue
+            if (head.status == TowerEventStatus.PENDING) eligible.add(head)
         }
-
-        return eligible
+        return eligible.sortedBy { it.towerFl }
     }
 
     /**

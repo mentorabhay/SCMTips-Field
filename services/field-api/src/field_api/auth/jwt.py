@@ -1,6 +1,5 @@
 """JWT Verification with JWKS Caching and Claims Parsing (Task T1.036 / PR1.17)."""
 
-import os
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -11,17 +10,17 @@ from pydantic import BaseModel
 
 from field_api.auth.permissions import expand_permissions
 from field_api.errors import ERR_AUTH_UNAUTHORIZED
+from field_api.secrets import required_secret
 
 logger = structlog.get_logger(__name__)
 
 
+FIELD_ISSUER = "scmtips-field"  # field access tokens; core tokens (iss scmtips-core) are only accepted by /v1/auth/exchange
+
+
 def get_jwt_secret() -> str:
-    """Resolve JWT secret key from environment or fallback development configuration."""
-    return (
-        os.getenv("JWT_SECRET_KEY")
-        or os.getenv("FIELD_JWT_SECRET")
-        or "dev-core-secret-key-minimum-32-characters-for-hs256"
-    )
+    """HS256 key for field access tokens. Required; there is no built-in fallback (A-02)."""
+    return required_secret("FIELD_JWT_SECRET", "JWT_SECRET_KEY")
 
 
 class Principal(BaseModel):
@@ -47,7 +46,7 @@ def create_dev_token(
     sites = site_ids if site_ids is not None else ["*"]
     payload: dict[str, Any] = {
         "sub": principal_id,
-        "iss": "scmtips-core",
+        "iss": FIELD_ISSUER,
         "aud": "scmtips-field",
         "tid": tenant_id,
         "roles": roles,
@@ -67,9 +66,9 @@ def verify_token(token: str) -> Principal:
         claims: dict[str, Any] = jwt.decode(
             token,
             get_jwt_secret(),
-            algorithms=["HS256", "RS256"],
+            algorithms=["HS256"],
             audience="scmtips-field",
-            issuer="scmtips-core",
+            issuer=FIELD_ISSUER,
             leeway=60,
         )
 

@@ -60,13 +60,7 @@ def test_t3_051_sitegraph_routing():
     assert res["total_distance_m"] == 5.0
 
 
-@pytest.mark.unit
-def test_t3_052_walking_quiet_mode():
-    """T3.052: Walking-quiet mode prompt suppression contract."""
-    wq_file = Path(
-        "apps/field-android/core-capture/src/main/kotlin/com/scmtips/field/core/capture/safety/WalkingQuiet.kt"
-    )
-    assert wq_file.exists()
+# T3.052 walking-quiet: moved to core-capture/src/test/kotlin/.../safety/WalkingQuietManagerTest.kt (C5).
 
 
 @pytest.mark.unit
@@ -181,13 +175,7 @@ def test_t3_062_late_receipt_signal():
     assert signals[0]["signal_type"] == "LATE_RECEIPT_ALERT"
 
 
-@pytest.mark.unit
-def test_t3_063_warehouse_lens_contracts():
-    """T3.063: Warehouse glasses HUD lens layout contract."""
-    lens_test = Path(
-        "apps/field-android/core-wearables-testing/src/test/kotlin/com/scmtips/field/core/wearables/LensRendererTest.kt"
-    )
-    assert lens_test.exists()
+# test_t3_063 removed (C5-prep): it only checked that LensRendererTest.kt exists. Warehouse lens screens (T3.063) have no test yet; the generic renderer is covered by core-wearables-testing LensRendererTest.
 
 
 @pytest.mark.unit
@@ -197,13 +185,7 @@ def test_t3_064_warehouse_phone_contracts():
     assert tasks_module.exists()
 
 
-@pytest.mark.unit
-def test_t3_065_warehouse_outbox_contract():
-    """T3.065: Offline warehouse outbox adapter contract."""
-    outbox_file = Path(
-        "apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/WarehouseOutbox.kt"
-    )
-    assert outbox_file.exists()
+# test_t3_065 removed (C5-prep): it only checked that WarehouseOutbox.kt exists. Offline warehouse behaviour (T3.065) has no test yet (Room-bound; needs an instrumented test).
 
 
 @pytest.mark.unit
@@ -245,15 +227,6 @@ def test_t3_070_warehouse_security():
     assert sec_test.exists()
 
 
-@pytest.mark.unit
-def test_t3_071_device_usability_report():
-    """T3.071: Usability evaluation report verification."""
-    report = Path("docs/reports/F2_device_usability.md")
-    assert report.exists()
+# test_t3_071_device_usability_report removed (C5): only checked a hand-written device usability report exists; no device session has happened.
 
-
-@pytest.mark.unit
-def test_t3_072_phase3_completion_report():
-    """T3.072: Phase 3 completion report verification."""
-    report = Path("docs/reports/PHASE3_REPORT.md")
-    assert report.exists()
+# test_t3_072_phase3_completion_report removed (C5): only checked a hand-written completion report exists (rule 2.3).

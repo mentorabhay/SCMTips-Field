@@ -59,9 +59,9 @@ def test_worker_process_imports_and_posts_as_field_worker_role() -> None:
             with psycopg.connect(ADMIN) as c, c.cursor() as cur:
                 cur.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant,))
                 cur.execute("SELECT status, doc_number FROM field.erp_document WHERE id = %s", (doc,))
-                status, number = cur.fetchone()  # type: ignore[misc]
+                status, number = cur.fetchone()
                 cur.execute("SELECT status FROM field.task WHERE id = %s", (task["id"],))
-                assert cur.fetchone()[0] == "completed"  # type: ignore[index]
+                assert cur.fetchone()[0] == "completed"
             assert status == "posted" and number
             assert w.get_status()["jobs_processed"] >= 2
 

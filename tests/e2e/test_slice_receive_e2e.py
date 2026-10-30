@@ -124,6 +124,7 @@ def _task(w: dict[str, Any]) -> dict[str, Any]:
 
 
 def test_slice_goods_receipt_round_trip(world: dict[str, Any]) -> None:
+    """TC3.109 / FR3.010: import, count, confirm, worker posts PATCH per line + PostGoodsReceipt, undo (PR3.01)."""
     w = world
     _import(w)
     task = _task(w)
@@ -148,10 +149,15 @@ def test_slice_goods_receipt_round_trip(world: dict[str, Any]) -> None:
         cur.execute("SELECT set_config('app.tenant_id', %s, false)", (w["tenant"],))
         cur.execute("SELECT status, doc_number, movement_type FROM field.erp_document WHERE id = %s",
                     (out["erp_document_id"],))
-        status, doc_no, mvt = cur.fetchone()  # type: ignore[misc]
+        row = cur.fetchone()
+        assert row is not None
+        status, doc_no, mvt = row
         cur.execute("SELECT status FROM field.task WHERE id = %s", (task["id"],))
-        task_status = cur.fetchone()[0]  # type: ignore[index]
-    assert status == "posted" and doc_no and mvt == "101"
+        trow = cur.fetchone()
+        assert trow is not None
+        task_status = trow[0]
+    assert status == "posted" and mvt == "101"
+    assert 4_900_000_000 <= int(doc_no) <= 4_999_999_999  # T3.022 done_when: SAP material document range
     assert task_status == "completed"
     assert [_stock(w["plant"], m) - b for m, b in zip(w["mats"], stock_before, strict=True)] == [24, 12]
 
@@ -223,9 +229,9 @@ def test_over_tolerance_blocks_confirm_and_opens_case(world: dict[str, Any]) -> 
         cur.execute("SELECT set_config('app.tenant_id', %s, false)", (w["tenant"],))
         cur.execute("SELECT count(*) FROM field.approval_request WHERE task_id = %s AND approval_type ="
                     " 'receipt_over_tolerance' AND status = 'pending'", (task["id"],))
-        assert cur.fetchone()[0] == 1  # type: ignore[index]
+        assert cur.fetchone()[0] == 1
         cur.execute("SELECT count(*) FROM field.posting_job WHERE queue_key = %s", (f"IBD:{w['deliv']}",))
-        assert cur.fetchone()[0] == 0  # type: ignore[index]
+        assert cur.fetchone()[0] == 0
 
 
 def test_reverse_permissions(world: dict[str, Any]) -> None:

@@ -36,6 +36,7 @@ dev = [
     "types-pyjwt>=1.7.1",
     "types-cryptography>=3.3.23",
     "playwright>=1.64.1",
+    "types-pyyaml>=6.0.12.20261030",
 ]
 
 [tool.uv.workspace]

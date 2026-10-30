@@ -61,12 +61,25 @@ jobs:
       - name: Tests (all collected)
         if: always()
         run: uv run pytest -p no:cacheprovider --junitxml=reports/junit.xml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      # A plain Gradle distribution on PATH: kotlin_jvm.py uses the kotlinc and JUnit 4 jars it ships
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+      - name: Kotlin JVM unit tests (kotlinc + JUnit 4)
+        if: success() || failure()
+        run: uv run python scripts/jobs/kotlin_jvm.py
       - name: Upload junit
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-junit
-          path: reports/junit.xml
+          path: |
+            reports/junit.xml
+            reports/junit-kotlin-jvm.xml
 
   android:
     runs-on: ubuntu-latest
@@ -109,7 +122,7 @@ jobs:
           mkdir -p ../../ci-out
           ./gradlew assembleDebug --stacktrace 2>&1 | tee ../../ci-out/assembleDebug.log
 
-      - name: Unit tests (JUnit5 + Kotest)
+      - name: Unit tests (JUnit 4)
         run: |
           set -o pipefail
           mkdir -p ../../ci-out

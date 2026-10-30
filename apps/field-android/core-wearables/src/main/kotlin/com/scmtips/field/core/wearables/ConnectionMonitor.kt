@@ -1,5 +1,6 @@
 package com.scmtips.field.core.wearables
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -18,12 +19,14 @@ interface DisconnectRecoveryListener {
  * Handles Bluetooth / Wi-Fi disconnects and reconnects with capped backoff
  * (Task T2.013 / FR2.015 / TC2.116).
  *
- * Backoff schedule: 1s, 2s, 4s, 8s, 16s, 30s (cap 30s).
+ * Backoff schedule: 1s, 2s, 4s, 8s, 16s, 30s (cap 30s). Reconnects to the stored address without a
+ * new pairing, discards the look in progress, and restarts the preview stream once connected.
  */
 class ConnectionMonitor(
     private val glassesSession: GlassesSession,
     private val recoveryListener: DisconnectRecoveryListener? = null,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
+    private val sleep: suspend (Long) -> Unit = { delay(it) },
 ) {
     companion object {
         val BACKOFF_SCHEDULE_MS = listOf(
@@ -73,16 +76,22 @@ class ConnectionMonitor(
                     BACKOFF_SCHEDULE_MS.last()
                 }
 
-                delay(delayMs)
+                sleep(delayMs)
                 reconnectAttempt++
 
                 try {
                     glassesSession.connect(address, model)
-                    // Successfully reconnected
+                    if (glassesSession.connectionState.value !is ConnectionState.Connected) {
+                        throw IllegalStateException("not connected after reconnect attempt")
+                    }
+                    // Reconnected with the stored pairing; resume the preview (FR2.015)
+                    glassesSession.previewStream.startStream()
                     _reconnectCount.value = _reconnectCount.value + 1
                     reconnectAttempt = 0
                     recoveryListener?.onPreviewResumed()
                     break
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     // Retry with next backoff
                 }

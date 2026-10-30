@@ -20,7 +20,8 @@ data class NormalisationResult(
 
 /**
  * Shared serial pattern normalisation rules (Task T4.033 / FR4.016 / PR4.18).
- * Normalises confusable pairs: O/0, I/1, S/5, B/8, Z/2 per class regex.
+ * Normalises confusable pairs: O/0, I/1, S/5, B/8, Z/2 per class regex, using the fewest
+ * substitutions (up to MAX_SUBSTITUTIONS) that make the token match, and reports each one.
  */
 object SerialPatterns {
 
@@ -54,6 +55,21 @@ object SerialPatterns {
 
     const val DEFAULT_PATTERN = "^[A-Z0-9-]{6,24}$"
 
+    /** Upper bound on simultaneous confusable substitutions tried for one token. */
+    const val MAX_SUBSTITUTIONS = 4
+
+    private fun combinations(items: List<Int>, k: Int): Sequence<List<Int>> = sequence {
+        val idx = IntArray(k) { it }
+        while (true) {
+            yield(idx.map { items[it] })
+            var i = k - 1
+            while (i >= 0 && idx[i] == items.size - k + i) i--
+            if (i < 0) break
+            idx[i]++
+            for (j in i + 1 until k) idx[j] = idx[j - 1] + 1
+        }
+    }
+
     fun getPattern(equipmentClass: String?): String {
         return EQUIPMENT_PATTERNS[equipmentClass?.uppercase()] ?: DEFAULT_PATTERN
     }
@@ -80,32 +96,28 @@ object SerialPatterns {
             )
         }
 
-        // Identify confusable indices
-        val confusableIndices = mutableListOf<Pair<Int, Char>>()
-        for (i in clean.indices) {
-            val ch = clean[i]
-            if (LETTER_TO_DIGIT.containsKey(ch) || DIGIT_TO_LETTER.containsKey(ch)) {
-                val rep = LETTER_TO_DIGIT[ch] ?: DIGIT_TO_LETTER[ch]!!
-                confusableIndices.add(Pair(i, rep))
-            }
-        }
-
-        // Try single substitution first, then two
-        for (pair in confusableIndices) {
-            val chars = clean.toCharArray()
-            chars[pair.first] = pair.second
-            val candidate = String(chars)
-            if (regex.matcher(candidate).matches()) {
-                val orig = clean[pair.first]
-                return NormalisationResult(
-                    originalSerial = rawSerial,
-                    normalisedSerial = candidate,
-                    isNormalised = true,
-                    substitutions = listOf(Substitution(pair.first, orig, pair.second)),
-                    matchesPattern = true,
-                    equipmentClass = eqClass,
-                    pattern = patternStr
-                )
+        // Try the fewest substitutions first (1, then 2, ...), leftmost positions first.
+        val confusable = clean.indices.filter { LETTER_TO_DIGIT.containsKey(clean[it]) || DIGIT_TO_LETTER.containsKey(clean[it]) }
+        for (k in 1..minOf(confusable.size, MAX_SUBSTITUTIONS)) {
+            for (combo in combinations(confusable, k)) {
+                val chars = clean.toCharArray()
+                val subs = combo.map { i ->
+                    val rep = LETTER_TO_DIGIT[clean[i]] ?: DIGIT_TO_LETTER.getValue(clean[i])
+                    chars[i] = rep
+                    Substitution(i, clean[i], rep)
+                }
+                val candidate = String(chars)
+                if (regex.matcher(candidate).matches()) {
+                    return NormalisationResult(
+                        originalSerial = rawSerial,
+                        normalisedSerial = candidate,
+                        isNormalised = true,
+                        substitutions = subs,
+                        matchesPattern = true,
+                        equipmentClass = eqClass,
+                        pattern = patternStr
+                    )
+                }
             }
         }
 

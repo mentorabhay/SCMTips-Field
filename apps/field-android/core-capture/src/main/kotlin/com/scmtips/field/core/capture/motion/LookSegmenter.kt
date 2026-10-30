@@ -1,6 +1,6 @@
 package com.scmtips.field.core.capture.motion
 
-import java.util.UUID
+import com.scmtips.field.core.outbox.api.UUIDv7
 
 sealed class LookState {
     object Idle : LookState()
@@ -15,6 +15,7 @@ sealed class LookState {
  * Invariant:
  * - Look starts after 150 ms below 8 deg/s.
  * - Look ends when head speed exceeds 25 deg/s or when a capture record is committed.
+ * - Look ids are UUIDv7 (capture.look_id is uuid not null).
  */
 class LookSegmenter {
 
@@ -53,7 +54,7 @@ class LookSegmenter {
             val stationaryDuration = currentTimestampMs - belowThresholdSinceMs!!
             if (!isLookActive && stationaryDuration >= LOOK_START_DURATION_MS) {
                 isLookActive = true
-                currentLookId = "look-" + UUID.randomUUID().toString().take(8)
+                currentLookId = UUIDv7.generate() // capture.look_id is a uuid column
                 return LookState.LookActive(currentLookId!!, currentTimestampMs, angularSpeedDegPerSec)
             } else if (isLookActive && currentLookId != null) {
                 return LookState.LookActive(currentLookId!!, currentTimestampMs, angularSpeedDegPerSec)

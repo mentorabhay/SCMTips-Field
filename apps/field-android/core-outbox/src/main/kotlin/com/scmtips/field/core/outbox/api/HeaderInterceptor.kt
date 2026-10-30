@@ -2,34 +2,7 @@ package com.scmtips.field.core.outbox.api
 
 import okhttp3.Interceptor
 import okhttp3.Response
-import java.security.SecureRandom
 import java.util.UUID
-
-/**
- * Generates monotonic UUIDv7 IDs compliant with RFC 9562.
- */
-object UUIDv7 {
-    private val random = SecureRandom()
-
-    fun generate(): String {
-        val timestamp = System.currentTimeMillis()
-        val randomBytes = ByteArray(10)
-        random.nextBytes(randomBytes)
-
-        val msb = (timestamp shl 16) or (0x7000L) or ((randomBytes[0].toLong() and 0x0F) shl 8) or (randomBytes[1].toLong() and 0xFF)
-        val lsb = (0x8000000000000000UL.toLong()) or
-                ((randomBytes[2].toLong() and 0x3F) shl 56) or
-                ((randomBytes[3].toLong() and 0xFF) shl 48) or
-                ((randomBytes[4].toLong() and 0xFF) shl 40) or
-                ((randomBytes[5].toLong() and 0xFF) shl 32) or
-                ((randomBytes[6].toLong() and 0xFF) shl 24) or
-                ((randomBytes[7].toLong() and 0xFF) shl 16) or
-                ((randomBytes[8].toLong() and 0xFF) shl 8) or
-                (randomBytes[9].toLong() and 0xFF)
-
-        return UUID(msb, lsb).toString()
-    }
-}
 
 /**
  * In-memory token provider interface for Authorization header.

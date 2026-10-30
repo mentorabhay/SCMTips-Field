@@ -19,15 +19,12 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-
-    testOptions {
-        unitTests.all {
-            it.useJUnitPlatform()
-        }
-    }
 }
 
 dependencies {
+    // CapturePipeline uses UUIDv7 (core-outbox) and LensRenderer/PreviewFrame (core-wearables)
+    implementation(project(":core-outbox"))
+    implementation(project(":core-wearables"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
@@ -38,8 +35,7 @@ dependencies {
     implementation(libs.mediapipe.tasks.vision)
     implementation(libs.kotlinx.coroutines.android)
 
-    testImplementation(libs.junit.jupiter.api)
-    testRuntimeOnly(libs.junit.jupiter.engine)
+    testImplementation(libs.junit4)
     testImplementation(libs.kotest.assertions.core)
     testImplementation(libs.kotest.property)
 }

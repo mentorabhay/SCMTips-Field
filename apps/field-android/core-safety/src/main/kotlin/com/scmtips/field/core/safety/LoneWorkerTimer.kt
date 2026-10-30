@@ -1,15 +1,16 @@
 package com.scmtips.field.core.safety
 
 /**
- * On-Device Lone-Worker Countdown Timer and Warning Deferral Engine (Task T4.045 / FR4.043 / FR4.044 / PR4.19 / TC4.138).
+ * On-device lone-worker timer (T4.045 / FR4.043 / FR4.044 / TC4.138).
  *
- * Rules:
- * - Default interval: 20 minutes (1200 s).
- * - Grace period: 5 minutes (300 s).
- * - Restarted by voice 'check in' or physical tap.
- * - Warns 2 minutes (120 s) before expiry when STATIONARY.
- * - DEFERS warning while CLIMBING or UNKNOWN. Emits warning at first stationary window; escalation time unchanged (TC4.138).
- * - Escalation fires if total elapsed time exceeds interval + grace without check-in.
+ * - Interval default 20 min, tenant range 10..60 min; grace 5 min.
+ * - Restarted by voice "check in" or a tap ([onCheckIn]).
+ * - Warning window starts 2 min before expiry. The warning (MSG4.09) is emitted once, at the first
+ *   evaluation in the window when the technician is not climbing; while CLIMBING or UNKNOWN it is
+ *   deferred. Nothing is shown to the technician while climbing, overdue or escalated included.
+ * - Escalation is due at last check-in + interval + grace, whatever happened in between
+ *   ("escalation time unchanged" by deferral). Escalation itself is sent server-side (FR4.044);
+ *   [LoneWorkerStatus.isEscalated] tells the caller it is due.
  */
 enum class LoneWorkerWarningState {
     NORMAL,
@@ -24,9 +25,11 @@ data class LoneWorkerStatus(
     val state: LoneWorkerWarningState,
     val remainingSeconds: Long,
     val elapsedSeconds: Long,
+    /** True when something should be shown/spoken to the technician now. */
     val isWarningActive: Boolean,
     val isEscalated: Boolean,
     val message: String? = null,
+    val escalatesAtMs: Long = 0L,
 )
 
 class LoneWorkerTimer(
@@ -34,17 +37,26 @@ class LoneWorkerTimer(
     val graceMinutes: Int = 5,
     private val warningLeadMinutes: Int = 2,
 ) {
+    init {
+        require(intervalMinutes in 10..60) { "lone-worker interval must be 10..60 min, got $intervalMinutes" }
+        require(graceMinutes >= 0) { "grace must be >= 0" }
+    }
+
     val intervalSeconds: Long = intervalMinutes * 60L
     val graceSeconds: Long = graceMinutes * 60L
     val warningLeadSeconds: Long = warningLeadMinutes * 60L
 
-    private var lastCheckInMs: Long = 0L
+    var lastCheckInMs: Long = 0L
+        private set
     private var warningEmitted: Boolean = false
 
-    fun start(startTimeMs: Long) {
-        lastCheckInMs = startTimeMs
-        warningEmitted = false
-    }
+    val nextDueMs: Long
+        get() = lastCheckInMs + intervalSeconds * 1000L
+
+    val escalatesAtMs: Long
+        get() = lastCheckInMs + (intervalSeconds + graceSeconds) * 1000L
+
+    fun start(startTimeMs: Long) = onCheckIn(startTimeMs)
 
     fun onCheckIn(checkInTimeMs: Long) {
         lastCheckInMs = checkInTimeMs
@@ -52,70 +64,35 @@ class LoneWorkerTimer(
     }
 
     fun evaluate(currentTimeMs: Long, currentState: ClimbState): LoneWorkerStatus {
-        val elapsedMs = currentTimeMs - lastCheckInMs
-        val elapsedSeconds = maxOf(0L, elapsedMs / 1000L)
+        val elapsedMs = maxOf(0L, currentTimeMs - lastCheckInMs)
+        val elapsedSeconds = elapsedMs / 1000L
         val remainingSeconds = maxOf(0L, intervalSeconds - elapsedSeconds)
+        val climbing = currentState.isClimbingOrFailSafe
 
-        val isOverdue = elapsedSeconds > intervalSeconds
-        val isEscalated = elapsedSeconds > (intervalSeconds + graceSeconds)
-
-        val warningThresholdSeconds = intervalSeconds - warningLeadSeconds
+        fun status(state: LoneWorkerWarningState, active: Boolean, escalated: Boolean, msg: String?) =
+            LoneWorkerStatus(state, remainingSeconds, elapsedSeconds, active, escalated, msg, escalatesAtMs)
 
         return when {
-            isEscalated -> {
-                LoneWorkerStatus(
-                    state = LoneWorkerWarningState.ESCALATED,
-                    remainingSeconds = 0L,
-                    elapsedSeconds = elapsedSeconds,
-                    isWarningActive = true,
-                    isEscalated = true,
-                    message = "Lone worker check-in overdue! Supervisor escalation active [MSG4.10]",
-                )
-            }
-            isOverdue -> {
-                LoneWorkerStatus(
-                    state = LoneWorkerWarningState.OVERDUE,
-                    remainingSeconds = 0L,
-                    elapsedSeconds = elapsedSeconds,
-                    isWarningActive = true,
-                    isEscalated = false,
-                    message = "Check-in grace period active. Please check in now.",
-                )
-            }
-            elapsedSeconds >= warningThresholdSeconds -> {
-                if (currentState.isClimbingOrFailSafe) {
-                    // Defer while climbing!
-                    LoneWorkerStatus(
-                        state = LoneWorkerWarningState.WARNING_DEFERRED_CLIMBING,
-                        remainingSeconds = remainingSeconds,
-                        elapsedSeconds = elapsedSeconds,
-                        isWarningActive = false,
-                        isEscalated = false,
-                        message = "Warning deferred while climbing",
-                    )
-                } else {
-                    // Stationary or ground: deliver warning
+            currentTimeMs >= escalatesAtMs ->
+                status(LoneWorkerWarningState.ESCALATED, !climbing, true, if (climbing) null else MSG_ESCALATED)
+            currentTimeMs >= nextDueMs ->
+                status(LoneWorkerWarningState.OVERDUE, !climbing, false, if (climbing) null else MSG_OVERDUE)
+            currentTimeMs >= nextDueMs - warningLeadSeconds * 1000L -> when {
+                climbing -> status(LoneWorkerWarningState.WARNING_DEFERRED_CLIMBING, false, false, null)
+                !warningEmitted -> {
                     warningEmitted = true
-                    LoneWorkerStatus(
-                        state = LoneWorkerWarningState.WARNING_EMITTED,
-                        remainingSeconds = remainingSeconds,
-                        elapsedSeconds = elapsedSeconds,
-                        isWarningActive = true,
-                        isEscalated = false,
-                        message = "Lone worker check-in due in 2 minutes. Say 'check in' or tap to confirm [MSG4.09]",
-                    )
+                    status(LoneWorkerWarningState.WARNING_EMITTED, true, false, MSG_CHECK_IN_DUE)
                 }
+                else -> status(LoneWorkerWarningState.WARNING_DUE, false, false, null)
             }
-            else -> {
-                LoneWorkerStatus(
-                    state = LoneWorkerWarningState.NORMAL,
-                    remainingSeconds = remainingSeconds,
-                    elapsedSeconds = elapsedSeconds,
-                    isWarningActive = false,
-                    isEscalated = false,
-                    message = null,
-                )
-            }
+            else -> status(LoneWorkerWarningState.NORMAL, false, false, null)
         }
+    }
+
+    companion object {
+        /** MSG4.09 */
+        const val MSG_CHECK_IN_DUE = "Check in due in 2 min. Say check in."
+        const val MSG_OVERDUE = "Check in now. Say check in."
+        const val MSG_ESCALATED = "Your supervisor has been alerted. Say check in."
     }
 }

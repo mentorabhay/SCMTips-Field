@@ -25,14 +25,16 @@ data class SensorSample(
 )
 
 class ClimbStateDetector(
-    private val baselineAltitudeM: Double = 0.0,
+    baselineAltitudeM: Double = 0.0,
     private val climbSpeedThresholdMps: Double = 0.15,
     private val stationarySpeedThresholdMps: Double = 0.05,
     private val groundThresholdM: Double = 2.0,
     private val maxSensorGapMs: Long = 1000L,
 ) {
+    private var baselineAltitudeM: Double = baselineAltitudeM
     private var lastSample: SensorSample? = null
     private var currentFilteredSpeedMps: Double = 0.0
+    private var filterPrimed: Boolean = false
     private var stationaryDurationMs: Long = 0L
 
     var currentState: ClimbState = ClimbState.GROUND
@@ -46,10 +48,11 @@ class ClimbStateDetector(
         lastSample = sample
 
         if (prev == null) {
+            // No speed history yet: at height that is UNKNOWN, which the gates treat as climbing.
             currentState = if (sample.altitudeM - baselineAltitudeM <= groundThresholdM) {
                 ClimbState.GROUND
             } else {
-                ClimbState.STATIONARY
+                ClimbState.UNKNOWN
             }
             return currentState
         }
@@ -61,14 +64,17 @@ class ClimbStateDetector(
         if (dtMs > maxSensorGapMs) {
             currentState = ClimbState.UNKNOWN
             currentFilteredSpeedMps = 0.0
+            filterPrimed = false
             stationaryDurationMs = 0L
             return currentState
         }
 
         val dtS = dtMs / 1000.0
         val rawSpeedMps = (sample.altitudeM - prev.altitudeM) / dtS
-        // Exponential moving average filter (alpha = 0.3)
-        currentFilteredSpeedMps = 0.7 * currentFilteredSpeedMps + 0.3 * rawSpeedMps
+        // Exponential moving average filter (alpha = 0.3), primed with the first measured speed so a
+        // slow climb is not read as "stationary" while the filter warms up from zero.
+        currentFilteredSpeedMps = if (filterPrimed) 0.7 * currentFilteredSpeedMps + 0.3 * rawSpeedMps else rawSpeedMps
+        filterPrimed = true
 
         val heightAboveBaseline = sample.altitudeM - baselineAltitudeM
 
@@ -95,8 +101,10 @@ class ClimbStateDetector(
     }
 
     fun reset(baselineM: Double = baselineAltitudeM) {
+        baselineAltitudeM = baselineM
         lastSample = null
         currentFilteredSpeedMps = 0.0
+        filterPrimed = false
         stationaryDurationMs = 0L
         currentState = ClimbState.GROUND
     }

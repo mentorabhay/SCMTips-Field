@@ -24,11 +24,21 @@ data class DetectedObject(
 )
 
 /**
- * On-device int8 MediaPipe Object Detector wrapper (Task T2.020 / FR2.016).
- * Enforces classes: carton, label, nameplate, gauge, tag, device; score >= 0.50; max 10 results.
+ * Runs the int8 TFLite model through MediaPipe on Android. Not implemented in this module yet:
+ * no model asset is shipped (docs/models: status NOT_PROVIDED), so there is no engine to inject
+ * outside tests. UNVERIFIED.
+ */
+fun interface DetectorEngine {
+    fun infer(frame: PreviewFrame): List<DetectedObject>
+}
+
+/**
+ * Object detector wrapper (Task T2.020 / FR2.016): keeps only the classes carton, label, nameplate,
+ * gauge, tag and device at score >= 0.50, highest score first, at most 10 results.
+ * The inference itself is delegated to [DetectorEngine]; this class adds the post-filter only.
  */
 class MediaPipeDetector(
-    private val modelAssetPath: String = "detector_v1.tflite",
+    private val engine: DetectorEngine,
     private val scoreThreshold: Float = 0.50f,
     private val maxResults: Int = 10
 ) {
@@ -50,8 +60,5 @@ class MediaPipeDetector(
             .take(maxResults)
     }
 
-    fun detect(frame: PreviewFrame, injectedDetections: List<DetectedObject>? = null): List<DetectedObject> {
-        val candidates = injectedDetections ?: emptyList()
-        return filterAndSort(candidates)
-    }
+    fun detect(frame: PreviewFrame): List<DetectedObject> = filterAndSort(engine.infer(frame))
 }

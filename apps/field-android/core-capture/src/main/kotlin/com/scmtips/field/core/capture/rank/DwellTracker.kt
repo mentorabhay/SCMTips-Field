@@ -11,11 +11,21 @@ data class TrackedObject(
     val detection: DetectedObject,
     val firstSeenMs: Long,
     val lastSeenMs: Long,
-    val accumulatedDwellMs: Long
-)
+    val accumulatedDwellMs: Long,
+    /** Whether the box centre was inside the capture circle on the last update. */
+    val insideCircle: Boolean = false
+) {
+    /** Dwell component of the rank score: 0 at 0 ms, 1 at 800 ms or more (FR2.027). */
+    val dwellScore: Float get() = min(1f, accumulatedDwellMs.toFloat() / Ranker.DWELL_MAX_MS)
+}
 
 /**
- * IoU-based multi-object tracker and Gaze Dwell accumulator (Task T2.025 / FR2.027 / TC2.125).
+ * IoU-based multi-object tracker and head-gaze dwell accumulator (Task T2.025 / FR2.027 / TC2.125).
+ *
+ * Dwell grows by the elapsed time between consecutive frames on which the tracked box centre is
+ * inside the capture circle, reaches full score at 0.8 s, and resets to 0 when the centre leaves.
+ * Time spent outside is never counted: on re-entry accumulation restarts from 0.
+ * Tracks not matched in a frame (IoU < threshold) are dropped.
  */
 class DwellTracker(
     private val viewWidth: Float = 504f,
@@ -26,46 +36,31 @@ class DwellTracker(
     private val centerX = viewWidth / 2f
     private val centerY = viewHeight / 2f
 
-    private val activeTracks = mutableMapOf<String, TrackedObject>()
+    private val activeTracks = linkedMapOf<String, TrackedObject>()
     private var nextTrackNumber = 1
 
     companion object {
         fun computeIoU(boxA: BoundingBox, boxB: BoundingBox): Float {
-            val interLeft = max(boxA.left, boxB.left)
-            val interTop = max(boxA.top, boxB.top)
-            val interRight = min(boxA.right, boxB.right)
-            val interBottom = min(boxA.bottom, boxB.bottom)
-
-            val interWidth = max(0f, interRight - interLeft)
-            val interHeight = max(0f, interBottom - interTop)
+            val interWidth = max(0f, min(boxA.right, boxB.right) - max(boxA.left, boxB.left))
+            val interHeight = max(0f, min(boxA.bottom, boxB.bottom) - max(boxA.top, boxB.top))
             val interArea = interWidth * interHeight
-
             val unionArea = boxA.area + boxB.area - interArea
             return if (unionArea <= 0f) 0f else interArea / unionArea
         }
     }
 
-    fun isCenterInsideCircle(x: Float, y: Float): Boolean {
-        return hypot(x - centerX, y - centerY) <= circleRadius
-    }
+    fun isCenterInsideCircle(x: Float, y: Float): Boolean = hypot(x - centerX, y - centerY) <= circleRadius
 
-    /**
-     * Updates tracks with newly detected objects for current frame timestamp.
-     */
-    fun update(
-        detections: List<DetectedObject>,
-        timestampMs: Long = System.currentTimeMillis()
-    ): List<TrackedObject> {
-        val matchedTrackIds = mutableSetOf<String>()
+    /** Updates tracks with the detections of one frame and returns the tracks seen in it. */
+    fun update(detections: List<DetectedObject>, timestampMs: Long): List<TrackedObject> {
+        val kept = mutableSetOf<String>()
         val updatedTracks = mutableListOf<TrackedObject>()
 
         for (det in detections) {
-            // Find best matching track with IoU >= 0.40
             var bestTrackId: String? = null
             var bestIoU = iouThreshold
-
             for ((tId, track) in activeTracks) {
-                if (tId in matchedTrackIds) continue
+                if (tId in kept) continue
                 val iou = computeIoU(track.detection.box, det.box)
                 if (iou >= bestIoU) {
                     bestIoU = iou
@@ -74,40 +69,35 @@ class DwellTracker(
             }
 
             val isInside = isCenterInsideCircle(det.box.x, det.box.y)
-
-            if (bestTrackId != null) {
-                matchedTrackIds.add(bestTrackId)
-                val existing = activeTracks[bestTrackId]!!
-                val deltaMs = timestampMs - existing.lastSeenMs
-                val newDwell = if (isInside) existing.accumulatedDwellMs + deltaMs else 0L
-
-                val updated = existing.copy(
-                    detection = det,
-                    lastSeenMs = timestampMs,
-                    accumulatedDwellMs = newDwell
-                )
-                activeTracks[bestTrackId] = updated
-                updatedTracks.add(updated)
+            val track = if (bestTrackId != null) {
+                val existing = activeTracks.getValue(bestTrackId)
+                val deltaMs = max(0L, timestampMs - existing.lastSeenMs)
+                val newDwell = when {
+                    !isInside -> 0L
+                    existing.insideCircle -> existing.accumulatedDwellMs + deltaMs
+                    else -> 0L // just entered: start counting from this frame
+                }
+                existing.copy(detection = det, lastSeenMs = timestampMs, accumulatedDwellMs = newDwell, insideCircle = isInside)
             } else {
-                // New track
-                val newId = "trk-${nextTrackNumber++}"
-                val initialDwell = if (isInside) 50L else 0L
-                val newTrack = TrackedObject(
-                    trackId = newId,
+                TrackedObject(
+                    trackId = "trk-${nextTrackNumber++}",
                     detection = det,
                     firstSeenMs = timestampMs,
                     lastSeenMs = timestampMs,
-                    accumulatedDwellMs = initialDwell
+                    accumulatedDwellMs = 0L,
+                    insideCircle = isInside
                 )
-                activeTracks[newId] = newTrack
-                updatedTracks.add(newTrack)
             }
+            activeTracks[track.trackId] = track
+            kept.add(track.trackId)
+            updatedTracks.add(track)
         }
 
-        // Prune stale tracks that disappeared
-        activeTracks.keys.retainAll(matchedTrackIds)
+        activeTracks.keys.retainAll(kept)
         return updatedTracks
     }
+
+    fun activeTrackCount(): Int = activeTracks.size
 
     fun resetLook() {
         activeTracks.clear()

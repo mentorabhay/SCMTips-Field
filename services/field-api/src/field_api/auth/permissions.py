@@ -45,6 +45,7 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.task.read",
         ),
         "field.supervisor": (
+            "field.system.read",
             "field.discrepancy.read",
             "field.discrepancy.approve",
             "field.recount.assign",

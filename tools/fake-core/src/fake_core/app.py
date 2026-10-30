@@ -55,6 +55,7 @@ class TokenIssueRequest(BaseModel):
     tenant_id: str
     device_id: str | None = None
     roles: list[str] = Field(default_factory=lambda: ["field.operator"])
+    site_ids: list[str] = Field(default_factory=lambda: ["*"])
     ttl_seconds: int = 3600
 
 
@@ -81,6 +82,7 @@ def issue_token(req: TokenIssueRequest) -> dict[str, Any]:
         "aud": "scmtips-core",
         "tenant_id": req.tenant_id,
         "roles": req.roles,
+        "sites": req.site_ids,
         "iat": int(now.timestamp()),
         "exp": int(exp.timestamp()),
         "jti": jti,

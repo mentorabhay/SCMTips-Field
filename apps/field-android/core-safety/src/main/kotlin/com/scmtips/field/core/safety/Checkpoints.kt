@@ -7,7 +7,7 @@ import kotlin.math.abs
  *
  * Rules:
  * - Matches current altitude to rest platform heights within +/- 1.5 m when STATIONARY.
- * - Shows message 'Rest platform {name}. Clip in before you continue.' [MSG4.08].
+ * - Shows MSG4.08 "Rest platform L{n}. Clip in before you continue." (platform name is e.g. "L2").
  * - Recalibrates barometric baseline to prevent weather pressure drift.
  */
 data class RestPlatform(
@@ -55,7 +55,7 @@ class RestPlatformDetector(
         val driftM = currentAltitudeM - match.heightM
         currentBaselineM += driftM
 
-        val msg = "Rest platform ${match.name}. Clip in before you continue. [MSG4.08]"
+        val msg = "Rest platform ${match.name}. Clip in before you continue."
 
         return CheckpointDetection(
             platform = match,

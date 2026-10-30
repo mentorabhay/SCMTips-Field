@@ -30,6 +30,7 @@ from erp_sim.services.inbound import router as ibd_router
 from erp_sim.services.matdoc import router as matdoc_router
 from erp_sim.services.outbound import router as obd_router
 from erp_sim.services.physinv import router as pi_router
+from erp_sim.services.product import router as product_router
 
 logger = structlog.get_logger(__name__)
 
@@ -93,6 +94,7 @@ async def sap_http_exception_handler(request: Request, exc: HTTPException) -> JS
 app.include_router(ibd_router)
 app.include_router(obd_router)
 app.include_router(matdoc_router)
+app.include_router(product_router)
 app.include_router(pi_router)
 app.include_router(equipment_router)
 app.include_router(maint_router)

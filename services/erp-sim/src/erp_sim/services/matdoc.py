@@ -54,6 +54,44 @@ class MaterialDocumentCreateIn(BaseModel):
     to_MaterialDocumentItem: dict[str, list[MaterialDocumentItemIn]] | list[MaterialDocumentItemIn] | None = None  # noqa: N815
 
 
+HEADER_TEXT_FILTER = "MaterialDocumentHeaderText eq 'FIELD:"
+
+
+@router.get("/A_MaterialDocumentHeader")
+async def find_material_documents(
+    filter_: str | None = Query(None, alias="$filter"),
+    sap_client: str = Header("100", alias="sap-client"),
+) -> dict[str, Any]:
+    """Find documents by header text ``FIELD:<idempotency key>`` (timeout recovery, FR1.011).
+
+    Only this filter is supported. The sim keeps the key in its dedupe store rather than a header
+    text column; the response shape matches the S/4 collection read.
+    """
+    if not filter_ or not filter_.startswith(HEADER_TEXT_FILTER) or not filter_.endswith("'"):
+        raise HTTPException(status_code=400, detail="only $filter=MaterialDocumentHeaderText eq 'FIELD:<key>' is supported")
+    key = filter_[len(HEADER_TEXT_FILTER) : -1]
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT d.document_no, d.fiscal_year, d.created_at FROM erpsim.dedupe d"
+            " WHERE d.client = %s AND d.idem_key = %s",
+            (sap_client, key),
+        )
+        rows = cur.fetchall()
+    return {
+        "d": {
+            "results": [
+                {
+                    "MaterialDocument": r[0],
+                    "MaterialDocumentYear": r[1],
+                    "MaterialDocumentHeaderText": f"FIELD:{key}",
+                    "CreationDate": r[2].date().isoformat(),
+                }
+                for r in rows
+            ]
+        }
+    }
+
+
 @router.get("/A_MaterialDocumentHeader(MaterialDocument='{doc_number}',MaterialDocumentYear='{fiscal_year}')")
 async def get_material_document(
     doc_number: str,
@@ -64,7 +102,7 @@ async def get_material_document(
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT doc_type, movement_type, reversal_of, status, header_data
+            SELECT doc_type, movement_type, reversal_of, status, header_data, created_at
             FROM erpsim.document
             WHERE client = %s AND doc_number = %s AND fiscal_year = %s;
         """,
@@ -77,8 +115,8 @@ async def get_material_document(
         d_data: dict[str, Any] = {
             "MaterialDocument": doc_number,
             "MaterialDocumentYear": fiscal_year,
-            "DocumentDate": "2026-11-20",
-            "PostingDate": "2026-11-20",
+            "DocumentDate": row[5].date().isoformat(),
+            "PostingDate": row[5].date().isoformat(),
             "GoodsMovementCode": "01",
             "Status": row[3],
         }

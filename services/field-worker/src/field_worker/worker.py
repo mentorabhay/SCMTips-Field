@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import os
 import signal
+import socket
 import time
 from datetime import UTC, datetime
 from typing import Any
@@ -123,6 +125,19 @@ class FieldWorker:
             self._last_purge = now
             self.purge_expired_idempotency_records()
         self.last_heartbeat = datetime.now(UTC).isoformat()
+        await asyncio.to_thread(self.record_heartbeat)
+
+    def record_heartbeat(self) -> None:
+        """Upsert ops.service_heartbeat so GET /v1/system/status can see this worker is alive."""
+        with psycopg.connect(self.db_url, autocommit=True) as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO ops.service_heartbeat (service, instance, beat_at, details)"
+                " VALUES ('field-worker', %s, NOW(), %s::jsonb)"
+                " ON CONFLICT (service) DO UPDATE SET instance = EXCLUDED.instance, beat_at = NOW(),"
+                " details = EXCLUDED.details",
+                (f"{socket.gethostname()}:{os.getpid()}",
+                 json.dumps({"jobs_processed": self.jobs_processed, "tasks_imported": self.tasks_imported})),
+            )
 
     async def run(self) -> None:
         self.is_running = True

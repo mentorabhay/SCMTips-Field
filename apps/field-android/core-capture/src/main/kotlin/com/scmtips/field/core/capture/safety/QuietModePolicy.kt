@@ -17,6 +17,7 @@ class QuietModePolicy(
     companion object {
         const val SPEED_THRESHOLD_MPS = 1.2f
         const val MAX_CROP_DIMENSION = 640
+        const val MAX_CROP_BYTES = 256 * 1024 // TC2.110: crop at most 256 KB
     }
 
     /**
@@ -57,6 +58,9 @@ class QuietModePolicy(
     fun validateCropDimensions(width: Int, height: Int): Boolean {
         return width <= maxCropDimensionPx && height <= maxCropDimensionPx
     }
+
+    /** Validates the encoded crop size cap of 256 KB (TC2.110). */
+    fun validateCropBytes(sizeBytes: Int): Boolean = sizeBytes in 1..MAX_CROP_BYTES
 
     /**
      * Validates that full-frame persistence is prevented and only bounding box crops are stored (FR2.066).

@@ -1,0 +1,11 @@
+# Prices used by the AI budget guard (field_api.ai.budget) to estimate a call's cost BEFORE it is made.
+# USD per million tokens. A model that is not listed here is refused: the guard never guesses a price.
+# Fill these from your provider console (llama.developer.meta.com, baseten.co) — they are owner-supplied,
+# UNVERIFIED by any build, and must be re-checked when the provider changes pricing.
+#
+# llama:
+#   <model id>: {input_per_mtok: 0.0, output_per_mtok: 0.0}
+# baseten:
+#   <model id>: {input_per_mtok: 0.0, output_per_mtok: 0.0}
+llama: {}
+baseten: {}

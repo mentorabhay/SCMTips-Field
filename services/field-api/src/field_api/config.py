@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     FIELD_ERP_SIM_URL: str = "http://localhost:8002"
     FIELD_JWKS_MAX_STALE_S: int = 3600
     FIELD_IDEMPOTENCY_TTL_S: int = 86400  # 24 hours
-    FIELD_CURSOR_HMAC_SECRET: str = "dev-cursor-hmac-secret-change-in-production-min32bytes"
     FIELD_DEFAULT_PAGE_SIZE: int = 50
     FIELD_MAX_PAGE_SIZE: int = 200
     OTEL_EXPORTER_OTLP_ENDPOINT: str = "http://localhost:4317"

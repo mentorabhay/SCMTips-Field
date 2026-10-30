@@ -5,7 +5,6 @@ import com.scmtips.field.core.wearables.PreviewFrame
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import java.util.UUID
 
 data class PhoneImuReading(
     val angularSpeedRadPerSec: Float,
@@ -18,7 +17,9 @@ data class PhoneImuReading(
  * Feeds 640x480 YUV frames and stills into the perception pipeline when glasses are not paired.
  */
 class CameraXSource(
-    private val isPhoneCameraAllowed: () -> Boolean = { true }
+    private val isPhoneCameraAllowed: () -> Boolean = { true },
+    /** Platform still capture (CameraX ImageCapture). Not wired yet: UNVERIFIED. */
+    private val stillCapture: (suspend () -> CapturedPhoto)? = null
 ) {
     companion object {
         const val FRAME_WIDTH = 640
@@ -34,7 +35,6 @@ class CameraXSource(
 
     fun startAnalysis(): Boolean {
         if (!isPhoneCameraAllowed()) {
-            println("[CameraXSource] Phone camera mode blocked by MDM policy.")
             return false
         }
         isAnalysisActive = true
@@ -70,14 +70,7 @@ class CameraXSource(
 
     suspend fun captureStillPhoto(): CapturedPhoto {
         check(isPhoneCameraAllowed()) { "Phone camera capture disallowed by MDM" }
-        val traceId = UUID.randomUUID().toString().replace("-", "")
-        val spanId = UUID.randomUUID().toString().replace("-", "").take(16)
-        return CapturedPhoto(
-            jpegBytes = ByteArray(2048) { 0xAA.toByte() }, // Simulated high-res JPEG
-            width = 1920,
-            height = 1080,
-            timestampMs = System.currentTimeMillis(),
-            traceparent = "00-$traceId-$spanId-01"
-        )
+        val capture = checkNotNull(stillCapture) { "CameraX still capture is not wired (UNVERIFIED)" }
+        return capture()
     }
 }

@@ -50,6 +50,41 @@ def load_secret(key: str, default: str | None = None) -> str:
     raise KeyError(f"Secret '{key}' not found in secrets provider or environment")
 
 
+MIN_SECRET_BYTES = 32
+
+# Signing/HMAC keys the service cannot run without. There are no built-in defaults (A-02):
+# scripts/dev/run-field-stack.ps1 generates them into the git-ignored .env.local, CI sets test values.
+REQUIRED_SECRETS: tuple[tuple[str, ...], ...] = (
+    ("FIELD_JWT_SECRET", "JWT_SECRET_KEY"),
+    ("FIELD_CURSOR_HMAC_SECRET",),
+    ("FIELD_P13F_WEBHOOK_SECRET",),
+    ("FIELD_EVIDENCE_SECRET",),
+)
+
+
+def required_secret(*names: str) -> str:
+    """First of ``names`` that is set (secrets file or env); at least 32 bytes. Raises if none is."""
+    for n in names:
+        try:
+            val = load_secret(n)
+        except KeyError:
+            continue
+        if len(val.encode("utf-8")) < MIN_SECRET_BYTES:
+            raise RuntimeError(f"secret {n} is shorter than {MIN_SECRET_BYTES} bytes")
+        return val
+    raise RuntimeError(f"secret {' / '.join(names)} is not set (put it in .env.local; see .env.example)")
+
+
+def missing_required_secrets() -> list[str]:
+    out = []
+    for names in REQUIRED_SECRETS:
+        try:
+            required_secret(*names)
+        except RuntimeError as e:
+            out.append(str(e))
+    return out
+
+
 def scrub_string(val: str) -> str:
     """Mask credentials within a string."""
     # Redact URI passwords

@@ -20,10 +20,10 @@ import re
 import sys
 from pathlib import Path
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-FIRST_PARTY = {"field_api", "field_worker", "erp_sim", "field_sap", "sap_adapter", "fake_core", "compat", "tools"}
+FIRST_PARTY = {"field_api", "field_common", "field_worker", "erp_sim", "field_sap", "sap_adapter", "fake_core", "compat", "tools"}
 SKIP_DIRS = {".venv", "node_modules", ".git", "build"}
 SRC_READ_RE = re.compile(r"\.(kt|kts|java)\b")
 # Tests whose subject is a committed artefact (spec doc, contract JSON/YAML, design tokens) are
@@ -44,6 +44,17 @@ def test_files() -> list[Path]:
     return sorted(out)
 
 
+def _without_code_fixtures(src: str, tree: ast.AST) -> str:
+    """Blank out comments and string literals that are themselves Python source (gate-test fixtures)."""
+    out = re.sub(r"(?m)^\s*#.*$", "", src)  # whole-line comments (notes saying where coverage moved)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and "def test_" in node.value:
+            seg = ast.get_source_segment(src, node)
+            if seg:
+                out = out.replace(seg, '""')
+    return out
+
+
 def problems(path: Path) -> list[str]:
     src = path.read_text(encoding="utf-8")
     tree = ast.parse(src)
@@ -59,7 +70,8 @@ def problems(path: Path) -> list[str]:
     artefact_test = bool(ARTEFACT_RE.search(src))
     if not (imported & FIRST_PARTY) and not ({"psycopg", "fastapi"} & imported) and not artefact_test:
         errs.append("E1 imports no first-party module and touches neither the DB nor the app")
-    if "read_text" in src and SRC_READ_RE.search(src):
+    code = _without_code_fixtures(src, tree)
+    if "read_text" in code and SRC_READ_RE.search(code):
         errs.append("E3 asserts on Kotlin/Java source text")
     return errs
 

@@ -20,6 +20,11 @@ enum class FieldPermission(val manifestName: String, val rationaleTitle: String,
         "Glasses Connectivity",
         "Required to pair and stream HUD preview to Meta Ray-Ban glasses."
     ),
+    BLUETOOTH_SCAN(
+        "android.permission.BLUETOOTH_SCAN",
+        "Find Glasses",
+        "Required to find your glasses nearby when pairing."
+    ),
     NOTIFICATIONS(
         "android.permission.POST_NOTIFICATIONS",
         "Session Notifications",
@@ -28,6 +33,7 @@ enum class FieldPermission(val manifestName: String, val rationaleTitle: String,
 }
 
 enum class PermissionStatus {
+    NOT_REQUESTED,
     GRANTED,
     RATIONALE_REQUIRED,
     PERMANENTLY_DENIED
@@ -41,7 +47,8 @@ class PermissionManager(
     private val shouldShowRationale: (String) -> Boolean = { false }
 ) {
     companion object {
-        const val MSG2_05 = "Permission permanently denied. Open App Settings to enable full glasses and voice features, or continue in reduced manual mode."
+        /** MSG2.05 */
+        const val MSG2_05 = "Camera and microphone access is off, so capture cannot start. Open Settings, then Permissions, to turn it on."
     }
 
     private val _permissionStates = MutableStateFlow<Map<FieldPermission, PermissionStatus>>(emptyMap())
@@ -55,8 +62,9 @@ class PermissionManager(
         val updated = FieldPermission.values().associateWith { perm ->
             when {
                 checkPermissionGranted(perm.manifestName) -> PermissionStatus.GRANTED
+                _permissionStates.value[perm] == PermissionStatus.PERMANENTLY_DENIED -> PermissionStatus.PERMANENTLY_DENIED
                 shouldShowRationale(perm.manifestName) -> PermissionStatus.RATIONALE_REQUIRED
-                else -> PermissionStatus.RATIONALE_REQUIRED
+                else -> PermissionStatus.NOT_REQUESTED
             }
         }
         _permissionStates.value = updated
@@ -68,9 +76,11 @@ class PermissionManager(
         _permissionStates.value = current
     }
 
-    fun canRunReducedMode(): Boolean {
-        // App can run in reduced manual mode even if Camera or Mic is missing
-        return true
+    /** MSG2.05 when a capture-critical permission is permanently denied, else null. */
+    fun blockingMessage(): String? {
+        val states = _permissionStates.value
+        val critical = listOf(FieldPermission.CAMERA, FieldPermission.RECORD_AUDIO)
+        return if (critical.any { states[it] == PermissionStatus.PERMANENTLY_DENIED }) MSG2_05 else null
     }
 
     fun isAllCriticalGranted(): Boolean {

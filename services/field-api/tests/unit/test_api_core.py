@@ -1,5 +1,7 @@
 """Unit Tests for Core API Endpoints (Task T1.011 / T1.012 / T1.013)."""
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from field_api.app import app
@@ -71,10 +73,18 @@ def test_authenticated_me_endpoint(auth_headers: dict[str, str]) -> None:
 
 
 @pytest.mark.unit
-def test_system_status() -> None:
-    res = client.get("/v1/system/status")
-    assert res.status_code == 200
+def test_system_status_is_real_and_needs_permission() -> None:
+    """API1.13: permission field.system.read; checks are measured, not constants."""
+    assert client.get("/v1/system/status").status_code == 401
+    op = create_dev_token("op", str(uuid.uuid4()), ["field.operator"])
+    assert client.get("/v1/system/status", headers={"Authorization": f"Bearer {op}"}).status_code == 403
+    sup = create_dev_token("sup", str(uuid.uuid4()), ["field.supervisor"])
+    res = client.get("/v1/system/status", headers={"Authorization": f"Bearer {sup}"})
+    assert res.status_code == 200, res.text
     data = res.json()
-    assert data["overall_status"] == "OPERATIONAL"
-    assert len(data["services"]) >= 4
-    assert len(data["compatibility"]) >= 3
+    checks = {c["name"]: c for c in data["checks"]}
+    assert checks["postgres"]["ok"] is True and checks["postgres"]["probe_ms"] is not None
+    assert set(checks) == {"postgres", "field-worker", "erp"}
+    assert data["ready"] == all(c["ok"] for c in data["checks"])
+    assert data["erp"]["p95_ms"] is None
+    assert set(data["compat"].values()) <= {"PASS", "FAIL", "SKIPPED-PENDING", "UNVERIFIED"}

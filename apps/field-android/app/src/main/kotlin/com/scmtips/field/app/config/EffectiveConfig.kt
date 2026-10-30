@@ -14,7 +14,7 @@ data class AppConfig(
     val allowedGlassesModels: List<String> = listOf("Ray-Ban Display", "Ray-Ban Meta"),
     val forceAudioOnly: Boolean = false,
     val phoneCameraModeAllowed: Boolean = true,
-    val maxOutboxItems: Int = 500,
+    val maxOutboxItems: Int = 2000,
     val logLevel: String = "INFO"
 ) {
     companion object {
@@ -38,12 +38,12 @@ class EffectiveConfigManager(
         server: Map<String, Any?> = emptyMap(),
         defaults: AppConfig = AppConfig()
     ): AppConfig {
-        fun <T> resolve(key: String, mdmVal: Any?, serverVal: Any?, defaultVal: T, transform: (Any) -> T): T {
-            if (mdmVal != null) {
-                return try { transform(mdmVal) } catch (_: Exception) { defaultVal }
-            }
-            if (serverVal != null) {
-                return try { transform(serverVal) } catch (_: Exception) { defaultVal }
+        // MDM > server > default; a value that cannot be parsed at one level falls through to the next.
+        fun <T : Any> resolve(key: String, mdmVal: Any?, serverVal: Any?, defaultVal: T, transform: (Any) -> T?): T {
+            for (raw in listOf(mdmVal, serverVal)) {
+                if (raw == null) continue
+                val v = try { transform(raw) } catch (_: Exception) { null }
+                if (v != null) return v
             }
             return defaultVal
         }
@@ -77,8 +77,8 @@ class EffectiveConfigManager(
         ) { raw ->
             when (raw) {
                 is List<*> -> raw.mapNotNull { it?.toString() }
-                is String -> raw.split(",").map { it.trim() }
-                else -> defaults.allowedGlassesModels
+                is String -> raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                else -> null
             }
         }
 
@@ -90,8 +90,8 @@ class EffectiveConfigManager(
         ) { raw ->
             when (raw) {
                 is Boolean -> raw
-                is String -> raw.toBooleanStrictOrNull() ?: defaults.forceAudioOnly
-                else -> defaults.forceAudioOnly
+                is String -> raw.toBooleanStrictOrNull()
+                else -> null
             }
         }
 
@@ -103,8 +103,8 @@ class EffectiveConfigManager(
         ) { raw ->
             when (raw) {
                 is Boolean -> raw
-                is String -> raw.toBooleanStrictOrNull() ?: defaults.phoneCameraModeAllowed
-                else -> defaults.phoneCameraModeAllowed
+                is String -> raw.toBooleanStrictOrNull()
+                else -> null
             }
         }
 
@@ -115,9 +115,9 @@ class EffectiveConfigManager(
             defaults.maxOutboxItems
         ) { raw ->
             when (raw) {
-                is Number -> raw.toInt()
-                is String -> raw.toIntOrNull() ?: defaults.maxOutboxItems
-                else -> defaults.maxOutboxItems
+                is Number -> raw.toInt().takeIf { it > 0 }
+                is String -> raw.toIntOrNull()?.takeIf { it > 0 }
+                else -> null
             }
         }
 
