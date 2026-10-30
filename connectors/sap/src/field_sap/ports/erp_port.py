@@ -92,6 +92,10 @@ class ErpPort(Protocol):
         """Query existing posting by client idempotency key."""
         ...
 
+    async def update_inbound_delivery_item(self, req: ErpPostingRequest) -> ErpResult:
+        """Set ActualDeliveryQuantity on one inbound delivery item before goods receipt."""
+        ...
+
     async def post_inbound_goods_receipt(self, req: ErpPostingRequest) -> ErpResult:
         """Post Goods Receipt for Inbound Delivery (Movement 101)."""
         ...

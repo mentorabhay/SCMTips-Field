@@ -42,6 +42,7 @@ from field_api.safety.api import router as safety_router
 from field_api.sitegraph.routes import router as sitegraph_router
 from field_api.sitepack.api import router as sitepack_router
 from field_api.sites.tree import router as site_tree_router
+from field_api.tasks.api import router as tasks_router
 from field_api.trails.api import router as trails_router
 from field_api.visits.api import router as visits_router
 from field_api.visits.override import router as visits_override_router
@@ -185,6 +186,7 @@ def create_app() -> FastAPI:
     app.include_router(diagnostics_router)
     app.include_router(status_router)
     app.include_router(posting_router)
+    app.include_router(tasks_router)
     app.include_router(warehouse_router)
     app.include_router(warehouse_outbound_router)
     app.include_router(warehouse_inventory_router)

@@ -12,6 +12,7 @@ import os
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from types import MappingProxyType
 from typing import Any
 
 import psycopg
@@ -49,6 +50,63 @@ class ClaimedJob:
     payload: dict[str, Any]
     attempts: int
     max_attempts: int
+    erp_doc_id: str | None = None
+
+
+# Doc families whose success means the ERP document is posted (item PATCHes are intermediate).
+FINAL_DOC_FAMILIES = frozenset({"GoodsReceipt", "GoodsIssue", "Cancellation", "PhysicalInventory", "Transfer"})
+MOVEMENT_TYPES = MappingProxyType(
+    {"GoodsReceipt": "101", "GoodsIssue": "601", "PhysicalInventory": "701/702", "Transfer": "311"}
+)
+
+
+def finalize_erp_document(cur: psycopg.Cursor[Any], job: ClaimedJob, doc_no: str, doc_year: str | int) -> None:
+    """Write the ERP document number back and close the task lines it posted (C4).
+
+    erp_document.payload carries ``task_id``, ``line_ids`` and, for reversals, ``reverses``
+    (the original erp_document id) and ``line_status_after``.
+    """
+    if not job.erp_doc_id:
+        return
+    cur.execute(
+        """
+        UPDATE field.erp_document
+           SET status = 'posted', doc_number = %s, fiscal_year = %s, version = version + 1, updated_at = NOW()
+         WHERE id = %s
+     RETURNING payload
+        """,
+        (str(doc_no) or None, str(doc_year), job.erp_doc_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        return
+    payload = row[0] if isinstance(row[0], dict) else json.loads(row[0] or "{}")
+    line_ids = payload.get("line_ids") or []
+    reverses = payload.get("reverses")
+    if reverses:
+        cur.execute(
+            "UPDATE field.erp_document SET status = 'reversed', updated_at = NOW() WHERE id = %s",
+            (reverses,),
+        )
+    line_status = payload.get("line_status_after", "posted")
+    if line_ids:
+        cur.execute(
+            "UPDATE field.task_line SET status = %s, version = version + 1, updated_at = NOW() WHERE id = ANY(%s::uuid[])",
+            (line_status, line_ids),
+        )
+    task_id = payload.get("task_id")
+    if task_id:
+        cur.execute(
+            """
+            UPDATE field.task t SET status = CASE
+                     WHEN NOT EXISTS (SELECT 1 FROM field.task_line l
+                                       WHERE l.task_id = t.id AND l.status NOT IN ('posted', 'cancelled'))
+                     THEN 'completed' ELSE 'in_progress' END,
+                   version = version + 1, updated_at = NOW()
+             WHERE t.id = %s
+            """,
+            (task_id,),
+        )
 
 
 def enqueue_posting_job(
@@ -113,7 +171,7 @@ def claim_next_job(
     # Find candidate lowest-seq pending job across unlocked queues
     cur.execute(
         """
-        SELECT j.id, j.queue_key, j.seq, j.ref_doc_no, j.payload, j.attempts, j.max_attempts
+        SELECT j.id, j.queue_key, j.seq, j.ref_doc_no, j.payload, j.attempts, j.max_attempts, j.erp_doc_id
         FROM field.posting_job j
         WHERE j.tenant_id = %s
           AND j.status = 'pending'
@@ -161,6 +219,7 @@ def claim_next_job(
             row[5],
             row[6] or MAX_ATTEMPTS,
         )
+        erp_doc_id = str(row[7]) if len(row) > 7 and row[7] is not None else None
 
         # Attempt transactional advisory lock on queue_key
         lock_key_text = f"{tenant_id}:{q_key}"
@@ -195,6 +254,7 @@ def claim_next_job(
             payload=payload,
             attempts=attempts + 1,
             max_attempts=max_att,
+            erp_doc_id=erp_doc_id,
         )
 
     return None
@@ -275,8 +335,12 @@ class PostingQueueWorker:
         )
 
         try:
-            if doc_family == "GoodsReceipt":
+            if doc_family == "InboundDeliveryItem":
+                erp_res = await self.erp_port.update_inbound_delivery_item(post_req)
+            elif doc_family == "GoodsReceipt":
                 erp_res = await self.erp_port.post_inbound_goods_receipt(post_req)
+            elif doc_family == "OutboundDeliveryPick":
+                erp_res = await self.erp_port.pick_outbound_delivery(post_req)
             elif doc_family == "GoodsIssue":
                 erp_res = await self.erp_port.post_outbound_goods_issue(post_req)
             elif doc_family == "Cancellation":
@@ -302,17 +366,19 @@ class PostingQueueWorker:
                 """,
                     (claimed.job_id,),
                 )
-                emit_erp_posted(
-                    cur_done,
-                    tenant_id=tenant_id,
-                    job_id=claimed.job_id,
-                    doc_type=doc_family,
-                    doc_no=erp_res.document_number,
-                    doc_year=erp_res.fiscal_year,
-                    movement_types=["101"],
-                    queue_key=claimed.queue_key,
-                    adopted_by_probe=False,
-                )
+                if doc_family in FINAL_DOC_FAMILIES:
+                    finalize_erp_document(cur_done, claimed, erp_res.document_number, erp_res.fiscal_year)
+                    emit_erp_posted(
+                        cur_done,
+                        tenant_id=tenant_id,
+                        job_id=claimed.job_id,
+                        doc_type=doc_family,
+                        doc_no=erp_res.document_number,
+                        doc_year=erp_res.fiscal_year,
+                        movement_types=[MOVEMENT_TYPES.get(doc_family, "")],
+                        queue_key=claimed.queue_key,
+                        adopted_by_probe=False,
+                    )
                 conn_done.commit()
             return True
 

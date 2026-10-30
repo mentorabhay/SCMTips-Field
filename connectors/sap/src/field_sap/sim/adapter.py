@@ -135,6 +135,37 @@ class SimAdapter:
             )
             return MaterialPage(items=items, next_cursor=None, total_count=len(items))
 
+    async def update_inbound_delivery_item(self, req: ErpPostingRequest) -> ErpResult:
+        """PATCH ActualDeliveryQuantity on one inbound delivery item."""
+        deliv = req.header_data["DeliveryDocument"]
+        item = str(req.header_data["DeliveryDocumentItem"]).zfill(6)
+        qty = req.header_data["ActualDeliveryQuantity"]
+        url = (
+            "/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV/"
+            f"A_InbDeliveryItem(DeliveryDocument='{deliv}',DeliveryDocumentItem='{item}')"
+        )
+        async with self._get_client() as client:
+            await self._ensure_csrf(client)
+            headers = {
+                "sap-client": self.sap_client,
+                "x-csrf-token": self._csrf_token or "",
+                "If-Match": "*",
+            }
+            try:
+                resp = await client.patch(url, headers=headers, json={"ActualDeliveryQuantity": str(qty)})
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                raise ErpError(kind=ErpErrorKind.TIMEOUT, message=f"ERP timeout: {e}", retryable=True) from e
+            if resp.status_code != 200:
+                raise self._parse_error(resp)
+        return ErpResult(
+            idempotency_key=req.idempotency_key,
+            document_number="",
+            fiscal_year="",
+            document_family="InboundDeliveryItem",
+            posted_at=datetime.now(UTC),
+            raw_response=resp.json().get("d", {}),
+        )
+
     async def post_inbound_goods_receipt(self, req: ErpPostingRequest) -> ErpResult:
         """Post Goods Receipt (101) to simulated ERP."""
         delivery_doc = req.header_data.get("DeliveryDocument", req.site_id)
@@ -148,7 +179,7 @@ class SimAdapter:
 
         async with self._get_client() as client:
             await self._ensure_csrf(client)
-            headers["x-csrf-token"] = self._csrf_token or "sim-token"
+            headers["x-csrf-token"] = self._csrf_token or ""
 
             try:
                 resp = await client.post(url, headers=headers)
@@ -209,17 +240,30 @@ class SimAdapter:
             )
 
     async def pick_outbound_delivery(self, req: ErpPostingRequest) -> ErpResult:
-        """Pick outbound delivery items."""
+        """Pick outbound delivery items: one item with its picked quantity, or all items."""
         deliv = req.header_data["DeliveryDocument"]
-        url = f"/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/PickAllItems?DeliveryDocument={deliv}"
+        item = req.header_data.get("DeliveryDocumentItem")
         async with self._get_client() as client:
-            resp = await client.post(url, headers={"sap-client": self.sap_client})
+            if item is not None:
+                await self._ensure_csrf(client)
+                url = (
+                    "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/"
+                    f"A_OutbDeliveryItem(DeliveryDocument='{deliv}',DeliveryDocumentItem='{str(item).zfill(6)}')"
+                )
+                resp = await client.patch(
+                    url,
+                    headers={"sap-client": self.sap_client, "x-csrf-token": self._csrf_token or "", "If-Match": "*"},
+                    json={"PickedQuantity": str(req.header_data["PickedQuantity"])},
+                )
+            else:
+                url = f"/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV/PickAllItems?DeliveryDocument={deliv}"
+                resp = await client.post(url, headers={"sap-client": self.sap_client})
             if resp.status_code != 200:
                 raise self._parse_error(resp)
             return ErpResult(
                 idempotency_key=req.idempotency_key,
-                document_number=deliv,
-                fiscal_year="2026",
+                document_number="",
+                fiscal_year="",
                 document_family="OutboundPick",
                 posted_at=datetime.now(UTC),
             )

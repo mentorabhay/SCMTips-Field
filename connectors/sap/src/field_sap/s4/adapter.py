@@ -50,6 +50,9 @@ class S4ODataAdapter:
     async def find_by_idempotency_key(self, idempotency_key: str) -> ErpResult | None:
         raise NotImplementedError("S4 adapter: find_by_idempotency_key not implemented in F0")
 
+    async def update_inbound_delivery_item(self, req: ErpPostingRequest) -> ErpResult:
+        raise NotImplementedError("S4 adapter: update_inbound_delivery_item not implemented in F0")
+
     async def post_inbound_goods_receipt(self, req: ErpPostingRequest) -> ErpResult:
         raise NotImplementedError("S4 adapter: post_inbound_goods_receipt not implemented in F0")
 

@@ -28,7 +28,9 @@ pytestmark = pytest.mark.unit
         ("def f():\n    local = {}\n    return local\n", False),
     ],
 )
-def test_no_inmemory_stores_flags_module_level_mutables(tmp_path: Path, monkeypatch, src: str, bad: bool) -> None:
+def test_no_inmemory_stores_flags_module_level_mutables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, src: str, bad: bool
+) -> None:
     monkeypatch.setattr(no_inmemory_stores, "ROOT", tmp_path)
     f = tmp_path / "mod.py"
     f.write_text(src)

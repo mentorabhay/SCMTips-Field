@@ -265,7 +265,7 @@ async def patch_inbound_delivery_item(
             cur.execute(
                 """
                     UPDATE erpsim.inbound_delivery_item
-                    SET actual_qty = %s
+                    SET actual_qty = %s, status = CASE WHEN status = 'open' THEN 'qty_set' ELSE status END
                     WHERE client = %s AND delivery_document = %s AND item_no = %s;
                 """,
                 (new_qty, sap_client, delivery_document, item_no),
@@ -382,9 +382,10 @@ async def post_goods_receipt(
 
                 cur.execute(
                     """
-                    SELECT item_no, material_no, delivery_qty, actual_qty, uom
+                    SELECT item_no, material_no, delivery_qty, actual_qty, uom, status
                     FROM erpsim.inbound_delivery_item
-                    WHERE client = %s AND delivery_document = %s;
+                    WHERE client = %s AND delivery_document = %s
+                    ORDER BY item_no;
                 """,
                     (sap_client, delivery_document),
                 )
@@ -408,8 +409,12 @@ async def post_goods_receipt(
 
                 line_no = 1
                 for item in items:
-                    item_no, mat_no, deliv_qty, act_qty, uom = item
-                    qty_to_post = Decimal(str(act_qty if act_qty > 0 else deliv_qty))
+                    item_no, mat_no, deliv_qty, act_qty, uom, item_status = item
+                    # A PATCHed quantity always wins, including 0 (nothing received); an item never
+                    # PATCHed receives its delivery quantity (S/4 default).
+                    qty_to_post = Decimal(str(act_qty if item_status == "qty_set" else deliv_qty))
+                    if qty_to_post == 0:
+                        continue
                     apply_movement(cur, sap_client, plant, sloc, mat_no, qty_to_post, "101", uom)
                     cur.execute(
                         """
