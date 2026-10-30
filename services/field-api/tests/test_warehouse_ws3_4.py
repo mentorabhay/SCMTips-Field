@@ -251,7 +251,8 @@ def test_t3_034_goods_issue_and_reversal():
     gi_result = post_goods_issue("800000045", lines)
     assert gi_result["movement_type"] == "601"
     assert gi_result["total_issued_qty"] == 15.0
-    assert gi_result["status"] == "goods_issue_posted"
+    assert gi_result["status"] == "goods_issue_staged" and gi_result["material_document_no"] is None
+    gi_result["material_document_no"] = "4900000101"  # as returned by the ERP once the 601 is posted
 
     # Reversal 602 (PR3.01: net delta is 0.0)
     rev_result = reverse_goods_issue(gi_result)

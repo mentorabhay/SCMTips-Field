@@ -396,7 +396,8 @@ def test_pr3_15_sim_parity(qty: float):
         "status": "picked",
     }
     issue = post_goods_issue("OBD-200", [line])
-    assert issue["movement_type"] == "601"
+    assert issue["movement_type"] == "601" and issue["material_document_no"] is None
+    issue["material_document_no"] = "4900000101"  # as returned by the ERP once the 601 is posted
     rev = reverse_goods_issue(issue)
     assert rev["movement_type"] == "602"
     assert rev["original_material_document_no"] == issue["material_document_no"]

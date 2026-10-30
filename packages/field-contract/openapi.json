@@ -34,11 +34,21 @@
           "Health"
         ],
         "summary": "Get Readiness",
-        "description": "Readiness probe: checks database, migration head, and erp-sim link.",
+        "description": "Readiness: database, migration head, core JWKS and erp-sim, each actually probed; 503 if any fails.",
         "operationId": "get_readiness_v1_ready_get",
         "responses": {
           "200": {
             "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {

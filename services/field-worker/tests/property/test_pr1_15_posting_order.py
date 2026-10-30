@@ -57,22 +57,42 @@ def test_pr1_15_error_classification(status_code: int, msg: str) -> None:
 
 
 @pytest.mark.property
-@settings(max_examples=30)
-@given(st.lists(st.integers(min_value=1, max_value=20), min_size=2, max_size=10, unique=True))
-def test_pr1_15_queue_sequence_execution_order(seq_numbers: list[int]) -> None:
-    """PR1.15: Jobs in a queue key must execute in strictly monotonic sequence order."""
-    sorted_seqs = sorted(seq_numbers)
+@settings(max_examples=12, deadline=None)
+@given(st.permutations(list(range(1, 7))), st.integers(min_value=1, max_value=6))
+def test_pr1_15_queue_sequence_execution_order(enqueue_order: list[int], failing_seq: int) -> None:
+    """PR1.15: the real PostingQueueWorker posts one queue strictly in seq order, whatever order the
+    jobs were inserted in, and a job that keeps failing blocks every later seq of its queue."""
+    import asyncio
+    import uuid
+    from datetime import UTC, datetime
 
-    # Simulate execution queue processing
-    executed: list[int] = []
+    from field_sap.ports.erp_port import ErpError, ErpErrorKind, ErpPostingRequest, ErpResult
+    from field_worker.posting.queue import DATABASE_URL, PostingQueueWorker, enqueue_posting_job
 
-    for s in sorted_seqs:
-        # Predecessor must be executed before next seq
-        if executed and s != executed[-1] + (s - executed[-1]):
-            pass
-        executed.append(s)
+    class RecordingPort:  # test double for the ERP: records the order of PATCH calls
+        def __init__(self) -> None:
+            self.seen: list[int] = []
 
-    assert executed == sorted_seqs
-    # Invariant: Each executed item is strictly greater than the preceding
-    for i in range(1, len(executed)):
-        assert executed[i] > executed[i - 1]
+        async def update_inbound_delivery_item(self, req: ErpPostingRequest) -> ErpResult:
+            n = int(req.header_data["Seq"])
+            if n == failing_seq:
+                raise ErpError(kind=ErpErrorKind.BUSINESS, message="rejected", retryable=False)
+            self.seen.append(n)
+            return ErpResult(req.idempotency_key, "", "", "InboundDeliveryItem", datetime.now(UTC))
+
+    tenant = str(uuid.uuid4())
+    queue = f"IBD:PR115-{uuid.uuid4().hex[:8]}"
+    for n in enqueue_order:
+        enqueue_posting_job(tenant_id=tenant, queue_key=queue, doc_family="InboundDeliveryItem", site_id="S",
+                            plant="1010", header_data={"Seq": n}, items=[], seq=n,
+                            idempotency_key=f"{queue}:{n}", db_url=DATABASE_URL)
+    port = RecordingPort()
+    worker = PostingQueueWorker(erp_port=port, db_url=DATABASE_URL)
+
+    async def drain() -> None:
+        for _ in range(20):
+            if not await worker.process_one_job(tenant):
+                return
+
+    asyncio.run(drain())
+    assert port.seen == list(range(1, failing_seq)), "posted out of order or past a failed seq"

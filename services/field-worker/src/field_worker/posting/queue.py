@@ -21,7 +21,7 @@ from field_common.uuid7 import uuid7_str
 from field_sap.ports.erp_port import ErpPort, ErpPostingRequest
 
 from field_worker.posting.events import emit_erp_failed, emit_erp_posted, notify_device
-from field_worker.posting.idempotency import generate_idempotency_key, probe_sap_document
+from field_worker.posting.idempotency import generate_idempotency_key
 from field_worker.posting.retry import (
     MAX_ATTEMPTS,
     classify_error,
@@ -32,8 +32,8 @@ logger = structlog.get_logger(__name__)
 
 DATABASE_URL = (
     os.getenv(
-        "FIELD_DATABASE_URL",
-        "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/field",
+        "FIELD_WORKER_DATABASE_URL",
+        "postgresql://field_worker:devpassword@127.0.0.1:5450/field",
     )
     .replace("postgresql+psycopg://", "postgresql://")
     .replace("@localhost:", "@127.0.0.1:")
@@ -338,18 +338,15 @@ class PostingQueueWorker:
         payload = claimed.payload
         idem_key = payload.get("idempotency_key") or generate_idempotency_key()
         doc_family = payload["doc_family"]
-        ref_doc_no = claimed.ref_doc_no or payload.get("ref_doc_no")
 
-        # 2. Pre-post probe if retrying (attempts > 1)
-        if claimed.attempts > 1:
-            adopted = probe_sap_document(
-                sap_client="100",
-                doc_family=doc_family,
-                ref_doc_no=str(ref_doc_no or ""),
-                idempotency_key=idem_key,
-            )
+        # 2. Pre-post probe if retrying (attempts > 1): a timed-out call may have posted (FR3.041).
+        #    Asked through the ErpPort (header text FIELD:<key>), so it works for erp-sim and S/4 alike.
+        if claimed.attempts > 1 and doc_family in FINAL_DOC_FAMILIES:
+            try:
+                adopted = await self.erp_port.find_by_idempotency_key(idem_key)
+            except Exception:
+                adopted = None  # probe failed: fall through to the (idempotent) post
             if adopted:
-                # Adopt document and mark completed
                 with (
                     psycopg.connect(self.db_url, autocommit=False) as adopt_conn,
                     adopt_conn.cursor() as adopt_cur,
@@ -363,14 +360,15 @@ class PostingQueueWorker:
                         """,
                         (claimed.job_id,),
                     )
+                    finalize_erp_document(adopt_cur, claimed, adopted.document_number, adopted.fiscal_year)
                     emit_erp_posted(
                         adopt_cur,
                         tenant_id=tenant_id,
                         job_id=claimed.job_id,
                         doc_type=doc_family,
-                        doc_no=adopted["document_number"],
-                        doc_year=adopted["fiscal_year"],
-                        movement_types=["101"],
+                        doc_no=adopted.document_number,
+                        doc_year=adopted.fiscal_year,
+                        movement_types=[MOVEMENT_TYPES.get(doc_family, "")],
                         queue_key=claimed.queue_key,
                         adopted_by_probe=True,
                     )

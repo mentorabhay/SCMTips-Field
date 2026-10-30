@@ -260,7 +260,8 @@ def test_t3_042_difference_posting_701_and_702():
     )
     assert res_gain["movement_type"] == "701"
     assert res_gain["quantity_posted"] == 5.0
-    assert res_gain["difference_doc_no"] is not None
+    assert res_gain["difference_doc_no"] is None  # the ERP assigns it on PostDifferences (never invented here)
+    assert res_gain["status"] == "difference_staged"
 
     # 702 Inventory Loss (counted 8 < book 10)
     res_loss = post_physical_inventory_difference(

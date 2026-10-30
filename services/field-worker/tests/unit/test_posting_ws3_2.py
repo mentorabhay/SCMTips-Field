@@ -313,27 +313,37 @@ def test_t3_014_outbox_events_emission():
         assert types == ["posting.requested", "erp.posted", "erp.reversed", "erp.failed"]
 
 
-@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_t3_012_pre_post_probe_adoption():
-    """T3.012 / TC3.133 / PR3.06: Timeout after commit pre-post probe adopts existing ERP doc."""
+    """T3.012 / TC3.133: a retry after a timed-out-but-committed post adopts the ERP document.
+
+    The probe goes through the real SimAdapter to the real erp-sim app (header text FIELD:<key>);
+    the posting call itself must not be repeated.
+    """
+    from erp_sim.app import app as erp_app
+    from field_sap.sim.adapter import SimAdapter
+
+    class CountingSim(SimAdapter):
+        posts = 0
+
+        async def post_inbound_goods_receipt(self, req: ErpPostingRequest) -> ErpResult:
+            CountingSim.posts += 1
+            raise AssertionError("must not post again: the probe should have adopted the document")
+
     tenant_id = str(uuid.uuid4())
     queue_key = f"IBD:PROBE_{uuid.uuid4().hex[:6]}"
     idem_key = generate_idempotency_key()
+    doc_no = f"49{uuid.uuid4().int % 10**8:08d}"
 
-    # Pre-seed document in erpsim.dedupe to simulate commit succeeded but worker timed out
+    # The ERP committed the document under this key, but the worker never saw the answer.
     erpsim_url = "postgresql://postgres:dev-postgres-password@127.0.0.1:5450/erpsim"
     with psycopg.connect(erpsim_url, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute(
-            """
-            INSERT INTO erpsim.dedupe (client, idem_key, request_hash, document_no, fiscal_year)
-            VALUES ('100', %s, 'hash_abc', '4900888888', '2026')
-            ON CONFLICT DO NOTHING;
-        """,
-            (idem_key,),
+            "INSERT INTO erpsim.dedupe (client, idem_key, request_hash, document_no, fiscal_year)"
+            " VALUES ('100', %s, 'hash_abc', %s, '2026') ON CONFLICT DO NOTHING",
+            (idem_key, doc_no),
         )
 
-    # Enqueue job with this idempotency key
     job_id = enqueue_posting_job(
         tenant_id=tenant_id,
         queue_key=queue_key,
@@ -344,27 +354,18 @@ async def test_t3_012_pre_post_probe_adoption():
         items=[],
         idempotency_key=idem_key,
     )
-
-    # Set attempts = 1 so worker runs probe on retry
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute("UPDATE field.posting_job SET attempts = 1 WHERE id = %s;", (job_id,))
 
-    port = MockErpPortWS32()
-    worker = PostingQueueWorker(erp_port=port)
+    worker = PostingQueueWorker(erp_port=CountingSim(app=erp_app), db_url=DATABASE_URL)
+    assert await worker.process_one_job(tenant_id) is True
+    assert CountingSim.posts == 0
 
-    # Process job: Worker should adopt via probe without calling ERP port!
-    did_process = await worker.process_one_job(tenant_id)
-    assert did_process is True
-    assert port.call_count == 0  # Did not call external API because probe adopted!
-
-    # Check job status is completed
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
         cur.execute("SELECT status FROM field.posting_job WHERE id = %s;", (job_id,))
         assert cur.fetchone()[0] == "completed"
-
-        # Check outbox event has adopted_by_probe = True
         cur.execute(
             "SELECT payload FROM field.outbox WHERE tenant_id = %s AND event_type = 'erp.posted';",
             (tenant_id,),
@@ -372,4 +373,4 @@ async def test_t3_012_pre_post_probe_adoption():
         raw = cur.fetchone()[0]
         payload = raw if isinstance(raw, dict) else json.loads(raw)
         assert payload["data"]["adopted_by_probe"] is True
-        assert payload["data"]["doc_no"] == "4900888888"
+        assert payload["data"]["doc_no"] == doc_no

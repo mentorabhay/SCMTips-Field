@@ -1,3 +1,5 @@
+# HAND-WRITTEN FIXTURE, NOT A RECORDING (C2 audit 2026-10-30). No S/4 system was ever called; host and
+# token are invented. A parity check against this file proves nothing about S/4 (T3.008 stays stub).
 interactions:
 - request:
     body: ''

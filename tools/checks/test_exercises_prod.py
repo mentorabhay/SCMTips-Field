@@ -31,7 +31,7 @@ SRC_READ_RE = re.compile(r"\.(kt|kts|java)\b")
 ARTEFACT_RE = re.compile(r"[\"'/](docs|packages|compat)[/\"']")
 
 
-def test_files() -> list[Path]:
+def collect_test_files() -> list[Path]:
     out = []
     for p in ROOT.rglob("test_*.py"):
         rel = p.relative_to(ROOT)
@@ -80,7 +80,7 @@ def main() -> int:
     ex_file = ROOT / "docs" / "STATUS" / "test_exemptions.yaml"
     exempt = {e["path"]: e for e in (yaml.safe_load(ex_file.read_text(encoding="utf-8")) or [])} if ex_file.exists() else {}
     bad: list[str] = []
-    for f in test_files():
+    for f in collect_test_files():
         rel = f.relative_to(ROOT).as_posix()
         errs = problems(f)
         if errs and not (rel in exempt and exempt[rel].get("owner_approved")):

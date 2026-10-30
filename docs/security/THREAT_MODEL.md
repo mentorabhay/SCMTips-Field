@@ -3,6 +3,16 @@
 **Document Reference**: `docs/security/THREAT_MODEL.md`  
 **Version**: 1.0.0  
 **Phase**: Phase 1 Foundations  
+
+> **Correction (C2 audit, 2026-10-30).** Several controls below are described as if implemented but are **not**:
+> - SEC-CTRL-02: there is no frame SHA-256 in the capture payload from the glasses.
+> - SEC-CTRL-05: TLS 1.3/HSTS are not configured. The field test runs plain http on the owner's LAN (debug builds only, private addresses only) or through an https tunnel.
+> - SEC-CTRL-06: there is no per-tenant rate limiting, and no 10 MB clamp beyond the 1 MB crop upload limit.
+> - SEC-CTRL-11: the "Muse API blocked from India" result was simulated and has been retracted (docs/META_FIELD.md).
+>
+> The cited test ids (e.g. TC1.153, TC1.011, TC1.014) have no tests behind them.
+> Implemented since: JWKS-only token exchange with device binding, no built-in signing keys, RLS on the app role, the cloud-AI budget guard (off by default).
+> T1.069 is **partial** in the ledger until this document is revised against the code.
 **Target Architecture**: Glasses <-> Android Phone <-> field-api <-> field-worker <-> erp-sim / SAP S/4HANA <-> SCMTips Core  
 
 ---

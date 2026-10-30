@@ -35,18 +35,36 @@ def check_lockfiles() -> bool:
 
 
 def check_licenses() -> bool:
-    uv_lock = ROOT / "uv.lock"
-    content = uv_lock.read_text(encoding="utf-8")
+    """Every installed distribution's declared licence (metadata, not the lockfile) must be non-copyleft.
 
-    # Simple scan of lockfile text for forbidden viral licenses
-    for forbidden in FORBIDDEN_KEYWORDS:
-        if f'license = "{forbidden}' in content or f'license = "{forbidden}"' in content:
-            print(
-                f"[FAIL] Forbidden licence keyword '{forbidden}' detected in dependencies.",
-                file=sys.stderr,
-            )
-            return False
+    Reads License / License-Expression / classifiers of each installed package. Unknown licences are
+    reported (so they get reviewed) but only an explicit forbidden keyword fails the check.
+    """
+    from importlib import metadata
 
+    bad: list[str] = []
+    unknown: list[str] = []
+    for dist in metadata.distributions():
+        name = dist.metadata.get("Name") or "?"
+        # Most specific declaration wins: SPDX expression, else the License field, else classifiers.
+        expr = (dist.metadata.get("License-Expression") or "").strip()
+        lic = (dist.metadata.get("License") or "").strip()
+        fields = [expr] if expr else [lic] if lic and len(lic) < 200 else [
+            c for c in (dist.metadata.get_all("Classifier") or []) if c.startswith("License ::")
+        ]
+        text = " ".join(f for f in fields if f).upper()
+        if not text.strip():
+            unknown.append(name)
+            continue
+        # "LGPL" is allowed (dynamic linking from Python); GPL/AGPL/SSPL are not.
+        hits = [k for k in FORBIDDEN_KEYWORDS if k in text.replace("LGPL", "").replace("LESSER GENERAL PUBLIC", "")]
+        if hits:
+            bad.append(f"{name}: {text[:120]}")
+    if unknown:
+        print(f"[INFO] {len(unknown)} package(s) declare no licence metadata: {', '.join(sorted(unknown)[:20])}")
+    if bad:
+        print("[FAIL] forbidden licences:\n  " + "\n  ".join(sorted(bad)), file=sys.stderr)
+        return False
     return True
 
 

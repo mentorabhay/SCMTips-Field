@@ -8,7 +8,6 @@ from field_worker.posting.events import (
 )
 from field_worker.posting.idempotency import (
     generate_idempotency_key,
-    probe_sap_document,
 )
 from field_worker.posting.queue import (
     DATABASE_URL,
@@ -39,5 +38,4 @@ __all__ = [
     "emit_posting_requested",
     "enqueue_posting_job",
     "generate_idempotency_key",
-    "probe_sap_document",
 ]

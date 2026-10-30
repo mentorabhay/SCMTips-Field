@@ -6,7 +6,6 @@ Posts SAP movement types:
 Enforces variance approval check (PR3.05) prior to submission.
 """
 
-import uuid
 from typing import Any
 
 from field_api.warehouse.inventory.approvals import (
@@ -44,7 +43,6 @@ def post_physical_inventory_difference(
         movement_type = "NONE"
         quantity = 0.0
 
-    diff_doc_no = f"490{uuid.uuid4().int % 10000000:07d}" if diff_qty != 0 else None
 
     return {
         "line_id": pi_line.get("line_id") or pi_line.get("id"),
@@ -54,7 +52,7 @@ def post_physical_inventory_difference(
         "difference_qty": diff_qty,
         "movement_type": movement_type,
         "quantity_posted": quantity,
-        "difference_doc_no": diff_doc_no,
+        "difference_doc_no": None,  # assigned by the ERP (PostDifferences via field-worker), never invented
         "variance_value": variance_val,
-        "status": "difference_posted",
+        "status": "difference_staged" if diff_qty != 0 else "no_difference",
     }

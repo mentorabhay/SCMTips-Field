@@ -34,12 +34,22 @@ def test_liveness_health() -> None:
 
 
 @pytest.mark.unit
-def test_readiness() -> None:
+def test_tc1_012_readiness_probes_are_real(monkeypatch: pytest.MonkeyPatch) -> None:
+    """T1.012 / API1.02: each check is measured; an unreachable dependency gives 503, not "pass"."""
+    import httpx
+    from fake_core.app import app as core_app
+    from field_api.auth import jwks
+
+    monkeypatch.setattr(jwks, "jwks_cache", jwks.JwksCache("http://core/.well-known/jwks.json", transport=httpx.ASGITransport(app=core_app)))
+    monkeypatch.setenv("FIELD_ERP_SIM_URL", "http://127.0.0.1:9")  # nothing listens on the discard port
     res = client.get("/v1/ready")
-    assert res.status_code == 200
-    data = res.json()
-    assert data["status"] == "pass"
-    assert len(data["checks"]) >= 3
+    assert res.status_code == 503
+    checks = {c["name"]: c for c in res.json()["checks"]}
+    assert checks["database"]["status"] == "pass"
+    assert checks["alembic_head"]["status"] == "pass", checks["alembic_head"]
+    assert checks["jwks_cache"]["status"] == "pass" and checks["jwks_cache"]["message"] == "1 key(s)"
+    assert checks["erp_sim"]["status"] == "fail"
+    assert res.json()["status"] == "fail"
 
 
 @pytest.mark.unit

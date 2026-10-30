@@ -6,7 +6,6 @@ Invariants:
 3. 601 is permitted only when all lines in delivery are picked or short-confirmed.
 """
 
-import uuid
 from typing import Any
 
 
@@ -60,15 +59,15 @@ def post_goods_issue(
                 }
             )
 
-    matdoc_no = f"490{uuid.uuid4().int % 10000000:07d}"
-
+    # The material document number is assigned by the ERP when field-worker posts the GI job
+    # (API3.06 confirm -> PostGoodsIssue); this function never invents one.
     return {
         "delivery_no": delivery_no,
-        "material_document_no": matdoc_no,
+        "material_document_no": None,
         "movement_type": "601",
         "total_issued_qty": total_picked,
         "items": items_to_issue,
-        "status": "goods_issue_posted",
+        "status": "goods_issue_staged",
         "tenant_id": tenant_id,
     }
 
@@ -77,7 +76,7 @@ def reverse_goods_issue(
     original_gi: dict[str, Any],
     reason: str = "supervisor_reversal",
 ) -> dict[str, Any]:
-    """Posts SAP movement 602 goods issue reversal (PR3.01: net delta nets to zero)."""
+    """Stages the SAP movement 602 reversal of a posted goods issue (PR3.01: net delta nets to zero)."""
     orig_doc = original_gi.get("material_document_no")
     if not orig_doc:
         raise GoodsIssueException(
@@ -100,16 +99,14 @@ def reverse_goods_issue(
             }
         )
 
-    reversal_doc_no = f"490{uuid.uuid4().int % 10000000:07d}"
-
     return {
         "delivery_no": original_gi.get("delivery_no"),
         "original_material_document_no": orig_doc,
-        "reversal_material_document_no": reversal_doc_no,
+        "reversal_material_document_no": None,  # assigned by the ERP when the 602 is posted
         "movement_type": "602",
         "total_reversed_qty": total_reversed,
         "net_stock_delta": 0.0,  # Invariant PR3.01
         "items": reversal_items,
-        "status": "reversal_posted",
+        "status": "reversal_staged",
         "reason": reason,
     }
