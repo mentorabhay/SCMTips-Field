@@ -3711,7 +3711,7 @@
           "Asset Models & 3D BOM"
         ],
         "summary": "Publish a validated version with step-up verification (API4.13)",
-        "description": "API4.13: Publish model version, allocate stable balloons, and emit outbox event.",
+        "description": "API4.13: Publish model version, allocate stable balloons, and emit outbox event.\n\nNeeds BOTH the field.model.publish permission AND step-up: X-Stepup-Token must be a core token\n(verified against the core JWKS) for the same user and tenant, issued within the last 5 minutes,\ni.e. a fresh re-authentication. (Previously any non-empty header bypassed the permission check.)",
         "operationId": "api_publish_asset_model_v1_asset_models__id__publish_post",
         "parameters": [
           {

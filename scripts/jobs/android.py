@@ -28,7 +28,8 @@ def verify_android_structure() -> None:
     catalog_text = (ANDROID_ROOT / "gradle" / "libs.versions.toml").read_text(encoding="utf-8")
     assert 'minSdk = "29"' in catalog_text, "minSdk must be 29"
     assert 'targetSdk = "35"' in catalog_text, "targetSdk must be 35"
-    assert 'compileSdk = "35"' in catalog_text, "compileSdk must be 35"
+    # compileSdk 36: Meta DAT 1.0.1 requires it (docs/META_FIELD.md); the app still targets 35.
+    assert 'compileSdk = "36"' in catalog_text, "compileSdk must be 36"
     print("[PASS] Android project layout and version catalog verified.")
 
 
@@ -44,6 +45,9 @@ def run_gradle_build() -> int:
     print(f"Executing Gradle build targets: {' '.join(targets)}")
 
     cmd = [str(gradlew_path)] + targets
+    # Rule 2.1: the log records the tool version and the exact command line.
+    subprocess.run([str(gradlew_path), "--version"], cwd=ANDROID_ROOT, text=True)
+    print(f"Command: {' '.join(cmd)} (cwd {ANDROID_ROOT})", flush=True)
     proc = subprocess.run(
         cmd,
         cwd=ANDROID_ROOT,

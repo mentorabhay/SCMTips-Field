@@ -876,7 +876,7 @@
   - FR2.050
   - FR2.055
   verified_at: null
-  note: TC2.162 server count record and the post/confirm gate pass. "PR2.11 server oracle" has no generator test;
+  note: TC2.162 server count record and the post/confirm gate pass. "PR2.11 server reference check" has no generator test;
     TC2.133 undo/reversal via fake consumer not tested server-side.
 - id: T2.053
   title: Build the live hub
@@ -998,7 +998,7 @@
   - FR2.058
   verified_at: null
   note: PR2.16 and PR2.17 Hypothesis tests run, but PR2.17 models the budget as a boolean, not the budget ledger
-    (ops.ai_usage / BudgetGuard) with concurrent jobs and exhaustion mid-batch; oracle "HTTP mock call count vs
+    (ops.ai_usage / BudgetGuard) with concurrent jobs and exhaustion mid-batch; reference check "HTTP mock call count vs
     budget ledger" unmet.
 - id: T2.061
   title: Build the device registry page
@@ -1132,7 +1132,7 @@
   - FR2.035
   - FR2.066
   verified_at: null
-  note: Privacy scanner runs with 0 findings on the repo (test_t2_070). PR2.13 oracle has no generator test; TC2.131
+  note: Privacy scanner runs with 0 findings on the repo (test_t2_070). PR2.13 reference check has no generator test; TC2.131
     heap dump / device storage scan and TC2.161 log scan of a full e2e run have not happened.
 - id: T2.071
   title: Add the walking-quiet hook and data minimisation

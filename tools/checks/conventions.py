@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 VALID_BRANCH_PATTERNS = [
     r"^(main|master)$",
     r"^(feat|fix|docs|refactor|test|chore|remediation)/[a-zA-Z0-9._-]+$",
+    # Owner amendment A-01 (30 Oct 2026): the M1 field-test vertical slice works on slice/<name>.
+    r"^slice/[a-zA-Z0-9._-]+$",
 ]
 
 TASK_ID_PATTERN = re.compile(
@@ -81,22 +83,21 @@ def check_git_history(max_commits: int = 15) -> list[str]:
 
     # Check recent commit messages
     res_c = subprocess.run(
-        ["git", "log", f"-n{max_commits}", "--pretty=format:%H%x00%B%x00"],
+        ["git", "log", f"-n{max_commits}", "--pretty=format:%H%x1f%B%x1e"],
         cwd=ROOT,
         capture_output=True,
         text=True,
     )
 
-    entries = res_c.stdout.split("\x00\x00")
-    for entry in entries:
-        if not entry.strip():
+    # One record per commit: <sha> US <message> RS. (The old NUL-pair split only ever parsed the
+    # newest commit, because %B ends in a newline; every older commit went unchecked.)
+    for entry in res_c.stdout.split("\x1e"):
+        if "\x1f" not in entry:
             continue
-        parts = entry.split("\x00")
-        if len(parts) >= 2:
-            sha, msg = parts[0].strip(), parts[1].strip()
-            valid_m, reason_m = validate_commit_message(msg)
-            if not valid_m:
-                violations.append(f"Commit {sha[:8]} convention violation: {reason_m}")
+        sha, msg = (s.strip() for s in entry.split("\x1f", 1))
+        valid_m, reason_m = validate_commit_message(msg)
+        if not valid_m:
+            violations.append(f"Commit {sha[:8]} convention violation: {reason_m}")
 
     return violations
 

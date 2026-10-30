@@ -549,3 +549,59 @@ def test_tc4_153_report_export_and_link_auth():
     )
     assert res_cross_tenant.status_code == 404
     assert res_cross_tenant.json()["detail"]["error_code"] == "FIELD-EVD-404-CROSS-TENANT"
+
+
+def _two_jobs(tenant: str) -> tuple[str, str]:
+    fl = f"HOL-{uuid.uuid4().hex[:6]}"
+    for i in (1, 2):
+        enqueue_tower_equipment_job(tenant_id=tenant, site_id=str(uuid.uuid4()), tower_fl=fl, operation="install",
+                                    equipment_no=f"EQ-HOL-{i}", serial_no=f"SR-{i}", material="MAT-01",
+                                    target_fl=f"{fl}-A-L01")
+    return fl, f"EQUIP:{fl}"
+
+
+class _FailingPort(_RecordingEquipmentPort):
+    def install_equipment(self, eq_no: str, target_fl: str, idempotency_key: str | None = None) -> dict[str, str]:
+        self.calls.append(eq_no)
+        raise RuntimeError("ERP timeout")
+
+
+def test_pr4_12_job_in_backoff_is_not_overtaken() -> None:
+    """FR4.059: when seq 1 is waiting out a retry backoff, seq 2 must not post (it used to)."""
+    tenant = str(uuid.uuid4())
+    _, q = _two_jobs(tenant)
+    assert process_next_tower_job(tenant, q, adapter=_FailingPort())["status"] == "pending"  # seq 1 now backs off
+    ok = _RecordingEquipmentPort()
+    res = process_next_tower_job(tenant, q, adapter=ok, ignore_backoff=False)
+    assert res is not None and res["status"] == "waiting" and res["seq"] == 1
+    assert ok.calls == []
+
+
+def test_pr4_12_failed_head_blocks_its_tower() -> None:
+    """FR4.059: a job that failed for good blocks later jobs of the same tower until it is resolved."""
+    tenant = str(uuid.uuid4())
+    _, q = _two_jobs(tenant)
+    bad = _FailingPort()
+    for _ in range(20):
+        res = process_next_tower_job(tenant, q, adapter=bad)
+        if res and res["status"] == "failed":
+            break
+    assert res is not None and res["status"] == "failed"
+    ok = _RecordingEquipmentPort()
+    res = process_next_tower_job(tenant, q, adapter=ok)
+    assert res is not None and res["status"] == "blocked" and res["seq"] == 1
+    assert ok.calls == []
+
+
+def test_pr4_12_one_poster_per_tower_queue() -> None:
+    """PR4.12: while another worker holds a tower queue, a second worker posts nothing from it."""
+    tenant = str(uuid.uuid4())
+    _, q = _two_jobs(tenant)
+    with psycopg.connect(WORKER_DB_URL) as other, other.cursor() as cur:
+        cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"{tenant}|{q}",))
+        port = _RecordingEquipmentPort()
+        res = process_next_tower_job(tenant, q, adapter=port)
+        assert res is not None and res["status"] == "busy" and port.calls == []
+    port = _RecordingEquipmentPort()
+    assert process_next_tower_job(tenant, q, adapter=port)["status"] == "completed"
+    assert port.calls == ["EQ-HOL-1"]

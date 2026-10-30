@@ -153,22 +153,37 @@ def process_next_tower_job(
             if hold_row:
                 return {"status": "held", "queue_key": queue_key, "reason": hold_row[0]}
 
-            # 1. Claim next pending job with earliest seq
+            # 1. One poster per queue at a time. Two workers on the same tower would otherwise both
+            #    claim jobs (FOR UPDATE SKIP LOCKED let a second worker post seq N+1 while seq N was
+            #    still in flight), breaking per-tower order (PR4.12).
+            cur.execute("SELECT pg_try_advisory_xact_lock(hashtextextended(%s, 0))", (f"{tenant_id}|{queue_key}",))
+            lock_row = cur.fetchone()
+            if not lock_row or not lock_row[0]:
+                return {"status": "busy", "queue_key": queue_key}
+
+            # 2. Head of line: the lowest seq not yet completed. A later job never overtakes it, whether
+            #    the head is waiting out a retry backoff or has failed for good (it then blocks the
+            #    tower until it is resolved). Previously the query took the lowest *due* pending job,
+            #    so a job in backoff or failed was silently skipped.
             cur.execute(
                 """
-                SELECT id, seq, payload, attempts
+                SELECT id, seq, payload, attempts, status, (%s OR next_attempt_at <= NOW()) AS due
                 FROM field.posting_job
-                WHERE tenant_id = %s AND queue_key = %s AND status = 'pending'
-                  AND (%s OR next_attempt_at <= NOW())
+                WHERE tenant_id = %s AND queue_key = %s AND status NOT IN ('completed', 'cancelled')
                 ORDER BY seq ASC
                 LIMIT 1
-                FOR UPDATE SKIP LOCKED;
+                FOR UPDATE;
                 """,
-                (tenant_id, queue_key, ignore_backoff),
+                (ignore_backoff, tenant_id, queue_key),
             )
-            job_row = cur.fetchone()
-            if not job_row:
+            head = cur.fetchone()
+            if not head:
                 return None
+            if head[4] == "failed":
+                return {"status": "blocked", "queue_key": queue_key, "seq": head[1]}
+            if head[4] != "pending" or not head[5]:
+                return {"status": "waiting", "queue_key": queue_key, "seq": head[1]}
+            job_row = head[:4]
 
             job_id, seq, raw_payload, attempts = job_row
             payload = raw_payload if isinstance(raw_payload, dict) else json.loads(raw_payload)

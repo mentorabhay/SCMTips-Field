@@ -317,10 +317,13 @@
   - services/field-api/tests/test_equipment_ws4_4.py::test_pr4_12_posting_queue_monotonicity
   - services/field-api/tests/test_equipment_ws4_4.py::test_tc4_131_tower_equipment_queue_exhaustion
   - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_per_tower_order_on_replay_property
+  - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_job_in_backoff_is_not_overtaken
+  - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_failed_head_blocks_its_tower
+  - services/field-api/tests/test_sync_ws4_8.py::test_pr4_12_one_poster_per_tower_queue
   frs:
   - FR4.036
   verified_at: null
-  note: 'TC4.131 passes. Fixed 2026-10-30: PR4.12 replay (test_sync_ws4_8, 500 Hypothesis runs) enqueues interleaved tower jobs through the real worker queue, holds one tower in field.queue_hold and drives process_next_tower_job: each tower posts in seq order and the held tower blocks only itself. The ERP side is a recording test double, not erp-sim.'
+  note: 'TC4.131 passes. Fixed 2026-10-30: the real PR4.12 replay test (500 Hypothesis runs) found that a second worker could post seq N+1 while seq N was in flight (FOR UPDATE SKIP LOCKED) and that a job in retry backoff or failed for good was silently overtaken. process_next_tower_job now takes a per-queue advisory lock and only ever works the head of line (waiting/blocked otherwise); three regression tests cover it. ERP side in these tests is a recording test double, not erp-sim.'
 - id: T4.023
   title: Build equipment events API
   workstream: WS4.4
