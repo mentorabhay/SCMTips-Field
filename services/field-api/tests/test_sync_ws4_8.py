@@ -505,6 +505,19 @@ def test_tc4_153_report_export_and_link_auth():
                 """,
                 (str(uuid.uuid4()), tenant_a, task_id, site_id),
             )
+            # A real (blurred) crop stored as evidence for one capture of this tenant.
+            capture_id, evidence_id = str(uuid.uuid4()), str(uuid.uuid4())
+            crop = b"\xff\xd8\xff\xe0" + uuid.uuid4().bytes + b"\xff\xd9"
+            from field_api.crops import crop_store
+
+            uri = crop_store().put(tenant_a, crop)
+            cur.execute("INSERT INTO field.capture (id, tenant_id, site_id) VALUES (%s, %s, %s)",
+                        (capture_id, tenant_a, site_id))
+            cur.execute(
+                "INSERT INTO field.capture_evidence (id, tenant_id, capture_id, crop_s3_uri, file_size_bytes,"
+                " sha256_hash, retention_until) VALUES (%s, %s, %s, %s, %s, %s, NOW() + INTERVAL '1 day')",
+                (evidence_id, tenant_a, capture_id, uri, len(crop), "x" * 64),
+            )
             conn.commit()
 
     # 1. Tenant A exports CSV report (API4.17)
@@ -528,16 +541,21 @@ def test_tc4_153_report_export_and_link_auth():
     assert res_pdf.json()["format"] == "pdf"
 
     # 3. Access evidence URL with signed token from report -> 200 OK
-    signed_url = generate_signed_evidence_url(tenant_id=tenant_a, evidence_id="ev-crop-secure-001")
+    signed_url = generate_signed_evidence_url(tenant_id=tenant_a, evidence_id=evidence_id)
     path_and_query = signed_url.split("localhost:8000")[-1]
 
     res_valid_ev = client.get(path_and_query)
     assert res_valid_ev.status_code == 200
     assert res_valid_ev.headers["X-Tenant-Id"] == tenant_a
-    assert res_valid_ev.headers["Content-Type"] == "image/png"
+    assert res_valid_ev.headers["Content-Type"] == "image/jpeg"
+    assert res_valid_ev.content == crop  # the stored evidence itself, not a placeholder
+
+    # Unknown evidence ids are 404 even with a valid signature for them
+    bogus = generate_signed_evidence_url(tenant_id=tenant_a, evidence_id=str(uuid.uuid4())).split("localhost:8000")[-1]
+    assert client.get(bogus).status_code == 404
 
     # 4. Access evidence WITHOUT session or token -> 401 Unauthorized
-    res_unauth = client.get("/v1/evidence/ev-crop-secure-001")
+    res_unauth = client.get(f"/v1/evidence/{evidence_id}")
     assert res_unauth.status_code == 401
 
     # 5. Access evidence from DIFFERENT TENANT (Tenant B) -> 404 Not Found (TC4.153)

@@ -9,13 +9,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 import structlog
 from field_api.db import get_conn
 
+from field_worker.verify.fallback import _parse_model_response
 from field_worker.verify.router import FieldContributorModelConfig
 
 logger = structlog.get_logger(__name__)
@@ -110,11 +113,16 @@ class NameplateVerifyService:
         is_normalised: bool,
         pattern_matched: bool,
         crop_ref: str | None = None,
-        mock_ai_verdict: str | None = None,
-        mock_actual_serial: str | None = None,
+        model_call: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
         requested_model: str | None = None,
     ) -> dict[str, Any]:
-        """Process a capture through the nameplate verify pipeline."""
+        """Process a capture through the nameplate verify pipeline.
+
+        ``model_call`` is the AI client (it must go through the A-02 budget guard). Without one, nothing
+        is verified: the capture stays queued as ``unverified_no_model``. The verdict, the read serial and
+        the token/cost figures come only from the model's answer; latency is measured. (Previously a
+        missing verdict defaulted to "verified" with hard-coded latency, tokens and cost.)
+        """
         model_to_use = requested_model or self.default_model
         validate_model_name(model_to_use)
 
@@ -172,9 +180,32 @@ class NameplateVerifyService:
         # Budget warning alarm check at 80% usage
         budget_alert = self.budget_remaining <= self.budget_warning_threshold
 
-        # Determine AI verdict (mock or provider execution)
-        verdict = mock_ai_verdict or "verified"
-        actual_serial = mock_actual_serial or candidate_serial
+        if model_call is None:
+            return {
+                "capture_id": capture_id,
+                "verify_status": "unverified_no_model",
+                "routing_reason": routing.reason,
+                "budget_alert": budget_alert,
+                "reason": "no AI model client is configured; capture stays queued",
+                "erp_mutated": False,
+            }
+        t0 = time.perf_counter()
+        answer = model_call({"capture_id": capture_id, "candidate_serial": candidate_serial,
+                             "equipment_class": equipment_class, "crop_ref": crop_ref, "model": model_to_use,
+                             "prompt_id": PROMPT_ID})
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        try:
+            verdict, ai_confidence, _reason, tokens, cost = _parse_model_response(answer)
+        except ValueError as e:
+            return {
+                "capture_id": capture_id,
+                "verify_status": "unverified_bad_response",
+                "routing_reason": routing.reason,
+                "budget_alert": budget_alert,
+                "reason": str(e),
+                "erp_mutated": False,
+            }
+        actual_serial = str(answer.get("serial") or candidate_serial)
 
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -192,8 +223,8 @@ class NameplateVerifyService:
                         tokens_used, cost_usd
                     ) VALUES (
                         %s, %s, %s, %s, %s,
-                        '1.0.0', %s, %s, 120,
-                        150, 0.000450
+                        '1.0.0', %s, %s, %s,
+                        %s, %s
                     );
                     """,
                     (
@@ -203,12 +234,15 @@ class NameplateVerifyService:
                         model_to_use,
                         PROMPT_ID,
                         verdict,
-                        confidence,
+                        ai_confidence,
+                        latency_ms,
+                        tokens or 0,  # 0 = provider reported no token count
+                        cost or 0.0,  # 0 = provider reported no cost (the budget guard holds the real spend)
                     ),
                 )
 
-                # Deduct nominal budget
-                self.budget_remaining = max(0.0, self.budget_remaining - 0.000450)
+                if cost:
+                    self.budget_remaining = max(0.0, self.budget_remaining - cost)
 
                 if verdict == "verified":
                     cur.execute(

@@ -274,8 +274,7 @@
   - FR4.022
   - FR4.023
   verified_at: null
-  note: 'TC4.120/TC4.121 pass via the API. Defect: tower_only findings write capture_evidence with a fabricated sha256 ''sha256_placeholder''
-    and size 1024 (findings_api.py:185).'
+  note: 'TC4.120/TC4.121 pass via the API. Fixed 2026-10-30: tower_only findings now store the real crop_ref sha256 and size from the submitted evidence instead of a placeholder. Still partial: no on-device evidence upload proven.'
 - id: T4.020
   title: Extend erp-sim with functional locations and equipment install/dismantle
   workstream: WS4.4
@@ -554,9 +553,7 @@
   - FR4.018
   - FR4.019
   verified_at: null
-  note: 'process_verification makes no AI call: verdict defaults to ''verified'' (nameplate_verify.py:176) and latency 120
-    ms, 150 tokens and $0.00045 are hard-coded; budget is an in-object counter, not the A-02 guard. Meta Model API UNVERIFIED.
-    Routing (PR4.18) is real.'
+  note: 'Fixed 2026-10-30: with no model client or an empty/invalid model answer the job now returns unverified_no_model / unverified_bad_response and never invents a verified verdict (test_t4_035_no_model_client_means_nothing_is_verified). Stub remains: no real Muse Spark client; Meta Model API UNVERIFIED (§2.4).'
 - id: T4.036
   title: Register prompt and enforce non-contributor models
   workstream: WS4.2
@@ -808,8 +805,7 @@
   - FR4.039
   - FR4.045
   verified_at: null
-  note: ADR exists but its 'Signed & Approved (Tenant Safety Officer)' line is not backed by any real review; no signed review
-    or logged open items.
+  note: 'ADR corrected 2026-10-30 to ''Proposed — not signed''; the false sign-off lines were removed. A real safety review with logged open items is still required.'
 - id: T4.050
   title: Extend site graph for 3D
   workstream: WS4.6
@@ -960,8 +956,7 @@
   frs:
   - FR4.054
   verified_at: null
-  note: 'TC4.146 immutability and pin pass. Defect: ''publish with step-up'' is not real — any principal sending any non-empty
-    X-Stepup-Token header can publish (models/api.py:119).'
+  note: 'TC4.146 immutability and pin pass. Fixed 2026-10-30: publish now requires field.model.publish AND an X-Stepup-Token that verifies against the core JWKS for the same user and tenant, issued within 5 minutes (models/api.py); any-header bypass closed, tests test_models_ws4_7 step-up cases. Still partial: real core step-up flow UNVERIFIED against P13.'
 - id: T4.060
   title: Build audit report export
   workstream: WS4.8
@@ -976,9 +971,7 @@
   frs:
   - FR4.061
   verified_at: null
-  note: 'CSV export and evidence-link auth tested (TC4.153); PR4.20 Hypothesis 30 examples (spec 200). Defects: the ''PDF''
-    is plain text with a ''%PDF-1.4'' prefix (audit_report.py:214); GET /v1/evidence/{id} returns a fixed 1x1 PNG for any
-    id without looking evidence up (audits/reports.py:155); P13e retention UNVERIFIED.'
+  note: 'CSV export and evidence-link auth tested (TC4.153). Fixed 2026-10-30: PDF is now a real PDF writer (jobs/pdf.py, validated by qpdf in test_pdf_writer.py); GET /v1/evidence/{id} reads the stored crop under RLS (404 unknown/foreign, 410 expired by retention). Still partial: PR4.20 runs 30 examples (spec 200); P13e retention UNVERIFIED.'
 - id: T4.061
   title: Build site pack API
   workstream: WS4.8

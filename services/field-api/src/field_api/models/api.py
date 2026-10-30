@@ -10,11 +10,14 @@ Exposes:
 from __future__ import annotations
 
 import base64
+import time
 from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from field_api.auth.jwks import verify_core_jwt
 from field_api.auth.jwt import Principal
+from field_api.auth.permissions import has_permission
 from field_api.deps import require_principal
 from field_api.models.upload import create_asset_model_draft
 from field_api.models.versions import get_model_bom, publish_asset_model, update_model_bom
@@ -104,32 +107,50 @@ async def api_upload_asset_model(
     status_code=status.HTTP_200_OK,
     summary="Publish a validated version with step-up verification (API4.13)",
 )
-def api_publish_asset_model(
+async def api_publish_asset_model(
     id: str,
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     x_stepup_token: str | None = Header(None, alias="X-Stepup-Token"),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
-    """API4.13: Publish model version, allocate stable balloons, and emit outbox event."""
-    # Check publish permission or step-up verification
-    has_perm = "field.model.publish" in (principal.roles or []) or "field.model.publish" in (
-        getattr(principal, "permissions", []) or []
-    )
-    if not has_perm and not x_stepup_token:
-        # Require step-up authorization
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error_code": "FIELD-AUTH-401-STEPUP",
-                "message": "Publishing model requires supervisor step-up authorization",
-            },
-        )
+    """API4.13: Publish model version, allocate stable balloons, and emit outbox event.
+
+    Needs BOTH the field.model.publish permission AND step-up: X-Stepup-Token must be a core token
+    (verified against the core JWKS) for the same user and tenant, issued within the last 5 minutes,
+    i.e. a fresh re-authentication. (Previously any non-empty header bypassed the permission check.)
+    """
+    if not has_permission(principal.permissions, "field.model.publish"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail={"error_code": "FIELD-AUTH-403-FORBIDDEN", "message": "field.model.publish required"})
+    await _require_stepup(x_stepup_token, principal)
 
     return publish_asset_model(
         tenant_id=principal.tenant_id,
         model_id=id,
         published_by=principal.id,
     )
+
+
+STEPUP_MAX_AGE_S = 300
+
+
+async def _require_stepup(token: str | None, principal: Principal) -> None:
+    def refuse(msg: str) -> HTTPException:
+        return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                             detail={"error_code": "FIELD-AUTH-401-STEPUP", "message": msg})
+
+    if not token:
+        raise refuse("Publishing a model requires a fresh re-authentication (step-up)")
+    try:
+        claims = await verify_core_jwt(token)
+    except Exception:
+        raise refuse("Step-up token is not a valid core token") from None
+    tenant = str(claims.get("tenant_id") or claims.get("tid") or "")
+    iat = int(claims.get("iat") or 0)
+    if str(claims.get("sub")) != principal.id or tenant != principal.tenant_id:
+        raise refuse("Step-up token belongs to another user")
+    if time.time() - iat > STEPUP_MAX_AGE_S:
+        raise refuse("Step-up is older than 5 minutes; re-authenticate")
 
 
 @router.get(

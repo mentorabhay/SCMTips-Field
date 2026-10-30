@@ -106,7 +106,8 @@ def test_t2_072_stride_threat_model():
     assert "Information Disclosure" in text
     assert "Denial of Service" in text
     assert "Elevation of Privilege" in text
-    assert "0 High, 0 Critical findings open" in text
+    # The document's "0 High, 0 Critical findings open" line was false (C5 found high-severity auth and
+    # secret holes); it is no longer asserted. T2.072 is partial until the review is redone against the code.
 
 
 # test_t2_073_release_report removed (C5): asserted a hand-written "ALL 73 TASKS VERIFIED" claim (rule 2.3: reports come from the ledger).

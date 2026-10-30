@@ -969,9 +969,7 @@
   - FR2.061
   - FR2.062
   verified_at: null
-  note: 'Job returns dicts only: no DB write of verification_attempt, no event emission, no model client. Fallback
-    pipeline substitutes invented defaults (verdict "verified", confidence 0.95, tokens 120, cost 0.0012) when a
-    response lacks fields. TC2.150/TC2.151 tests use injected callables; p95 5 s unmeasured.'
+  note: 'Job returns dicts only: no DB write of verification_attempt, no event emission, no model client. Fixed 2026-10-30: fallback no longer substitutes invented defaults; missing fields make the attempt unverified. TC2.150/TC2.151 use injected callables; p95 5 s unmeasured.'
 - id: T2.059
   title: Add the Llama fallback and unverified path
   workstream: WS2.7
@@ -984,8 +982,7 @@
   frs:
   - FR2.060
   verified_at: null
-  note: No real Muse or Llama client exists; primary/fallback are injected callables and missing fields are filled
-    with invented values (see T2.058). TC2.149 tested only against lambdas. Meta Model API UNVERIFIED (§2.4).
+  note: 'No real Muse or Llama client exists; primary/fallback are injected callables. Fixed 2026-10-30: missing fields yield unverified, never invented values. TC2.149 tested only against callables. Meta Model API UNVERIFIED (§2.4).'
 - id: T2.060
   title: Write router and budget property tests
   workstream: WS2.7
@@ -1170,9 +1167,7 @@
   - FR2.053
   - FR2.059
   verified_at: null
-  note: 'Threat model text claims "0 High, 0 Critical findings open", but C5 (2026-10-30) found open high-severity
-    issues it missed: token exchange accepted field tokens, JWKS fell back to a hard-coded key, hard-coded signing
-    keys, fail-open device status. Review must be redone.'
+  note: 'Threat model claimed ''0 High, 0 Critical findings open'', but C5 (2026-10-30) found open high-severity issues it missed (token exchange accepted field tokens, JWKS fallback key, hard-coded signing keys, fail-open device status). Those are fixed in the C5 commits; the claim assertion was removed from test_ws2_9 on 2026-10-30. The review must be redone before done.'
 - id: T2.073
   title: Release the phase
   workstream: WS2.9

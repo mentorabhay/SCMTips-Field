@@ -17,8 +17,8 @@ class VerificationCallResult:
         reason: str | None = None,
         model_used: str = "",
         latency_ms: int = 0,
-        tokens_used: int = 0,
-        cost_usd: float = 0.0,
+        tokens_used: int | None = None,
+        cost_usd: float | None = None,
     ) -> None:
         self.verdict = verdict
         self.confidence = confidence
@@ -27,6 +27,28 @@ class VerificationCallResult:
         self.latency_ms = latency_ms
         self.tokens_used = tokens_used
         self.cost_usd = cost_usd
+
+
+VALID_VERDICTS = frozenset({"verified", "mismatch"})
+
+
+def _parse_model_response(res: Any) -> tuple[str, float, str | None, int | None, float | None]:
+    """A model answer must state its verdict and confidence; nothing is filled in (C2 finding).
+
+    Missing or malformed fields raise ValueError, so an empty answer can never count as "verified".
+    Token and cost figures are reported only when the provider returned them.
+    """
+    if not isinstance(res, dict):
+        raise ValueError("model response is not an object")
+    verdict, conf = res.get("verdict"), res.get("confidence")
+    if verdict not in VALID_VERDICTS:
+        raise ValueError(f"model response has no valid verdict: {verdict!r}")
+    if not isinstance(conf, int | float) or not 0.0 <= float(conf) <= 1.0:
+        raise ValueError(f"model response has no valid confidence: {conf!r}")
+    tokens, cost = res.get("tokens_used"), res.get("cost_usd")
+    return (str(verdict), float(conf), res.get("reason"),
+            int(tokens) if isinstance(tokens, int) else None,
+            float(cost) if isinstance(cost, int | float) else None)
 
 
 class VerificationPipeline:
@@ -66,16 +88,12 @@ class VerificationPipeline:
         # 2. If strict residency or Muse fails -> try fallback
         if not strict_residency:
             try:
-                res = self.primary_fn(payload, timeout=self.timeout_seconds)
+                verdict, conf, reason, tokens, cost = _parse_model_response(
+                    self.primary_fn(payload, timeout=self.timeout_seconds))
                 elapsed_ms = int((time.perf_counter() - start_time) * 1000)
                 return VerificationCallResult(
-                    verdict=res.get("verdict", "verified"),
-                    confidence=float(res.get("confidence", 0.95)),
-                    reason=res.get("reason"),
-                    model_used=self.primary_model_name,
-                    latency_ms=elapsed_ms,
-                    tokens_used=res.get("tokens_used", 120),
-                    cost_usd=res.get("cost_usd", 0.0012),
+                    verdict=verdict, confidence=conf, reason=reason, model_used=self.primary_model_name,
+                    latency_ms=elapsed_ms, tokens_used=tokens, cost_usd=cost,
                 )
             except Exception as e:
                 logger.warning(
@@ -86,16 +104,12 @@ class VerificationPipeline:
 
         # 3. Fallback to self-hosted Llama vision (FR2.060 / TC2.149)
         try:
-            res_fb = self.fallback_fn(payload, timeout=self.timeout_seconds)
+            verdict, conf, reason, tokens, cost = _parse_model_response(
+                self.fallback_fn(payload, timeout=self.timeout_seconds))
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)
             return VerificationCallResult(
-                verdict=res_fb.get("verdict", "verified"),
-                confidence=float(res_fb.get("confidence", 0.90)),
-                reason=res_fb.get("reason"),
-                model_used=self.fallback_model_name,
-                latency_ms=elapsed_ms,
-                tokens_used=res_fb.get("tokens_used", 150),
-                cost_usd=0.0,  # Self-hosted inference
+                verdict=verdict, confidence=conf, reason=reason, model_used=self.fallback_model_name,
+                latency_ms=elapsed_ms, tokens_used=tokens, cost_usd=cost,
             )
         except Exception as e_fb:
             logger.error("Fallback model call also failed", error=str(e_fb))

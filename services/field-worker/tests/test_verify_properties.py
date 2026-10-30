@@ -200,7 +200,7 @@ def test_t2_060_pr2_17_budget_control(has_budget: bool):
 
     def mock_call(payload, timeout):
         calls_made.append(1)
-        return {"verdict": "verified"}
+        return {"verdict": "verified", "confidence": 0.9}
 
     pipeline = VerificationPipeline(primary_fn=mock_call, fallback_fn=mock_call)
     res = pipeline.execute({"crop": "sample"}, has_budget=has_budget)

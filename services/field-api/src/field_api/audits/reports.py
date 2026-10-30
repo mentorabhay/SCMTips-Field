@@ -9,12 +9,15 @@ Exposes:
 
 from __future__ import annotations
 
+import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from field_api.auth.jwt import Principal
-from field_api.db import get_conn
+from field_api.crops import crop_store
+from field_api.db import get_conn, tenant_tx
 from field_api.deps import get_principal, require_principal
 from field_worker.jobs.audit_report import (
     generate_audit_report,
@@ -153,14 +156,28 @@ def api_access_evidence(
             },
         )
 
-    # Return simulated evidence crop payload with correct tenant header
-    sample_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+    # The evidence itself: the stored (blurred) crop of this tenant, read under RLS. Unknown or
+    # foreign ids are 404; expired crops (retention, no legal hold) are 410. (Previously a constant
+    # 1x1 PNG was returned for any id.)
+    try:
+        uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail={"error_code": "FIELD-EVD-404-NOT-FOUND", "message": "Evidence not found"}) from None
+    with tenant_tx(target_tenant, ("*",)) as cur:
+        cur.execute("SELECT crop_s3_uri, retention_until, is_legal_hold FROM field.capture_evidence WHERE id = %s::uuid",
+                    (id,))
+        row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail={"error_code": "FIELD-EVD-404-NOT-FOUND", "message": "Evidence not found"})
+    uri, until, hold = row
+    store = crop_store()
+    if (datetime.now(UTC) > until and not hold) or not store.exists(uri):
+        raise HTTPException(status_code=status.HTTP_410_GONE,
+                            detail={"error_code": "FIELD-EVD-410-EXPIRED", "message": "Evidence deleted by retention"})
     return Response(
-        content=sample_png,
-        media_type="image/png",
-        headers={
-            "X-Tenant-Id": target_tenant,
-            "X-Evidence-Id": id,
-            "Cache-Control": "private, max-age=86400",
-        },
+        content=store.get(uri),
+        media_type="image/jpeg",
+        headers={"X-Tenant-Id": target_tenant, "X-Evidence-Id": id, "Cache-Control": "private, no-store"},
     )

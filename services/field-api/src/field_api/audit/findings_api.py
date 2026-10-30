@@ -7,11 +7,13 @@ Provides endpoints to:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from typing import Any
 
 import structlog
+from field_api.crops import crop_store
 from field_api.db import get_conn
 
 logger = structlog.get_logger(__name__)
@@ -175,17 +177,23 @@ def record_unknown_equipment(
                 ),
             )
             if crop_ref:
+                # The crop must already be in the crop store (PUT /v1/captures/uploads); its real size and
+                # hash are recorded (was size 1024 and hash 'sha256_placeholder').
+                store = crop_store()
+                if not store.exists(crop_ref):
+                    raise ValueError("FIELD-EVD-422-CROP-UNKNOWN: crop_ref is not a stored crop")
+                data = store.get(crop_ref)
                 cur.execute(
                     """
                     INSERT INTO field.capture_evidence (
                         id, tenant_id, capture_id, crop_s3_uri, file_size_bytes,
                         sha256_hash, retention_until
                     ) VALUES (
-                        %s, %s, %s, %s, 1024,
-                        'sha256_placeholder', NOW() + interval '90 days'
+                        %s, %s, %s, %s, %s,
+                        %s, NOW() + interval '90 days'
                     );
                     """,
-                    (str(uuid.uuid4()), tenant_id, capture_id, crop_ref),
+                    (str(uuid.uuid4()), tenant_id, capture_id, crop_ref, len(data), hashlib.sha256(data).hexdigest()),
                 )
 
             # 3. Create or update tower_only finding

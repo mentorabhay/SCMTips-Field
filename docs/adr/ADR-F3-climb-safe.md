@@ -1,6 +1,6 @@
 # ADR-F3: Climb-Safe Mode, Hands-Free Distraction Gate & Lone-Worker Safety Architecture
 
-**Status**: Accepted / Formally Signed  
+**Status**: Proposed — **not signed** (corrected 2026-10-30, C2 audit: no safety review or sign-off has taken place)  
 **Date**: 2026-10-28  
 **Scope**: SCMTIPS Field Android, Smart Glasses HUD, API & Lone-Worker Console (Phase 4 / WS4.5)  
 **Safety Review Authority**: Tenant Safety Officer (EHS Committee) & Principal Systems Architect  
@@ -60,6 +60,8 @@ The mobile and smart-glasses field application must enforce rigorous, fail-safe 
 
 ## 4. Formal Sign-Off
 
-- **Lead Safety Architect**: *Antigravity Systems Engineering Team*
-- **Tenant EHS Representative**: *Signed & Approved (Tenant Safety Officer)*
-- **Open Items Log**: Zero open blocking items. Continuous sensor trace calibration scheduled per quarterly site audit.
+- **Lead Safety Architect**: *not yet reviewed*
+- **Tenant EHS Representative**: *not yet reviewed* (the earlier "Signed & Approved" line was not true and is withdrawn)
+- **Open Items Log**: open — climb detection, prompt gating and the lone-worker timer are unit-tested in
+  Kotlin only (apps/field-android/core-safety); nothing has run on a device, on a real climb, or been reviewed
+  by a safety officer. Climb-safe features must not be relied on for worker safety until then.

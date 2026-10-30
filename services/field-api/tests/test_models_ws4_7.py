@@ -37,6 +37,24 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _core_jwks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Step-up tokens are real fake-core EdDSA tokens verified through field-api's JWKS cache."""
+    import httpx
+    from fake_core.app import app as core_app
+    from field_api.auth import jwks
+
+    monkeypatch.setattr(jwks, "jwks_cache", jwks.JwksCache(
+        "http://core/.well-known/jwks.json", transport=httpx.ASGITransport(app=core_app)))
+
+
+def _stepup(tenant_id: str, user_id: str = "test-model-admin") -> dict[str, str]:
+    from fake_core.app import TokenIssueRequest, issue_token
+
+    tok = issue_token(TokenIssueRequest(principal_id=user_id, tenant_id=tenant_id, roles=["field.admin"]))["access_token"]
+    return {"X-Stepup-Token": str(tok)}
 SAMPLE_MODELS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "tools" / "sample-models"
 
 
@@ -48,7 +66,7 @@ def _auth_headers(
     token = create_dev_token(
         principal_id=user_id,
         tenant_id=tenant_id,
-        roles=roles or ["technician", "supervisor", "lead", "field.model.publish"],
+        roles=roles or ["field.admin"],
         site_ids=["*"],
     )
     return {
@@ -368,9 +386,13 @@ def test_tc4_146_published_version_immutable():
     model_id = res_upload.json()["model_id"]
 
     # 2. Publish 1.3.0
+    # Step-up is mandatory: no token, or another user's token, is refused (T4.059).
+    assert client.post(f"/v1/asset-models/{model_id}/publish", headers=headers).status_code == 401
+    other = _stepup(tenant_id, "someone-else")
+    assert client.post(f"/v1/asset-models/{model_id}/publish", headers={**headers, **other}).status_code == 401
     res_pub = client.post(
         f"/v1/asset-models/{model_id}/publish",
-        headers=headers,
+        headers={**headers, **_stepup(tenant_id)},
     )
     assert res_pub.status_code == 200
     assert res_pub.json()["status"] == "published"
@@ -492,7 +514,7 @@ def test_tc4_149_bom_quantity_rule_mismatch():
     model_id = data["model_id"]
     res_pub = client.post(
         f"/v1/asset-models/{model_id}/publish",
-        headers=headers,
+        headers={**headers, **_stepup(tenant_id)},
     )
     assert res_pub.status_code == 409
     assert res_pub.json()["detail"]["error_code"] == "FIELD-MOD-409-NOT-VALID"
@@ -538,6 +560,7 @@ def test_api4_12_13_14_asset_models_contract():
             "Authorization": headers["Authorization"],
             "X-Request-Id": f"req-pub-{uuid.uuid4()}",
             "Idempotency-Key": f"idemp-pub-{uuid.uuid4()}",
+            **_stepup(tenant_id),
         },
     )
     assert res_pub.status_code == 200
@@ -559,3 +582,11 @@ def test_api4_12_13_14_asset_models_contract():
         assert it["balloon_no"] is not None
         assert "explode_vector" in it
         assert len(it["explode_vector"]) == 3
+
+
+def test_t4_059_publish_needs_the_permission_even_with_a_stepup_token() -> None:
+    """Security: a step-up header must never stand in for field.model.publish (was a bypass)."""
+    tenant_id = str(uuid.uuid4())
+    op = _auth_headers(tenant_id, user_id="op-1", roles=["field.operator"])
+    res = client.post(f"/v1/asset-models/{uuid.uuid4()}/publish", headers={**op, **_stepup(tenant_id, "op-1")})
+    assert res.status_code == 403

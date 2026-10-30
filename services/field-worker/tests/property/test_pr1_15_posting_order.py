@@ -8,7 +8,7 @@ from field_worker.posting.retry import (
     classify_error,
     compute_backoff_jitter,
 )
-from hypothesis import given, settings
+from hypothesis import assume, given, settings
 
 
 class DummyHttpError(Exception):
@@ -40,7 +40,14 @@ def test_pr1_15_backoff_schedule_and_jitter(attempt: int) -> None:
     st.text(min_size=1, max_size=20),
 )
 def test_pr1_15_error_classification(status_code: int, msg: str) -> None:
-    """PR1.15: Error classification separates retryable lock/server errors from non-retryable 4xx errors."""
+    """PR1.15: Error classification separates retryable lock/server errors from non-retryable 4xx errors.
+
+    The property is about the HTTP status with a neutral message: SAP lock texts (VL/046, "locked by")
+    and network words deliberately override the status and are covered by the unit tests.
+    """
+    keywords = ("zsim/locked", "locked by", "vl/046", "mc/601", "enqueue lock", "lockcontention",
+                "connect", "timeout", "network", "socket", "reset")
+    assume(not any(k in msg.lower() for k in keywords))
     err = DummyHttpError(status_code, msg)
     error_class, is_retryable, _ = classify_error(err)
 

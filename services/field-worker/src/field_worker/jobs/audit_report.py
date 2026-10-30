@@ -25,6 +25,8 @@ import structlog
 from fastapi import HTTPException, status
 from field_common.uuid7 import uuid7_str
 
+from field_worker.jobs.pdf import text_pdf
+
 logger = structlog.get_logger(__name__)
 
 DATABASE_URL = (
@@ -212,9 +214,9 @@ def generate_audit_report(
         content_bytes = out.getvalue().encode("utf-8")
         mime_type = "text/csv"
     elif report_format == "pdf":
-        # Structured PDF document text representation
+        # A real PDF (was plain text with a "%PDF-1.4" prefix served as application/pdf)
         pdf_lines = [
-            "%PDF-1.4 - SCMTIPS FIELD AUDIT REPORT",
+            "SCMTIPS FIELD AUDIT REPORT",
             f"Task: {task_id} ({task_title}) | Site: {site_id}",
             f"Generated: {now.isoformat()} | Findings: {len(report_rows)}",
             "-" * 80,
@@ -224,7 +226,7 @@ def generate_audit_report(
                 f"[{row['status'].upper()}] {row['fl_code']} | Exp: {row['expected_serial'] or 'N/A'} | "
                 f"Found: {row['found_serial'] or 'N/A'} | Dec: {row['decision']} | Ev: {row['evidence_url']}"
             )
-        content_bytes = "\n".join(pdf_lines).encode("utf-8")
+        content_bytes = text_pdf(pdf_lines, title=f"Audit report {task_id}")
         mime_type = "application/pdf"
     else:
         content_bytes = json.dumps({"task_id": task_id, "findings": report_rows}, indent=2).encode(

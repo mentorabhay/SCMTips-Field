@@ -251,8 +251,8 @@ def test_tc4_116_ai_mismatch_opens_exception_no_erp(test_tenant_id: str, seeded_
         is_expected=True,
         is_normalised=False,
         pattern_matched=True,
-        mock_ai_verdict="mismatch",
-        mock_actual_serial="RRU-ACTUAL-999",
+        # Test double for the AI client: a model answer that reads a different serial.
+        model_call=lambda req: {"verdict": "mismatch", "confidence": 0.88, "serial": "RRU-ACTUAL-999"},
     )
 
     assert res["verify_status"] == "mismatch"
@@ -358,3 +358,21 @@ def test_pr4_18_verify_routing_properties(conf, expected, normalised, pattern_ok
             assert dec.reason == "sample_10pct"
         else:
             assert dec.should_verify is False
+
+
+def test_t4_035_no_model_client_means_nothing_is_verified(test_tenant_id: str, seeded_tower_site: dict):
+    """C2 finding: without an AI client the verdict used to default to "verified" with invented metrics."""
+    capture_id = str(uuid.uuid4())
+    res = NameplateVerifyService().process_verification(
+        tenant_id=test_tenant_id, site_id=seeded_tower_site["site_id"], capture_id=capture_id,
+        candidate_serial="BBU-SN-2001", equipment_class="BBU", confidence=0.80,
+        is_expected=True, is_normalised=False, pattern_matched=True,
+    )
+    assert res["verify_status"] == "unverified_no_model" and res["erp_mutated"] is False
+    bad = NameplateVerifyService().process_verification(
+        tenant_id=test_tenant_id, site_id=seeded_tower_site["site_id"], capture_id=str(uuid.uuid4()),
+        candidate_serial="BBU-SN-2002", equipment_class="BBU", confidence=0.80,
+        is_expected=True, is_normalised=False, pattern_matched=True,
+        model_call=lambda req: {},  # an empty model answer is never a verification
+    )
+    assert bad["verify_status"] == "unverified_bad_response"

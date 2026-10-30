@@ -410,14 +410,18 @@ def test_tc4_120_and_tc4_121_findings_endpoints(
     )
     assert resp_inv.status_code == 422
 
-    # 2. Record Unknown (FR4.022 / TC4.120)
+    # 2. Record Unknown (FR4.022 / TC4.120) with a crop that really is in the crop store
+    from field_api.crops import crop_store
+
+    crop = b"\xff\xd8" + uuid.uuid4().bytes + b"\xff\xd9"
+    crop_uri = crop_store().put(auth_context["tenant_id"], crop)
     resp_unknown = client.post(
         f"/v1/tasks/{task_id}/audit/findings/unknown",
         json={
             "found_serial": "TMA-SURPRISE-99",
             "equipment_class": "TMA",
             "location_id": test_audit_site["loc_id"],
-            "crop_ref": "crops/surprise-tma.jpg",
+            "crop_ref": crop_uri,
         },
         headers=auth_context["headers_tech"],
     )
