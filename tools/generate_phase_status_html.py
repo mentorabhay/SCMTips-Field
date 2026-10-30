@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 ROOT = Path(__file__).resolve().parent.parent
 STATUS_DIR = ROOT / "docs" / "STATUS"
@@ -219,7 +219,7 @@ def generate_html(phase: int) -> str:
 """
 
 
-def main():
+def main() -> None:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     for p in range(1, 5):
         html = generate_html(p)
