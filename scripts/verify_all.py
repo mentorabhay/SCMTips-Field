@@ -83,6 +83,8 @@ JOBS: list[tuple[str, str, list[str]]] = [
     # 8. Status Trace & Acceptance Criteria Verification
     # 9. Kotlin JVM logic tests (kotlinc + JUnit 4 from the Gradle distribution) and the real Android build
     ("kotlin-jvm", "Kotlin JVM unit tests (kotlinc + JUnit 4)", ["uv", "run", "python", "scripts/jobs/kotlin_jvm.py"]),
+    ("android-compile-check", "All Android modules type-check against real library class files",
+     ["uv", "run", "python", "-m", "tools.android_check.compile_check", "--all"]),
     ("field-android", "Android multi-module compile, unit tests & lint", ["uv", "run", "python", "scripts/jobs/android.py"]),
     # 10. Trace runs last: it needs junit from every test job, including Kotlin
     ("trace", "Spec requirement status trace check", ["uv", "run", "python", "tools/checks/trace.py"]),

@@ -33,6 +33,7 @@
     "app/src/main/kotlin/com/scmtips/field/app/ui/SliceScreens.kt": "androidx.compose",
     "app/src/main/kotlin/com/scmtips/field/app/ui/theme/Color.kt": "androidx",
     "app/src/main/kotlin/com/scmtips/field/app/ui/theme/Theme.kt": "androidx",
+    "app/src/test/kotlin/com/scmtips/field/app/slice/BackendDriver.kt": "uses FieldSession (OkHttp); run by tools/android_check/drive_backend.py against a live stack",
     "core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/OutboxWriter.kt": "uses the Room DAO",
     "core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/QueueCapacityGovernor.kt": "uses the Room DAO",
     "core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/WarehouseOutbox.kt": "uses OutboxWriter",

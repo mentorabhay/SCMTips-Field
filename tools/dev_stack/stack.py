@@ -336,11 +336,17 @@ def create_inbound_delivery(lines: int = 3, plant: str = SAMPLE_PLANT, sloc: str
     import psycopg
 
     with psycopg.connect(_admin_url("erpsim"), autocommit=True) as c, c.cursor() as cur:
-        cur.execute("SELECT pg_advisory_xact_lock(4242)")
-        cur.execute("SELECT COALESCE(MAX(delivery_document::bigint), 180000000) + 1 FROM erpsim.inbound_delivery"
-                    " WHERE delivery_document ~ '^18[0-9]{7}$'")
-        row = cur.fetchone()
-        deliv = str(row[0] if row else 180000001)
+        # Time-based so it never collides with seeded or earlier numbers (erp-sim resets reuse 180000001+)
+        deliv = None
+        for _ in range(20):
+            cand = f"18{int(time.time() * 10) % 10**8:08d}"
+            cur.execute("SELECT 1 FROM erpsim.inbound_delivery WHERE delivery_document = %s", (cand,))
+            if cur.fetchone() is None:
+                deliv = cand
+                break
+            time.sleep(0.1)
+        if deliv is None:
+            raise SystemExit("could not allocate a free delivery number")
         cur.execute("SELECT material_no FROM erpsim.material ORDER BY random() LIMIT %s", (lines,))
         mats = [r[0] for r in cur.fetchall()]
         if not mats:
