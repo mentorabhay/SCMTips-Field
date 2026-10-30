@@ -23,6 +23,6 @@ if grep -q "FATAL EXCEPTION" "$out/launch-logcat.log"; then
   echo "FAIL: FATAL EXCEPTION in logcat:"; grep -A40 "FATAL EXCEPTION" "$out/launch-logcat.log" | head -60; failed=1
 fi
 if [ -s "$out/launch-crash.txt" ]; then echo "FAIL: the app recorded a crash:"; head -40 "$out/launch-crash.txt"; failed=1; fi
-grep -E "SCMTipsField|DATWearables|AndroidRuntime" "$out/launch-logcat.log" | tail -30
+grep -E "SCMTipsField|DATWearables|MetaWearables|AndroidRuntime" "$out/launch-logcat.log" | tail -30
 [ "$failed" -eq 0 ] && echo "launch check: the app stayed up with no crash"
 exit "$failed"

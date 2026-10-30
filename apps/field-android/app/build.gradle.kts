@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+}
+
+// Owner-only values (A-02): apps/field-android/local.properties is git-ignored.
+val localProperties = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.isFile) f.inputStream().use { load(it) }
 }
 
 android {
@@ -14,10 +22,12 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 2
         versionName = "0.2.0-m1"
-        // Meta Wearables DAT in Developer Mode: attestation is off, both values are "0" (Meta's docs).
-        // A released app needs the Wearables Developer Center ids from local.properties / CI secrets.
-        manifestPlaceholders["mwdat_application_id"] = "0"
-        manifestPlaceholders["mwdat_client_token"] = "0"
+        // Meta Wearables DAT, as Meta's CameraAccess sample: in Developer Mode attestation is off and the
+        // values may be empty; a released app needs its Wearables Developer Center ids in local.properties.
+        // (Was the literal "0": Android stores a numeric meta-data value as an Integer, and DAT logged
+        // "Failed to read metadata from manifest: ...APPLICATION_ID, the app might be misconfigured".)
+        manifestPlaceholders["mwdat_application_id"] = localProperties.getProperty("mwdat_application_id", "")
+        manifestPlaceholders["mwdat_client_token"] = localProperties.getProperty("mwdat_client_token", "")
     }
 
     buildTypes {
