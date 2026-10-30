@@ -38,6 +38,8 @@ dist/
 
 # Environment & Secrets (Explicit requirement T1.001)
 .env*
+!.env.example
+local.properties
 *.pem
 *.key
 *.cert
