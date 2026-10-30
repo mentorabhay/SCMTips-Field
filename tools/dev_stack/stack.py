@@ -4,6 +4,11 @@
     uv run python -m tools.dev_stack.stack pair     # demo site + QR code the phone app scans
     uv run python -m tools.dev_stack.stack status
     uv run python -m tools.dev_stack.stack down
+    uv run python -m tools.dev_stack.stack delivery   # inbound delivery -> receive task
+    uv run python -m tools.dev_stack.stack outbound   # outbound delivery -> pick task
+    uv run python -m tools.dev_stack.stack count [BIN]  # blind count task for a bin
+    uv run python -m tools.dev_stack.stack tower      # SAMPLE-TWR-0001: sector A audit + swap task
+    uv run python -m tools.dev_stack.stack smoke --all  # every job type over HTTP as the phone would
 
 Services (logs in var/log, pids in var/run):
   fake-core  :8011  dev identity provider (EdDSA tokens + JWKS); stands in for SCMTips core
@@ -486,7 +491,8 @@ def create_inbound_delivery(lines: int = 3, plant: str = SAMPLE_PLANT, sloc: str
             time.sleep(0.1)
         if deliv is None:
             raise SystemExit("could not allocate a free delivery number")
-        cur.execute("SELECT material_no FROM erpsim.material ORDER BY random() LIMIT %s", (lines,))
+        cur.execute("SELECT material_no FROM erpsim.material WHERE material_no LIKE 'SAMPLE-MAT-%%'"
+                    " ORDER BY random() LIMIT %s", (lines,))
         mats = [r[0] for r in cur.fetchall()]
         if not mats:
             raise SystemExit("erp-sim has no materials; run `stack up` first")
@@ -509,13 +515,17 @@ def cmd_delivery(a: argparse.Namespace) -> int:
 
 
 class Phone:
-    """The HTTP calls the phone app makes, in order (used by `smoke` to prove the backend path)."""
+    """The HTTP calls the phone app makes, in order (used by `smoke` to prove the backend path).
+
+    Every call is the real field-api over HTTP with the device's own field token, as the app makes it.
+    """
 
     def __init__(self, api: str, core_token: str) -> None:
         self.api = api.rstrip("/")
         self.core_token = core_token
         self.token = ""
         self.device_id = ""
+        self._seen: set[str] = set()
 
     def _h(self, idem: bool = False) -> dict[str, str]:
         h = {"Authorization": f"Bearer {self.token}"}
@@ -538,10 +548,31 @@ class Phone:
         self.device_id = r.json()["id"]
         return self.device_id
 
-    def tasks(self, site: str) -> list[dict[str, Any]]:
-        r = httpx.get(f"{self.api}/v1/tasks", params={"site_id": site, "type": "receive"}, headers=self._h(), timeout=10)
-        r.raise_for_status()
-        return list(r.json()["items"])
+    def pair(self, serial: str) -> Phone:
+        self.exchange()
+        self.register(serial)
+        self.exchange(self.device_id)
+        return self
+
+    def tasks(self, site: str, type_: str | None = None, status: str | None = "open,in_progress") -> list[dict[str, Any]]:
+        """GET /v1/tasks?site_id=&status=open,in_progress, as the app sends it (type filtered here)."""
+        params = {"site_id": site, "limit": "200"}
+        if status:
+            params["status"] = status
+        items: list[dict[str, Any]] = []
+        cursor = None
+        while True:
+            if cursor:
+                params["cursor"] = cursor
+            r = httpx.get(f"{self.api}/v1/tasks", params=params, headers=self._h(), timeout=10)
+            r.raise_for_status()
+            items += [t for t in r.json()["items"] if type_ is None or t["type"] == type_]
+            cursor = r.json().get("next_cursor")
+            if not cursor:
+                return items
+
+    def task(self, site: str, type_: str, task_id: str) -> dict[str, Any] | None:
+        return next((t for t in self.tasks(site, type_, status=None) if t["id"] == task_id), None)
 
     def voice(self, task_id: str, intent: str, transcript: str, conf: float = 0.93) -> str:
         r = httpx.post(f"{self.api}/v1/voice-events", json={
@@ -551,18 +582,61 @@ class Phone:
         r.raise_for_status()
         return str(r.json()["id"])
 
-    def count(self, line: dict[str, Any], qty: float, voice_id: str) -> None:
-        r = httpx.post(f"{self.api}/v1/count-records", json={
-            "task_line_id": line["id"], "value": qty, "unit": line.get("uom") or "EA", "voice_event_id": voice_id,
-        }, headers=self._h(True), timeout=10)
-        r.raise_for_status()
+    def count(self, line: dict[str, Any], qty: float, voice_id: str | None = None) -> httpx.Response:
+        body: dict[str, Any] = {"task_line_id": line["id"], "value": qty, "unit": line.get("uom") or "EA",
+                                "source": "voice" if voice_id else "manual"}
+        if voice_id:
+            body["voice_event_id"] = voice_id
+        return httpx.post(f"{self.api}/v1/count-records", json=body, headers=self._h(True), timeout=10)
 
-    def post(self, task_id: str, lines: list[tuple[str, float]], post_id: str, confirm_id: str) -> dict[str, Any]:
+    def confirm(self, task_id: str, line_id: str, kind: str, code: str, role: str | None = None,
+                reason: str | None = None) -> httpx.Response:
+        body: dict[str, Any] = {"kind": kind, "code": code, "source": "scan"}
+        if role:
+            body["role"] = role
+        if reason:
+            body["reason"] = reason
+        return httpx.post(f"{self.api}/v1/tasks/{task_id}/lines/{line_id}/confirmations", json=body,
+                          headers=self._h(True), timeout=10)
+
+    def flag(self, task_id: str, line_id: str, flag: str, reason: str | None = None) -> httpx.Response:
+        return httpx.post(f"{self.api}/v1/tasks/{task_id}/lines/{line_id}/flags",
+                          json={"flag": flag, "reason": reason}, headers=self._h(True), timeout=10)
+
+    @staticmethod
+    def staged_hash(lines: list[tuple[str, float]]) -> str:
         import hashlib
 
-        staged = hashlib.sha256("|".join(sorted(f"{lid}:{q:.3f}" for lid, q in lines)).encode()).hexdigest()
+        return hashlib.sha256("|".join(sorted(f"{lid}:{q:.3f}" for lid, q in lines)).encode()).hexdigest()
+
+    def finish(self, task_id: str, lines: list[tuple[str, float]], post_id: str | None = None,
+               confirm_id: str | None = None) -> httpx.Response:
+        """POST post-requests exactly as the app sends it. Voice: the turn ids both inside ``confirm`` and
+        at the top level; touch ("Yes, post it"): ``confirm: {method: touch}`` only."""
+        body: dict[str, Any] = {"operation": "post", "lines": [lid for lid, _ in lines],
+                                "staged_hash": self.staged_hash(lines)}
+        if post_id and confirm_id:
+            body["confirm"] = {"method": "voice", "post_voice_event_id": post_id, "confirm_voice_event_id": confirm_id}
+            body.update(post_voice_event_id=post_id, confirm_voice_event_id=confirm_id)
+        else:
+            body["confirm"] = {"method": "touch"}
+        return httpx.post(f"{self.api}/v1/tasks/{task_id}/post-requests", json=body, headers=self._h(True), timeout=15)
+
+    @staticmethod
+    def listed(task: dict[str, Any]) -> list[tuple[str, float]]:
+        """The app's staged lines for scanned jobs (putaway / audit / swap): the counted_qty the list reported, 0 if absent."""
+        return [(ln["id"], float(ln.get("counted_qty") or 0)) for ln in task["lines"]]
+
+    @staticmethod
+    def counted(resp: httpx.Response, sent: float) -> float:
+        """The app's hash quantity after a count: picked_qty, else counted_qty, else the value sent."""
+        body = resp.json()
+        return float(body.get("picked_qty", body.get("counted_qty", sent)))
+
+    def post(self, task_id: str, lines: list[tuple[str, float]], post_id: str, confirm_id: str) -> dict[str, Any]:
+        """Pre-M2 shape (top-level voice turn ids), still accepted by the API."""
         r = httpx.post(f"{self.api}/v1/tasks/{task_id}/post-requests", json={
-            "lines": [lid for lid, _ in lines], "staged_hash": staged,
+            "lines": [lid for lid, _ in lines], "staged_hash": self.staged_hash(lines),
             "post_voice_event_id": post_id, "confirm_voice_event_id": confirm_id,
         }, headers=self._h(True), timeout=10)
         if r.status_code != 202:
@@ -575,52 +649,663 @@ class Phone:
         r.raise_for_status()
         return [json.loads(ln[6:]) for ln in r.text.splitlines() if ln.startswith("data: ")]
 
+    def wait_event(self, kinds: tuple[str, ...], task_id: str | None, timeout_s: float,
+                   pred: Any = None) -> dict[str, Any]:
+        """The next live event of one of ``kinds`` for ``task_id`` (or matching ``pred``); erp.failed ends the wait."""
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            for t in self.ticks():
+                if t["id"] in self._seen:
+                    continue
+                payload = t.get("payload") or {}
+                if (pred(payload) if pred else payload.get("task_id")) != (True if pred else task_id):
+                    continue
+                self._seen.add(t["id"])
+                if t.get("kind") in kinds or t.get("kind") == "erp.failed":
+                    return {"kind": t.get("kind"), **payload}
+            time.sleep(1)
+        raise SmokeFailure(f"no {'/'.join(kinds)} event for task {task_id} within {timeout_s:.0f} s")
 
-def cmd_smoke(a: argparse.Namespace) -> int:
-    """Receive one inbound delivery by 'voice' exactly as the app does, and wait for the ERP posting."""
+
+class Console:
+    """The supervisor console's calls (dev sign-in: fake-core supervisor token, exchanged)."""
+
+    def __init__(self, api: str, tenant: str, principal: str = "smoke-sup") -> None:
+        self.api = api.rstrip("/")
+        r = httpx.post(local("fake-core") + "/api/v1/auth/token", json={
+            "principal_id": principal, "tenant_id": tenant, "roles": ["field.supervisor"], "site_ids": ["*"],
+            "ttl_seconds": 1800}, timeout=5)
+        r.raise_for_status()
+        self.token = _field_token(str(r.json()["access_token"]))
+
+    def _h(self, idem: bool = False) -> dict[str, str]:
+        h = {"Authorization": f"Bearer {self.token}"}
+        if idem:
+            h["Idempotency-Key"] = str(uuid.uuid4())
+        return h
+
+    def get(self, path: str, **params: str) -> Any:
+        r = httpx.get(f"{self.api}{path}", params=params, headers=self._h(), timeout=10)
+        if r.status_code != 200:
+            raise SmokeFailure(f"GET {path}: HTTP {r.status_code} {r.text[:300]}")
+        return r.json()
+
+    def post(self, path: str, body: dict[str, Any] | None = None) -> httpx.Response:
+        return httpx.post(f"{self.api}{path}", json=body or {}, headers=self._h(True), timeout=10)
+
+
+class SmokeFailure(Exception):
+    pass
+
+
+def _expect(cond: bool, what: str) -> None:
+    if not cond:
+        raise SmokeFailure(what)
+
+
+# --- erp-sim reads (the SAP side of every check) ----------------------------------------------------
+
+def erp_document(doc: str, year: str) -> dict[str, Any]:
+    r = httpx.get(local("erp-sim") + "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/"
+                  f"A_MaterialDocumentHeader(MaterialDocument='{doc}',MaterialDocumentYear='{year}')",
+                  params={"$expand": "to_MaterialDocumentItem"}, headers={"sap-client": "100"}, timeout=10)
+    if r.status_code != 200:
+        raise SmokeFailure(f"erp-sim has no material document {doc}/{year} (HTTP {r.status_code})")
+    return dict(r.json()["d"])
+
+
+def erp_movements(doc: str, year: str) -> list[tuple[str, str, float]]:
+    """[(material, movement type, quantity)] of a material document in erp-sim."""
+    items = erp_document(doc, year).get("to_MaterialDocumentItem", {}).get("results", [])
+    return [(i["Material"], i["GoodsMovementType"], float(i["QuantityInEntryUnit"])) for i in items]
+
+
+def erp_equipment(serial: str) -> dict[str, Any] | None:
+    r = httpx.get(local("erp-sim") + "/sap/opu/odata/sap/API_EQUIPMENT/A_Equipment",
+                  params={"$filter": f"SerialNumber eq '{serial}'"}, headers={"sap-client": "100"}, timeout=10)
+    r.raise_for_status()
+    res = r.json()["d"]["results"]
+    return dict(res[0]) if res else None
+
+
+def erp_stock(material: str, plant: str = SAMPLE_PLANT, sloc: str = "101A") -> float:
+    import psycopg
+
+    with psycopg.connect(_admin_url("erpsim")) as c, c.cursor() as cur:
+        cur.execute("SELECT quantity FROM erpsim.stock WHERE client = '100' AND plant = %s AND storage_location = %s"
+                    " AND material_no = %s", (plant, sloc, material))
+        row = cur.fetchone()
+        return float(row[0]) if row else 0.0
+
+
+# --- SAMPLE warehouse: bin tree and opening bin stock ----------------------------------------------
+
+BIN_TREE: dict[str, tuple[str, ...]] = {
+    "02": ("02-01-01", "02-01-02", "02-02-01", "02-02-02", "02-03-04", "02-03-05"),
+    "03": ("03-05-01", "03-05-02", "03-05-03", "03-06-01", "03-06-02", "03-07-01"),
+}
+# Opening balance: SAP IM stock of these materials sits in these bins (field side; SAP has no bins).
+OPENING_STOCK = {"02-01-01": "SAMPLE-MAT-0001", "02-03-04": "SAMPLE-MAT-0002",
+                 "03-05-01": "SAMPLE-MAT-0003", "03-05-02": "SAMPLE-MAT-0004"}
+
+
+def _admin(tenant: str) -> str:
+    r = httpx.post(local("fake-core") + "/api/v1/auth/token", json={
+        "principal_id": "dev-admin", "tenant_id": tenant, "roles": ["field.admin"], "ttl_seconds": 600}, timeout=5)
+    r.raise_for_status()
+    return _field_token(str(r.json()["access_token"]))
+
+
+def ensure_bin_tree(state: dict[str, Any]) -> int:
+    """Zones 02 and 03 with their storage bins, created through POST /v1/locations. Returns bins created."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT code, id FROM field.location WHERE site_id = %s", (state["site"],))
+        have = {str(r[0]): str(r[1]) for r in cur.fetchall()}
+    if all(b in have for bins in BIN_TREE.values() for b in bins):
+        return 0
+    token = _admin(state["tenant"])
+    h = {"Authorization": f"Bearer {token}"}
+    made = 0
+    for zone, bins in BIN_TREE.items():
+        if zone not in have:
+            r = httpx.post(local("field-api") + "/v1/locations", json={
+                "site_id": state["site"], "kind": "zone", "code": zone},
+                headers={**h, "Idempotency-Key": str(uuid.uuid4())}, timeout=10)
+            if r.status_code != 201:
+                raise SystemExit(f"could not create zone {zone}: HTTP {r.status_code} {r.text[:200]}")
+            have[zone] = r.json()["id"]
+        for b in bins:
+            if b in have:
+                continue
+            r = httpx.post(local("field-api") + "/v1/locations", json={
+                "site_id": state["site"], "parent_id": have[zone], "kind": "position", "code": b,
+                "erp_ref": f"{SAMPLE_PLANT}/101A/{b}", "erp_ref_type": "storage_bin"},
+                headers={**h, "Idempotency-Key": str(uuid.uuid4())}, timeout=10)
+            if r.status_code != 201:
+                raise SystemExit(f"could not create bin {b}: HTTP {r.status_code} {r.text[:200]}")
+            have[b] = r.json()["id"]
+            made += 1
+    return made
+
+
+def seed_opening_stock(state: dict[str, Any]) -> int:
+    """Once per site: the bins in OPENING_STOCK hold today's SAP stock of their material (dev seed)."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true), set_config('app.site_ids', '*', true)",
+                    (state["tenant"],))
+        cur.execute("SELECT 1 FROM field.bin_stock WHERE site_id = %s LIMIT 1", (state["site"],))
+        if cur.fetchone():
+            return 0
+        for b, mat in OPENING_STOCK.items():
+            cur.execute("INSERT INTO field.bin_stock (tenant_id, site_id, storage_bin, material_no, quantity)"
+                        " VALUES (%s, %s, %s, %s, %s)", (state["tenant"], state["site"], b, mat, erp_stock(mat)))
+        c.commit()
+    return len(OPENING_STOCK)
+
+
+def ensure_warehouse(state: dict[str, Any]) -> dict[str, Any]:
+    state = ensure_demo_site(state)
+    ensure_bin_tree(state)
+    seed_opening_stock(state)
+    return state
+
+
+def bins_with_stock(state: dict[str, Any]) -> list[tuple[str, str, float]]:
+    """[(bin, material, qty)] the field holds for the SAMPLE site (not under an open count)."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true), set_config('app.site_ids', '*', true)",
+                    (state["tenant"],))
+        cur.execute(
+            """
+            SELECT s.storage_bin, s.material_no, s.quantity FROM field.bin_stock s
+             WHERE s.site_id = %s AND s.quantity > 0
+               AND NOT EXISTS (SELECT 1 FROM field.pi_book b JOIN field.pi_document d ON d.id = b.pi_document_id
+                                 JOIN field.task_line l ON l.id = b.task_line_id
+                                WHERE d.status IN ('open', 'counted', 'recount') AND l.storage_bin = s.storage_bin)
+             ORDER BY s.storage_bin, s.material_no
+            """,
+            (state["site"],),
+        )
+        return [(str(r[0]), str(r[1]), float(r[2])) for r in cur.fetchall()]
+
+
+def _new_outbound_no(cur: Any) -> str:
+    for _ in range(50):
+        cand = f"80{int(time.time() * 10) % 10**8:08d}"
+        cur.execute("SELECT 1 FROM erpsim.outbound_delivery WHERE delivery_document = %s", (cand,))
+        if cur.fetchone() is None:
+            return cand
+        time.sleep(0.1)
+    raise SystemExit("could not allocate a free delivery number")
+
+
+def create_outbound_delivery(items: list[tuple[str, float]], plant: str = SAMPLE_PLANT, sloc: str = "101A") -> str:
+    """A fresh open outbound delivery in erp-sim (stands in for a sales order's delivery)."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("erpsim"), autocommit=True) as c, c.cursor() as cur:
+        deliv = _new_outbound_no(cur)
+        cur.execute("INSERT INTO erpsim.outbound_delivery (client, delivery_document, plant, storage_location, status,"
+                    " header_data) VALUES ('100', %s, %s, %s, 'open', %s)",
+                    (deliv, plant, sloc, json.dumps({"ShipTo": "SAMPLE-CUSTOMER-01"})))
+        for i, (mat, qty) in enumerate(items, start=1):
+            cur.execute("INSERT INTO erpsim.outbound_delivery_item (client, delivery_document, item_no, material_no,"
+                        " delivery_qty, picked_qty, uom, status) VALUES ('100', %s, %s, %s, %s, 0, 'EA', 'open')",
+                        (deliv, f"{i * 10:06d}", mat, qty))
+    return deliv
+
+
+def cmd_outbound(a: argparse.Namespace) -> int:
+    load_env()
+    apply_ports()
+    state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
+    stock = bins_with_stock(state)[: a.lines]
+    if not stock:
+        print("FAIL: no bin of the SAMPLE site holds stock; receive and put away first")
+        return 1
+    deliv = create_outbound_delivery([(m, min(2.0, q)) for _b, m, q in stock])
+    print(f"outbound delivery {deliv} created ({', '.join(f'{m} from {b}' for b, m, _q in stock)});"
+          " field-worker imports it as a pick task within FIELD_IBD_POLL_S")
+    return 0
+
+
+def create_count_task(state: dict[str, Any], bin_: str | None = None) -> dict[str, Any]:
+    """A count (field PI document) for every material in one bin, through POST /v1/pi-documents.
+
+    The book snapshot is taken server-side from the field bin stock (never passes through a client).
+    """
+    stock = bins_with_stock(state)
+    if bin_ is None:
+        if not stock:
+            raise SystemExit("no bin of the SAMPLE site holds stock")
+        bin_ = stock[-1][0]
+    mats = [m for b, m, _q in stock if b == bin_]
+    if not mats:
+        raise SystemExit(f"bin {bin_} holds nothing the field knows of (or is already being counted)")
+    r = httpx.post(local("fake-core") + "/api/v1/auth/token", json={
+        "principal_id": "dev-planner", "tenant_id": state["tenant"], "roles": ["inventory.controller"],
+        "site_ids": [state["site"]], "ttl_seconds": 600}, timeout=5)
+    r.raise_for_status()
+    planner = _field_token(str(r.json()["access_token"]))
+    r = httpx.post(local("field-api") + "/v1/pi-documents", json={
+        "site_id": state["site"], "plant": SAMPLE_PLANT, "storage_location": "101A",
+        "items": [{"bin": bin_, "material": m} for m in mats]},
+        headers={"Authorization": f"Bearer {planner}", "Idempotency-Key": str(uuid.uuid4())}, timeout=10)
+    if r.status_code != 201:
+        raise SystemExit(f"could not create the count: HTTP {r.status_code} {r.text[:300]}")
+    return {**r.json(), "bin": bin_, "materials": mats}
+
+
+def cmd_count(a: argparse.Namespace) -> int:
+    load_env()
+    apply_ports()
+    state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
+    out = create_count_task(state, a.bin)
+    print(f"count task {out['task_id']} for bin {out['bin']} ({len(out['materials'])} item(s)), PI {out['doc_number']}")
+    return 0
+
+
+# --- SAMPLE tower ------------------------------------------------------------------------------------
+
+TOWER_FL = "SAMPLE-TWR-0001"
+TOWER_LAT, TOWER_LON = 12.9716, 77.5946
+TOWER_SLOTS = (("A", "S1", 30.0), ("A", "S2", 32.0), ("A", "S3", 34.0), ("B", "S1", 30.0))
+
+
+def ensure_erp_tower() -> dict[str, Any]:
+    """In erp-sim: SAMPLE-TWR-0001 with sectors A and B, four slots, an RRU installed in each slot and one
+    spare RRU in store (created when none is left). Idempotent; a swapped unit stays swapped."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("erpsim"), autocommit=True) as c, c.cursor() as cur:
+        def fl(code: str, name: str, parent: str | None, kind: str, sector: str | None, h: float | None) -> None:
+            cur.execute(
+                "INSERT INTO erpsim.functional_location (client, func_loc, description, superior_func_loc, kind,"
+                " sector_code, height_m, plant) VALUES ('100', %s, %s, %s, %s, %s, %s, %s)"
+                " ON CONFLICT (client, func_loc) DO UPDATE SET description = EXCLUDED.description,"
+                " superior_func_loc = EXCLUDED.superior_func_loc, kind = EXCLUDED.kind,"
+                " sector_code = EXCLUDED.sector_code, height_m = EXCLUDED.height_m, plant = EXCLUDED.plant",
+                (code, name, parent, kind, sector, h, SAMPLE_PLANT))
+
+        def new_equipment(serial: str, floc: str | None) -> None:
+            cur.execute("SELECT COALESCE(MAX(equipment_no::bigint), 19100000) + 1 FROM erpsim.equipment"
+                        " WHERE equipment_no ~ '^191[0-9]{5}$'")
+            row = cur.fetchone()
+            no = str(row[0]) if row else "19100001"
+            cur.execute("INSERT INTO erpsim.equipment (client, equipment_no, material_no, serial_no, func_loc, status)"
+                        " VALUES ('100', %s, 'MAT-RRU-01', %s, %s, %s)",
+                        (no, serial, floc, "installed" if floc else "available"))
+            if floc:
+                cur.execute("INSERT INTO erpsim.equipment_install (client, equipment_no, func_loc, action)"
+                            " VALUES ('100', %s, %s, 'install')", (no, floc))
+
+        fl(TOWER_FL, "SAMPLE tower 0001", None, "tower_site", None, None)
+        for sector in sorted({s for s, _c, _h in TOWER_SLOTS}):
+            fl(f"{TOWER_FL}-{sector}", f"Sector {sector}", TOWER_FL, "sector", sector, None)
+        for sector, slot, h in TOWER_SLOTS:
+            floc = f"{TOWER_FL}-{sector}-{slot}"
+            fl(floc, f"Sector {sector} slot {slot[1:]}", f"{TOWER_FL}-{sector}", "rack_slot", sector, h)
+            cur.execute("SELECT 1 FROM erpsim.equipment WHERE func_loc = %s", (floc,))
+            if cur.fetchone() is None:
+                new_equipment(f"RRU-SN-{uuid.uuid4().hex[:6].upper()}", floc)
+        cur.execute("SELECT serial_no FROM erpsim.equipment WHERE func_loc IS NULL AND material_no = 'MAT-RRU-01'"
+                    " AND equipment_no ~ '^191[0-9]{5}$' ORDER BY equipment_no LIMIT 1")
+        row = cur.fetchone()
+        if row is None:
+            spare = f"RRU-SN-{uuid.uuid4().hex[:6].upper()}"
+            new_equipment(spare, None)
+        else:
+            spare = str(row[0])
+        cur.execute("SELECT func_loc, serial_no FROM erpsim.equipment WHERE func_loc LIKE %s ORDER BY func_loc",
+                    (f"{TOWER_FL}-%",))
+        installed = {str(r[0]): str(r[1]) for r in cur.fetchall()}
+    return {"spare": spare, "installed": installed}
+
+
+def ensure_tower_site(state: dict[str, Any]) -> dict[str, Any]:
+    if state.get("tower_site") and site_exists(state["tower_site"]):
+        return state
+    token = _admin(state["tenant"])
+    r = httpx.post(local("field-api") + "/v1/sites", json={
+        "code": TOWER_FL, "name": "SAMPLE tower 0001 (field test)", "kind": "tower", "lat": TOWER_LAT,
+        "lon": TOWER_LON, "geofence_radius_m": 150},
+        headers={"Authorization": f"Bearer {token}", "Idempotency-Key": str(uuid.uuid4())}, timeout=10)
+    if r.status_code != 201:
+        raise SystemExit(f"could not create the tower site: HTTP {r.status_code} {r.text[:300]}")
+    state["tower_site"] = r.json()["id"]
+    STATE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    return state
+
+
+def create_tower_jobs(state: dict[str, Any]) -> dict[str, Any]:
+    """erp-sim tower -> field installed base (read through the SAP readers) -> sector A audit + one swap."""
+    from field_api.audit.generate import generate_audit_task
+    from field_api.jobs.tower_tasks import create_swap_task
+    from field_worker.tower.installed_base import sync_tower_installed_base
+
+    erp = ensure_erp_tower()
+    state = ensure_tower_site(state)
+    worker_db = os.environ.get("FIELD_WORKER_DATABASE_URL", "postgresql://field_worker:devpassword@127.0.0.1:5450/field")
+    synced = sync_tower_installed_base(state["tenant"], state["tower_site"], TOWER_FL, local("erp-sim"), worker_db)
+    audit = generate_audit_task(state["tenant"], state["tower_site"], sector_code="A")
+    swap_serial = erp["installed"][f"{TOWER_FL}-A-S3"]
+    swap = create_swap_task(state["tenant"], state["tower_site"], swap_serial)
+    return {"state": state, "synced": synced, "audit": audit, "swap": swap, "spare": erp["spare"],
+            "installed": erp["installed"]}
+
+
+def cmd_tower(_a: argparse.Namespace) -> int:
     load_env()
     apply_ports()
     state = ensure_demo_site(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
-    phone = Phone(a.api or local("field-api"), _core_token("smoke-op", state["tenant"], state["site"], 900))
-    phone.exchange()
-    phone.register(f"smoke-{uuid.uuid4().hex[:8]}")
-    phone.exchange(phone.device_id)
-    print(f"1 paired: device {phone.device_id}")
-    deliv = create_inbound_delivery(2)
-    print(f"  new inbound delivery {deliv} in erp-sim")
-    deadline = time.monotonic() + a.wait
-    tasks: list[dict[str, Any]] = []
+    out = create_tower_jobs(state)
+    print(f"tower {TOWER_FL}: {out['synced']['locations']} locations, {out['synced']['equipment']} units mirrored")
+    print(f"audit task {out['audit']['id']} ({out['audit']['line_count']} units in sector A)")
+    print(f"swap task {out['swap']['id']}: remove {out['swap']['expected_serial']} at {out['swap']['position']};"
+          f" spare in store: {out['spare']}")
+    return 0
+
+
+# --- smoke ----------------------------------------------------------------------------------------
+
+def _wait_task(phone: Phone, site: str, type_: str, pred: Any, timeout_s: float) -> dict[str, Any]:
+    deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        tasks = [t for t in phone.tasks(state["site"]) if t.get("erp_ref") == deliv and t.get("lines")]
-        if tasks:
-            break
+        found = [t for t in phone.tasks(site, type_) if pred(t) and t.get("lines")]
+        if found:
+            return found[0]
         time.sleep(2)
-    if not tasks:
-        print("FAIL: no receive task appeared; is field-worker running (var/log/field-worker.log)?")
-        return 1
-    task = tasks[0]
-    print(f"2 task {task["erp_ref"]} with {len(task['lines'])} lines")
+    raise SmokeFailure(f"no {type_} task appeared within {timeout_s:.0f} s; is field-worker running?")
+
+
+def _wait_status(phone: Phone, site: str, type_: str, task_id: str, status: str, timeout_s: float) -> dict[str, Any]:
+    deadline = time.monotonic() + timeout_s
+    t: dict[str, Any] | None = None
+    while time.monotonic() < deadline:
+        t = phone.task(site, type_, task_id)
+        if t and t["status"] == status:
+            return t
+        time.sleep(1)
+    raise SmokeFailure(f"{type_} task {task_id} is {t['status'] if t else 'gone'}, not {status}")
+
+
+def _accepted(r: httpx.Response, what: str, code: int = 200) -> dict[str, Any]:
+    if r.status_code != code:
+        raise SmokeFailure(f"{what}: HTTP {r.status_code} {r.text[:300]}")
+    return dict(r.json())
+
+
+def _refused(r: httpx.Response, what: str, code: str) -> str:
+    if r.status_code < 400 or code not in r.text:
+        raise SmokeFailure(f"{what}: expected {code}, got HTTP {r.status_code} {r.text[:200]}")
+    return str(r.json().get("title"))
+
+
+def smoke_receive(phone: Phone, state: dict[str, Any], wait: float) -> dict[str, Any]:
+    deliv = create_inbound_delivery(2)
+    task = _wait_task(phone, state["site"], "receive", lambda t: t.get("ref_doc_no") == deliv, wait)
+    print(f"receive  task {task['title']!r} ({task['subtitle']}) with {len(task['lines'])} lines")
     staged: list[tuple[str, float]] = []
     for ln in task["lines"]:
-        qty = float(ln.get("expected_qty") or 1)
-        phone.count(ln, qty, phone.voice(task["id"], "count", f"count {int(qty)}"))
-        staged.append((ln["id"], qty))
-    post_id = phone.voice(task["id"], "post", "post")
-    confirm_id = phone.voice(task["id"], "confirm", "confirm")
-    out = phone.post(task["id"], staged, post_id, confirm_id)
-    print(f"3 post requested: {out['posting_request_id']} ({out['queue_key']})")
-    while time.monotonic() < deadline:
-        for t in phone.ticks():
-            if t.get("kind") == "erp.posted" or t.get("tick_type") == "erp.posted":
-                data = t.get("payload") or t
-                print(f"4 PASS: ERP material document {data.get('doc_number')} / {data.get('fiscal_year')}")
-                return 0
-            if t.get("kind") == "erp.failed" or t.get("tick_type") == "erp.failed":
-                print(f"FAIL: posting failed: {t}")
-                return 1
-        time.sleep(2)
-    print("FAIL: no erp.posted tick before the deadline")
-    return 1
+        qty = float(ln["expected_qty"])
+        r = phone.count(ln, qty, phone.voice(task["id"], "count", f"count {int(qty)}"))
+        _accepted(r, "count", 201)
+        staged.append((ln["id"], phone.counted(r, qty)))
+    out = _accepted(phone.finish(task["id"], staged, phone.voice(task["id"], "post", "post"),
+                                 phone.voice(task["id"], "confirm", "confirm")), "post (voice)", 202)
+    _expect(out["status"] == "queued", f"receive post status {out['status']}")
+    ev = phone.wait_event(("erp.posted",), task["id"], wait)
+    _expect(ev["kind"] == "erp.posted", f"receive: {ev}")
+    moves = erp_movements(ev["doc_number"], ev["doc_year"])
+    want = sorted((ln["material"], "101", float(ln["expected_qty"])) for ln in task["lines"])
+    _expect(sorted(moves) == want, f"erp-sim GR {ev['doc_number']} has {moves}, expected {want}")
+    print(f"         erp.posted: GR {ev['doc_number']}/{ev['doc_year']} in erp-sim, movements {moves}")
+    erp_doc = out["posting_request_id"]
+    assigned = phone.wait_event(("task.assigned",), None, wait, pred=lambda p: p.get("erp_document_id") == erp_doc)
+    _expect(assigned.get("type") == "putaway", f"after GR: {assigned}")
+    print(f"         task.assigned: {assigned['title']!r}")
+    return {"gr": ev["doc_number"], "putaway_task": assigned["task_id"], "task": task}
+
+
+def smoke_putaway(phone: Phone, state: dict[str, Any], gr: str, wait: float) -> None:
+    task = _wait_task(phone, state["site"], "putaway", lambda t: t.get("ref_doc_no") == gr, wait)
+    print(f"putaway  task {task['title']!r} ({task['subtitle']})")
+    other = next(b for bins in BIN_TREE.values() for b in bins if b != task["lines"][0]["bin"])
+    title = _refused(phone.confirm(task["id"], task["lines"][0]["id"], "bin", other), "wrong bin",
+                     "FIELD-TASK-409-WRONG-CODE")
+    print(f"         wrong bin refused: {title!r}")
+    for ln in task["lines"]:
+        _expect(bool(ln["bin"]), f"put-away line {ln['line_no']} has no suggested bin")
+        out = _accepted(phone.confirm(task["id"], ln["id"], "bin", ln["bin"]), "bin scan")
+        _expect(out["line_status"] == "confirmed", f"bin scan left line {out}")
+    out = _accepted(phone.finish(task["id"], phone.listed(task)), "post (touch)", 202)
+    _expect(out["status"] == "completed", f"putaway post {out}")
+    phone.wait_event(("task.completed",), task["id"], wait)
+    _wait_status(phone, state["site"], "putaway", task["id"], "done", wait)
+    print(f"         stored: {', '.join(f'{ln['material']} x{ln['expected_qty']:g} in {ln['bin']}' for ln in task['lines'])}")
+
+
+def smoke_pick(phone: Phone, state: dict[str, Any], wait: float) -> None:
+    stock = [s for s in bins_with_stock(state) if s[2] >= 3][:2]
+    _expect(len(stock) == 2, "need two bins with stock for the pick")
+    deliv = create_outbound_delivery([(m, 3.0) for _b, m, _q in stock])
+    task = _wait_task(phone, state["site"], "pick", lambda t: t.get("ref_doc_no") == deliv, wait)
+    print(f"pick     task {task['title']!r} ({task['subtitle']}), stops {[ln['bin'] for ln in task['lines']]}")
+    _expect([ln["bin"] for ln in task["lines"]] == sorted(ln["bin"] for ln in task["lines"]), "stops not in bin order")
+    first = task["lines"][0]
+    _refused(phone.confirm(task["id"], first["id"], "product", first["material"]), "product before bin",
+             "FIELD-TASK-409-WRONG-CODE")
+    picked: list[tuple[str, float]] = []
+    before = {m: erp_stock(m) for _b, m, _q in stock}
+    for i, ln in enumerate(task["lines"]):
+        _accepted(phone.confirm(task["id"], ln["id"], "bin", ln["bin"]), "pick bin scan")
+        _refused(phone.confirm(task["id"], ln["id"], "product", "SAMPLE-MAT-9999"), "wrong product",
+                 "FIELD-TASK-409-WRONG-CODE")
+        _accepted(phone.confirm(task["id"], ln["id"], "product", ln["material"]), "pick product scan")
+        qty = float(ln["expected_qty"]) - (1 if i == 1 else 0)  # second stop is one short
+        r = phone.count(ln, qty)
+        _accepted(r, "picked quantity", 201)
+        if i == 1:
+            _accepted(phone.flag(task["id"], ln["id"], "short", f"picked {qty:g} of {ln['expected_qty']:g}"), "short flag")
+        picked.append((ln["id"], phone.counted(r, qty)))
+    out = _accepted(phone.finish(task["id"], picked), "post (touch)", 202)
+    ev = phone.wait_event(("erp.posted",), task["id"], wait)
+    _expect(ev["kind"] == "erp.posted", f"pick: {ev}")
+    moves = erp_movements(ev["doc_number"], ev["doc_year"])
+    want = sorted((ln["material"], "601", q) for ln, (_lid, q) in zip(task["lines"], picked, strict=True))
+    _expect(sorted(moves) == want, f"erp-sim GI {ev['doc_number']} has {moves}, expected {want}")
+    for ln, (_lid, q) in zip(task["lines"], picked, strict=True):
+        _expect(erp_stock(ln["material"]) == before[ln["material"]] - q, f"erp-sim stock of {ln['material']}")
+    print(f"         {out['status']} -> erp.posted: GI {ev['doc_number']} (601) {moves}; one stop short")
+
+
+def _count_blind(phone: Phone, state: dict[str, Any], count: dict[str, Any], delta: float) -> dict[str, Any]:
+    task = _wait_task(phone, state["site"], "count", lambda t: t["id"] == count["task_id"], 10)
+    _expect(all("expected_qty" not in ln and "counted_qty" not in ln for ln in task["lines"]), "count is not blind")
+    staged = []
+    for ln in task["lines"]:
+        qty = erp_stock(ln["material"]) + delta  # the smoke knows the book from erp-sim; the phone never sees it
+        r = phone.count(ln, qty)
+        if r.status_code != 201:
+            return {"refused": r}
+        staged.append((ln["id"], phone.counted(r, qty)))
+    return {"task": task, "staged": staged}
+
+
+def smoke_count(phone: Phone, phone2: Phone, console: Console, state: dict[str, Any], wait: float) -> None:
+    # 1. within tolerance: one piece missing -> 702 through the PI document
+    stock = bins_with_stock(state)
+    by_bin: dict[str, list[str]] = {}
+    for b, m, q in stock:
+        if q >= 60:
+            by_bin.setdefault(b, []).append(m)
+    single = [b for b, ms in by_bin.items() if len(ms) == 1]
+    _expect(len(single) >= 2, f"need two single-material bins with >= 60 pieces (1 short stays within 2 %), have {by_bin}")
+    c1 = create_count_task(state, single[0])
+    done = _count_blind(phone, state, c1, -1)
+    task, staged = done["task"], done["staged"]
+    mat = task["lines"][0]["material"]
+    before = erp_stock(mat)
+    out = _accepted(phone.finish(task["id"], staged), "count post", 202)
+    _expect(out["status"] == "queued", f"count within tolerance: {out}")
+    ev = phone.wait_event(("erp.posted",), task["id"], wait)
+    _expect(ev["kind"] == "erp.posted", f"count: {ev}")
+    moves = erp_movements(ev["doc_number"], ev["doc_year"])
+    _expect(moves == [(mat, "702", 1.0)] and erp_stock(mat) == before - 1, f"erp-sim PI difference {moves}")
+    print(f"count    {task['title']!r} blind, 1 short (within tolerance) -> erp.posted: {ev['doc_number']} {moves}")
+
+    # 2. beyond tolerance -> approval request -> recount by someone else -> approve -> 702
+    c2 = create_count_task(state, single[1])
+    done = _count_blind(phone, state, c2, -10)
+    task, staged = done["task"], done["staged"]
+    out = _accepted(phone.finish(task["id"], staged), "count post", 202)
+    _expect(out["status"] == "awaiting_approval", f"count beyond tolerance: {out}")
+    phone.wait_event(("count.awaiting_approval",), task["id"], wait)
+    pending = console.get("/v1/approval-requests", status="pending")["items"]
+    apr = next((a for a in pending if a["task_id"] == task["id"]), None)
+    if apr is None:
+        raise SmokeFailure("approval request not in the console queue")
+    print(f"         10 short (beyond tolerance) -> awaiting_approval; console sees {apr['type']} "
+          f"lines {[(x['material'], x['book_qty'], x['counted_qty']) for x in apr['lines']]}")
+    rc = _accepted(console.post(f"/v1/tasks/{task['id']}/recount"), "recount", 201)
+    recount = {"task_id": rc["task_id"]}
+    again = _count_blind(phone, state, recount, -10)
+    _expect("refused" in again and "RECOUNT-SAME-OPERATOR" in again["refused"].text, "recount by the first counter")
+    rt = _wait_task(phone2, state["site"], "count", lambda t: t["id"] == rc["task_id"], 10)
+    _expect(rt["reason"] == rc["reason"], f"recount reason {rt['reason']!r}")
+    done = _count_blind(phone2, state, recount, -10)
+    out = _accepted(phone2.finish(rc["task_id"], done["staged"]), "recount post", 202)
+    _expect(out["status"] == "awaiting_approval", f"recount: {out}")
+    apr2 = next(a for a in console.get("/v1/approval-requests")["items"] if a["task_id"] == rc["task_id"])
+    mat = done["task"]["lines"][0]["material"]
+    before = erp_stock(mat)
+    dec = _accepted(console.post(f"/v1/approval-requests/{apr2['id']}/decide",
+                                 {"decision": "approve", "reason": "recount confirms the loss"}), "approve")
+    _expect(dec["status"] == "approved" and bool(dec["erp_document_id"]), f"decide: {dec}")
+    _wait_status(phone2, state["site"], "count", rc["task_id"], "done", wait)
+    _expect(erp_stock(mat) == before - 10, f"erp-sim stock of {mat} after the approved difference")
+    print(f"         recount by a second operator ({rt['reason']!r}) -> approved -> 702 of 10 posted in erp-sim")
+
+
+def smoke_visit_in(phone: Phone, site: str) -> str:
+    """Check in, harness, climb-safe, a rest platform, and a safety heartbeat: the app's tower visit (§6)."""
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime.now(UTC).astimezone()
+    end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    r = httpx.post(f"{phone.api}/v1/sites/{site}/visits", json={
+        "permit_ref": f"PTW-{uuid.uuid4().hex[:6].upper()}", "permit_valid_until": end_of_day.isoformat(),
+        "lat": TOWER_LAT + 0.0002, "lon": TOWER_LON, "accuracy_m": 8.0, "captured_at": now.isoformat()},
+        headers=phone._h(True), timeout=10)
+    visit = str(_accepted(r, "check-in", 201)["id"])
+    events = [("harness_confirmed", {}), ("climb_safe_activated", {}), ("checkpoint_reached", {"level": 1})]
+    r = httpx.post(f"{phone.api}/v1/climb-sessions/{visit}/events", json={"events": [
+        {"device_seq": i, "type": t, "occurred_at": (now + timedelta(seconds=i)).isoformat(), "payload": p}
+        for i, (t, p) in enumerate(events, start=1)]}, headers=phone._h(True), timeout=10)
+    _accepted(r, "climb events")
+    _accepted(httpx.post(f"{phone.api}/v1/safety/visits/{visit}/check-in", json={}, headers=phone._h(True), timeout=10),
+              "safety check-in")
+    print(f"visit    checked in ({visit}); harness, climb-safe, checkpoint level 1, safety heartbeat")
+    return visit
+
+
+def smoke_visit_out(phone: Phone, visit: str) -> None:
+    from datetime import UTC, datetime
+
+    r = httpx.post(f"{phone.api}/v1/climb-sessions/{visit}/events", json={"events": [
+        {"device_seq": 4, "type": "climb_safe_released", "occurred_at": datetime.now(UTC).isoformat(), "payload": {}}]},
+        headers=phone._h(True), timeout=10)
+    _accepted(r, "climb released")
+    r = httpx.patch(f"{phone.api}/v1/visits/{visit}", json={"unsynced_count": 0}, headers=phone._h(), timeout=10)
+    _accepted(r, "check-out")
+    print("         climb-safe released, checked out")
+
+
+def smoke_tower(phone: Phone, console: Console, state: dict[str, Any], wait: float) -> None:
+    tw = create_tower_jobs(state)
+    site = tw["state"]["tower_site"]
+    visit = smoke_visit_in(phone, site)
+    audit = _wait_task(phone, site, "audit", lambda t: t["id"] == tw["audit"]["id"], 10)
+    _expect(len(audit["lines"]) == 3, f"sector A audit has {len(audit['lines'])} lines")
+    print(f"audit    {audit['title']!r} ({audit['subtitle']}): {[(ln['position'], ln['expected_serial']) for ln in audit['lines']]}")
+    l1, l2, l3 = audit["lines"]
+    o1 = _accepted(phone.confirm(audit["id"], l1["id"], "serial", l1["expected_serial"]), "serial scan")
+    stranger = f"RRU-SN-{uuid.uuid4().hex[:6].upper()}"
+    o2 = _accepted(phone.confirm(audit["id"], l2["id"], "serial", stranger), "unexpected serial")
+    _expect(o1["match"] is True and o2["match"] is False, f"match flags {o1} {o2}")
+    _accepted(phone.flag(audit["id"], l3["id"], "missing", "inaccessible"), "missing flag")
+    audit = phone.task(site, "audit", audit["id"]) or audit
+    out = _accepted(phone.finish(audit["id"], phone.listed(audit)), "audit finish", 202)
+    rec = out["reconciliation"]
+    _expect(out["status"] == "completed" and (rec["matched"], rec["serial_mismatch"], rec["erp_only"]) == (1, 1, 1),
+            f"audit reconciliation {out}")
+    phone.wait_event(("task.completed",), audit["id"], wait)
+    queue = console.get("/v1/mismatches", site_id=site)["items"]
+    classes = {(m.get("class") or m.get("finding_class"), m.get("found_serial") or m.get("expected_serial")) for m in queue}
+    _expect(("serial_mismatch", stranger) in classes or any(stranger in json.dumps(m) for m in queue),
+            f"console mismatch queue lacks {stranger}: {queue}")
+    print(f"         completed: {rec}; console mismatch queue has {len(queue)} open finding(s)")
+    smoke_visit_out(phone, visit)
+
+    swap = _wait_task(phone, site, "swap", lambda t: t["id"] == tw["swap"]["id"], 10)
+    ln = swap["lines"][0]
+    print(f"swap     {swap['title']!r}: remove {ln['expected_serial']} at {ln['position']}, install spare {tw['spare']}")
+    _refused(phone.confirm(swap["id"], ln["id"], "serial", tw["spare"], role="old"), "wrong old unit",
+             "FIELD-TASK-409-WRONG-CODE")
+    _accepted(phone.confirm(swap["id"], ln["id"], "serial", ln["expected_serial"], role="old"), "old unit")
+    _accepted(phone.confirm(swap["id"], ln["id"], "serial", tw["spare"], role="new"), "new unit")
+    out = _accepted(phone.finish(swap["id"], phone.listed(swap)), "swap post", 202)
+    _expect(out["status"] == "queued" and out["queue_key"] == f"EQUIP:{TOWER_FL}", f"swap: {out}")
+    ev = phone.wait_event(("erp.posted",), swap["id"], wait)
+    _expect(ev["kind"] == "erp.posted", f"swap: {ev}")
+    old, new = erp_equipment(ln["expected_serial"]) or {}, erp_equipment(tw["spare"]) or {}
+    _expect(bool(old) and not old.get("FunctionalLocation"), f"erp-sim old unit {old}")
+    _expect(new.get("FunctionalLocation") == f"{TOWER_FL}-A-S3", f"erp-sim new unit {new}")
+    _wait_status(phone, site, "swap", swap["id"], "done", wait)
+    print(f"         erp.posted: change document {ev['doc_number']}; erp-sim: {ln['expected_serial']} dismantled,"
+          f" {tw['spare']} installed at {TOWER_FL}-A-S3")
+
+
+def cmd_smoke(a: argparse.Namespace) -> int:
+    """Receive one inbound delivery by voice as the app does; with --all, every job type end to end."""
+    load_env()
+    apply_ports()
+    state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
+    api = a.api or local("field-api")
+    site = state["site"]
+    phone = Phone(api, _core_token("smoke-op", state["tenant"], site, 1800)).pair(f"smoke-{uuid.uuid4().hex[:8]}")
+    print(f"paired: device {phone.device_id}")
+    steps = 0
+    try:
+        rec = smoke_receive(phone, state, a.wait)
+        steps += 1
+        if not a.all:
+            print(f"PASS: receive posted (GR {rec['gr']})")
+            return 0
+        smoke_putaway(phone, state, rec["gr"], a.wait)
+        steps += 1
+        smoke_pick(phone, state, a.wait)
+        steps += 1
+        phone2 = Phone(api, _core_token("smoke-op2", state["tenant"], site, 1800)).pair(f"smoke-{uuid.uuid4().hex[:8]}")
+        console = Console(api, state["tenant"])
+        smoke_count(phone, phone2, console, state, a.wait)
+        steps += 1
+        state = ensure_tower_site(state)
+        tower_phone = Phone(api, _core_token("smoke-tech", state["tenant"], state["tower_site"], 1800)).pair(
+            f"smoke-{uuid.uuid4().hex[:8]}")
+        smoke_tower(tower_phone, console, state, a.wait)
+        steps += 2
+    except SmokeFailure as e:
+        print(f"FAIL after {steps} job type(s): {e}")
+        return 1
+    print(f"PASS: {steps} job types end to end (receive, putaway, pick, count + recount, audit, swap)")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -638,12 +1323,18 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--no-open", action="store_true", help="do not open the QR image (Windows)")
     dl = sub.add_parser("delivery")
     dl.add_argument("--lines", type=int, default=3)
+    ob = sub.add_parser("outbound", help="outbound delivery in erp-sim -> a pick task")
+    ob.add_argument("--lines", type=int, default=2)
+    ct = sub.add_parser("count", help="a blind count task for a bin of the SAMPLE site")
+    ct.add_argument("bin", nargs="?", help="e.g. 03-05-02 (default: a bin that holds stock)")
+    sub.add_parser("tower", help="SAMPLE-TWR-0001 in erp-sim + field: a sector A audit and a swap task")
     sm = sub.add_parser("smoke")
     sm.add_argument("--api")
     sm.add_argument("--wait", type=float, default=90)
+    sm.add_argument("--all", action="store_true", help="every job type: receive, putaway, pick, count, audit, swap")
     a = ap.parse_args(argv)
     return {"up": cmd_up, "down": cmd_down, "status": cmd_status, "pair": cmd_pair, "smoke": cmd_smoke,
-            "delivery": cmd_delivery}[a.cmd](a)
+            "delivery": cmd_delivery, "outbound": cmd_outbound, "count": cmd_count, "tower": cmd_tower}[a.cmd](a)
 
 
 if __name__ == "__main__":

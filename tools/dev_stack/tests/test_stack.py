@@ -167,3 +167,27 @@ def test_pair_survives_a_console_without_block_characters(monkeypatch: pytest.Mo
     assert stack.cmd_pair(args) == 0
     assert (tmp_path / "var" / "pairing-qr.svg").stat().st_size > 1000
     assert "cannot draw the QR code" in capsys.readouterr().out
+
+
+def test_m2_commands_and_phone_hash_rules(monkeypatch: pytest.MonkeyPatch) -> None:
+    """M2 contract §4/§8: the smoke hashes exactly as the phone does; outbound/count/tower/smoke --all exist."""
+    import hashlib
+
+    import httpx
+
+    from tools.dev_stack import stack
+
+    seen: list[str] = []
+    for cmd in ("outbound", "count", "tower", "smoke"):
+        monkeypatch.setattr(stack, f"cmd_{cmd}", lambda a, c=cmd: seen.append(f"{c}:{getattr(a, 'bin', None)}:"
+                                                                              f"{getattr(a, 'all', None)}") or 0)
+    assert stack.main(["outbound"]) == 0 and stack.main(["count", "03-05-02"]) == 0
+    assert stack.main(["tower"]) == 0 and stack.main(["smoke", "--all"]) == 0
+    assert seen == ["outbound:None:None", "count:03-05-02:None", "tower:None:None", "smoke:None:True"]
+    lines = [("b", 2.0), ("a", 0.0)]
+    assert stack.Phone.staged_hash(lines) == hashlib.sha256(b"a:0.000|b:2.000").hexdigest()
+    task = {"lines": [{"id": "x", "counted_qty": 0.0}, {"id": "y"}]}
+    assert stack.Phone.listed(task) == [("x", 0.0), ("y", 0.0)]
+    pick = httpx.Response(201, json={"counted_qty": 3.0, "picked_qty": 3.0})
+    assert stack.Phone.counted(pick, 9) == 3.0
+    assert stack.Phone.counted(httpx.Response(201, json={}), 9) == 9.0
