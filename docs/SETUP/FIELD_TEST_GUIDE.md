@@ -8,17 +8,14 @@
 
 ---
 
-## Step 0: Get an APK (pick one)
+## Step 0: Get the APK
 
-**A. CI builds it.** Fix GitHub billing: github.com → avatar → Settings → **Billing and plans** → fix the failed payment or the spending limit. The free quota is plenty. Tell the agent "Step 0 done". It re-runs CI, and you download the **field-debug-apk** artifact from the newest green run.
+CI builds it on every push to `slice/m1-field-test` in **the private build mirror** (GitHub Actions, workflow `ci`, job `android`: `./gradlew assembleDebug testDebugUnitTest lintDebug` with a checksum-pinned Gradle 8.14.3). First green build: run 41100125774, commit `f1b164a`.
 
-**B. Build it on your PC.**
-1. Install **Android Studio**. During setup you accept Google's Android SDK licence.
-2. In Android Studio, open the folder `<repo>\apps\field-android` and wait for Gradle sync.
-3. Choose **Build → Build App Bundle(s)/APK(s) → Build APK(s)**. The APK is written to `app\build\outputs\apk\debug\app-debug.apk`.
-4. If sync or the build fails, copy the **first error lines** (no secrets in them) to the agent.
+1. Open SCMTips-build → **Actions**, then the newest run whose **android** job is green.
+2. Under **Artifacts**, download **field-debug-apk** (about 40 MB) and unzip it. You get `app-debug.apk`.
 
-**C. The agent builds it.** Reply "I accept the Android SDK license — install it". The agent can then build and unit-test the APK in its own environment and send you the file.
+Every step's log is also on the `ci-logs` branch (`runs/<job>/<run>-<attempt>/`), so the agent can diagnose a build without you.
 
 ## Step 1: Glasses and the Meta AI app (10 min)
 1. On the phone, install or update **Meta AI** and pair your Ray-Ban Meta Gen 2.
@@ -57,7 +54,7 @@ In PowerShell at `<repo>`:
 ## Step 4: Connect the glasses (5 min)
 1. Tap **Register**. The Meta AI app opens; approve SCMTips Field.
 2. Tap **Connect**. Meta AI asks for **camera** and **microphone** access to the glasses; allow both.
-3. The status should read: session **STARTED**, camera **STREAMING**. The capture button and glasses speech are experimental. If either shows "unavailable" or "refused", use the phone buttons and **Hold to talk**.
+3. The status should read: session **STARTED**, camera **STREAMING**. The phone's **Capture** button stays disabled until the glasses camera is streaming. Without glasses you can still walk the lines with **Next** and count by voice. The capture button and glasses speech are experimental. If either shows "unavailable" or "refused", use the phone buttons and **Hold to talk**.
 
 ## Step 5: Receive a delivery
 1. Tap a delivery. You hear: *"Receiving 1800 0002 2. 2 lines. Scan a label or say next."*
@@ -87,7 +84,6 @@ Barcodes, speech and voice prompts run on the phone and glasses for free. Cloud 
 ## What to send the agent (no secrets)
 | After | Send |
 |---|---|
-| Step 0 | "Step 0 done" (A), the first build error lines (B), or the licence sentence (C) |
 | Step 1 | phone model + Android version, Meta AI version, glasses firmware |
 | Step 2 | the last 5 lines of `run-field-stack.ps1 smoke` |
 | Steps 3–5 | what you heard and saw, and the app's log card (screenshot is fine) |
