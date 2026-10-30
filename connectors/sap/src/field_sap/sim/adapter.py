@@ -24,7 +24,7 @@ from field_sap.ports.erp_port import (
 
 logger = structlog.get_logger(__name__)
 
-DEFAULT_ERPSIM_URL = os.getenv("ERPSIM_BASE_URL", "http://127.0.0.1:8000")
+DEFAULT_ERPSIM_URL = os.getenv("FIELD_ERP_SIM_URL", "http://127.0.0.1:8002")
 
 
 def _odata_d(resp: httpx.Response) -> dict[str, Any]:

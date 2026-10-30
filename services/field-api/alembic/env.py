@@ -13,7 +13,8 @@ target_metadata = None
 
 
 def get_url() -> str:
-    url = os.getenv(
+    # Migrations run as the admin/migrator role; FIELD_DATABASE_URL is the RLS-bound app role.
+    url = os.getenv("FIELD_ADMIN_DATABASE_URL") or os.getenv(
         "FIELD_DATABASE_URL",
         "postgresql+psycopg://postgres:dev-postgres-password@127.0.0.1:5450/field",
     )

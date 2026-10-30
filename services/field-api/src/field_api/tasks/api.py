@@ -384,6 +384,7 @@ def _stage_confirm(
         tenant_id=principal.tenant_id, site_id=site_id, doc_type=doc_type, movement_type=mvt,
         queue_key=queue_key, ref_doc_no=ref_doc, plant=plant, idempotency_key=idempotency_key,
         payload={"task_id": task_id, "line_ids": line_ids, "requested_by": principal.id,
+                 "device_id": principal.device_id,
                  "requested_at": datetime.now(UTC).isoformat(), "delivery_document": ref_doc, **extra_payload},
         jobs=job_specs,
     )
@@ -449,7 +450,8 @@ def reverse_document(
             ref_doc_no=doc_no, plant=(srow[0] if srow else None) or "1000", idempotency_key=idempotency_key,
             payload={"task_id": payload.get("task_id"), "line_ids": payload.get("line_ids", []),
                      "reverses": doc_id, "line_status_after": after, "reason": body.reason,
-                     "requested_by": principal.id, "delivery_document": payload.get("delivery_document")},
+                     "requested_by": principal.id, "device_id": principal.device_id,
+                     "delivery_document": payload.get("delivery_document")},
             jobs=[JobSpec("Cancellation", {"MaterialDocument": doc_no, "MaterialDocumentYear": year,
                                            "Items": body.items or []})],
             reversal_of_id=doc_id,

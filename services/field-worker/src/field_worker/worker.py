@@ -116,14 +116,15 @@ class FieldWorker:
         return int(rows[0][0]) if rows else 0
 
     async def tick(self, now: float) -> None:
-        await self.process_posting_queue()
-        await asyncio.to_thread(self.process_tower_queues)
+        """One pass over every loop. A failing loop is logged and must not starve the others."""
+        await self._guard("posting", self.process_posting_queue())
+        await self._guard("tower", asyncio.to_thread(self.process_tower_queues))
         if now - self._last_ibd >= IBD_POLL_S:
             self._last_ibd = now
-            await self.poll_inbound_deliveries()
+            await self._guard("ibd_import", self.poll_inbound_deliveries())
         if now - self._last_purge >= PURGE_S:
             self._last_purge = now
-            self.purge_expired_idempotency_records()
+            await self._guard("idempotency_purge", asyncio.to_thread(self.purge_expired_idempotency_records))
         self.last_heartbeat = datetime.now(UTC).isoformat()
         await asyncio.to_thread(self.record_heartbeat)
 
@@ -138,6 +139,13 @@ class FieldWorker:
                 (f"{socket.gethostname()}:{os.getpid()}",
                  json.dumps({"jobs_processed": self.jobs_processed, "tasks_imported": self.tasks_imported})),
             )
+
+    @staticmethod
+    async def _guard(loop: str, aw: Any) -> None:
+        try:
+            await aw
+        except Exception:
+            logger.exception("worker_loop_failed", loop=loop)
 
     async def run(self) -> None:
         self.is_running = True

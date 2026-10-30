@@ -17,7 +17,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-DEFAULT_ERP_SIM_URL = os.environ.get("ERPSIM_URL", "http://127.0.0.1:8001")
+DEFAULT_ERP_SIM_URL = os.environ.get("FIELD_ERP_SIM_URL", "http://127.0.0.1:8002")
 FIELD_SAP_EQUIPMENT_LIVE = os.environ.get("FIELD_SAP_EQUIPMENT_LIVE", "false").lower() in ("true", "1", "yes")
 
 

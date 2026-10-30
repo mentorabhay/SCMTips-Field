@@ -107,6 +107,9 @@ async def poll_and_import_inbound_deliveries(
 
             items = d.get("to_DeliveryDocumentItem", {}).get("results", [])
 
+            if not existing_task and d.get("OverallGoodsReceiptStatus") == "C":
+                continue  # already fully received in the ERP: nothing to do in the field
+
             if not existing_task:
                 # 1. Create new receive task
                 task_id = uuid7_str()

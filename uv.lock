@@ -906,6 +906,26 @@ wheels = [
 ]
 
 [[package]]
+name = "pillow"
+version = "13.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/a4/9cc30690a394a8305e8be4c9036aa16d0dfddadd09079860b582f562496d/pillow-13.0.0.tar.gz", hash = "sha256:cdcd1ba258178f7356d74170c9a81ba4eab6a5d55748bc402a5a2a6fe6be3510", size = 47058631, upload-time = "2026-10-16T22:18:09.718Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/e2/9132d38df320e8099e2642d9fa538f18a7dfebf68a875a31725dc2a115aa/pillow-13.0.0-cp313-cp313-ios_13_0_arm64_iphoneos.whl", hash = "sha256:e98b4f91f99b24b1da72e10621ba181f7281922384a7403094debb4199de6c00", size = 4190620, upload-time = "2026-10-16T22:16:02.527Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/be/436dac0996876f65ef1916ffb711c5ef4af2ebc57414b6f16642e07f6b47/pillow-13.0.0-cp313-cp313-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:34fb3db1149c879343861831728c243c432d4a5afc8f1878ca7612ef8de2a033", size = 4290286, upload-time = "2026-10-16T22:16:04.861Z" },
+    { url = "https://files.pythonhosted.org/packages/60/16/7c1007162e4169ea0d5bec47e2e0b2174f56c50cf5b8c02a1dc23e41037e/pillow-13.0.0-cp313-cp313-ios_13_0_x86_64_iphonesimulator.whl", hash = "sha256:2d50500a4a3bc6469adcdb319cf05d688b08ca3bf0f22a05339f3b25b433a599", size = 3723169, upload-time = "2026-10-16T22:16:06.956Z" },
+    { url = "https://files.pythonhosted.org/packages/08/bc/578ab2eaa04705a8978bd9be0fe15c3d43a8fc95097c4f7e39540e79e4fa/pillow-13.0.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:ef5fe6b7db3f501c56000ba8fe7c7e1a35ca1d45824fbeb95a67daa85cff4dbe", size = 5568469, upload-time = "2026-10-16T22:16:08.664Z" },
+    { url = "https://files.pythonhosted.org/packages/98/c8/ccede3dcc4f274b80fb49199eed1ef34ba05566c8b71976b9d1f111da2e3/pillow-13.0.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:f11a3c1358bb3c68012a7b1f41b223c3db9f7bfde90b481df028cfe1c3363313", size = 4852187, upload-time = "2026-10-16T22:16:10.693Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/3c/cd0770e96d20bfd990db024bcbd43897ff3e88da1f4782cf90ea231b1d4f/pillow-13.0.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:19b66ca0a4d25cc0200b381ce824c7ea090db61427315e73cfb05dbf1b35c369", size = 6515908, upload-time = "2026-10-16T22:16:12.896Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/fe/f5cdaa2d1c4086e757430f368c271a58ee29cfe7378e7ae7b9d964015c25/pillow-13.0.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5f56499c1a74d2b862beb0c33b8016f99d095858455df9d21583bbbc1c15b582", size = 7142544, upload-time = "2026-10-16T22:16:14.844Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/b5/a54f6d44adbcd23737c8c12953f42be107e4cca64e247c0ca3a5b563061c/pillow-13.0.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:a2a14cd73d5e6c927f644b0110ee81f59c4ef506259ec9183904747f2caacc81", size = 6613097, upload-time = "2026-10-16T22:16:16.893Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/b4/9e6c1207c21b2e91db0d15c16d30f3701ce5add1bd4da0e787761e66cb6e/pillow-13.0.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:08b826a9bf1265c76de04a42061d61ea6b109418b7826f28ff1ecdfaa26c5502", size = 7224846, upload-time = "2026-10-16T22:16:19.195Z" },
+    { url = "https://files.pythonhosted.org/packages/78/9f/d3c3cb0518f3dd1eee0ef501535f53d15597a53c5c4118d178086143397a/pillow-13.0.0-cp313-cp313-win32.whl", hash = "sha256:12b0fa15879fe5a9d9eebe66e4e2d74128a773b1a4448010c9c714f45e04b9d8", size = 6516013, upload-time = "2026-10-16T22:16:21.389Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/ed/1b16fb66a37e1b9e41370b93b2c614c7da761a5b2a41dc333f7af4639962/pillow-13.0.0-cp313-cp313-win_amd64.whl", hash = "sha256:9dda0788a9932776a75d8bcc020076edc308ce2508b51f6739a45e3158b3fc42", size = 7284777, upload-time = "2026-10-16T22:16:23.393Z" },
+    { url = "https://files.pythonhosted.org/packages/87/7d/8d02eba9f7ecc87f8e90f731e032cc4773802f2a843763afd0c66a535ff4/pillow-13.0.0-cp313-cp313-win_arm64.whl", hash = "sha256:40a266371ece581e5de13b6635ef78d7487824af80561b6ca27694a88c19bc0f", size = 2698826, upload-time = "2026-10-16T22:16:25.382Z" },
+]
+
+[[package]]
 name = "playwright"
 version = "1.64.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1142,6 +1162,18 @@ wheels = [
 ]
 
 [[package]]
+name = "qrcode"
+version = "8.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8f/b2/7fc2931bfae0af02d5f53b174e9cf701adbb35f39d69c2af63d4a39f81a9/qrcode-8.2.tar.gz", hash = "sha256:35c3f2a4172b33136ab9f6b3ef1c00260dd2f66f858f24d88418a015f446506c", size = 43317, upload-time = "2025-05-01T15:44:24.726Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/b8/d2d6d731733f51684bbf76bf34dab3b70a9148e8f2cef2bb544fccec681a/qrcode-8.2-py3-none-any.whl", hash = "sha256:16e64e0716c14960108e85d853062c9e8bba5ca8252c0b4d0231b9df4060ff4f", size = 45986, upload-time = "2025-05-01T15:44:22.781Z" },
+]
+
+[[package]]
 name = "requests"
 version = "2.34.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1226,7 +1258,12 @@ dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },
     { name = "cryptography" },
+    { name = "erp-sim" },
+    { name = "fake-core" },
     { name = "fastapi" },
+    { name = "field-api" },
+    { name = "field-sap-connector" },
+    { name = "field-worker" },
     { name = "httpx" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation-fastapi" },
@@ -1250,11 +1287,13 @@ dev = [
     { name = "playwright" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "qrcode" },
     { name = "ruff" },
     { name = "schemathesis" },
     { name = "types-cryptography" },
     { name = "types-pyjwt" },
     { name = "types-pyyaml" },
+    { name = "types-qrcode" },
 ]
 
 [package.metadata]
@@ -1262,7 +1301,12 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.14.0" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "cryptography", specifier = ">=43.0.3" },
+    { name = "erp-sim", editable = "services/erp-sim" },
+    { name = "fake-core", editable = "tools/fake-core" },
     { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "field-api", editable = "services/field-api" },
+    { name = "field-sap-connector", editable = "connectors/sap" },
+    { name = "field-worker", editable = "services/field-worker" },
     { name = "httpx", specifier = ">=0.27.2" },
     { name = "opentelemetry-api", specifier = ">=1.28.0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.49b0" },
@@ -1286,11 +1330,13 @@ dev = [
     { name = "playwright", specifier = ">=1.64.1" },
     { name = "pytest", specifier = ">=8.3.3" },
     { name = "pytest-asyncio", specifier = ">=0.24.0" },
+    { name = "qrcode", specifier = ">=7.4" },
     { name = "ruff", specifier = ">=0.7.0" },
     { name = "schemathesis", specifier = ">=3.25.0" },
     { name = "types-cryptography", specifier = ">=3.3.23" },
     { name = "types-pyjwt", specifier = ">=1.7.1" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20261030" },
+    { name = "types-qrcode", specifier = ">=8.2.0.20260518" },
 ]
 
 [[package]]
@@ -1373,6 +1419,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c7/0c/72b85bc2e3a3cf23419a7f8861c1855893f02080e202b631e33cc0d1a94a/types_pyyaml-6.0.12.20261030.tar.gz", hash = "sha256:9123d707aa31a3883eeb2cb290537c75246dfcb1c00abed7a70f5419d3bd31ae", size = 18878, upload-time = "2026-10-30T07:50:19.43Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/34/99/7e2c7c7202108220fb664ce4c5ac313a564ab5babb153516a3ac0ad8a681/types_pyyaml-6.0.12.20261030-py3-none-any.whl", hash = "sha256:508cc80546918201026a955356222111224e1f4f7deab0b91f2a95933f764e67", size = 21283, upload-time = "2026-10-30T07:50:18.389Z" },
+]
+
+[[package]]
+name = "types-qrcode"
+version = "8.2.0.20260518"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pillow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f1/08/6f4cbdbdc1238e07ea0ad42ad45a6ea89fef6d5606782b0398bdf5a63f5f/types_qrcode-8.2.0.20260518.tar.gz", hash = "sha256:5079a2bf5fe57c8c44ae16867c5b41520522b58d21bb07e886770b7413160b04", size = 15280, upload-time = "2026-05-18T06:07:13.084Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8d/6f/48acc11e4b5cf84ab8a04d065691b3d6d16a535821ba5ad2efcc3548f227/types_qrcode-8.2.0.20260518-py3-none-any.whl", hash = "sha256:7dc344a5877a92c03e2ceeda33bc91af1e09cc8b574b87729c4b66ccb46b0f55", size = 19823, upload-time = "2026-05-18T06:07:12.257Z" },
 ]
 
 [[package]]

@@ -153,3 +153,28 @@ def emit_erp_failed(
         (outbox_id, tenant_id, job_id, json.dumps(payload)),
     )
     return outbox_id
+
+
+def notify_device(cur: psycopg.Cursor[Any], tenant_id: str, erp_doc_id: str | None, tick_type: str,
+                  data: dict[str, Any]) -> str | None:
+    """Queue a live tick (FR2.052) for the device that requested the posting, if one did.
+
+    The device id comes from erp_document.payload["device_id"] (set by API3.06 / API2.14 staging).
+    The phone reads field.device_notification over WS/SSE and speaks the result (Gen 2: audio only).
+    """
+    if not erp_doc_id:
+        return None
+    cur.execute("SELECT payload->>'device_id', payload->>'task_id' FROM field.erp_document WHERE id = %s", (erp_doc_id,))
+    row = cur.fetchone()
+    if not row or not row[0]:
+        return None
+    event_id = uuid7_str()
+    cur.execute(
+        """
+        INSERT INTO field.device_notification (tenant_id, device_id, event_id, tick_type, payload, expires_at)
+        VALUES (%s, %s, %s, %s, %s, NOW() + INTERVAL '24 hours')
+        """,
+        (tenant_id, row[0], event_id, tick_type,
+         json.dumps({"erp_document_id": erp_doc_id, "task_id": row[1], **data})),
+    )
+    return event_id

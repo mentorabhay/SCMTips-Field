@@ -20,7 +20,7 @@ import structlog
 from field_common.uuid7 import uuid7_str
 from field_sap.ports.erp_port import ErpPort, ErpPostingRequest
 
-from field_worker.posting.events import emit_erp_failed, emit_erp_posted
+from field_worker.posting.events import emit_erp_failed, emit_erp_posted, notify_device
 from field_worker.posting.idempotency import generate_idempotency_key, probe_sap_document
 from field_worker.posting.retry import (
     MAX_ATTEMPTS,
@@ -88,6 +88,8 @@ def finalize_erp_document(cur: psycopg.Cursor[Any], job: ClaimedJob, doc_no: str
             "UPDATE field.erp_document SET status = 'reversed', updated_at = NOW() WHERE id = %s",
             (reverses,),
         )
+    notify_device(cur, job.tenant_id, job.erp_doc_id, "erp.posted",
+                  {"doc_number": str(doc_no), "fiscal_year": str(doc_year), "reversal": bool(reverses)})
     line_status = payload.get("line_status_after", "posted")
     if line_ids:
         cur.execute(
@@ -453,6 +455,8 @@ class PostingQueueWorker:
                     """,
                         (claimed.job_id,),
                     )
+                    notify_device(cur_err, tenant_id, claimed.erp_doc_id, "erp.failed",
+                                  {"error_class": error_class, "message": sap_msg})
                     emit_erp_failed(
                         cur_err,
                         tenant_id=tenant_id,

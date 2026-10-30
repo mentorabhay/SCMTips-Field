@@ -23,6 +23,11 @@ dependencies = [
     "opentelemetry-instrumentation-sqlalchemy>=0.49b0",
     "opentelemetry-instrumentation-httpx>=0.49b0",
     "python-multipart>=0.0.32",
+    "field-api",
+    "field-worker",
+    "erp-sim",
+    "field-sap-connector",
+    "fake-core",
 ]
 
 [dependency-groups]
@@ -37,6 +42,8 @@ dev = [
     "types-cryptography>=3.3.23",
     "playwright>=1.64.1",
     "types-pyyaml>=6.0.12.20261030",
+    "qrcode>=7.4",
+    "types-qrcode>=8.2.0.20260518",
 ]
 
 [tool.uv.workspace]
@@ -48,6 +55,13 @@ members = [
     "compat",
     "tools/fake-core",
 ]
+
+[tool.uv.sources]
+field-api = { workspace = true }
+field-worker = { workspace = true }
+erp-sim = { workspace = true }
+field-sap-connector = { workspace = true }
+fake-core = { workspace = true }
 
 [tool.ruff]
 line-length = 100
