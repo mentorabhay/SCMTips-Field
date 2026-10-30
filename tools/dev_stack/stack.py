@@ -6,9 +6,15 @@
     uv run python -m tools.dev_stack.stack down
 
 Services (logs in var/log, pids in var/run):
-  fake-core  :8001  dev identity provider (EdDSA tokens + JWKS); stands in for SCMTips core
-  erp-sim    :8002  S/4-shaped OData simulator with SAMPLE master data
-  field-api  :8000  bound to 0.0.0.0 so the phone on the same Wi-Fi can reach it
+  fake-core  :8011  dev identity provider (EdDSA tokens + JWKS); stands in for SCMTips core
+                    (not 8001: SCMTips core itself often runs there; FIELD_STACK_CORE_PORT overrides)
+  erp-sim    :8002  S/4-shaped OData simulator with SAMPLE master data (FIELD_STACK_ERPSIM_PORT)
+  field-api  :8000  bound to 0.0.0.0 so the phone on the same Wi-Fi can reach it (FIELD_STACK_API_PORT)
+
+The stack owns these ports: before starting it checks that each is free (or already ours), and a
+service only counts as up when its own process is alive AND its port answers. (On the owner's PC
+another program held 8001; fake-core died on bind while the health probe got an answer from the
+other program.)
   field-worker      posts confirmed documents to erp-sim, imports inbound deliveries
 
 Secrets (A-02): .env.local is created from .env.example on first run with freshly generated signing
@@ -79,6 +85,32 @@ def load_env() -> dict[str, str]:
     env = parse_env(ENV_LOCAL.read_text(encoding="utf-8")) if ENV_LOCAL.exists() else {}
     os.environ.update({k: v for k, v in env.items() if v})
     return env
+
+
+PORTS = {"fake-core": ("FIELD_STACK_CORE_PORT", 8011), "erp-sim": ("FIELD_STACK_ERPSIM_PORT", 8002),
+         "field-api": ("FIELD_STACK_API_PORT", 8000)}
+HEALTH = {"fake-core": "/.well-known/jwks.json", "erp-sim": "/_sim/health", "field-api": "/v1/health"}
+
+
+def port(name: str) -> int:
+    var, default = PORTS[name]
+    return int(os.environ.get(var) or default)
+
+
+def local(name: str) -> str:
+    return f"http://127.0.0.1:{port(name)}"
+
+
+def apply_ports() -> None:
+    """The stack decides where its services listen, so it also tells every service where the others are."""
+    os.environ["FIELD_CORE_JWKS_URL"] = f"{local('fake-core')}/.well-known/jwks.json"
+    os.environ["FIELD_ERP_SIM_URL"] = local("erp-sim")
+
+
+def port_in_use(p: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex(("127.0.0.1", p)) == 0
 
 
 def lan_ip() -> str:
@@ -166,9 +198,9 @@ def seed_erp_sim() -> None:
 def services(host_ip: str) -> dict[str, list[str]]:
     py = sys.executable
     return {
-        "fake-core": [py, "-m", "uvicorn", "fake_core.app:app", "--host", "127.0.0.1", "--port", "8001"],
-        "erp-sim": [py, "-m", "uvicorn", "erp_sim.app:app", "--host", "127.0.0.1", "--port", "8002"],
-        "field-api": [py, "-m", "uvicorn", "field_api.app:app", "--host", host_ip, "--port", "8000"],
+        "fake-core": [py, "-m", "uvicorn", "fake_core.app:app", "--host", "127.0.0.1", "--port", str(port("fake-core"))],
+        "erp-sim": [py, "-m", "uvicorn", "erp_sim.app:app", "--host", "127.0.0.1", "--port", str(port("erp-sim"))],
+        "field-api": [py, "-m", "uvicorn", "field_api.app:app", "--host", host_ip, "--port", str(port("field-api"))],
         "field-worker": [py, "-m", "field_worker"],
     }
 
@@ -186,6 +218,13 @@ def _alive(pid: int) -> bool:
         return True
     except OSError:
         return False
+
+
+def running(name: str) -> int | None:
+    pf = _pidfile(name)
+    if pf.exists() and _alive(int(pf.read_text())):
+        return int(pf.read_text())
+    return None
 
 
 def start(name: str, cmd: list[str]) -> int:
@@ -238,21 +277,27 @@ def cmd_up(a: argparse.Namespace) -> int:
     if filled:
         print(f"generated in .env.local: {', '.join(filled)}")
     load_env()
+    apply_ports()
+    bind = "127.0.0.1" if a.local_only else "0.0.0.0"
+    taken = [n for n in PORTS if running(n) is None and port_in_use(port(n))]
+    if taken:
+        for n in taken:
+            print(f"FAIL: port {port(n)} for {n} is used by another program. Stop it, or set "
+                  f"{PORTS[n][0]}=<free port> in .env.local and run again.")
+        return 1
     ensure_database()
     migrate()
     seed_erp_sim()
-    bind = "127.0.0.1" if a.local_only else "0.0.0.0"
     for name, cmd in services(bind).items():
         print(f"{name}: pid {start(name, cmd)}")
-    ok = {
-        "fake-core": wait_http("http://127.0.0.1:8001/.well-known/jwks.json"),
-        "erp-sim": wait_http("http://127.0.0.1:8002/_sim/health"),
-        "field-api": wait_http("http://127.0.0.1:8000/v1/health"),
-    }
+    ok = {n: wait_http(local(n) + HEALTH[n]) and running(n) is not None for n in HEALTH}
     for k, v in ok.items():
-        print(f"{k}: {'up' if v else 'NOT RESPONDING - see var/log/' + k + '.log'}")
+        print(f"{k} :{port(k)}: {'up' if v else 'NOT RUNNING - see var/log/' + k + '.log'}")
+    if running("field-worker") is None:
+        print("field-worker: NOT RUNNING - see var/log/field-worker.log")
+        ok["field-worker"] = False
     if all(ok.values()):
-        print(f"\nPhone URL: http://{lan_ip()}:8000   next: `uv run python -m tools.dev_stack.stack pair`")
+        print(f"\nPhone URL: http://{lan_ip()}:{port('field-api')}   next: `uv run python -m tools.dev_stack.stack pair`")
     return 0 if all(ok.values()) else 1
 
 
@@ -271,7 +316,7 @@ def cmd_status(_a: argparse.Namespace) -> int:
 
 
 def _core_token(principal: str, tenant: str, site: str, ttl_s: int) -> str:
-    r = httpx.post("http://127.0.0.1:8001/api/v1/auth/token", json={
+    r = httpx.post(local("fake-core") + "/api/v1/auth/token", json={
         "principal_id": principal, "tenant_id": tenant, "roles": list(PAIRING_ROLES), "site_ids": [site],
         "ttl_seconds": ttl_s,
     }, timeout=5)
@@ -280,21 +325,34 @@ def _core_token(principal: str, tenant: str, site: str, ttl_s: int) -> str:
 
 
 def _field_token(core_token: str) -> str:
-    r = httpx.post("http://127.0.0.1:8000/v1/auth/exchange", json={"device_token": core_token}, timeout=5)
+    r = httpx.post(local("field-api") + "/v1/auth/exchange", json={"device_token": core_token}, timeout=5)
     r.raise_for_status()
     return str(r.json()["access_token"])
 
 
+def site_exists(site_id: str) -> bool:
+    import psycopg
+
+    with psycopg.connect(_admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT 1 FROM field.site WHERE id::text = %s", (site_id,))
+        return cur.fetchone() is not None
+
+
 def ensure_demo_site(state: dict[str, Any]) -> dict[str, Any]:
-    """One tenant + one warehouse site on the SAMPLE plant, created through the real API."""
-    if state.get("tenant") and state.get("site"):
+    """One tenant + one warehouse site on the SAMPLE plant, created through the real API.
+
+    A saved site is reused only if it still exists: a recreated database (new Postgres volume, a fresh
+    machine) otherwise left var/dev_stack.json pointing at a site the worker never polls.
+    """
+    if state.get("tenant") and state.get("site") and site_exists(state["site"]):
         return state
+    state = {k: v for k, v in state.items() if k not in ("site", "site_name")}
     tenant = state.get("tenant") or str(uuid.uuid4())
-    admin_core = httpx.post("http://127.0.0.1:8001/api/v1/auth/token", json={
+    admin_core = httpx.post(local("fake-core") + "/api/v1/auth/token", json={
         "principal_id": "dev-admin", "tenant_id": tenant, "roles": ["field.admin"], "ttl_seconds": 600,
     }, timeout=5).raise_for_status().json()["access_token"]
     admin = _field_token(admin_core)
-    r = httpx.post("http://127.0.0.1:8000/v1/sites", json={
+    r = httpx.post(local("field-api") + "/v1/sites", json={
         "code": "SAMPLE-WH-01", "name": "SAMPLE warehouse (field test)", "kind": "warehouse",
         "erp_plant": SAMPLE_PLANT, "erp_storage_locations": ["101A"],
     }, headers={"Authorization": f"Bearer {admin}", "Idempotency-Key": str(uuid.uuid4())}, timeout=10)
@@ -308,10 +366,11 @@ def ensure_demo_site(state: dict[str, Any]) -> dict[str, Any]:
 
 def cmd_pair(a: argparse.Namespace) -> int:
     load_env()
+    apply_ports()
     state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
     state = ensure_demo_site(state)
     token = _core_token(a.user, state["tenant"], state["site"], a.hours * 3600)
-    api = a.api or f"http://{lan_ip()}:8000"
+    api = a.api or f"http://{lan_ip()}:{port('field-api')}"
     payload = pairing_payload(api, token, state["tenant"], state["site"], state["site_name"])
     import qrcode
 
@@ -364,6 +423,7 @@ def create_inbound_delivery(lines: int = 3, plant: str = SAMPLE_PLANT, sloc: str
 
 def cmd_delivery(a: argparse.Namespace) -> int:
     load_env()
+    apply_ports()
     print(f"inbound delivery {create_inbound_delivery(a.lines)} created; field-worker imports it within FIELD_IBD_POLL_S")
     return 0
 
@@ -439,8 +499,9 @@ class Phone:
 def cmd_smoke(a: argparse.Namespace) -> int:
     """Receive one inbound delivery by 'voice' exactly as the app does, and wait for the ERP posting."""
     load_env()
+    apply_ports()
     state = ensure_demo_site(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
-    phone = Phone(a.api or "http://127.0.0.1:8000", _core_token("smoke-op", state["tenant"], state["site"], 900))
+    phone = Phone(a.api or local("field-api"), _core_token("smoke-op", state["tenant"], state["site"], 900))
     phone.exchange()
     phone.register(f"smoke-{uuid.uuid4().hex[:8]}")
     phone.exchange(phone.device_id)
