@@ -9,15 +9,14 @@ client against the stand-in core's shape with an httpx test transport that lives
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
 
 import httpx
 
-CORE_ENV = "FIELD_CORE_BASE_URL"
-CORE_DEFAULT = "http://127.0.0.1:8001"  # the stand-in core of the dev stack (M4 contract §2)
+from field_api.auth.core import core_base_url
+
 CHECK_TIMEOUT_S = 2.5
 
 
@@ -33,7 +32,7 @@ class CoreBriefCheck:
 
     def __init__(self, base_url: str | None = None, transport: httpx.BaseTransport | None = None,
                  timeout_s: float = CHECK_TIMEOUT_S) -> None:
-        self.base_url = (base_url or os.getenv(CORE_ENV, "").strip() or CORE_DEFAULT).rstrip("/")
+        self.base_url = (base_url or core_base_url()).rstrip("/")  # one core setting for auth and briefs
         self._transport = transport
         self.timeout_s = timeout_s
 
