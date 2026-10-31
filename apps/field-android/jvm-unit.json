@@ -14,7 +14,8 @@
     "core-positioning-stub",
     "feature-tower-audit",
     "feature-exploded",
-    "feature-swap"
+    "feature-swap",
+    "feature-decisions"
   ],
   "android_bound": {
     "app/src/main/kotlin/com/scmtips/field/app/FieldApplication.kt": "android",
@@ -56,6 +57,8 @@
     "core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/live/LiveClient.kt": "okhttp3",
     "core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/sync/ConflictPolicy.kt": "uses the Room entity OutboxItemEntity",
     "core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/sync/SyncWorker.kt": "androidx.work",
-    "core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/OutboxPropertyTest.kt": "exercises the Room-backed OutboxWriter"
+    "core-outbox/src/test/kotlin/com/scmtips/field/core/outbox/OutboxPropertyTest.kt": "exercises the Room-backed OutboxWriter",
+    "feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/OkHttpCoreHttp.kt": "okhttp3 (the network under CoreClient; CoreHttp keeps the client logic pure)",
+    "feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/OkHttpCoreHttpTest.kt": "okhttp3 (runs in the Gradle unit tests only)"
   }
 }

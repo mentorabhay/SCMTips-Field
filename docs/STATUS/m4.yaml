@@ -1,0 +1,78 @@
+- id: M4-B01
+  title: feature-decisions core client — wearable /v1 calls, app sign-in wire, spoken brief from field-api (F1, F2)
+  workstream: M4-F1
+  role: Stream B
+  status: partial
+  evidence:
+  - apps/field-android/feature-decisions/build.gradle.kts
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreHttp.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/OkHttpCoreHttp.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreModels.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreClient.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreSignIn.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/brief/SpokenBriefs.kt
+  - apps/field-android/settings.gradle.kts
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::next_sendsDeviceHeaders_andParsesNullItem
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::next_parsesItem_andIgnoresUnknownFields
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::challenge_and_command_sendIdempotencyKeyOnCommandsOnly
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::stepUp_wrongCode_isInvalidStepUpCode_notUnauthorized
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::photo_isMultipart_withConsentAndAllFields
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::revoke_isDeleteWithBearer_204
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::secretsNeverAppearInACallsText
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInTest.kt::passwordSignIn_postsTheHandoverBody_withTheLrHeader_andReadsTheAnswer
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInTest.kt::pairingCodeSignIn_sendsTheCodeInsteadOfEmailAndPassword_phoneOnly
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInTest.kt::refusalsBecomeWordsThePersonCanActOn
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/brief/SpokenBriefsTest.kt::postsDecisionAndTemplate_withTheWearableTokenAsXCoreToken_andReadsTheModelText
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/brief/SpokenBriefsTest.kt::anyTrouble_speaksTheTemplate
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/OkHttpCoreHttpTest.kt::jsonPost_carriesHeadersAndBody_andTheAnswerIsReturnedAsText
+  frs: []
+  verified_at: null
+  note: Ported from the core's wearable app api/{Models,ScmtipsApi,OkHttpScmtipsApi}.kt. The client logic (paths under
+    {core}/v1, Bearer wearable token + X-Device-Id + X-Requested-With lr, Idempotency-Key on commands only, invalid_code vs
+    401, problem documents, multipart photo fields) is pure Kotlin over a CoreHttp port and JVM-tested with a scripted
+    transport; OkHttpCoreHttp is the only network code. MockWebServer is not in gradle/libs.versions.toml and was not added
+    (rule 2.4); OkHttpCoreHttpTest pins the OkHttp layer with a scripted interceptor and runs in the Gradle unit tests (it was
+    also compiled and run once here on the plain JVM against okhttp 4.12.0, 4/4 passed; that is not a gate). Models are read
+    by hand from JsonObject (the JVM gate has no serialization plugin). Pairing (POST /v1/wearable/sessions) and server
+    transcription are not ported: F2 sign-in replaces pairing, and speech is recognised on the glasses or phone. Sign-in
+    (POST /v1/auth/app/token) follows handover 01 exactly; a missing claims object falls back to the token's payload. The
+    spoken brief calls field-api POST /v1/briefs/spoken (stream M, not built on this branch) and speaks the template on any
+    error, blank text or after 8 s. Nothing has been called against the real core or the stand-in core (stream C), and
+    nothing ran on the owner's phone or glasses.
+- id: M4-B02
+  title: Approval flow ported onto Field's ports — next decision, spoken brief, voice turns, confirm turn, phone step-up, audio confirmation (F1)
+  workstream: M4-F1
+  role: Stream B
+  status: partial
+  evidence:
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlow.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/CardFormatter.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/Ports.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/StepUp.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/LaunchCoordinator.kt
+  tests:
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::audioOnly_approveWithStepUp_thenConfirm_executes
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::phoneCard_buttons_approveA_stepUp_confirm_executes
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::spokenApproveOptionTwo_isPassedToTheCoreVerbatim
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::theModelBriefIsSpokenWhenFieldApiHasOne_andTheTemplateIsWhatItIsMadeFrom
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::repeat_isTheCoresTurn_andSpeaksWhatItSays
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::wrongStepUpCode_isRetried_onThePhone
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::lowConfidence_asksAgain_andSendsNothing
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::stoppingTheReview_clearsTheCard_andSendsNothingMore
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/CardFormatterTest.kt::decisionCard_truncatesBody_andHasOneApprovePerOptionPlusReject
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/LaunchCoordinatorTest.kt::aLaunchFromTheGlasses_isAcknowledged_andStartsTheReview
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/UtteranceInboxTest.kt::wordsHeardWhileListeningAreTaken_andWordsHeardBeforeAreDropped
+  frs: []
+  verified_at: null
+  note: Ported from the core's wearable app flow/{ApprovalFlow,CardFormatter,LaunchCoordinator,StepUpPrompter}.kt and
+    ui/StepUpBroker.kt with their tests (runBlocking instead of kotlinx-coroutines-test, which is not a dependency). Rebuilt on
+    Field's modules, no second glasses wrapper - speech out is core-wearables AudioOut (the app plays it through its TTS,
+    which reaches the glasses' speakers over Bluetooth), speech in is a core-voice AsrCandidate from a DecisionEar the app
+    feeds (glasses mic in a work session, hold-to-talk otherwise), the card is a phone card (Ray-Ban Meta Gen 2 has no display;
+    the core app's CardRenderer used mwdat-display, which is not a Field dependency, so it is not ported). Changes - the brief
+    is fetched before the challenge so the nonce's life is not spent on the model; committed and errors are confirmed by an
+    earcon plus the core's words; a stopped review clears the card. The core's grammar decides every intent; the app never
+    decides an approval, a permission or whether step-up is needed. The server-transcriber below_floor case of the original
+    test is gone with server transcription. Not run on the glasses, the stand-in core or the real core.
