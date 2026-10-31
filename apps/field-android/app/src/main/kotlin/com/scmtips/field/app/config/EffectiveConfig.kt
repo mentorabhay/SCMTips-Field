@@ -18,7 +18,8 @@ data class AppConfig(
     val logLevel: String = "INFO"
 ) {
     companion object {
-        const val DEFAULT_BASE_URL = "http://10.0.2.2:8000"
+        /** field-api on the dev PC (emulator host); 8020 since the SCMTIPS core API keeps 8000 (TO_FIELD, 31 Oct). */
+        const val DEFAULT_BASE_URL = "http://10.0.2.2:8020"
     }
 }
 

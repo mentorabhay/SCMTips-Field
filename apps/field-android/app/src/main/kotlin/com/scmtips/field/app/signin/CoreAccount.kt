@@ -1,5 +1,6 @@
 package com.scmtips.field.app.signin
 
+import com.scmtips.field.app.net.HttpError
 import com.scmtips.field.app.net.PhoneBinding
 import com.scmtips.field.app.slice.Pairing
 import com.scmtips.field.app.slice.PairingPayload
@@ -179,8 +180,11 @@ data class HomeSections(val decisions: Boolean, val fieldWork: Boolean) {
 
 /** The sign-in screen's addresses: what was typed last, else derived from the last QR pairing, else the dev default. */
 object SignInDefaults {
-    /** Dev defaults (the stand-in core on 8011, field-api on 8000; on a phone through `adb reverse`); editable on the screen. */
-    const val DEV_FIELD_URL = "http://127.0.0.1:8000"
+    /**
+     * Dev defaults (the stand-in core on 8011, field-api on 8020; on a phone through `adb reverse`); editable on the
+     * screen. field-api is on 8020 because the SCMTIPS core API keeps 8000 on the owner's PC (the core's reply, 31 Oct).
+     */
+    const val DEV_FIELD_URL = "http://127.0.0.1:8020"
     const val DEV_CORE_URL = "http://127.0.0.1:8011"
     const val STAND_IN_CORE_PORT = 8011
 
@@ -197,7 +201,7 @@ object SignInDefaults {
 
     /** A server address the app may use, or a reason: plain http only to the owner's own network (as the QR pairing). */
     fun check(url: String, what: String): Pair<String?, String?> {
-        val u = CoreUrls.normalise(url) ?: return null to "Enter the $what address, like http://192.168.1.20:8000."
+        val u = CoreUrls.normalise(url) ?: return null to "Enter the $what address, like http://192.168.1.20:8020."
         if (u.startsWith("http://") && !PairingPayload.isPrivateHost(PairingPayload.hostOf(u))) {
             return null to "Plain http is only allowed to a PC on your own network; use the https address for the $what."
         }
@@ -205,6 +209,20 @@ object SignInDefaults {
     }
 
     fun deviceModel(glassesRegistered: Boolean): DeviceModel = if (glassesRegistered) DeviceModel.RAYBAN_META_GEN2 else DeviceModel.PHONE_ONLY
+}
+
+/**
+ * field-api's refusal of a core sign-in whose roles map to no Field role (403 FIELD-AUTH-403-NO-FIELD-ROLE, the core's
+ * reply TO_FIELD section 2): its `detail` is a sentence written for the person, shown as it is on the sign-in screen.
+ */
+object FieldAccess {
+    const val NO_FIELD_ROLE = "FIELD-AUTH-403-NO-FIELD-ROLE"
+
+    /** The sign-in screen's message for this refusal, or null when [e] is another error. */
+    fun noFieldRole(e: HttpError): String? = if (e.status == 403 && e.code == NO_FIELD_ROLE) {
+        e.detail?.takeIf { it.isNotBlank() }
+            ?: "Your SCMTIPS account has no role that SCMTips Field can use. Ask your SCMTIPS administrator for the approver or procurement role."
+    } else null
 }
 
 data class SiteRef(val id: String, val name: String, val mode: String?)

@@ -61,10 +61,30 @@ class CoreClientTest {
 
     @Test
     fun briefDocument_isGetByDecisionId() = runBlocking {
+        // the stand-in's earlier document stays readable
         http.reply(200, """{"decision_id":"d1","template_text":"Supplier A is six days late."}""")
         val b = api().brief("d1")
-        assertEquals("Supplier A is six days late.", b["template_text"]!!.jsonPrimitive.content)
-        assertEquals("http://core.test:8011/v1/briefs/decision/d1", http.calls.single().url)
+        assertEquals("Supplier A is six days late.", b.templateText)
+        assertEquals("Supplier A is six days late.", b.text)
+        assertEquals("d1", b.subjectId)
+        assertEquals("http://core.test:8011/v1/briefs/decision/d1?format=spoken", http.calls.single().url)
+        http.calls.single().assertDeviceHeaders()
+    }
+
+    @Test
+    fun briefDocument_readsTheCoresShape_m4b08() = runBlocking {
+        http.reply(200, """{"kind":"decision","subject_id":"d1","format":"card","text":"SAMPLE | A: air, USD 48,000.","template_text":"SAMPLE | A: air, USD 48,000.","source":"template","facts":{"title":"t"},"check":{"numbers":["48000"]},"characters":28,"words":5,"seconds":2.0,"simulated":true}""")
+        val b = api().brief("d1", BriefFormat.CARD)
+        assertEquals("http://core.test:8011/v1/briefs/decision/d1?format=card", http.calls.single().url)
+        assertEquals("decision", b.kind)
+        assertEquals("card", b.format)
+        assertEquals("SAMPLE | A: air, USD 48,000.", b.text)
+        assertEquals("template", b.source)
+        assertEquals("t", b.facts["title"]!!.jsonPrimitive.content)
+        assertEquals(28, b.characters)
+        assertEquals(5, b.words)
+        assertEquals(2.0, b.seconds, 0.0)
+        assertTrue(b.simulated)
     }
 
     @Test
@@ -144,6 +164,20 @@ class CoreClientTest {
         assertEquals("DELETE", req.method)
         assertEquals("http://core.test:8011/v1/wearable/sessions/sess-1", req.url)
         req.assertDeviceHeaders()
+    }
+
+    @Test
+    fun sessions_readTheCoresArray_m4b08() = runBlocking {
+        http.reply(200, """[{"id":"s1","device_id":"d1","device_model":"PHONE_ONLY","display_capable":false,"current":true,"created_at":"c","expires_at":"e","last_seen_at":"l","revoked_at":null},{"id":"s2","device_id":"d2","device_model":"RAYBAN_META_GEN2","display_capable":true,"current":false,"created_at":"c","expires_at":"e","last_seen_at":null,"revoked_at":"r"}]""")
+        val rows = api().sessions()
+        assertEquals(listOf("s1", "s2"), rows.map { it.sessionId })
+        assertTrue(rows[0].current)
+        assertFalse(rows[0].revoked)
+        assertEquals("l", rows[0].lastSeenAt)
+        assertTrue(rows[1].displayCapable)
+        assertTrue(rows[1].revoked)
+        assertNull(rows[1].lastSeenAt)
+        http.calls.single().assertDeviceHeaders()
     }
 
     @Test

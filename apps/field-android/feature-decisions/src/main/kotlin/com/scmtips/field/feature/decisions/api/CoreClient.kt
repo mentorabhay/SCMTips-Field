@@ -7,15 +7,16 @@ import java.io.IOException
 
 /**
  * The SCMTIPS core as the approver flow sees it: the calls the wearable (device) token may make, all
- * under `{core}/v1` with `Authorization: Bearer <wearable token>` and `X-Device-Id` (handover 01, F1).
+ * under `{core}/v1` with `Authorization: Bearer <wearable token>`, `X-Device-Id` and `X-Requested-With: lr`
+ * (handover 01, F1; the core checks the last on every state-changing route, its reply TO_FIELD section 3).
  * Every approval rule lives in the core: these calls only carry words and codes there.
  */
 interface DecisionsApi {
     /** GET /v1/wearable/next: the decision waiting longest, or null when nothing waits. */
     suspend fun next(): NextItem?
 
-    /** GET /v1/briefs/decision/{id}: the core's brief document (the template the spoken brief is made from). */
-    suspend fun brief(decisionId: String): JsonObject
+    /** GET /v1/briefs/decision/{id}?format=…: the core's brief document (the template the spoken brief is made from). */
+    suspend fun brief(decisionId: String, format: BriefFormat = BriefFormat.SPOKEN): CoreBrief
 
     /** POST /v1/voice/challenges. */
     suspend fun createChallenge(decisionId: String): Challenge
@@ -74,7 +75,10 @@ class CoreClient(
 
     override suspend fun next(): NextItem? = json(authed("GET", "wearable", "next"), CoreJson::nextItem)
 
-    override suspend fun brief(decisionId: String): JsonObject = json(authed("GET", "briefs", "decision", decisionId)) { it }
+    override suspend fun brief(decisionId: String, format: BriefFormat): CoreBrief {
+        val call = authed("GET", "briefs", "decision", decisionId)
+        return json(call.copy(url = call.url + "?format=" + format.wire)) { CoreJson.brief(it, "decision", decisionId, format) }
+    }
 
     override suspend fun createChallenge(decisionId: String): Challenge =
         json(authed("POST", "voice", "challenges", body = buildJsonObject { put("decision_id", decisionId) }), CoreJson::challenge)

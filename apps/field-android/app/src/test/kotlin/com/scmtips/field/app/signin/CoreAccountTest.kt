@@ -1,5 +1,6 @@
 package com.scmtips.field.app.signin
 
+import com.scmtips.field.app.net.HttpError
 import com.scmtips.field.app.net.PhoneBinding
 import com.scmtips.field.feature.decisions.api.AppToken
 import com.scmtips.field.feature.decisions.api.Capabilities
@@ -33,7 +34,7 @@ class CoreAccountTest {
     )
 
     private fun account(caps: Capabilities = Capabilities(approveDecisions = true, fieldOperator = true)) =
-        CoreAccount.from(token(caps), "http://192.168.1.20:8011", "http://192.168.1.20:8000", now)
+        CoreAccount.from(token(caps), "http://192.168.1.20:8011", "http://192.168.1.20:8020", now)
 
     @Test
     fun anAccountIsSavedAndLoadedWhole_andItsTextNeverShowsATokenOrTheStoreKeysValuesInLogs() {
@@ -62,7 +63,7 @@ class CoreAccountTest {
         assertNull(accounts.load())
         assertFalse(store.m.values.any { "scmw_wearable_secret" in it || "core-access" in it })
         assertEquals("http://192.168.1.20:8011", accounts.lastCoreUrl)
-        assertEquals("http://192.168.1.20:8000", accounts.lastFieldUrl)
+        assertEquals("http://192.168.1.20:8020", accounts.lastFieldUrl)
         assertEquals("approver@sample.test", accounts.lastEmail)
         assertTrue(AccountStore.SECRET_KEYS.none { it in store.m })
     }
@@ -103,12 +104,30 @@ class CoreAccountTest {
     @Test
     fun theSignInScreensAddressesDefaultFromWhatIsKnown() {
         assertEquals(SignInDefaults.DEV_FIELD_URL, SignInDefaults.fieldUrl(null, null))
-        assertEquals("http://192.168.1.20:8000", SignInDefaults.fieldUrl(null, "http://192.168.1.20:8000"))
-        assertEquals("http://10.0.0.5:8000", SignInDefaults.fieldUrl("http://10.0.0.5:8000", "http://192.168.1.20:8000"))
+        assertEquals("http://192.168.1.20:8020", SignInDefaults.fieldUrl(null, "http://192.168.1.20:8020"))
+        assertEquals("http://10.0.0.5:8020", SignInDefaults.fieldUrl("http://10.0.0.5:8020", "http://192.168.1.20:8020"))
         // The stand-in core runs next to field-api on the owner's PC.
-        assertEquals("http://192.168.1.20:8011", SignInDefaults.coreUrl(null, "http://192.168.1.20:8000"))
+        assertEquals("http://192.168.1.20:8011", SignInDefaults.coreUrl(null, "http://192.168.1.20:8020"))
         assertEquals(SignInDefaults.DEV_CORE_URL, SignInDefaults.coreUrl(null, "https://tunnel.example.test"))
-        assertEquals("https://core.example.test", SignInDefaults.coreUrl("https://core.example.test", "http://192.168.1.20:8000"))
+        assertEquals("https://core.example.test", SignInDefaults.coreUrl("https://core.example.test", "http://192.168.1.20:8020"))
+    }
+
+    @Test
+    fun fieldApiIsOn8020BesideTheCoreOn8000_m4b08() {
+        // The core's reply (TO_FIELD, 31 Oct): the SCMTIPS core API keeps 8000, field-api is pinned at 8020.
+        assertEquals("http://127.0.0.1:8020", SignInDefaults.DEV_FIELD_URL)
+        assertEquals("http://10.0.2.2:8020", com.scmtips.field.app.config.AppConfig.DEFAULT_BASE_URL)
+        assertTrue(SignInDefaults.check("", "SCMTips Field server").second!!.contains(":8020"))
+    }
+
+    @Test
+    fun noFieldRoleShowsFieldApisSentenceOnTheSignInScreen_m4b08() {
+        val sentence = "Your SCMTIPS account has no role that SCMTips Field can use (your roles: planner2). Ask your SCMTIPS administrator for the approver or procurement role, then sign in again."
+        val e = HttpError(403, FieldAccess.NO_FIELD_ROLE, "No SCMTips Field role", sentence, "HTTP 403")
+        assertEquals(sentence, FieldAccess.noFieldRole(e))
+        assertTrue(FieldAccess.noFieldRole(HttpError(403, FieldAccess.NO_FIELD_ROLE, null, null, "HTTP 403"))!!.contains("approver or procurement"))
+        assertNull(FieldAccess.noFieldRole(HttpError(403, "FIELD-AUTH-403-DEVICE-REVOKED", null, "revoked", "HTTP 403")))
+        assertNull(FieldAccess.noFieldRole(HttpError(401, FieldAccess.NO_FIELD_ROLE, null, sentence, "HTTP 401")))
     }
 
     @Test
@@ -128,7 +147,7 @@ class CoreAccountTest {
         assertEquals(SiteRef("s-a", "Warehouse A", "production"), SiteChoice.pick(emptyList(), sites))
         assertNull(SiteChoice.pick(listOf("s-a"), Json.parseToJsonElement("""{"items":[]}""").jsonObject))
         val p = account().pairing("s-b", "Home")
-        assertEquals("http://192.168.1.20:8000", p.apiBaseUrl)
+        assertEquals("http://192.168.1.20:8020", p.apiBaseUrl)
         assertEquals("t-1", p.tenantId)
         assertEquals("s-b", p.siteId)
     }
@@ -145,10 +164,10 @@ class CoreAccountTest {
 
     @Test
     fun theCoresPermissionsAlsoGrantTheHomes_asTheStandInsDemoUsersHaveThem() {
-        // approver@demo: roles [field.supervisor], permissions [voice.approve, decisions.read, evidence.upload]
+        // approver@demo: core role [approver], permissions [voice.approve, decision.read, evidence.upload]
         val approver = CoreAccount.from(token(Capabilities()).let {
-            AppToken(it.accessToken, 3600, "t-1", listOf("*"), listOf("voice.approve", "decisions.read", "evidence.upload"), it.wearable, it.user, Capabilities())
-        }, "http://127.0.0.1:8011", "http://127.0.0.1:8000", now)
+            AppToken(it.accessToken, 3600, "t-1", listOf("*"), listOf("voice.approve", "decision.read", "evidence.upload"), it.wearable, it.user, Capabilities())
+        }, "http://127.0.0.1:8011", "http://127.0.0.1:8020", now)
         assertTrue(approver.approver)
         assertFalse(approver.fieldOperator)
         // operator@demo: permissions [field.operate, evidence.upload], echoed by field-api as core_permissions
@@ -166,7 +185,7 @@ class CoreAccountTest {
     @Test
     fun theCoreAppsPairingIsDecisionsOnly_withoutAFieldApiLink() {
         val a = CoreAccount.paired(WearableSession("ws-2", "scmw_p", "2030-01-01T00:00:00Z", "dev-install-0001"), "Approver Sample",
-            "http://127.0.0.1:8011", "http://127.0.0.1:8000")
+            "http://127.0.0.1:8011", "http://127.0.0.1:8020")
         assertFalse(a.hasFieldAccess)
         assertTrue(a.approver)
         assertFalse(a.accessExpired(Long.MAX_VALUE))

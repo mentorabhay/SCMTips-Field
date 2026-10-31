@@ -568,3 +568,34 @@
     wrong code is refused, the step-up is accepted and "confirm" commits; the second decision (no step-up)
     commits directly; nothing is left waiting. Done needs the same run against the real core and on the
     owner's phone and glasses.
+- id: M4-B08
+  title: >-
+    App side of the core reply: brief and sessions parsed in the core's shapes, X-Requested-With on every core call,
+    the NO-FIELD-ROLE sentence on the sign-in screen, default field address 8020
+  workstream: M4-B
+  role: Stream B (approver app)
+  status: partial
+  evidence:
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreClient.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/CoreAccount.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/config/EffectiveConfig.kt
+  - apps/field-android/app/src/main/res/xml/app_restrictions.xml
+  tests:
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::briefDocument_readsTheCoresShape_m4b08
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::briefDocument_isGetByDecisionId
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::sessions_readTheCoresArray_m4b08
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::sessions_readsItemsOrABareList
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::noFieldRoleShowsFieldApisSentenceOnTheSignInScreen_m4b08
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::fieldApiIsOn8020BesideTheCoreOn8000_m4b08
+  frs: []
+  verified_at: null
+  note: >-
+    JVM-tested (kotlin-jvm job) and compile-checked; not run on the owner's phone; real core not deployed.
+    DecisionsApi.brief(decisionId, format) GETs /v1/briefs/decision/{id}?format=spoken|card and returns a typed
+    CoreBrief (the stand-in's earlier document stays readable). DeviceSessionInfo reads the core's array with
+    display_capable, created_at, last_seen_at and revoked_at ({items} still read). CoreClient already sent X-Requested-With
+    lr on every call; the tests assert it. When field-api answers 403 FIELD-AUTH-403-NO-FIELD-ROLE after a core
+    sign-in, its detail sentence is shown on the sign-in screen and as the connection error (FieldAccess.noFieldRole).
+    The sign-in screen's default field address and the emulator default are 8020.

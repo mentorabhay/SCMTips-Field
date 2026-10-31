@@ -5,7 +5,7 @@
         android:key="field_api_base_url"
         android:title="Field API Base URL"
         android:restrictionType="string"
-        android:defaultValue="http://10.0.2.2:8000" />
+        android:defaultValue="http://10.0.2.2:8020" />
 
     <restriction
         android:key="tenant_hint"

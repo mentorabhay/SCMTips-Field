@@ -113,8 +113,47 @@ data class PhotoEvidence(
     val createdAt: String? = null,
 )
 
-/** One row of `GET /v1/wearable/sessions` (this user's device sessions). */
-data class DeviceSessionInfo(val sessionId: String, val deviceId: String?, val deviceModel: String?, val expiresAt: String?, val current: Boolean)
+/**
+ * One row of `GET /v1/wearable/sessions` (this user's device sessions). The core answers an array of
+ * `{id, device_id, device_model, display_capable, current, created_at, expires_at, last_seen_at|null, revoked_at|null}`
+ * (its reply TO_FIELD, 31 Oct, section 3); revoked sessions stay listed with [revokedAt].
+ */
+data class DeviceSessionInfo(
+    val sessionId: String,
+    val deviceId: String?,
+    val deviceModel: String?,
+    val expiresAt: String?,
+    val current: Boolean,
+    val displayCapable: Boolean = false,
+    val createdAt: String? = null,
+    val lastSeenAt: String? = null,
+    val revokedAt: String? = null,
+) {
+    val revoked: Boolean get() = revokedAt != null
+}
+
+/** `format` of `GET /v1/briefs/{kind}/{subject_id}`. */
+enum class BriefFormat(val wire: String) { SPOKEN("spoken"), CARD("card") }
+
+/**
+ * The core's brief document, `GET /v1/briefs/{kind}/{subject_id}?format=spoken|card` (its reply TO_FIELD section 3:
+ * `{kind, subject_id, format, text, template_text, source, facts{}, check{}, characters, words, seconds, simulated}`,
+ * every field always present). [text] is what to say or show; [templateText] is what a rewrite is checked against.
+ */
+data class CoreBrief(
+    val kind: String,
+    val subjectId: String,
+    val format: String,
+    val text: String,
+    val templateText: String,
+    val source: String?,
+    val facts: JsonObject,
+    val check: JsonObject,
+    val characters: Int,
+    val words: Int,
+    val seconds: Double,
+    val simulated: Boolean,
+)
 
 /** RFC 7807 problem document (the core also puts its machine code in `code`). */
 data class Problem(val type: String? = null, val title: String? = null, val status: Int? = null, val detail: String? = null, val code: String? = null)
@@ -193,7 +232,30 @@ object CoreJson {
         p.b("faces_blurred") ?: false, p.b("mask") ?: false, p.s("created_at"),
     )
 
-    /** `GET /v1/wearable/sessions`: `{"items": [...]}` or a bare list. */
+    /**
+     * `GET /v1/briefs/{kind}/{subject_id}`. Tolerates the stand-in's earlier document (`decision_id`, `spoken`,
+     * `template_text`): cheap, and the counts are then derived from the text.
+     */
+    fun brief(b: JsonObject, kind: String, subjectId: String, format: BriefFormat): CoreBrief {
+        val template = b.s("template_text") ?: b.s("text") ?: b.s("spoken") ?: throw IllegalArgumentException("response is missing 'text'")
+        val text = b.s("text") ?: (if (format == BriefFormat.CARD) b.s("card") else b.s("spoken")) ?: template
+        return CoreBrief(
+            kind = b.s("kind") ?: kind,
+            subjectId = b.s("subject_id") ?: b.s("decision_id") ?: subjectId,
+            format = b.s("format") ?: format.wire,
+            text = text,
+            templateText = template,
+            source = b.s("source"),
+            facts = b.o("facts") ?: JsonObject(emptyMap()),
+            check = b.o("check") ?: JsonObject(emptyMap()),
+            characters = b.i("characters") ?: text.length,
+            words = b.i("words") ?: text.split(Regex("\\s+")).count { it.isNotBlank() },
+            seconds = b.d("seconds") ?: 0.0,
+            simulated = b.b("simulated") ?: false,
+        )
+    }
+
+    /** `GET /v1/wearable/sessions`: the core's array; `{"items": [...]}` (the stand-in's earlier shape) also read. */
     fun sessions(text: String): List<DeviceSessionInfo> {
         val el = runCatching { json.parseToJsonElement(text.ifBlank { "[]" }) }.getOrNull() ?: return emptyList()
         val rows = when (el) {
@@ -203,7 +265,9 @@ object CoreJson {
         }
         return rows.mapNotNull { r ->
             val id = r.s("session_id") ?: r.s("id") ?: return@mapNotNull null
-            DeviceSessionInfo(id, r.s("device_id"), r.s("device_model"), r.s("expires_at"), r.b("current") ?: false)
+            DeviceSessionInfo(id, r.s("device_id"), r.s("device_model"), r.s("expires_at"), r.b("current") ?: false,
+                displayCapable = r.b("display_capable") ?: false, createdAt = r.s("created_at"),
+                lastSeenAt = r.s("last_seen_at"), revokedAt = r.s("revoked_at"))
         }
     }
 }

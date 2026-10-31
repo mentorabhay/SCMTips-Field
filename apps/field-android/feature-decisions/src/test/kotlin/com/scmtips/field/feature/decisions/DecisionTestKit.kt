@@ -4,8 +4,10 @@ import com.scmtips.field.core.voice.asr.AsrCandidate
 import com.scmtips.field.core.wearables.AudioOut
 import com.scmtips.field.core.wearables.EarconCue
 import com.scmtips.field.feature.decisions.api.Band
+import com.scmtips.field.feature.decisions.api.BriefFormat
 import com.scmtips.field.feature.decisions.api.Challenge
 import com.scmtips.field.feature.decisions.api.CommandResponse
+import com.scmtips.field.feature.decisions.api.CoreBrief
 import com.scmtips.field.feature.decisions.api.CoreCredentials
 import com.scmtips.field.feature.decisions.api.CoreException
 import com.scmtips.field.feature.decisions.api.CoreHttp
@@ -92,7 +94,10 @@ class ScriptedDecisionsApi(
     }
 
     override suspend fun next(): NextItem? { check("next"); return nextItem }
-    override suspend fun brief(decisionId: String): JsonObject { check("brief"); return JsonObject(emptyMap()) }
+    override suspend fun brief(decisionId: String, format: BriefFormat): CoreBrief {
+        check("brief")
+        return CoreBrief("decision", decisionId, format.wire, "", "", "template", JsonObject(emptyMap()), JsonObject(emptyMap()), 0, 0, 0.0, true)
+    }
     override suspend fun createChallenge(decisionId: String): Challenge { check("challenge"); return challenge }
 
     override suspend fun sendCommand(nonce: String, transcript: String, idempotencyKey: String): CommandResponse {

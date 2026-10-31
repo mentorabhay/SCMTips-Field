@@ -69,6 +69,7 @@ import com.scmtips.field.app.slice.PairingPayload
 import com.scmtips.field.app.signin.AccountCredentials
 import com.scmtips.field.app.signin.AccountStore
 import com.scmtips.field.app.signin.CoreAccount
+import com.scmtips.field.app.signin.FieldAccess
 import com.scmtips.field.app.signin.HomeSections
 import com.scmtips.field.app.signin.SignInDefaults
 import com.scmtips.field.app.signin.SiteChoice
@@ -515,6 +516,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
                 val why = describe(e)
                 log("⚠ field-api: $why")
                 _ui.value = _ui.value.copy(connecting = false, connectError = why, link = if (e is IOException) Link.OFFLINE else _ui.value.link)
+                // No Field role for this core account (403 NO-FIELD-ROLE): field-api's sentence on the sign-in screen too.
+                (e as? HttpError)?.let(FieldAccess::noFieldRole)?.let { _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(error = it)) }
             }
         }
     }
@@ -1111,7 +1114,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
     // --- helpers -------------------------------------------------------------------------------
 
     private fun describe(e: Throwable): String = when (e) {
-        is HttpError -> when (e.status) {
+        is HttpError -> FieldAccess.noFieldRole(e) ?: when (e.status) {
             401 -> if (account != null) "Your SCMTIPS sign-in expired or the PC restarted. Sign out in Me and sign in again."
             else "The pairing code expired or the PC restarted. Make a new code on the PC and scan it."
             403 -> "This phone is not allowed (${e.code ?: "403"}). Make a new code on the PC and scan it."
