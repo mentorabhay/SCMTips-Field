@@ -991,6 +991,41 @@
     plant) were reopened to open 1600 / 600. Partial: not run on the owner's PC kit; the S/4 reads are UNVERIFIED (the S/4
     adapter refuses them; S/4 keeps the received quantity in the PO history, not on A_PurchaseOrderItem); the worker's
     interval was proven only at start-up, not on a later tick.
+- id: M4-C16
+  title: >-
+    Scenario pack in Field (Q13): stack smoke --approver --scenario NAME takes the decision from the core's SAMPLE
+    scenario (magnet-export-curbs), sent through the core's own file-mode signal API, and approves it by voice
+  workstream: M4-C
+  role: Integration (K4, owner amendment A-05)
+  status: partial
+  evidence:
+  - tools/dev_stack/core_smoke.py
+  - tools/dev_stack/stack.py
+  - .env.example
+  - docs/evidence/runs/2026-11-01-k4-scenario-approver.txt
+  tests:
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c16_the_scenario_is_sent_as_the_cores_signals_workbook
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c16_the_scenario_needs_the_cores_checkout_and_a_workbook
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c16_scenario_only_with_the_approver_against_the_real_core
+  frs: []
+  verified_at: null
+  note: >-
+    K4 (1 Nov 2026, Linux container; owner amendment A-05). The core's scenario pack (Q13, core samples/scenarios,
+    commit 6ad31c5: ten SIMULATED disruptions for the drone world, three polished) is read from the core checkout
+    named by FIELD_CORE_SCENARIOS_DIR and never copied here. With --scenario, smoke --approver (FIELD_CORE_TARGET=core)
+    has the core's Org admin send the scenario's signal message as the signals workbook CSV (fresh external id and
+    event time) to POST /v1/exchange/messages/signal/import-file; the core's own pipeline matched it (Supplier S-02,
+    CP-204), passed its relevance gate, scored it HIGH, ran the exposure cascade (CP-204 -> SA-120 -> FG-100, FG-200;
+    starvation clock about 128 days for CP-204) and auto-drafted the decision; the planner submitted it, and the
+    approver approved exactly that decision by voice ("approve option two" = reallocate), EXECUTING at the core. A
+    repeated scenario merges into the core's open signal (48 h): its open decision is used, or the planner opens a new
+    one on that signal. --scenario without --approver against the real core is refused, not skipped. Results in the
+    run log: the core CLI runs of the three polished scenarios (decisions with options, the core's brief check
+    accepted) and of the other seven, then the Field smoke PASS, against a core in hosted demo mode (Q11: LR_STRICT_AUTH
+    on, the SAMPLE organisation password-only, its band without a second factor). Partial: the goods-receipt finale
+    (smoke --core) was tried afterwards and did not pass here (Field's erp-sim, not reset with the core, raised no
+    receive task; the receipt path passed in K1 and K2); not run on the owner's PC kit, his phone, the Android app or the
+    glasses; no Muse key, so the brief was the core's template.
 - id: M4-F01
   title: >-
     docs/EXCHANGE_CONTRACT.md for the public Field repo (Q4; F6 open-source readiness): the eight exchange messages,

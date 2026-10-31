@@ -1,0 +1,44 @@
+K4, 1 Nov 2026: smoke --approver --scenario against the REAL SCMTIPS core (raw output; no secrets, no tokens printed).
+Machine: Linux cloud container. Core: the private SCMTIPS core repository the core's integration branch, the K4 working tree committed as ff2d4f8, 6e7c71f, 6ad31c5 (not pushed), API 127.0.0.1:8000 + worker :8001,
+LR_ENV=local with LR_STRICT_AUTH=true and hosted demo mode on for the kit's SAMPLE organisation (LR_DEMO_MODE, LR_DEMO_TENANT_ID),
+Postgres 16 on :5434. The SAMPLE organisation was marked as the demo and reset to the seeded sample (scmtips-demo mark, reset;
+scmtips-local-demo --with-team for the planning samples) before these runs. Field: slice/m4-core-integration, field-api :8020,
+erp-sim :8002, FIELD_CORE_TARGET=core, FIELD_CORE_SCENARIOS_DIR = the core checkout's samples/scenarios.
+
+=== 1. core: uv run scmtips-scenario inject <name> --wait (the three polished scenarios, summary of the JSON report)
+magnet-export-curbs: signal article HIGH 0.621 negative; hit ['CP-204', 'CP-206', 'RM-301']; finished goods fed ['FG-100', 'FG-200', 'FG-300']; clock [('CP-206', 86), ('CP-204', 128)]; decision risk DRAFT auto_drafted=True options ['do_nothing', 'reallocate']; brief accepted=True changed number refused=True (45 words); unmet []
+red-sea-port-strike: signal article HIGH 0.6153 negative; hit ['CP-213', 'CP-214', 'CP-215', 'CP-216', 'CP-201', 'CP-202', 'CP-203', 'CP-204', 'CP-205', 'CP-206', 'CP-207', 'CP-208', 'CP-209', 'CP-210', 'CP-211', 'CP-212', 'RM-304', 'RM-305', 'RM-307', 'RM-301', 'RM-302', 'RM-303']; finished goods fed ['FG-100', 'FG-200', 'FG-300']; clock [('CP-208', 81), ('CP-206', 86), ('RM-307', 101), ('CP-207', 102)]; decision risk DRAFT auto_drafted=True options ['reroute', 'expedite', 'do_nothing', 'reallocate']; brief accepted=True changed number refused=True (48 words); unmet []
+tariff-cut-opportunity: signal test HIGH 0.5171 positive; hit None; finished goods fed None; clock []; decision opportunity DRAFT auto_drafted=True options ['pre_build', 'forward_buy', 'do_nothing']; brief accepted=True changed number refused=True (68 words); unmet []
+
+=== 2. Field: uv run python -m tools.dev_stack.stack smoke --approver --scenario magnet-export-curbs --wait 120
+approver signed in approver1@scmtips.local at the core http://127.0.0.1:8000; field.supervisor, field device 01a1940b-6105-72a0-8e66-00192bd48c41
+         scenario magnet-export-curbs: signal abd6c4a8-851f-405f-9da1-de010c3d8fdb (HIGH), decision 98af4eae-4391-4e67-b21a-6fed242513bc with 2 options (do_nothing, reallocate), submitted
+decision 98af4eae-4391-4e67-b21a-6fed242513bc: 1 waiting, band 'committed 0.0000 and above' step-up False; brief from template (model:meta:AI_CLOUD_DISABLED)
+         Field's core check client at the real core: template accepted; a changed number refused (core:These figures are not in any tool result: "987654".)
+         'approve option two' -> read-back: Approve option B, Reallocate to the highest-margin products, cost 0.00 US dollars, committed spend 0.00 US dol; replay same reply, reused challenge 409
+         confirm -> Approved option B. The plan is committed. (approval 4f9ae59d-112a-4b26-8bd2-38386534e047); the core's decision is EXECUTING
+         a decided decision refuses a new challenge (409)
+PASS: approver flow against the real SCMTIPS core (sign-in, exchange, next decision, spoken brief, core brief check, voice approve, read-back, step-up or its waiver, confirm, approved at the core)
+
+=== 3. core: the seven file scenarios, uv run scmtips-scenario inject <name> --wait --timeout 75 (after the run above)
+typhoon-taiwan-strait: signal HIGH 0.622; decision yes ['reroute', 'expedite', 'do_nothing', 'reallocate']; brief accepted=True; unmet []; notes []
+penang-flood: signal HIGH 0.622; decision yes ['reroute', 'expedite', 'do_nothing', 'reallocate']; brief accepted=True; unmet []; notes []
+malacca-collision: signal HIGH 0.5797; decision yes ['reroute', 'expedite', 'do_nothing', 'reallocate']; brief accepted=True; unmet []; notes []
+hormuz-escalation: signal HIGH 0.622; decision yes ['do_nothing', 'reallocate']; brief accepted=True; unmet []; notes []
+kumamoto-earthquake: signal HIGH 0.6232; decision yes ['do_nothing', 'reallocate']; brief accepted=True; unmet []; notes []
+pune-ransomware: signal HIGH 0.6157; decision yes ['do_nothing', 'reallocate']; brief accepted=True; unmet []; notes []
+country-only-noise: signal None None; decision no []; brief accepted=None; unmet []; notes ['no signal: the pipeline dropped it (below the match threshold)']
+(hormuz-escalation: the first wording stayed on the watch feed at 0.45, the severity lexicon found only 'risk'; reworded,
+ then HIGH 0.622 with a decision. country-only-noise: dropped below the match threshold, as expected.)
+
+=== 4. Field: smoke --core (the goods-receipt finale) was tried after the approval and did not pass here:
+core     signed in procurement@scmtips.local at the core http://127.0.0.1:8000: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77, kid ok, roles ['procurement']
+         exchanged at field-api: field.operator, field device 01a1940b-b34d-74a0-86f3-323092da898c; core device smoke-core-c7d8742d40 active
+         code-map mode: FIELD_CORE_CODE_MAP maps erp-sim to the core
+         core before: PO-26-1001 CP-203@PLANT-GOA qty 6000.0000 status in_transit; on-hand 3600.0
+         core before: base plan run 4e89b210-f16a-4816-be28-857451b1e4b4: CP-203 on_hand 3600.0, scheduled [0, 6000, 0], pab [1800, 6000, 4200], first short bucket none
+         core before: starvation clock PLANT-GOA soonest stockout 81 d; no clock for CP-203 (exposure run eb36699a)
+         erp-sim opening stock of SAMPLE-MAT-0001 at 1020 set to the core's on-hand 3600 (dev seed, once)
+FAIL: no receive task appeared within 120 s; is field-worker running?
+erp-sim (Field's own database) was not reset with the core and its receive task for the code-mapped PO did not appear;
+the receipt path itself passed in K1 and K2 (2026-10-31 run logs). Not investigated in K4.

@@ -12,7 +12,11 @@ helpers. The real core has no such helpers, so these smokes use only the core's 
   ``DELETE /v1/wearable/sessions/{id}`` for the revocation step.
 
 When no decision waits for the approver, the planner opens one on the demo's sample scenarios (``POST /v1/decisions``)
-and submits it, as on the web.
+and submits it, as on the web. With ``--scenario <name>`` (M4-C16) the decision comes from a disruption instead: the
+core's SAMPLE scenario file (``FIELD_CORE_SCENARIOS_DIR``, the core checkout's ``samples/scenarios``) is sent as the
+signals workbook to the core's own file-mode API by its Org admin (``POST /v1/exchange/messages/signal/import-file``),
+the core's pipeline matches, scores and auto-drafts the decision, the planner submits it, and the approver approves
+exactly that decision ("approve option two").
 
 The GR goes against one of the core's own PO lines. When erp-sim was seeded from the core's export (``stack
 seed-core-export``, M4 Q9) it holds that PO under the core's ref, with the core's item and plant codes: the smoke then
@@ -31,13 +35,17 @@ each with ``..._PASSWORD``. Optional: ``FIELD_CORE_SMOKE_PO`` (which mapped erp-
 from __future__ import annotations
 
 import base64
+import csv
 import hashlib
 import hmac
+import io
 import json
 import os
 import struct
 import time
 import uuid
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Protocol
 
 import httpx
@@ -45,7 +53,7 @@ import httpx
 from tools.dev_stack import stack
 from tools.dev_stack.stack import SmokeFailure, _accepted, _expect
 
-__all__ = ["SmokeFailure", "smoke_approver_real", "smoke_core_real"]
+__all__ = ["SmokeFailure", "scenario_csv", "smoke_approver_real", "smoke_core_real"]
 
 LR = {"X-Requested-With": "lr"}  # on every call to the core (TO_FIELD section 3)
 ROLES = ("OPERATOR", "APPROVER", "ADMIN", "PLANNER")
@@ -536,7 +544,91 @@ def prepare_decision(base: str, wait: float) -> str:
         planner.close()
 
 
-def smoke_approver_real(api: str, state: dict[str, Any], wait: float) -> None:
+def scenario_message(name: str) -> dict[str, Any]:
+    """The core's SAMPLE scenario message (an exchange-contract ``signal`` message) from its checkout."""
+    folder = os.environ.get("FIELD_CORE_SCENARIOS_DIR", "").strip()
+    if not folder:
+        raise SmokeFailure("set FIELD_CORE_SCENARIOS_DIR in .env.local to the core checkout's samples/scenarios")
+    root = Path(folder)
+    manifest = json.loads((root / "scenarios.json").read_text(encoding="utf-8"))
+    entry = next((x for x in manifest["scenarios"] if x["name"] == name), None)
+    _expect(entry is not None, f"the core's scenario pack has no {name!r}")
+    assert entry is not None  # for mypy: _expect raised otherwise
+    _expect(entry["transport"] == "signal_file", f"{name} is a test injection, not a signals workbook")
+    msg: dict[str, Any] = json.loads((root / str(entry["file"])).read_text(encoding="utf-8"))
+    _expect(msg.get("message") == "signal" and msg.get("simulated") is True, f"{name} is not a SIMULATED signal message")
+    return msg
+
+
+def scenario_csv(msg: dict[str, Any], run: str, now: float | None = None) -> tuple[bytes, str]:
+    """The message's rows as the signals workbook's CSV (a fresh external id and event time, so the core sees a new
+    article; lists separated by semicolons, as in the core's template) and the first row's title."""
+    rows = list(msg["rows"])
+    columns = list(rows[0].keys())
+    at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now))
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+    w.writerow(columns)
+    for row in rows:
+        fresh = {**row, "external_id": f"{row['external_id']}-{run}", "event_at": at}
+        w.writerow([";".join(map(str, v)) if isinstance(v, list) else "" if v is None else v
+                    for v in (fresh.get(c) for c in columns)])
+    return buf.getvalue().encode("utf-8"), str(rows[0]["title"])
+
+
+def prepare_scenario_decision(base: str, wait: float, name: str) -> str:
+    """One decision waiting for approval, made by a disruption: the Org admin sends the core's SAMPLE scenario as the
+    signals workbook, the core's pipeline auto-drafts the decision, and the planner submits it. A repeated scenario
+    merges into the core's open signal for the same event (48 h); then its open decision is used, or the planner opens
+    a new one on that signal."""
+    data, title = scenario_csv(scenario_message(name), uuid.uuid4().hex[:8])
+    since = time.time() - 5
+    admin = CoreWeb(base, "ADMIN")
+    planner = CoreWeb(base, "PLANNER")
+    try:
+        sent = admin.c.post("/v1/exchange/messages/signal/import-file", files={"file": (f"{name}.csv", data, "text/csv")})
+        _accepted(sent, f"the core's file-mode signal import of {name}", 202)
+
+        def signal() -> dict[str, Any] | None:
+            for x in admin.get("/v1/signals", limit=50)["items"]:
+                seen = datetime.fromisoformat(str(x["last_seen_at"]).replace("Z", "+00:00")).timestamp()
+                if seen < since:
+                    continue
+                if x["title"] == title:
+                    return dict(x)
+                arts = admin.get(f"/v1/signals/{x['id']}").get("articles") or []
+                if any(a.get("title") == title for a in arts):
+                    return dict(x)
+            return None
+
+        sig = wait_until(f"the core's signal for {name}", signal, wait * 2)
+
+        def decision() -> dict[str, Any] | None:
+            items = admin.get("/v1/decisions", view="all", signal=sig["id"]).get("items") or []
+            live = [i for i in items if i["status"] in ("DRAFT", "PENDING_APPROVAL")]
+            if not live:
+                return None
+            d: dict[str, Any] = planner.get(f"/v1/decisions/{live[0]['id']}")
+            return d if any(o["status"] == "ready" for o in d["options"]) else None
+
+        try:
+            d = wait_until(f"the core's auto-drafted decision on {name}", decision, wait * 2)
+        except SmokeFailure:  # the event's decision was decided in an earlier run: a new one on the same signal
+            made = planner.post("/v1/decisions", {"signal_id": sig["id"]})
+            _expect(made.status_code in (201, 202), f"planner opens a decision: HTTP {made.status_code} {made.text[:200]}")
+            d = wait_until("the new decision's options", decision, wait * 2)
+        if d["status"] == "DRAFT":
+            _accepted(planner.post(f"/v1/decisions/{d['id']}/submit", {"version": d["version"]}),
+                      "planner submits the scenario's decision")
+        print(f"         scenario {name}: signal {sig['id']} ({sig['band_label']}), decision {d['id']} with"
+              f" {len(d['options'])} options ({', '.join(o['template'] for o in d['options'])}), submitted")
+        return str(d["id"])
+    finally:
+        admin.close()
+        planner.close()
+
+
+def smoke_approver_real(api: str, state: dict[str, Any], wait: float, scenario: str | None = None) -> None:
     """M4 F2 + F1 + F3 against the real core: app sign-in, exchange (approver -> field.supervisor), next decision,
     field-api spoken brief, Field's core brief check (template accepted, a changed number refused), voice challenge,
     "approve option two" -> read-back -> replay and reuse rules -> step-up when the band needs it -> confirm ->
@@ -570,7 +662,19 @@ def smoke_approver_real(api: str, state: dict[str, Any], wait: float) -> None:
         return _accepted(httpx.post(f"{base}/v1/voice/commands", headers=h, timeout=30,
                                     json={"nonce": nonce, "transcript": words}), f"voice command {words!r}")
 
-    item = next_item()
+    if scenario:
+        wanted = prepare_scenario_decision(base, wait, scenario)
+
+        def scenario_item() -> dict[str, Any] | None:
+            got = next_item()
+            return got if got is not None and str(got["decision_id"]) == wanted else None
+
+        try:
+            item = wait_until(f"the scenario's decision {wanted} first for the approver", scenario_item, wait)
+        except SmokeFailure as e:
+            raise SmokeFailure(f"{e}; another decision waits first (approve it or reset the core's demo)") from None
+    else:
+        item = next_item()
     if item is None:
         did = prepare_decision(base, wait)
         print(f"         nothing was waiting: the planner opened decision {did} on the sample scenarios and submitted it")

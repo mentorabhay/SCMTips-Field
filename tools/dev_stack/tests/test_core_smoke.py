@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import argparse
 import base64
+import csv
 import inspect
+import io
+import json
 from types import MappingProxyType
 from typing import Any
 
@@ -143,3 +146,65 @@ def test_m4_c14_export_mode_receives_the_cores_own_po_without_a_code_map(monkeyp
         core_smoke.export_line(web, {"PO-26-1001", "PO-26-1003", "PO-26-1009"})
     monkeypatch.setenv("FIELD_CORE_SMOKE_PO", "4500261003")  # a code-map PO number: code-map mode decides
     assert core_smoke.export_line(web, {"PO-26-1001", "PO-26-1003"}) is None
+
+
+# --- M4-C16: smoke --approver --scenario (the core's SAMPLE scenario pack, Q13) -------------------------------------
+
+def _pack(tmp: Any, transport: str = "signal_file") -> Any:
+    """A scenario pack folder like the core's samples/scenarios: a manifest and one SIMULATED signal message."""
+    row = {"external_id": "SAMPLE-SCN-01", "title": "Export licence checks hold motor shipments (SIMULATED)",
+           "summary": "SIMULATED scenario, with a comma.", "url": "", "event_at": "2026-11-03T06:00:00Z",
+           "source_name": "SAMPLE market feed", "category": "export_control", "severity": 4, "countries": [],
+           "corridors": [], "supplier_codes": ["SUP-S02"], "supplier_names": ["Supplier S-02"],
+           "site_codes": ["SS-SZX-02"], "item_codes": ["CP-204", "CP-206"]}
+    (tmp / "scenarios.json").write_text(json.dumps({"pack": "scmtips.scenario-pack/v1", "scenarios": [
+        {"name": "magnet-export-curbs", "file": "m.signal.json", "transport": transport, "polished": True}]}))
+    (tmp / "m.signal.json").write_text(json.dumps({"contract": "scmtips.exchange/v1", "message": "signal",
+                                                    "message_id": "x", "simulated": True, "rows": [row]}))
+    return tmp
+
+
+def test_m4_c16_the_scenario_is_sent_as_the_cores_signals_workbook(monkeypatch: pytest.MonkeyPatch,
+                                                                     tmp_path: Any) -> None:
+    monkeypatch.setenv("FIELD_CORE_SCENARIOS_DIR", str(_pack(tmp_path)))
+    msg = core_smoke.scenario_message("magnet-export-curbs")
+    data, title = core_smoke.scenario_csv(msg, "run1", now=1_793_000_000)
+    assert title == "Export licence checks hold motor shipments (SIMULATED)"
+    rows = list(csv.DictReader(io.StringIO(data.decode())))
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["external_id"] == "SAMPLE-SCN-01-run1"  # a new article for the core, every run
+    assert r["event_at"] == "2026-10-26T07:33:20Z"  # now, so the core's staleness rule passes
+    assert r["item_codes"] == "CP-204;CP-206" and r["supplier_codes"] == "SUP-S02"  # the core's list separator
+    assert r["summary"] == "SIMULATED scenario, with a comma." and r["countries"] == ""
+    assert core_smoke.scenario_csv(msg, "run2")[0] != data
+
+
+def test_m4_c16_the_scenario_needs_the_cores_checkout_and_a_workbook(monkeypatch: pytest.MonkeyPatch,
+                                                                       tmp_path: Any) -> None:
+    monkeypatch.delenv("FIELD_CORE_SCENARIOS_DIR", raising=False)
+    with pytest.raises(core_smoke.SmokeFailure, match="FIELD_CORE_SCENARIOS_DIR"):
+        core_smoke.scenario_message("magnet-export-curbs")
+    monkeypatch.setenv("FIELD_CORE_SCENARIOS_DIR", str(_pack(tmp_path, transport="test_inject")))
+    with pytest.raises(core_smoke.SmokeFailure, match="not a signals workbook"):
+        core_smoke.scenario_message("magnet-export-curbs")
+    with pytest.raises(core_smoke.SmokeFailure, match="no 'nope'"):
+        core_smoke.scenario_message("nope")
+
+
+def test_m4_c16_scenario_only_with_the_approver_against_the_real_core(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(stack, "load_env", lambda: {})
+    monkeypatch.setattr(stack, "apply_ports", lambda: None)
+    monkeypatch.setattr(core_smoke, "smoke_approver_real",
+                        lambda api, st, w, scenario=None: calls.append(f"approver {scenario}"))
+    ns = argparse.Namespace(api="http://127.0.0.1:8020", wait=7.0, all=False, home=False, core=False, approver=True,
+                            scenario="magnet-export-curbs")
+    monkeypatch.setenv("FIELD_CORE_TARGET", "standin")
+    assert stack.cmd_smoke(ns) == 1  # the stand-in has no scenario pack: refused, never skipped silently
+    ns.approver = False
+    monkeypatch.setenv("FIELD_CORE_TARGET", "core")
+    assert stack.cmd_smoke(ns) == 1
+    ns.approver = True
+    assert stack.cmd_smoke(ns) == 0
+    assert calls == ["approver magnet-export-curbs"]

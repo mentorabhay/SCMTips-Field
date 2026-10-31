@@ -1868,7 +1868,11 @@ def smoke_real_core(a: argparse.Namespace, api: str) -> int:
     approver = bool(getattr(a, "approver", False))
     try:
         if approver:
-            core_smoke.smoke_approver_real(api, state, a.wait)
+            scenario = getattr(a, "scenario", None)
+            if scenario:  # M4-C16: the decision comes from the core's SAMPLE scenario
+                core_smoke.smoke_approver_real(api, state, a.wait, scenario)
+            else:
+                core_smoke.smoke_approver_real(api, state, a.wait)
         else:
             core_smoke.smoke_core_real(api, state, a.wait)
     except (SmokeFailure, core_smoke.SmokeFailure) as e:  # run as __main__, core_smoke sees tools.dev_stack.stack
@@ -1925,6 +1929,9 @@ def cmd_smoke(a: argparse.Namespace) -> int:
     api = a.api or local("field-api")
     if getattr(a, "erp_feed", False):
         return smoke_erp_feed_cmd(a, api)
+    if getattr(a, "scenario", None) and not (getattr(a, "approver", False) and core_target() == "core"):
+        print("FAIL: --scenario needs --approver against the real core (FIELD_CORE_TARGET=core, M4-C16)")
+        return 1
     if (getattr(a, "approver", False) or getattr(a, "core", False)) and core_target() == "core":
         return smoke_real_core(a, api)
     state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
@@ -2278,6 +2285,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="the stand-in core: app sign-in, exchange, device status, GR 101 -> two signed feed rows")
     sm.add_argument("--approver", action="store_true",
                     help="the stand-in core: approver sign-in, spoken brief, voice approve, step-up, confirm")
+    sm.add_argument("--scenario", metavar="NAME",
+                    help="with --approver against the real core (M4-C16): the decision comes from the core's SAMPLE"
+                         " scenario NAME (e.g. magnet-export-curbs), read from FIELD_CORE_SCENARIOS_DIR")
     sm.add_argument("--erp-feed", action="store_true",
                     help="erp-sim's stock and open POs as a snapshot to the core's feeds; the core then equals erp-sim")
     ef = sub.add_parser("erp-feed", help="stage a snapshot of erp-sim's stock and open POs for the core's feeds now")
