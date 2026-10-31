@@ -64,6 +64,11 @@ class Actions(
     val startPractice: () -> Unit,
     val sendFeedback: () -> Unit,
     val dismissToast: () -> Unit,
+    /** M3 work session: Today's "Start work" (microphone permission first), stop, pause, resume. */
+    val startWork: () -> Unit = {},
+    val stopWork: () -> Unit = {},
+    val pauseWork: () -> Unit = {},
+    val resumeWork: () -> Unit = {},
 )
 
 @Composable
@@ -72,7 +77,10 @@ fun AppRoot(ui: AppUi, a: Actions) {
         val job = ui.job
         when {
             ui.pairing == null || ui.deviceId == null -> ConnectScreen(ui, a)
-            job != null -> JobScreen(job, ui.audioOnly, a)
+            job != null -> Column(Modifier.fillMaxSize()) {
+                if (ui.work.active) SessionStrip(ui.work, a)
+                Box(Modifier.weight(1f)) { JobScreen(job, ui.audioOnly, a) }
+            }
             else -> Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {
                     when (ui.tab) {

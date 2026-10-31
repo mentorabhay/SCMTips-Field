@@ -89,7 +89,25 @@ sealed interface JobAction {
     data class Permit(val text: String) : JobAction
     data class Location(val lat: Double, val lon: Double, val accuracyM: Double, val atMs: Long) : JobAction
     data class Heard(val transcript: String, val confidence: Float) : JobAction
+
+    /**
+     * A command the Field Assistant chose for an utterance the grammar did not parse (M3 contract §4/§5):
+     * the same commands the grammar gives, run as if spoken. [transcript]/[confidence] are the operator's
+     * words. Command.Yes is never executed from here: confirming a post stays the operator's own word.
+     */
+    data class Spoken(val command: Command, val transcript: String, val confidence: Float) : JobAction
 }
+
+/**
+ * A scanned code that matches no line of a receive or count job. Returns true when the code was taken
+ * (sandbox site: the assistant asks what it is), false to refuse it as before (production site).
+ */
+fun interface UnknownCodeHandler {
+    suspend fun take(task: JobTask, code: String): Boolean
+}
+
+/** What the phone tells the assistant about the open job (contract §4 `client_state`). */
+data class JobState(val taskId: String?, val lineId: String?, val step: String?)
 
 /**
  * ONE job runner for every task type (design: Main.dc.html job runner; contract M2_JOBS_CONTRACT.md).
@@ -104,7 +122,7 @@ sealed interface JobAction {
  * audio through [Speaker], so every behaviour is unit-tested on the JVM (JobRunnerTest).
  */
 class JobRunner(
-    val task: JobTask,
+    task: JobTask,
     private val transport: JobTransport,
     private val speaker: Speaker,
     private val deviceId: String?,
@@ -118,7 +136,12 @@ class JobRunner(
     private val newKey: () -> String = UUIDv7::generate,
     private val nextSeq: () -> Long = AtomicLong(0)::incrementAndGet,
     private val confirmWindowMs: Long = 10_000L,
+    private val unknownCodes: UnknownCodeHandler? = null,
 ) {
+    /** The task this job runs; [updateTask] replaces its lines (sandbox items added by the assistant). */
+    var task: JobTask = task
+        private set
+
     private enum class Phase { INTRO, CHECKIN, CHECKLIST, CLIMB, GO_BIN, LINE, REVIEW, CONFIRM, WAITING, CLIMB_DOWN, CHECKOUT, DONE, FAILED }
     private enum class Sub { SCAN, GO, SCAN_BIN, COUNT, STORED, SCAN_NEW }
     private enum class DoneKind { POSTED, COMPLETED, APPROVAL, PRACTICE, CHECKED_OUT }
@@ -127,7 +150,7 @@ class JobRunner(
     private data class VoiceStage(val postVoiceId: String, val atMs: Long)
 
     private val type = task.type
-    private val lines: List<JobLine> = task.lines.sortedBy { it.lineNo }
+    private var lines: List<JobLine> = task.lines.sortedBy { it.lineNo }
     private val ordered = type == JobType.PICK || type == JobType.AUDIT || type == JobType.SWAP
     private val subs: List<Sub> = when (type) {
         JobType.RECEIVE, JobType.COUNT -> listOf(Sub.SCAN, Sub.COUNT)
@@ -220,6 +243,7 @@ class JobRunner(
         if (finished) return@withLock
         when (a) {
             is JobAction.Heard -> heard(a.transcript, a.confidence)
+            is JobAction.Spoken -> spoken(a.command, a.transcript, a.confidence)
             is JobAction.SetQty -> { qty = a.qty.coerceIn(0, 9999); publish() }
             is JobAction.ToggleCheck -> {
                 if (phase == Phase.CHECKLIST && a.index in CHECKLIST.indices) {
@@ -265,9 +289,36 @@ class JobRunner(
     /** Of several codes in one photo, the one this step can use (else the first). */
     fun bestOf(codes: List<String>): String? {
         val known = buildSet {
-            lines.forEach { l -> listOfNotNull(l.material, l.bin, l.expectedSerial).forEach { add(norm(it)) } }
+            lines.forEach { l -> (listOfNotNull(l.material, l.bin, l.expectedSerial) + l.barcodes).forEach { add(norm(it)) } }
         }
         return codes.firstOrNull { norm(it) in known } ?: codes.firstOrNull()
+    }
+
+    /** The open job as the assistant sees it: task, active line and step name ("line.scan", "review", ...). */
+    val state: JobState
+        get() = JobState(task.id, activeId, stepName)
+
+    /** Short step name for the assistant and logs. */
+    val stepName: String
+        get() = if (phase == Phase.LINE) "line.${sub.name.lowercase()}" else phase.name.lowercase()
+
+    /** True once the job reached its done step (the work session tells the assistant `step_done`). */
+    val isDone: Boolean get() = phase == Phase.DONE
+
+    /**
+     * The task as field-api lists it now (refresh_task, e.g. after the assistant added a sandbox item).
+     * Lines already done stay done and the current step is kept; new lines become open work. With
+     * [focusCode] the code is then handled as a scan, so the new line is selected at once.
+     */
+    suspend fun updateTask(fresh: JobTask, focusCode: String?) {
+        mutex.withLock {
+            if (finished || fresh.id != task.id) return@withLock
+            task = fresh
+            lines = fresh.lines.sortedBy { it.lineNo }
+            if (phase == Phase.REVIEW && openLines().isNotEmpty()) { phase = Phase.LINE; startLines() }
+            publish()
+        }
+        if (focusCode != null) act(JobAction.Scanned(focusCode))
     }
 
     // --- actions -----------------------------------------------------------------------------
@@ -333,6 +384,20 @@ class JobRunner(
             say(JobGrammar.NOT_UNDERSTOOD) // nothing changes (FR2.032)
             return
         }
+        execute(cmd, transcript, confidence)
+    }
+
+    private suspend fun spoken(cmd: Command, transcript: String, confidence: Float) {
+        when {
+            // Defence in depth (contract §4): the server strips confirm actions; the runner refuses them too.
+            cmd == Command.Yes -> say(if (voiceStage != null) "Say yes yourself to post." else "Nothing to confirm. Say post first.")
+            // Posting keeps the voice floor (FR2.032): a guess from unclear words never stages a post.
+            cmd == Command.Post && confidence < JobGrammar.FLOOR -> say("Say post again, clearly.")
+            else -> execute(cmd, transcript, confidence)
+        }
+    }
+
+    private suspend fun execute(cmd: Command, transcript: String, confidence: Float) {
         if (voiceStage != null && cmd !in STAGE_SAFE) cancelStage(spoken = true)
         when (cmd) {
             Command.Capture -> Unit // the app takes the photo (glasses or phone camera)
@@ -397,16 +462,17 @@ class JobRunner(
         when (sub) {
             Sub.SCAN -> when (type) {
                 JobType.RECEIVE, JobType.COUNT -> {
-                    val line = openLines().firstOrNull { same(code, it.material) } ?: lines.firstOrNull { same(code, it.material) }
+                    val line = openLines().firstOrNull { it.isProduct(code) } ?: lines.firstOrNull { it.isProduct(code) }
                     when {
                         line != null -> select(line)
                         type == JobType.COUNT && same(code, countBin()) -> notice("That is the bin. Now scan a product in it.", Tone.NEUTRAL)
+                        unknownCodes?.take(task, code) == true -> notice("$code is new here. Tell the assistant what it is.", Tone.NEUTRAL)
                         type == JobType.COUNT -> refuse("$code is not on this count. If it is in the bin, tell your supervisor.", "Not on this count.")
                         else -> refuse("$code is not on this delivery.", "Not on this delivery.")
                     }
                 }
                 JobType.PUTAWAY -> {
-                    val line = openLines().firstOrNull { same(code, it.material) }
+                    val line = openLines().firstOrNull { it.isProduct(code) }
                     if (line == null) refuse("$code is not on this put-away list.", "Not on this list.")
                     else { activeId = line.id; sub = Sub.GO; speaker.earcon(EarconCue.CAPTURED); enter() }
                 }
@@ -414,7 +480,7 @@ class JobRunner(
                     val line = activeLine ?: return
                     when {
                         same(code, line.bin) -> if (confirm(line, ConfirmKind.BIN, code, source)) notice("Bin confirmed. Now scan the product.", Tone.GOOD)
-                        same(code, line.material) -> if (confirm(line, ConfirmKind.PRODUCT, code, source)) {
+                        line.isProduct(code) -> if (confirm(line, ConfirmKind.PRODUCT, code, source)) {
                             sub = Sub.COUNT; qty = expectedOf(line) ?: 0; speaker.earcon(EarconCue.CAPTURED); enter()
                         }
                         looksLikeBin(code) && line.bin != null -> wrongBin(code, line.bin)

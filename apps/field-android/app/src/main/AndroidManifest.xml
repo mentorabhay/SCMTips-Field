@@ -9,6 +9,13 @@
     <!-- Only for the phone-microphone fallback; glasses speech needs the DAT MICROPHONE permission instead -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- M3 work session: a foreground service that listens through the glasses with the phone in a pocket
+         (Android 14+ needs the type permissions; the microphone is used only while a session is open, A-03) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- Bluetooth hands-free (SCO) routing of the glasses microphone to the speech recogniser -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Tower check-in: the platform LocationManager (GPS + network), asked for at the check-in step -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -58,5 +65,10 @@
                 <data android:scheme="scmtipsfield" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".session.WorkSessionService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|connectedDevice" />
     </application>
 </manifest>

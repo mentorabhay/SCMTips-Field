@@ -5,7 +5,11 @@ import android.content.Context
 import android.os.Build
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.scmtips.field.app.assistant.AssistantClient
+import com.scmtips.field.app.assistant.AssistantOutcome
+import com.scmtips.field.app.assistant.SiteModes
 import com.scmtips.field.app.device.BarcodeReader
+import com.scmtips.field.app.device.ContinuousSpeech
 import com.scmtips.field.app.device.PhoneLocation
 import com.scmtips.field.app.device.PhoneSpeech
 import com.scmtips.field.app.device.TtsSpeaker
@@ -22,7 +26,9 @@ import com.scmtips.field.app.jobs.JobAction
 import com.scmtips.field.app.jobs.JobGrammar
 import com.scmtips.field.app.jobs.JobRequests
 import com.scmtips.field.app.jobs.JobRunner
+import com.scmtips.field.app.jobs.JobState
 import com.scmtips.field.app.jobs.JobTask
+import com.scmtips.field.app.jobs.UnknownCodeHandler
 import com.scmtips.field.app.jobs.JobType
 import com.scmtips.field.app.jobs.Practice
 import com.scmtips.field.app.jobs.PracticeTransport
@@ -34,6 +40,19 @@ import com.scmtips.field.app.navigation.Screen
 import com.scmtips.field.app.net.FieldSession
 import com.scmtips.field.app.net.HttpError
 import com.scmtips.field.app.net.PhoneBinding
+import com.scmtips.field.app.scan.FrameScanFilter
+import com.scmtips.field.app.scan.Yuv
+import com.scmtips.field.app.session.AssistantPort
+import com.scmtips.field.app.session.Conductor
+import com.scmtips.field.app.session.JobDesk
+import com.scmtips.field.app.session.MicPlan
+import com.scmtips.field.app.session.MicSource
+import com.scmtips.field.app.session.Photo
+import com.scmtips.field.app.session.SessionChange
+import com.scmtips.field.app.session.SessionView
+import com.scmtips.field.app.session.TurnSpeaker
+import com.scmtips.field.app.session.WorkSession
+import com.scmtips.field.app.session.WorkSessionService
 import com.scmtips.field.app.slice.Pairing
 import com.scmtips.field.app.slice.PairingPayload
 import com.scmtips.field.core.common.UUIDv7
@@ -50,12 +69,14 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class AppUi(
     val pairing: Pairing? = null,
@@ -79,12 +100,20 @@ data class AppUi(
     val scanResult: ScanResult? = null,
     val toast: String? = null,
     val log: List<String> = emptyList(),
+    /** The M3 work session (glasses first): listening / paused / camera, last words heard and said. */
+    val work: SessionView = SessionView(),
 )
 
 /**
  * Wires the pure [JobRunner] to the real world: field-api over HTTP ([FieldSession]), live events, the
  * three scanners (phone camera via MainActivity, handheld wedge keys, glasses photo + ML Kit), speech in
  * (glasses or phone mic) through [JobGrammar], speech out ([TtsSpeaker]), location for tower check-in.
+ *
+ * M3 (glasses first, docs/design/M3_CONTRACT.md §5): a work session ([WorkSession], foreground
+ * [WorkSessionService]) listens continuously through the glasses and routes words through the pure
+ * [Conductor] (grammar first, then the Field Assistant); the glasses' video frames are decoded on the
+ * phone for scan by looking ([FrameScanFilter]). The wiring here stays thin; the rules are in the pure
+ * classes and their JVM tests.
  */
 class FieldController(private val context: Context, private val toolkitError: () -> String?) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -110,11 +139,93 @@ class FieldController(private val context: Context, private val toolkitError: ()
             override fun remove(key: String) = prefs.edit().remove(key).apply()
         }) { UUID.randomUUID().toString() }
     }
-    private val speaker = TtsSpeaker(context) { said -> log("🔊 $said") }
+    private val workSession = WorkSession { v -> _ui.value = _ui.value.copy(work = v) }
+    private val tts = TtsSpeaker(context, { said -> log("🔊 $said") }, { on -> scope.launch { workSession.speaking(on); applyHold() } })
+    private val speaker = TurnSpeaker(tts)
     private val barcodes = BarcodeReader()
     private val phoneSpeech = PhoneSpeech(context, { t, c -> onSpeech(t, c, "phone") }, { e -> log("mic: $e") })
+    private val continuous = ContinuousSpeech(context, scope, { t, c -> onSpeech(t, c, "session") }, { e -> log("mic: $e") })
     private val location = PhoneLocation(context) { lat, lon, acc, at -> runnerAct(JobAction.Location(lat, lon, acc, at)) }
-    val glasses = DatGlasses(scope, onCaptureButton = { captureWithGlasses() }, onTranscript = { t, c -> onSpeech(t, c, "glasses") })
+    val glasses = DatGlasses(
+        scope,
+        onCaptureButton = { captureWithGlasses() },
+        onTranscript = { t, c -> onSpeech(t, c, "glasses") },
+        onFrame = ::onFrame,
+    )
+    private val frames = FrameScanFilter()
+    private val frameBusy = AtomicBoolean(false)
+    private var assistant: AssistantClient? = null
+    private var siteModes: SiteModes? = null
+    private var lastGlassesSession = "none"
+    private var autoStarted = false
+
+    /** MainActivity sets this: the session starts by itself only while the app is on screen. */
+    @Volatile var inForeground = false
+
+    private val desk = object : JobDesk {
+        override val jobOpen: Boolean get() = runner != null
+        override val jobState: JobState get() = runner?.state ?: JobState(null, null, null)
+        override fun tasks(): List<JobTask> = _ui.value.tasks
+
+        override suspend fun act(a: JobAction) {
+            val r = runner ?: return
+            try {
+                r.act(a)
+            } catch (e: Exception) {
+                log("⚠ ${describe(e)}")
+            }
+        }
+
+        override suspend fun openTask(taskId: String): Boolean {
+            if (_ui.value.tasks.none { it.id == taskId }) refreshTasksNow()
+            if (_ui.value.tasks.none { it.id == taskId }) return false
+            this@FieldController.openTask(taskId)
+            return true
+        }
+
+        override suspend fun refreshTask(taskId: String, focusCode: String?) {
+            refreshTasksNow()
+            val fresh = _ui.value.tasks.firstOrNull { it.id == taskId } ?: return
+            val r = runner
+            when {
+                r != null && r.task.id == taskId -> r.updateTask(fresh, focusCode)
+                r == null -> { this@FieldController.openTask(taskId); focusCode?.let { runner?.act(JobAction.Scanned(it)) } }
+            }
+        }
+
+        /** "capture" said aloud: the glasses camera when they are connected (phone in the pocket), else the chosen scanner. */
+        override suspend fun capture() = if (glasses.status.value.session == "STARTED") captureWithGlasses() else requestScan()
+
+        override suspend fun photo(): Photo? {
+            if (glasses.status.value.session != "STARTED") return null
+            val bmp = glasses.capturePhoto() ?: return null
+            val codes = barcodes.read(bmp)
+            val b64 = withContext(Dispatchers.Default) { BarcodeReader.jpegBase64(bmp) }
+            return Photo(codes, b64)
+        }
+    }
+
+    private val conductor = Conductor(
+        siteId = { _ui.value.pairing?.siteId },
+        desk = desk,
+        assistant = AssistantPort { t -> assistant?.turn(t) ?: AssistantOutcome.Failed("not connected to the PC") },
+        speaker = speaker,
+        session = workSession,
+        onStopWork = { stopWork() },
+        log = ::log,
+    )
+
+    /** Sandbox sites only, during a work session: an unknown code goes to the assistant with a photo. */
+    private val unknownCodes = UnknownCodeHandler { task, code ->
+        val site = task.siteId ?: _ui.value.pairing?.siteId
+        val modes = siteModes
+        if (!workSession.view.active || site == null || modes == null || !modes.allowsNewItems(site, code)) {
+            false
+        } else {
+            scope.launch { conductor.unknownCode(code) }
+            true
+        }
+    }
 
     private var session: FieldSession? = null
     private var runner: JobRunner? = null
@@ -129,6 +240,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         scope.launch {
             glasses.status.collect { g ->
                 _ui.value = _ui.value.copy(glasses = g, glassesAdvice = GlassesHelp.advise(g, toolkitError()))
+                onGlassesStatus(g)
             }
         }
         val scanner = prefs.getString(KEY_SCANNER, null)?.let { s -> ScannerKind.entries.firstOrNull { it.name == s } } ?: ScannerKind.CAMERA
@@ -166,6 +278,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
     }
 
     fun unpair() {
+        stopWork()
         loops?.cancel()
         closeJob(null)
         glasses.disconnect()
@@ -183,6 +296,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
         val deviceId = binding.savedDevice(where)
         val s = FieldSession(p.apiBaseUrl, p.coreToken, deviceId)
         session = s
+        assistant = AssistantClient(s) { UUIDv7.generate() }
+        siteModes = SiteModes(s)
         _ui.value = _ui.value.copy(pairing = p, deviceId = deviceId, person = Person.fromCoreToken(p.coreToken), connecting = true, connectError = null)
         val api = object : PhoneBinding.Api {
             override suspend fun exchange(deviceId: String?) = s.bind(deviceId)
@@ -218,19 +333,21 @@ class FieldController(private val context: Context, private val toolkitError: ()
     }
 
     fun refreshTasks() {
+        scope.launch { refreshTasksNow() }
+    }
+
+    private suspend fun refreshTasksNow() {
         val s = session ?: return
         val site = _ui.value.pairing?.siteId ?: return
         _ui.value = _ui.value.copy(loading = true)
-        scope.launch {
-            try {
-                _ui.value = _ui.value.copy(tasks = s.tasks(site), link = Link.ONLINE)
-            } catch (e: Exception) {
-                log("⚠ tasks: ${describe(e)}")
-                _ui.value = _ui.value.copy(link = if (e is IOException) Link.OFFLINE else _ui.value.link,
-                    toast = if (e is IOException) null else describe(e))
-            } finally {
-                _ui.value = _ui.value.copy(loading = false)
-            }
+        try {
+            _ui.value = _ui.value.copy(tasks = s.tasks(site), link = Link.ONLINE)
+        } catch (e: Exception) {
+            log("⚠ tasks: ${describe(e)}")
+            _ui.value = _ui.value.copy(link = if (e is IOException) Link.OFFLINE else _ui.value.link,
+                toast = if (e is IOException) null else describe(e))
+        } finally {
+            _ui.value = _ui.value.copy(loading = false)
         }
     }
 
@@ -242,7 +359,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         val visit = _ui.value.visitId?.takeIf { _ui.value.visitSiteId == null || _ui.value.visitSiteId == site }
         startRunner(JobRunner(
             t, s, speaker, _ui.value.deviceId, visitId = visit, siteId = site,
-            siteLabel = siteLabel, scanner = _ui.value.scanner, nextSeq = ::nextClimbSeq,
+            siteLabel = siteLabel, scanner = _ui.value.scanner, nextSeq = ::nextClimbSeq, unknownCodes = unknownCodes,
         ))
     }
 
@@ -258,14 +375,21 @@ class FieldController(private val context: Context, private val toolkitError: ()
     private fun startRunner(r: JobRunner) {
         closeJob(null)
         runner = r
+        var toldDone = false
         runnerJobs += scope.launch {
             r.view.collect { v ->
                 _ui.value = _ui.value.copy(job = v)
                 syncVisit(r)
+                if (r.isDone && !toldDone && !r.practice && workSession.view.active) {
+                    toldDone = true
+                    scope.launch { conductor.stepDone() }
+                }
                 if (v.finished) closeJob(v.exitNote)
             }
         }
         runnerJobs += scope.launch { while (isActive) { r.tick(); delay(1_000) } }
+        frames.reset()
+        applyStreaming()
         r.start()
     }
 
@@ -277,6 +401,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         runnerJobs.forEach { it.cancel() }
         runnerJobs.clear()
         _ui.value = _ui.value.copy(job = null, toast = note ?: _ui.value.toast)
+        applyStreaming()
         if (!r.practice) refreshTasks()
     }
 
@@ -332,6 +457,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
             runnerAct(JobAction.Scanned(code, source))
         } else {
             _ui.value = _ui.value.copy(tab = Screen.Scan, scanResult = ScanLookup.lookup(code, _ui.value.tasks))
+            if (workSession.view.active) scope.launch { conductor.scannedOutsideJob(code) }
         }
     }
 
@@ -356,13 +482,158 @@ class FieldController(private val context: Context, private val toolkitError: ()
 
     // --- speech --------------------------------------------------------------------------------
 
-    fun talkStart() = phoneSpeech.start()
-    fun talkStop() = phoneSpeech.stop()
+    /** Hold to talk: the phone fallback outside a work session (in a session the microphone is already open). */
+    fun talkStart() {
+        if (workSession.view.active) toast("The work session is listening already. Just speak.") else phoneSpeech.start()
+    }
+
+    fun talkStop() {
+        if (!workSession.view.active) phoneSpeech.stop()
+    }
 
     private fun onSpeech(text: String, confidence: Float, source: String) {
+        val w = workSession.view
+        if (w.active) {
+            if (!w.listening) return // paused, or our own prompt heard back: never acted on
+            log("🎤 [$source ${"%.2f".format(java.util.Locale.ROOT, confidence)}] $text")
+            scope.launch { log("→ ${conductor.heard(text, confidence).name.lowercase()}") }
+            return
+        }
+        if (source != "phone") return // no session: only the operator's own hold-to-talk is heard (A-03)
         log("🎤 [$source ${"%.2f".format(java.util.Locale.ROOT, confidence)}] $text")
         if (JobGrammar.parse(text, confidence) == Command.Capture) requestScan()
         if (runner != null) runnerAct(JobAction.Heard(text, confidence))
+    }
+
+    // --- work session (M3 §5) ------------------------------------------------------------------
+
+    /** "Start work" on Today (MainActivity asks for the microphone first), or the glasses connecting. */
+    fun startWork() {
+        if (_ui.value.pairing == null || _ui.value.deviceId == null) return toast("Connect this phone to the PC first.")
+        if (workSession.start(MicSource.NONE, glasses.status.value.session == "STARTED") == null) return
+        WorkSessionService.start(context)
+        log("work session started")
+        frames.reset()
+        applyMic()
+        applyStreaming()
+        val site = _ui.value.pairing?.siteId
+        scope.launch {
+            if (site != null) siteModes?.prime(site)
+            conductor.start()
+        }
+    }
+
+    fun stopWork() {
+        if (workSession.stop() == null) return
+        log("work session stopped")
+        continuous.stop()
+        glasses.setListening(false)
+        glasses.framesWanted = false
+        tts.useCallAudio(false)
+        applyStreaming()
+        scope.launch {
+            conductor.end()
+            assistant?.reset()
+        }
+    }
+
+    fun pauseWork() {
+        if (workSession.pauseByOperator() != null) { applyHold(); scope.launch { conductor.paused() } }
+    }
+
+    fun resumeWork() {
+        if (workSession.resumeByOperator() != null) { applyMic(); scope.launch { conductor.resumed() } }
+    }
+
+    /** WorkSessionService could not go to the foreground: no session without its notification. */
+    fun workServiceFailed(why: String) {
+        log("⚠ work session: $why")
+        stopWork()
+        toast(why)
+    }
+
+    fun dismissWorkOffer() = workSession.dismissOffer()
+
+    private fun onGlassesStatus(g: com.scmtips.field.app.glasses.GlassesStatus) {
+        val was = lastGlassesSession
+        lastGlassesSession = g.session
+        workSession.camera(g.cameraOn)
+        if (g.session != was) {
+            if (g.session == "STOPPED" || g.session == "none" || g.session == "IDLE") autoStarted = false
+            when (workSession.onGlasses(g.session)) {
+                is SessionChange.Paused -> { applyHold(); scope.launch { conductor.paused() } }
+                SessionChange.Resumed -> { applyMic(); scope.launch { conductor.resumed() } }
+                else -> Unit
+            }
+            // Glasses just connected (not a resume after a pause): start the session by itself, once per connection.
+            if (g.session == "STARTED" && was != "PAUSED" && !workSession.view.active && !autoStarted && inForeground &&
+                _ui.value.deviceId != null
+            ) {
+                autoStarted = true
+                startWork()
+            }
+        }
+        // Toolkit speech refused or failing during a session: move to the phone's recogniser (and back).
+        if (workSession.view.active) {
+            val wantDat = MicPlan.useGlassesSpeech(_ui.value.glassesSpeech, g.speech)
+            if (wantDat != (workSession.view.mic == MicSource.GLASSES)) applyMic()
+        }
+    }
+
+    private fun applyMic() {
+        val v = workSession.view
+        if (!v.active) return
+        if (MicPlan.useGlassesSpeech(_ui.value.glassesSpeech, glasses.status.value.speech)) {
+            continuous.stop()
+            tts.useCallAudio(false)
+            glasses.setListening(true)
+            workSession.mic(MicSource.GLASSES)
+        } else {
+            glasses.setListening(false)
+            val src = continuous.start(preferBluetooth = true)
+            tts.useCallAudio(src == MicSource.BLUETOOTH)
+            workSession.mic(src)
+        }
+        applyHold()
+    }
+
+    /** The microphone is held while the phone speaks or the session is paused; frames only while not paused. */
+    private fun applyHold() {
+        val v = workSession.view
+        continuous.hold(!v.listening)
+        glasses.framesWanted = v.active && v.paused == null
+        if (!glasses.framesWanted) frames.reset()
+    }
+
+    /** The glasses' camera streams during a work session, or while a job scans with the glasses. */
+    private fun applyStreaming() {
+        glasses.setStreaming(workSession.view.active || (runner != null && _ui.value.scanner == ScannerKind.GLASSES))
+    }
+
+    /** One glasses video frame (I420): decoded off the main thread, one at a time; busy frames are dropped. */
+    private fun onFrame(i420: ByteArray, width: Int, height: Int) {
+        if (!glasses.framesWanted || !frameBusy.compareAndSet(false, true)) return
+        scope.launch(Dispatchers.Default) {
+            try {
+                val nv21 = Yuv.i420ToNv21(i420, width, height)
+                val codes = if (nv21 == null) emptyList() else barcodes.readNv21(nv21, width, height)
+                val scans = frames.onFrame(codes, System.currentTimeMillis())
+                if (scans.isNotEmpty()) withContext(Dispatchers.Main) { onLookScan(scans) }
+            } finally {
+                frameBusy.set(false)
+            }
+        }
+    }
+
+    /** A code held in view for two frames: a scan for the open job's scan step, or for the assistant. */
+    private fun onLookScan(codes: List<String>) {
+        if (!workSession.view.active || workSession.view.paused != null) return
+        val r = runner
+        when {
+            r == null -> onCode(codes.first())
+            r.isScanStep -> onCode(r.bestOf(codes) ?: codes.first())
+            else -> Unit // not a scan step: codes seen in passing are ignored
+        }
     }
 
     // --- Me ------------------------------------------------------------------------------------
@@ -373,6 +644,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         prefs.edit().putString(KEY_SCANNER, next.name).apply()
         runner?.scanner = next
         _ui.value = _ui.value.copy(scanner = next)
+        applyStreaming()
     }
 
     fun toggleAudioOnly() {
@@ -385,6 +657,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         val on = !_ui.value.glassesSpeech
         prefs.edit().putBoolean(KEY_GLASSES_SPEECH, on).apply()
         _ui.value = _ui.value.copy(glassesSpeech = on)
+        applyMic()
     }
 
     fun glassesSetUp(activity: Activity) {
@@ -409,6 +682,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
             appendLine("Connected to: ${u.pairing?.siteName ?: "not connected"} (${u.pairing?.apiBaseUrl ?: "-"})")
             appendLine("Scanner: ${u.scanner.label}; audio-only: ${u.audioOnly}")
             appendLine("Glasses: ${u.glassesAdvice.text} [${u.glasses}]")
+            appendLine("Work session: ${u.work.stateText}; assistant ${u.work.assistantOnline ?: "not asked yet"}")
             toolkitError()?.let { appendLine("Glasses toolkit: $it") }
             appendLine()
             appendLine("What is hard? (write here)")
@@ -497,11 +771,13 @@ class FieldController(private val context: Context, private val toolkitError: ()
     }
 
     fun shutdown() {
+        stopWork()
         loops?.cancel()
         location.stop()
         glasses.disconnect()
         phoneSpeech.destroy()
-        speaker.shutdown()
+        continuous.stop()
+        tts.shutdown()
     }
 
     private fun JsonObject.s(k: String): String? = (this[k] as? JsonPrimitive)?.contentOrNull

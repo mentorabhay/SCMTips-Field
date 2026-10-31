@@ -44,7 +44,10 @@ import com.scmtips.field.app.ui.theme.WarnBg
 import com.scmtips.field.app.ui.theme.WarnInk
 import com.scmtips.field.app.ui.theme.WarnText
 
-/** Today: who you are, connection and scanner, jobs assigned to you, then anything you can start. */
+/**
+ * Today: who you are, connection and scanner, the work session (M3: "Start work" is the main action;
+ * the glasses lead from there), jobs assigned to you (the phone fallback), then anything you can start.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TodayScreen(ui: AppUi, a: Actions) {
@@ -76,6 +79,7 @@ fun TodayScreen(ui: AppUi, a: Actions) {
                 }
             }
         }
+        item { WorkCard(ui.work, ui.glasses.session == "STARTED", a) }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Assigned to you", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Muted, modifier = Modifier.weight(1f))

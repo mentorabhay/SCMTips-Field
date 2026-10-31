@@ -14,7 +14,14 @@ data class GlassesStatus(
     val inputs: String = "off",
     val lastError: String? = null,
 ) {
-    val ready: Boolean get() = session == "STARTED" && camera == "STREAMING"
+    /**
+     * Connected and usable. Since M3 the camera stream is open only during a work session (or for one
+     * photo), so a closed stream no longer means "not ready".
+     */
+    val ready: Boolean get() = session == "STARTED" && (camera == "STREAMING" || camera == "off")
+
+    /** The glasses' camera is streaming to the phone (scan by looking possible). */
+    val cameraOn: Boolean get() = camera == "STREAMING"
 }
 
 /** Plain-English glasses status for the Me tab, with the one thing to do next. */
@@ -44,6 +51,8 @@ object GlassesHelp {
                 "The glasses need an update. Open the Meta AI app and update them.", "Connect", GlassesAdvice.Action.CONNECT, false)
             err.contains("disconnected", ignoreCase = true) -> GlassesAdvice(
                 "The glasses disconnected. Check Bluetooth, then tap Connect.", "Connect", GlassesAdvice.Action.CONNECT, false)
+            s.session == "PAUSED" -> GlassesAdvice(
+                "Paused by the glasses (tap or taken off). Put them on or tap them to carry on.", null, GlassesAdvice.Action.NONE, false)
             s.session == "STARTED" -> GlassesAdvice(
                 "Connected · camera is starting. Allow camera access in Meta AI if it asks.", "Connect", GlassesAdvice.Action.CONNECT, false)
             s.session == "STARTING" -> GlassesAdvice("Connecting…", null, GlassesAdvice.Action.NONE, false)
@@ -54,6 +63,7 @@ object GlassesHelp {
 
     private fun speechNote(s: GlassesStatus): String = when {
         s.speech == "STARTED" || s.speech == "LISTENING" -> " · listening"
+        s.speech == "ready" -> " · listens during a work session"
         s.speech.startsWith("unavailable") || s.speech.startsWith("refused") -> " · use Hold to talk on the phone"
         else -> ""
     }

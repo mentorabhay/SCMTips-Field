@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
-import type { ActiveVisits, ApprovalRequest, Device, Mismatch, QueueSummary, Task } from "@/lib/api";
+import type { ActiveVisits, ApprovalRequest, Device, Mismatch, QueueSummary, Site, Task } from "@/lib/api";
 import { api, sessionStore } from "@/lib/client";
 import { hasPermission, isExpired, type FieldSession } from "@/lib/session";
 import { usePoll, type PollState } from "./usePoll";
@@ -68,6 +68,8 @@ export interface LiveData {
   queues: PollState<QueueSummary[]>;
   devices: PollState<Device[]>;
   visits: PollState<ActiveVisits>;
+  /** Sites (with M3 `mode`), for sandbox badges on work and sessions. */
+  sites: PollState<Site[]>;
   refresh: {
     tasks: () => Promise<void>;
     approvals: () => Promise<void>;
@@ -75,6 +77,7 @@ export interface LiveData {
     queues: () => Promise<void>;
     devices: () => Promise<void>;
     visits: () => Promise<void>;
+    sites: () => Promise<void>;
   };
 }
 
@@ -90,6 +93,7 @@ export function LiveDataProvider({ children }: { children: React.ReactNode }) {
   const queues = usePoll(() => api.listPostingQueues(), { enabled: on && can(NEEDS.queues.permission), key });
   const devices = usePoll(() => api.listDevices(), { enabled: on && can(NEEDS.devices.permission), key });
   const visits = usePoll(() => api.listActiveVisits(), { enabled: on, key });
+  const sites = usePoll(() => api.listSites(), { enabled: on && can(NEEDS.sites.permission), key, intervalMs: 30000 });
   const value: LiveData = {
     tasks: tasks.state,
     approvals: approvals.state,
@@ -97,6 +101,7 @@ export function LiveDataProvider({ children }: { children: React.ReactNode }) {
     queues: queues.state,
     devices: devices.state,
     visits: visits.state,
+    sites: sites.state,
     refresh: {
       tasks: tasks.refresh,
       approvals: approvals.refresh,
@@ -104,6 +109,7 @@ export function LiveDataProvider({ children }: { children: React.ReactNode }) {
       queues: queues.refresh,
       devices: devices.refresh,
       visits: visits.refresh,
+      sites: sites.refresh,
     },
   };
   return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>;

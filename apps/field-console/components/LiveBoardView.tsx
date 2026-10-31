@@ -5,6 +5,8 @@ import { EmptyState, Freshness, PageHeader, PollView } from "@/components/ui";
 import { NEEDS, useLive } from "@/components/session";
 import { useNow } from "@/components/usePoll";
 import { buildBoard, filterByType } from "@/lib/views/board";
+import { sandboxSiteIds } from "@/lib/views/sessions";
+import { dataOf } from "@/components/usePoll";
 
 export interface LiveBoardViewProps {
   title?: string;
@@ -12,6 +14,15 @@ export interface LiveBoardViewProps {
   /** Job types to show (receive, putaway, pick, count, audit, swap). Omitted = all. */
   types?: readonly string[];
   emptyBody?: string;
+}
+
+/** Marks work and sessions at a sandbox site (M3: test boxes at home, not real stock). */
+export function SandboxBadge() {
+  return (
+    <span className="ml-2 inline-block rounded-full bg-warn-pill px-2 py-px align-middle text-[12px] font-bold text-warn-pillink" title="Sandbox site: test data, not real stock">
+      Sandbox
+    </span>
+  );
 }
 
 export function LiveBoardView({
@@ -37,7 +48,7 @@ export function LiveBoardView({
         }
       >
         {(tasks) => {
-          const cols = buildBoard(filterByType(tasks, types), now);
+          const cols = buildBoard(filterByType(tasks, types), now, sandboxSiteIds(dataOf(live.sites)));
           return (
             <div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -55,7 +66,10 @@ export function LiveBoardView({
                     <ul className="m-0 flex list-none flex-col gap-2 p-0">
                       {col.cards.map((k) => (
                         <li key={k.id} className="flex flex-col gap-0.5 rounded-md border border-line bg-card px-3 py-2.5">
-                          <span className="text-[15px] font-bold">{k.title}</span>
+                          <span className="text-[15px] font-bold">
+                            {k.title}
+                            {k.sandbox ? <SandboxBadge /> : null}
+                          </span>
                           {k.subtitle ? <span className="text-[13px] text-muted">{k.subtitle}</span> : null}
                           {k.progress ? <span className="text-[13px] text-muted">{k.progress}</span> : null}
                           {k.why ? <span className="text-[13px] font-bold text-warn-ink">{k.why}</span> : null}

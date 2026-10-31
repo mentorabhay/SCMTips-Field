@@ -22,6 +22,8 @@ export interface BoardCard {
   subtitle: string | null;
   progress: string | null;
   why: string | null;
+  /** The task is at a sandbox site (M3: home boxes, documents marked sandbox in erp-sim). */
+  sandbox: boolean;
 }
 
 export interface BoardColumn {
@@ -83,7 +85,7 @@ export function finishedAt(t: Task): number | null {
   return parseTime(t.completed_at) ?? parseTime(t.updated_at);
 }
 
-export function buildBoard(tasks: readonly Task[], nowMs: number): BoardColumn[] {
+export function buildBoard(tasks: readonly Task[], nowMs: number, sandboxSites: ReadonlySet<string> = new Set()): BoardColumn[] {
   const cols: Record<ColumnId, BoardCard[]> = { open: [], in_progress: [], blocked: [], waiting_sap: [], done: [] };
   let doneWithoutTime = 0;
   for (const t of tasks) {
@@ -100,6 +102,7 @@ export function buildBoard(tasks: readonly Task[], nowMs: number): BoardColumn[]
       subtitle: t.subtitle || null,
       progress: progressText(t),
       why,
+      sandbox: sandboxSites.has(t.site_id),
     });
   }
   const names: Record<ColumnId, string> = {
