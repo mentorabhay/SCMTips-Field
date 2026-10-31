@@ -127,6 +127,22 @@
   verified_at: null
   note: 'Runs as field_worker through the SECURITY DEFINER field.worker_purge_assistant_content; tested on Postgres.
     Not yet run on the owner''s PC stack.'
+- id: M3-A07
+  title: stack assistant-check - one real model call through the budget guard, prints OK or BLOCKED, never the key
+  workstream: WP3
+  role: DevOps
+  status: partial
+  evidence:
+  - tools/dev_stack/assistant_check.py
+  tests:
+  - tools/dev_stack/tests/test_assistant_check.py::test_ok_line
+  - tools/dev_stack/tests/test_assistant_check.py::test_blocked_lines
+  - tools/dev_stack/tests/test_assistant_check.py::test_run_prints_one_line_and_exit_code
+  frs: []
+  verified_at: null
+  note: 'In the build sandbox it prints BLOCKED (AI_CLOUD_DISABLED, or meta:AI_NO_KEY with AI on): the live call was
+    never made. Track S registers the stack subcommand (lazy import of run()); on this branch it runs as
+    python -m tools.dev_stack.assistant_check.'
 - id: M3-A08
   title: Seams to track S (contract §7) - CodeResolver and SandboxItems Protocols, injected, not wired on this branch
   workstream: WP3
