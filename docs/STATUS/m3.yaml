@@ -22,3 +22,25 @@
     ops.ai_usage.cached_input_tokens, provider check allows meta). The prices (input 1.25, cached 0.15, output 4.25
     USD per million) are the M3 contract figures, not checked against the provider by this build: owner to confirm.
     llama and baseten unchanged; their tests stay green.'
+- id: M3-A02
+  title: Field Assistant model client - Meta Model API (muse-spark-1.2) with Baseten fallback, every call through the budget guard
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/model.py
+  - docs/META_FIELD.md
+  tests:
+  - services/field-api/tests/assistant/test_assistant_model.py::test_success_settles_with_the_providers_usage_incl_cached
+  - services/field-api/tests/assistant/test_assistant_model.py::test_failures_close_the_reservation
+  - services/field-api/tests/assistant/test_assistant_model.py::test_fallback_to_baseten_when_meta_fails
+  - services/field-api/tests/assistant/test_assistant_model.py::test_contributor_model_ids_are_refused
+  - services/field-api/tests/assistant/test_assistant_model.py::test_no_key_and_ai_off_make_no_call_and_no_reservation
+  - services/field-api/tests/assistant/test_assistant_model.py::test_budget_refusal_makes_no_call
+  - services/field-api/tests/assistant/test_assistant_model.py::test_timeout_is_at_most_six_seconds
+  frs: []
+  verified_at: null
+  note: 'UNVERIFIED dependency (docs/META_FIELD.md row 19): the live Meta Model API was not reachable from the build
+    sandbox (egress proxy refused CONNECT to api.meta.ai, HTTP 403) and no MODEL_API_KEY exists there. Tested only
+    against an HTTP test double (hand-written OpenAI-compatible answers, test code only). Baseten fallback is wired but
+    has no priced model yet, so the guard refuses it until the owner adds one.'
