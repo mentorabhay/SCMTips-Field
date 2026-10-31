@@ -1,0 +1,21 @@
+{
+  "contract": "scmtips.exchange/v1",
+  "message": "planning_request",
+  "message_id": "example-planning_request-0001",
+  "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+  "source_system": "scmtips",
+  "sent_at": "2026-11-03T12:00:00Z",
+  "rows": [
+    {
+      "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "item_code": "RM-307",
+      "site_code": "PLANT-GOA",
+      "period": "2026-12",
+      "max_supply_qty": 600,
+      "lead_time_delta_days": 21,
+      "unit_cost_delta": 0.35,
+      "currency": "EUR",
+      "reason": "Export licence checks"
+    }
+  ]
+}

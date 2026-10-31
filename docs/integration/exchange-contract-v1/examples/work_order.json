@@ -1,0 +1,26 @@
+{
+  "contract": "scmtips.exchange/v1",
+  "message": "work_order",
+  "message_id": "example-work_order-0001",
+  "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+  "source_system": "scmtips",
+  "sent_at": "2026-11-03T12:00:00Z",
+  "rows": [
+    {
+      "order_id": "8d1e6f0a-2b3c-4d5e-8f90-1a2b3c4d5e6f",
+      "order_number": "EO-0012",
+      "order_kind": "production",
+      "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "action_id": "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d",
+      "priority": 1,
+      "line_no": 1,
+      "change": "expedite",
+      "item_code": "SA-120",
+      "qty": 400,
+      "due_date": "2026-11-20",
+      "resource_code": "RES-SMT",
+      "hours": 36,
+      "status": "released"
+    }
+  ]
+}

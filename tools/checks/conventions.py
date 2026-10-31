@@ -23,8 +23,8 @@ VALID_BRANCH_PATTERNS = [
 ]
 
 TASK_ID_PATTERN = re.compile(
-    # M3-<track><nn> (owner amendment A-03, 31 Oct 2026): M3 glasses-first slice, ledger docs/STATUS/m3.yaml.
-    r"(T[1-4]\.\d{3}|WS[1-4]\.\d|R[0-7](\.\d)?|PR[1-4]\.\d{2}|FR[1-4]\.\d{3}|M3-(?:[SAP]\d{2}|00)\b|remediation|bootstrap|initial|baseline)",
+    # M3-<track><nn> (A-03) and M4-<stream><nn> (A-04, 31 Oct 2026): slices with ledgers docs/STATUS/m3.yaml, m4.yaml.
+    r"(T[1-4]\.\d{3}|WS[1-4]\.\d|R[0-7](\.\d)?|PR[1-4]\.\d{2}|FR[1-4]\.\d{3}|M3-(?:[SAP]\d{2}|00)\b|M4-(?:[A-Z]\d{2}|00)\b|remediation|bootstrap|initial|baseline)",
     re.IGNORECASE,
 )
 

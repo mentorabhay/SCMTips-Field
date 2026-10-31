@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scmtips:exchange:v1:planning_result",
+  "title": "SCMTIPS Planning result (scmtips.exchange/v1)",
+  "description": "The options the planning system proposes for a planning request: one row per option, item, site and month. The option totals repeat on each of the option's rows.",
+  "x-direction": "in",
+  "x-legs": [
+    "I3"
+  ],
+  "x-file-import": true,
+  "type": "object",
+  "required": [
+    "contract",
+    "message",
+    "message_id",
+    "rows"
+  ],
+  "properties": {
+    "contract": {
+      "const": "scmtips.exchange/v1"
+    },
+    "message": {
+      "const": "planning_result"
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+      "description": "Idempotency key: a repeated id changes nothing."
+    },
+    "correlation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "The SCMTIPS decision id, for the audit trail."
+    },
+    "source_system": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+      "description": "The sending system, e.g. naradcue, sangamiq, erp."
+    },
+    "sent_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "simulated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Test data; shown labelled SIMULATED."
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "decision_id",
+          "option_code",
+          "item_code",
+          "site_code",
+          "period",
+          "supply_qty"
+        ],
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The SCMTIPS decision this row answers."
+          },
+          "option_code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+            "description": "The planning system's option id."
+          },
+          "option_title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "Text"
+          },
+          "version_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "The plan version the option comes from."
+          },
+          "item_code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+            "description": "Code (letters, digits, . _ / -; stored upper-case)"
+          },
+          "site_code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+            "description": "Code (letters, digits, . _ / -; stored upper-case)"
+          },
+          "period": {
+            "type": "string",
+            "maxLength": 7,
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "Planning month, YYYY-MM."
+          },
+          "demand_qty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Number"
+          },
+          "supply_qty": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number"
+          },
+          "projected_stock_qty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Number"
+          },
+          "fill_rate_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Number"
+          },
+          "option_cost": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The option's total cost, in currency."
+          },
+          "option_revenue_at_risk": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Number"
+          },
+          "option_fill_rate_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Number"
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Z]{3}$",
+            "description": "ISO 4217 currency code"
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Date and time, ISO 8601 with a time zone, e.g. 2026-11-03T09:30:00Z"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "examples": [
+    {
+      "contract": "scmtips.exchange/v1",
+      "message": "planning_result",
+      "message_id": "example-planning_result-0001",
+      "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "source_system": "partner",
+      "sent_at": "2026-11-03T12:00:00Z",
+      "rows": [
+        {
+          "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "option_code": "OPT-2",
+          "option_title": "Second source",
+          "version_id": "PV-2026-11-03",
+          "item_code": "RM-307",
+          "site_code": "PLANT-GOA",
+          "period": "2026-12",
+          "demand_qty": 2400,
+          "supply_qty": 2200,
+          "projected_stock_qty": 310,
+          "fill_rate_pct": 96.5,
+          "option_cost": 18400,
+          "option_revenue_at_risk": 42000,
+          "option_fill_rate_pct": 96.5,
+          "currency": "EUR",
+          "published_at": "2026-11-03T08:15:00Z"
+        }
+      ]
+    }
+  ]
+}

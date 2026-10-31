@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scmtips:exchange:v1:planning_request",
+  "title": "SCMTIPS Planning request (scmtips.exchange/v1)",
+  "description": "The constraints a decision puts on supply, per item, site and month, sent to the planning system to re-balance and return options.",
+  "x-direction": "out",
+  "x-legs": [
+    "I2"
+  ],
+  "x-file-import": true,
+  "type": "object",
+  "required": [
+    "contract",
+    "message",
+    "message_id",
+    "rows"
+  ],
+  "properties": {
+    "contract": {
+      "const": "scmtips.exchange/v1"
+    },
+    "message": {
+      "const": "planning_request"
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+      "description": "Idempotency key: a repeated id changes nothing."
+    },
+    "correlation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "The SCMTIPS decision id, for the audit trail."
+    },
+    "source_system": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+      "description": "The sending system, e.g. naradcue, sangamiq, erp."
+    },
+    "sent_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "simulated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Test data; shown labelled SIMULATED."
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "decision_id",
+          "item_code",
+          "site_code",
+          "period"
+        ],
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The SCMTIPS decision this row answers."
+          },
+          "item_code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+            "description": "Code (letters, digits, . _ / -; stored upper-case)"
+          },
+          "site_code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+            "description": "Code (letters, digits, . _ / -; stored upper-case)"
+          },
+          "period": {
+            "type": "string",
+            "maxLength": 7,
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "Planning month, YYYY-MM."
+          },
+          "max_supply_qty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Most the supplier can deliver."
+          },
+          "lead_time_delta_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": -3650,
+            "maximum": 3650,
+            "description": "Whole number"
+          },
+          "unit_cost_delta": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Change in unit cost, in currency."
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Z]{3}$",
+            "description": "ISO 4217 currency code"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500,
+            "description": "Text"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "examples": [
+    {
+      "contract": "scmtips.exchange/v1",
+      "message": "planning_request",
+      "message_id": "example-planning_request-0001",
+      "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "source_system": "scmtips",
+      "sent_at": "2026-11-03T12:00:00Z",
+      "rows": [
+        {
+          "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "item_code": "RM-307",
+          "site_code": "PLANT-GOA",
+          "period": "2026-12",
+          "max_supply_qty": 600,
+          "lead_time_delta_days": 21,
+          "unit_cost_delta": 0.35,
+          "currency": "EUR",
+          "reason": "Export licence checks"
+        }
+      ]
+    }
+  ]
+}

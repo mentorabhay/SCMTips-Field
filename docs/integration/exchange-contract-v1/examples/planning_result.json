@@ -1,0 +1,28 @@
+{
+  "contract": "scmtips.exchange/v1",
+  "message": "planning_result",
+  "message_id": "example-planning_result-0001",
+  "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+  "source_system": "partner",
+  "sent_at": "2026-11-03T12:00:00Z",
+  "rows": [
+    {
+      "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "option_code": "OPT-2",
+      "option_title": "Second source",
+      "version_id": "PV-2026-11-03",
+      "item_code": "RM-307",
+      "site_code": "PLANT-GOA",
+      "period": "2026-12",
+      "demand_qty": 2400,
+      "supply_qty": 2200,
+      "projected_stock_qty": 310,
+      "fill_rate_pct": 96.5,
+      "option_cost": 18400,
+      "option_revenue_at_risk": 42000,
+      "option_fill_rate_pct": 96.5,
+      "currency": "EUR",
+      "published_at": "2026-11-03T08:15:00Z"
+    }
+  ]
+}

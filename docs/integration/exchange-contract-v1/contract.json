@@ -1,0 +1,1755 @@
+{
+  "contract": "scmtips.exchange/v1",
+  "messages": {
+    "signal": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:scmtips:exchange:v1:signal",
+      "title": "SCMTIPS Signal (scmtips.exchange/v1)",
+      "description": "A market or disruption event from the intelligence feed. It enters as an article from the named source, so the matching ladder and the relevance gate apply as for any news.",
+      "x-direction": "in",
+      "x-legs": [
+        "I1"
+      ],
+      "x-file-import": true,
+      "type": "object",
+      "required": [
+        "contract",
+        "message",
+        "message_id",
+        "rows"
+      ],
+      "properties": {
+        "contract": {
+          "const": "scmtips.exchange/v1"
+        },
+        "message": {
+          "const": "signal"
+        },
+        "message_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+          "description": "Idempotency key: a repeated id changes nothing."
+        },
+        "correlation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "The SCMTIPS decision id, for the audit trail."
+        },
+        "source_system": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "The sending system, e.g. naradcue, sangamiq, erp."
+        },
+        "sent_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "simulated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Test data; shown labelled SIMULATED."
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "external_id",
+              "title"
+            ],
+            "properties": {
+              "external_id": {
+                "type": "string",
+                "maxLength": 100,
+                "description": "The feed's id for the event."
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 500,
+                "description": "Text"
+              },
+              "summary": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 5000,
+                "description": "Text"
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 2000,
+                "description": "Link to the source article, if any."
+              },
+              "event_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "When the event happened."
+              },
+              "source_name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 100,
+                "description": "The publishing feed, e.g. NaradCue."
+              },
+              "category": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "weather",
+                  "fire",
+                  "closure",
+                  "strike",
+                  "conflict",
+                  "blockade",
+                  "sanctions",
+                  "export_control",
+                  "tariff",
+                  "congestion",
+                  "cyber",
+                  "quality",
+                  "financial",
+                  "opportunity",
+                  "other",
+                  null
+                ],
+                "description": "One of the allowed values"
+              },
+              "severity": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 5,
+                "description": "The feed's own severity, 1 (low) to 5."
+              },
+              "countries": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "description": "ISO country codes, separated by semicolons."
+              },
+              "corridors": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "description": "Shipping corridors named, e.g. HORMUZ;RED_SEA."
+              },
+              "supplier_codes": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "description": "SCMTIPS supplier codes, if the feed knows them."
+              },
+              "supplier_names": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "description": "Supplier names as written in the source."
+              },
+              "site_codes": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "description": "SCMTIPS location codes affected."
+              },
+              "item_codes": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "description": "SCMTIPS item or material codes affected."
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "contract": "scmtips.exchange/v1",
+          "message": "signal",
+          "message_id": "example-signal-0001",
+          "correlation_id": null,
+          "source_system": "partner",
+          "sent_at": "2026-11-03T12:00:00Z",
+          "rows": [
+            {
+              "external_id": "NC-20261103-0042",
+              "title": "Export licences tightened for rare-earth magnets",
+              "summary": "New licence checks on NdFeB magnet exports from 10 November.",
+              "event_at": "2026-11-03T06:00:00Z",
+              "source_name": "NaradCue",
+              "category": "export_control",
+              "severity": 4,
+              "countries": [
+                "CN"
+              ],
+              "corridors": [],
+              "supplier_codes": [
+                "SUP-S01"
+              ],
+              "supplier_names": [],
+              "site_codes": [],
+              "item_codes": [
+                "RM-307"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "planning_request": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:scmtips:exchange:v1:planning_request",
+      "title": "SCMTIPS Planning request (scmtips.exchange/v1)",
+      "description": "The constraints a decision puts on supply, per item, site and month, sent to the planning system to re-balance and return options.",
+      "x-direction": "out",
+      "x-legs": [
+        "I2"
+      ],
+      "x-file-import": true,
+      "type": "object",
+      "required": [
+        "contract",
+        "message",
+        "message_id",
+        "rows"
+      ],
+      "properties": {
+        "contract": {
+          "const": "scmtips.exchange/v1"
+        },
+        "message": {
+          "const": "planning_request"
+        },
+        "message_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+          "description": "Idempotency key: a repeated id changes nothing."
+        },
+        "correlation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "The SCMTIPS decision id, for the audit trail."
+        },
+        "source_system": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "The sending system, e.g. naradcue, sangamiq, erp."
+        },
+        "sent_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "simulated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Test data; shown labelled SIMULATED."
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "decision_id",
+              "item_code",
+              "site_code",
+              "period"
+            ],
+            "properties": {
+              "decision_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The SCMTIPS decision this row answers."
+              },
+              "item_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "site_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "period": {
+                "type": "string",
+                "maxLength": 7,
+                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                "description": "Planning month, YYYY-MM."
+              },
+              "max_supply_qty": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Most the supplier can deliver."
+              },
+              "lead_time_delta_days": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": -3650,
+                "maximum": 3650,
+                "description": "Whole number"
+              },
+              "unit_cost_delta": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Change in unit cost, in currency."
+              },
+              "currency": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Z]{3}$",
+                "description": "ISO 4217 currency code"
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 500,
+                "description": "Text"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "contract": "scmtips.exchange/v1",
+          "message": "planning_request",
+          "message_id": "example-planning_request-0001",
+          "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "source_system": "scmtips",
+          "sent_at": "2026-11-03T12:00:00Z",
+          "rows": [
+            {
+              "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+              "item_code": "RM-307",
+              "site_code": "PLANT-GOA",
+              "period": "2026-12",
+              "max_supply_qty": 600,
+              "lead_time_delta_days": 21,
+              "unit_cost_delta": 0.35,
+              "currency": "EUR",
+              "reason": "Export licence checks"
+            }
+          ]
+        }
+      ]
+    },
+    "planning_result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:scmtips:exchange:v1:planning_result",
+      "title": "SCMTIPS Planning result (scmtips.exchange/v1)",
+      "description": "The options the planning system proposes for a planning request: one row per option, item, site and month. The option totals repeat on each of the option's rows.",
+      "x-direction": "in",
+      "x-legs": [
+        "I3"
+      ],
+      "x-file-import": true,
+      "type": "object",
+      "required": [
+        "contract",
+        "message",
+        "message_id",
+        "rows"
+      ],
+      "properties": {
+        "contract": {
+          "const": "scmtips.exchange/v1"
+        },
+        "message": {
+          "const": "planning_result"
+        },
+        "message_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+          "description": "Idempotency key: a repeated id changes nothing."
+        },
+        "correlation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "The SCMTIPS decision id, for the audit trail."
+        },
+        "source_system": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "The sending system, e.g. naradcue, sangamiq, erp."
+        },
+        "sent_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "simulated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Test data; shown labelled SIMULATED."
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "decision_id",
+              "option_code",
+              "item_code",
+              "site_code",
+              "period",
+              "supply_qty"
+            ],
+            "properties": {
+              "decision_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The SCMTIPS decision this row answers."
+              },
+              "option_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "The planning system's option id."
+              },
+              "option_title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 200,
+                "description": "Text"
+              },
+              "version_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 64,
+                "description": "The plan version the option comes from."
+              },
+              "item_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "site_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "period": {
+                "type": "string",
+                "maxLength": 7,
+                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                "description": "Planning month, YYYY-MM."
+              },
+              "demand_qty": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Number"
+              },
+              "supply_qty": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Number"
+              },
+              "projected_stock_qty": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Number"
+              },
+              "fill_rate_pct": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Number"
+              },
+              "option_cost": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "The option's total cost, in currency."
+              },
+              "option_revenue_at_risk": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Number"
+              },
+              "option_fill_rate_pct": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Number"
+              },
+              "currency": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Z]{3}$",
+                "description": "ISO 4217 currency code"
+              },
+              "published_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "Date and time, ISO 8601 with a time zone, e.g. 2026-11-03T09:30:00Z"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "contract": "scmtips.exchange/v1",
+          "message": "planning_result",
+          "message_id": "example-planning_result-0001",
+          "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "source_system": "partner",
+          "sent_at": "2026-11-03T12:00:00Z",
+          "rows": [
+            {
+              "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+              "option_code": "OPT-2",
+              "option_title": "Second source",
+              "version_id": "PV-2026-11-03",
+              "item_code": "RM-307",
+              "site_code": "PLANT-GOA",
+              "period": "2026-12",
+              "demand_qty": 2400,
+              "supply_qty": 2200,
+              "projected_stock_qty": 310,
+              "fill_rate_pct": 96.5,
+              "option_cost": 18400,
+              "option_revenue_at_risk": 42000,
+              "option_fill_rate_pct": 96.5,
+              "currency": "EUR",
+              "published_at": "2026-11-03T08:15:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    "decision_outcome": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:scmtips:exchange:v1:decision_outcome",
+      "title": "SCMTIPS Decision outcome (scmtips.exchange/v1)",
+      "description": "What was decided, by which role, with which proof: exported for the record. Never imported: an approval read from a file would skip the step-up and the audit chain.",
+      "x-direction": "out",
+      "x-legs": [
+        "I4"
+      ],
+      "x-file-import": false,
+      "type": "object",
+      "required": [
+        "contract",
+        "message",
+        "message_id",
+        "rows"
+      ],
+      "properties": {
+        "contract": {
+          "const": "scmtips.exchange/v1"
+        },
+        "message": {
+          "const": "decision_outcome"
+        },
+        "message_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+          "description": "Idempotency key: a repeated id changes nothing."
+        },
+        "correlation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "The SCMTIPS decision id, for the audit trail."
+        },
+        "source_system": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "The sending system, e.g. naradcue, sangamiq, erp."
+        },
+        "sent_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "simulated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Test data; shown labelled SIMULATED."
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "decision_id",
+              "status"
+            ],
+            "properties": {
+              "decision_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The SCMTIPS decision this row answers."
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 500,
+                "description": "Text"
+              },
+              "signal_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid",
+                "description": "Identifier (UUID), e.g. 3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "APPROVED",
+                  "REJECTED",
+                  "DEFERRED",
+                  "EXPIRED",
+                  "EXECUTING",
+                  "CLOSED"
+                ],
+                "description": "One of the allowed values"
+              },
+              "option_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 64,
+                "description": "Text"
+              },
+              "option_title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 200,
+                "description": "Text"
+              },
+              "approval_amount": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Number"
+              },
+              "currency": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Z]{3}$",
+                "description": "ISO 4217 currency code"
+              },
+              "approver_roles": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "description": "Roles that approved; never personal names."
+              },
+              "approvals": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Whole number"
+              },
+              "step_up": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the approval passed a step-up check."
+              },
+              "decided_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "Date and time, ISO 8601 with a time zone, e.g. 2026-11-03T09:30:00Z"
+              },
+              "committed_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "Date and time, ISO 8601 with a time zone, e.g. 2026-11-03T09:30:00Z"
+              },
+              "audit_entry_hash": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 128,
+                "description": "Hash of the audit-chain entry that records the outcome."
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "contract": "scmtips.exchange/v1",
+          "message": "decision_outcome",
+          "message_id": "example-decision_outcome-0001",
+          "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "source_system": "scmtips",
+          "sent_at": "2026-11-03T12:00:00Z",
+          "rows": [
+            {
+              "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+              "title": "Rare-earth magnet export curbs",
+              "status": "APPROVED",
+              "option_code": "OPT-2",
+              "option_title": "Second source",
+              "approval_amount": 18400,
+              "currency": "EUR",
+              "approver_roles": [
+                "approver"
+              ],
+              "approvals": 1,
+              "step_up": true,
+              "decided_at": "2026-11-03T09:02:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    "work_order": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:scmtips:exchange:v1:work_order",
+      "title": "SCMTIPS Work order (scmtips.exchange/v1)",
+      "description": "One row per line of the execution orders an approved decision releases: production, purchase and transfer orders, checked against resource availability.",
+      "x-direction": "out",
+      "x-legs": [
+        "I6",
+        "I8"
+      ],
+      "x-file-import": true,
+      "type": "object",
+      "required": [
+        "contract",
+        "message",
+        "message_id",
+        "rows"
+      ],
+      "properties": {
+        "contract": {
+          "const": "scmtips.exchange/v1"
+        },
+        "message": {
+          "const": "work_order"
+        },
+        "message_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+          "description": "Idempotency key: a repeated id changes nothing."
+        },
+        "correlation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "The SCMTIPS decision id, for the audit trail."
+        },
+        "source_system": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "The sending system, e.g. naradcue, sangamiq, erp."
+        },
+        "sent_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "simulated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Test data; shown labelled SIMULATED."
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "order_id",
+              "order_number",
+              "order_kind",
+              "decision_id",
+              "action_id",
+              "line_no",
+              "item_code",
+              "qty",
+              "due_date",
+              "status"
+            ],
+            "properties": {
+              "release_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid",
+                "description": "Identifier (UUID), e.g. 3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47"
+              },
+              "order_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Identifier (UUID), e.g. 3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47"
+              },
+              "order_number": {
+                "type": "string",
+                "maxLength": 64,
+                "description": "Text"
+              },
+              "order_kind": {
+                "type": "string",
+                "enum": [
+                  "production",
+                  "purchase",
+                  "transfer"
+                ],
+                "description": "One of the allowed values"
+              },
+              "decision_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The SCMTIPS decision this row answers."
+              },
+              "action_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Identifier (UUID), e.g. 3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47"
+              },
+              "priority": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Number"
+              },
+              "line_no": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Whole number"
+              },
+              "change": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 64,
+                "description": "Text"
+              },
+              "item_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "qty": {
+                "type": "number",
+                "description": "Number"
+              },
+              "due_date": {
+                "type": "string",
+                "format": "date",
+                "description": "Date, YYYY-MM-DD"
+              },
+              "resource_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 200,
+                "description": "Resources joined with +."
+              },
+              "hours": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Number"
+              },
+              "overtime_hours": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Number"
+              },
+              "operations": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 5000,
+                "description": "JSON list of operations."
+              },
+              "from_date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date",
+                "description": "Date, YYYY-MM-DD"
+              },
+              "ref": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 64,
+                "description": "Text"
+              },
+              "supplier_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "site_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "lane_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "from_location": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "to_location": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "previous": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 5000,
+                "description": "JSON of the values before the change."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "checked",
+                  "released",
+                  "acknowledged",
+                  "started",
+                  "completed",
+                  "cancelled",
+                  "failed"
+                ],
+                "description": "One of the allowed values"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "contract": "scmtips.exchange/v1",
+          "message": "work_order",
+          "message_id": "example-work_order-0001",
+          "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "source_system": "scmtips",
+          "sent_at": "2026-11-03T12:00:00Z",
+          "rows": [
+            {
+              "order_id": "8d1e6f0a-2b3c-4d5e-8f90-1a2b3c4d5e6f",
+              "order_number": "EO-0012",
+              "order_kind": "production",
+              "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+              "action_id": "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d",
+              "priority": 1,
+              "line_no": 1,
+              "change": "expedite",
+              "item_code": "SA-120",
+              "qty": 400,
+              "due_date": "2026-11-20",
+              "resource_code": "RES-SMT",
+              "hours": 36,
+              "status": "released"
+            }
+          ]
+        }
+      ]
+    },
+    "progress": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:scmtips:exchange:v1:progress",
+      "title": "SCMTIPS Progress (scmtips.exchange/v1)",
+      "description": "Status of a released order from the PMO tool or the shop floor. Statuses only move forward: acknowledged, started, completed (or failed).",
+      "x-direction": "in",
+      "x-legs": [
+        "I7",
+        "I8"
+      ],
+      "x-file-import": true,
+      "type": "object",
+      "required": [
+        "contract",
+        "message",
+        "message_id",
+        "rows"
+      ],
+      "properties": {
+        "contract": {
+          "const": "scmtips.exchange/v1"
+        },
+        "message": {
+          "const": "progress"
+        },
+        "message_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+          "description": "Idempotency key: a repeated id changes nothing."
+        },
+        "correlation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "The SCMTIPS decision id, for the audit trail."
+        },
+        "source_system": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "The sending system, e.g. naradcue, sangamiq, erp."
+        },
+        "sent_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "simulated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Test data; shown labelled SIMULATED."
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "event_id",
+              "order_id",
+              "status"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "maxLength": 100,
+                "description": "The sender's unique id for this event; a repeat changes nothing."
+              },
+              "decision_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid",
+                "description": "The SCMTIPS decision this row belongs to."
+              },
+              "order_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The work order's order_id."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "acknowledged",
+                  "started",
+                  "completed",
+                  "failed"
+                ],
+                "description": "One of the allowed values"
+              },
+              "percent_complete": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Number"
+              },
+              "forecast_finish": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date",
+                "description": "Date, YYYY-MM-DD"
+              },
+              "occurred_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "Date and time, ISO 8601 with a time zone, e.g. 2026-11-03T09:30:00Z"
+              },
+              "task_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 100,
+                "description": "The PMO tool's own task id."
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 2000,
+                "description": "Text"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "contract": "scmtips.exchange/v1",
+          "message": "progress",
+          "message_id": "example-progress-0001",
+          "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "source_system": "partner",
+          "sent_at": "2026-11-03T12:00:00Z",
+          "rows": [
+            {
+              "event_id": "hb-evt-000913",
+              "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+              "order_id": "8d1e6f0a-2b3c-4d5e-8f90-1a2b3c4d5e6f",
+              "status": "started",
+              "percent_complete": 25,
+              "forecast_finish": "2026-11-18",
+              "occurred_at": "2026-11-04T10:30:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    "erp_extract": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:scmtips:exchange:v1:erp_extract",
+      "title": "SCMTIPS ERP extract (scmtips.exchange/v1)",
+      "description": "Stock, open purchase and work orders, and the bill of materials, exactly as the data import takes them (one sheet each). Live, the ERP feeds them to the data feeds.",
+      "x-direction": "in",
+      "x-legs": [
+        "I9"
+      ],
+      "x-file-import": true,
+      "type": "object",
+      "required": [
+        "contract",
+        "message",
+        "message_id",
+        "parts"
+      ],
+      "properties": {
+        "contract": {
+          "const": "scmtips.exchange/v1"
+        },
+        "message": {
+          "const": "erp_extract"
+        },
+        "message_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+          "description": "Idempotency key: a repeated id changes nothing."
+        },
+        "correlation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "The SCMTIPS decision id, for the audit trail."
+        },
+        "source_system": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "The sending system, e.g. naradcue, sangamiq, erp."
+        },
+        "sent_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "simulated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Test data; shown labelled SIMULATED."
+        },
+        "parts": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "inventory": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "item_code",
+                  "location_code",
+                  "as_of",
+                  "on_hand_qty"
+                ],
+                "properties": {
+                  "item_code": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                    "description": "Code (letters, digits, . _ / -; stored upper-case)"
+                  },
+                  "location_code": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                    "description": "Code (letters, digits, . _ / -; stored upper-case)"
+                  },
+                  "as_of": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Date, YYYY-MM-DD"
+                  },
+                  "on_hand_qty": {
+                    "type": "number",
+                    "description": "Number"
+                  },
+                  "allocated_qty": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "default": "0",
+                    "description": "Number"
+                  },
+                  "in_transit_qty": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "default": "0",
+                    "description": "Number"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "open_supply": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "ref",
+                  "item_code",
+                  "location_code",
+                  "qty",
+                  "due_date"
+                ],
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "PO",
+                      "WO",
+                      "transfer"
+                    ],
+                    "description": "One of the allowed values"
+                  },
+                  "ref": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "Text"
+                  },
+                  "item_code": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                    "description": "Code (letters, digits, . _ / -; stored upper-case)"
+                  },
+                  "location_code": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                    "description": "Code (letters, digits, . _ / -; stored upper-case)"
+                  },
+                  "qty": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "Number"
+                  },
+                  "due_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Date, YYYY-MM-DD"
+                  },
+                  "supplier_code": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                    "description": "Code (letters, digits, . _ / -; stored upper-case)"
+                  },
+                  "lane_code": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                    "description": "Code (letters, digits, . _ / -; stored upper-case)"
+                  },
+                  "status": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "open",
+                      "released",
+                      "in_transit",
+                      "received",
+                      "cancelled",
+                      null
+                    ],
+                    "default": "open",
+                    "description": "One of the allowed values"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "bom": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "parent_code",
+                  "child_code",
+                  "qty_per"
+                ],
+                "properties": {
+                  "parent_code": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                    "description": "Code (letters, digits, . _ / -; stored upper-case)"
+                  },
+                  "child_code": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                    "description": "Code (letters, digits, . _ / -; stored upper-case)"
+                  },
+                  "qty_per": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "Number"
+                  },
+                  "scrap_pct": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "exclusiveMaximum": 100,
+                    "default": "0",
+                    "description": "Number"
+                  },
+                  "effective_from": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date",
+                    "description": "Date, YYYY-MM-DD"
+                  },
+                  "effective_to": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date",
+                    "description": "Date, YYYY-MM-DD"
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "contract": "scmtips.exchange/v1",
+          "message": "erp_extract",
+          "message_id": "example-erp_extract-0001",
+          "correlation_id": null,
+          "source_system": "partner",
+          "sent_at": "2026-11-03T12:00:00Z",
+          "parts": {
+            "inventory": [
+              {
+                "item_code": "RM-307",
+                "location_code": "PLANT-GOA",
+                "as_of": "2026-11-03",
+                "on_hand_qty": 420
+              }
+            ],
+            "open_supply": [
+              {
+                "kind": "PO",
+                "ref": "4500001234-10",
+                "item_code": "RM-307",
+                "location_code": "PLANT-GOA",
+                "qty": 1200,
+                "due_date": "2026-11-12",
+                "status": "open"
+              }
+            ],
+            "bom": [
+              {
+                "parent_code": "SA-120",
+                "child_code": "RM-307",
+                "qty_per": 1
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "goods_receipt": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:scmtips:exchange:v1:goods_receipt",
+      "title": "SCMTIPS Goods receipt (scmtips.exchange/v1)",
+      "description": "Parts received against a purchase order, posted by the ERP after the warehouse captures them. It becomes one stock row and one PO row of the ERP extract.",
+      "x-direction": "in",
+      "x-legs": [
+        "I10"
+      ],
+      "x-file-import": true,
+      "type": "object",
+      "required": [
+        "contract",
+        "message",
+        "message_id",
+        "rows"
+      ],
+      "properties": {
+        "contract": {
+          "const": "scmtips.exchange/v1"
+        },
+        "message": {
+          "const": "goods_receipt"
+        },
+        "message_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+          "description": "Idempotency key: a repeated id changes nothing."
+        },
+        "correlation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "The SCMTIPS decision id, for the audit trail."
+        },
+        "source_system": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "The sending system, e.g. naradcue, sangamiq, erp."
+        },
+        "sent_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "simulated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Test data; shown labelled SIMULATED."
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "event_id",
+              "po_ref",
+              "item_code",
+              "location_code",
+              "received_qty",
+              "on_hand_after_qty",
+              "received_at"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "maxLength": 100,
+                "description": "The sender's unique id for this event; a repeat changes nothing."
+              },
+              "decision_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid",
+                "description": "The SCMTIPS decision this row belongs to."
+              },
+              "po_ref": {
+                "type": "string",
+                "maxLength": 64,
+                "description": "PO number and line, e.g. 4500001234-10."
+              },
+              "item_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "location_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "received_qty": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Number"
+              },
+              "on_hand_after_qty": {
+                "type": "number",
+                "minimum": 0,
+                "description": "The ERP's on-hand after the receipt (absolute, not the change)."
+              },
+              "received_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Date and time, ISO 8601 with a time zone, e.g. 2026-11-03T09:30:00Z"
+              },
+              "supplier_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "evidence_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 200,
+                "description": "The capture's id in the Field app."
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 2000,
+                "description": "Text"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "contract": "scmtips.exchange/v1",
+          "message": "goods_receipt",
+          "message_id": "example-goods_receipt-0001",
+          "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "source_system": "partner",
+          "sent_at": "2026-11-03T12:00:00Z",
+          "rows": [
+            {
+              "event_id": "erp-gr-5000000871",
+              "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+              "po_ref": "4500001234-10",
+              "item_code": "RM-307",
+              "location_code": "PLANT-GOA",
+              "received_qty": 120,
+              "on_hand_after_qty": 420,
+              "received_at": "2026-11-03T11:40:00Z",
+              "evidence_ref": "cap-7f3a"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

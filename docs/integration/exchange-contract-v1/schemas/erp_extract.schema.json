@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scmtips:exchange:v1:erp_extract",
+  "title": "SCMTIPS ERP extract (scmtips.exchange/v1)",
+  "description": "Stock, open purchase and work orders, and the bill of materials, exactly as the data import takes them (one sheet each). Live, the ERP feeds them to the data feeds.",
+  "x-direction": "in",
+  "x-legs": [
+    "I9"
+  ],
+  "x-file-import": true,
+  "type": "object",
+  "required": [
+    "contract",
+    "message",
+    "message_id",
+    "parts"
+  ],
+  "properties": {
+    "contract": {
+      "const": "scmtips.exchange/v1"
+    },
+    "message": {
+      "const": "erp_extract"
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+      "description": "Idempotency key: a repeated id changes nothing."
+    },
+    "correlation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "The SCMTIPS decision id, for the audit trail."
+    },
+    "source_system": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+      "description": "The sending system, e.g. naradcue, sangamiq, erp."
+    },
+    "sent_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "simulated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Test data; shown labelled SIMULATED."
+    },
+    "parts": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "inventory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "item_code",
+              "location_code",
+              "as_of",
+              "on_hand_qty"
+            ],
+            "properties": {
+              "item_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "location_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "as_of": {
+                "type": "string",
+                "format": "date",
+                "description": "Date, YYYY-MM-DD"
+              },
+              "on_hand_qty": {
+                "type": "number",
+                "description": "Number"
+              },
+              "allocated_qty": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "default": "0",
+                "description": "Number"
+              },
+              "in_transit_qty": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "default": "0",
+                "description": "Number"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "open_supply": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "ref",
+              "item_code",
+              "location_code",
+              "qty",
+              "due_date"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "PO",
+                  "WO",
+                  "transfer"
+                ],
+                "description": "One of the allowed values"
+              },
+              "ref": {
+                "type": "string",
+                "maxLength": 64,
+                "description": "Text"
+              },
+              "item_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "location_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "qty": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Number"
+              },
+              "due_date": {
+                "type": "string",
+                "format": "date",
+                "description": "Date, YYYY-MM-DD"
+              },
+              "supplier_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "lane_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "open",
+                  "released",
+                  "in_transit",
+                  "received",
+                  "cancelled",
+                  null
+                ],
+                "default": "open",
+                "description": "One of the allowed values"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "bom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "parent_code",
+              "child_code",
+              "qty_per"
+            ],
+            "properties": {
+              "parent_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "child_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$",
+                "description": "Code (letters, digits, . _ / -; stored upper-case)"
+              },
+              "qty_per": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Number"
+              },
+              "scrap_pct": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "exclusiveMaximum": 100,
+                "default": "0",
+                "description": "Number"
+              },
+              "effective_from": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date",
+                "description": "Date, YYYY-MM-DD"
+              },
+              "effective_to": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date",
+                "description": "Date, YYYY-MM-DD"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "contract": "scmtips.exchange/v1",
+      "message": "erp_extract",
+      "message_id": "example-erp_extract-0001",
+      "correlation_id": null,
+      "source_system": "partner",
+      "sent_at": "2026-11-03T12:00:00Z",
+      "parts": {
+        "inventory": [
+          {
+            "item_code": "RM-307",
+            "location_code": "PLANT-GOA",
+            "as_of": "2026-11-03",
+            "on_hand_qty": 420
+          }
+        ],
+        "open_supply": [
+          {
+            "kind": "PO",
+            "ref": "4500001234-10",
+            "item_code": "RM-307",
+            "location_code": "PLANT-GOA",
+            "qty": 1200,
+            "due_date": "2026-11-12",
+            "status": "open"
+          }
+        ],
+        "bom": [
+          {
+            "parent_code": "SA-120",
+            "child_code": "RM-307",
+            "qty_per": 1
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -56,8 +56,8 @@ def test_defaults_are_the_contract_values(monkeypatch: pytest.MonkeyPatch) -> No
         monkeypatch.delenv(name, raising=False)
     cfg = meta_config()
     assert (cfg.provider, cfg.base_url, cfg.model, cfg.key_env) == ("meta", "https://api.meta.ai/v1",
-                                                                    "muse-spark-1.2", "MODEL_API_KEY")
-    assert META_BASE_URL == "https://api.meta.ai/v1" and META_MODEL == "muse-spark-1.2"
+                                                                    "muse-spark-1.3", "MODEL_API_KEY")
+    assert META_BASE_URL == "https://api.meta.ai/v1" and META_MODEL == "muse-spark-1.3"
     assert baseten_config() is None and len(build_router().models) == 1
     monkeypatch.setenv("BASETEN_BASE_URL", "https://model-x.api.baseten.co/v1")
     monkeypatch.setenv("BASETEN_MODEL_ID", "some-model")

@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scmtips:exchange:v1:signal",
+  "title": "SCMTIPS Signal (scmtips.exchange/v1)",
+  "description": "A market or disruption event from the intelligence feed. It enters as an article from the named source, so the matching ladder and the relevance gate apply as for any news.",
+  "x-direction": "in",
+  "x-legs": [
+    "I1"
+  ],
+  "x-file-import": true,
+  "type": "object",
+  "required": [
+    "contract",
+    "message",
+    "message_id",
+    "rows"
+  ],
+  "properties": {
+    "contract": {
+      "const": "scmtips.exchange/v1"
+    },
+    "message": {
+      "const": "signal"
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+      "description": "Idempotency key: a repeated id changes nothing."
+    },
+    "correlation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "The SCMTIPS decision id, for the audit trail."
+    },
+    "source_system": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+      "description": "The sending system, e.g. naradcue, sangamiq, erp."
+    },
+    "sent_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "simulated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Test data; shown labelled SIMULATED."
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "external_id",
+          "title"
+        ],
+        "properties": {
+          "external_id": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "The feed's id for the event."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Text"
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 5000,
+            "description": "Text"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "description": "Link to the source article, if any."
+          },
+          "event_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the event happened."
+          },
+          "source_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100,
+            "description": "The publishing feed, e.g. NaradCue."
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "weather",
+              "fire",
+              "closure",
+              "strike",
+              "conflict",
+              "blockade",
+              "sanctions",
+              "export_control",
+              "tariff",
+              "congestion",
+              "cyber",
+              "quality",
+              "financial",
+              "opportunity",
+              "other",
+              null
+            ],
+            "description": "One of the allowed values"
+          },
+          "severity": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 5,
+            "description": "The feed's own severity, 1 (low) to 5."
+          },
+          "countries": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "ISO country codes, separated by semicolons."
+          },
+          "corridors": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Shipping corridors named, e.g. HORMUZ;RED_SEA."
+          },
+          "supplier_codes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "SCMTIPS supplier codes, if the feed knows them."
+          },
+          "supplier_names": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Supplier names as written in the source."
+          },
+          "site_codes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "SCMTIPS location codes affected."
+          },
+          "item_codes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "SCMTIPS item or material codes affected."
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "examples": [
+    {
+      "contract": "scmtips.exchange/v1",
+      "message": "signal",
+      "message_id": "example-signal-0001",
+      "correlation_id": null,
+      "source_system": "partner",
+      "sent_at": "2026-11-03T12:00:00Z",
+      "rows": [
+        {
+          "external_id": "NC-20261103-0042",
+          "title": "Export licences tightened for rare-earth magnets",
+          "summary": "New licence checks on NdFeB magnet exports from 10 November.",
+          "event_at": "2026-11-03T06:00:00Z",
+          "source_name": "NaradCue",
+          "category": "export_control",
+          "severity": 4,
+          "countries": [
+            "CN"
+          ],
+          "corridors": [],
+          "supplier_codes": [
+            "SUP-S01"
+          ],
+          "supplier_names": [],
+          "site_codes": [],
+          "item_codes": [
+            "RM-307"
+          ]
+        }
+      ]
+    }
+  ]
+}

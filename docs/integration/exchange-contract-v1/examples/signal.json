@@ -1,0 +1,31 @@
+{
+  "contract": "scmtips.exchange/v1",
+  "message": "signal",
+  "message_id": "example-signal-0001",
+  "correlation_id": null,
+  "source_system": "partner",
+  "sent_at": "2026-11-03T12:00:00Z",
+  "rows": [
+    {
+      "external_id": "NC-20261103-0042",
+      "title": "Export licences tightened for rare-earth magnets",
+      "summary": "New licence checks on NdFeB magnet exports from 10 November.",
+      "event_at": "2026-11-03T06:00:00Z",
+      "source_name": "NaradCue",
+      "category": "export_control",
+      "severity": 4,
+      "countries": [
+        "CN"
+      ],
+      "corridors": [],
+      "supplier_codes": [
+        "SUP-S01"
+      ],
+      "supplier_names": [],
+      "site_codes": [],
+      "item_codes": [
+        "RM-307"
+      ]
+    }
+  ]
+}

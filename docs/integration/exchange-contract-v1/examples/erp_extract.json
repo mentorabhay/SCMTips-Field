@@ -1,0 +1,36 @@
+{
+  "contract": "scmtips.exchange/v1",
+  "message": "erp_extract",
+  "message_id": "example-erp_extract-0001",
+  "correlation_id": null,
+  "source_system": "partner",
+  "sent_at": "2026-11-03T12:00:00Z",
+  "parts": {
+    "inventory": [
+      {
+        "item_code": "RM-307",
+        "location_code": "PLANT-GOA",
+        "as_of": "2026-11-03",
+        "on_hand_qty": 420
+      }
+    ],
+    "open_supply": [
+      {
+        "kind": "PO",
+        "ref": "4500001234-10",
+        "item_code": "RM-307",
+        "location_code": "PLANT-GOA",
+        "qty": 1200,
+        "due_date": "2026-11-12",
+        "status": "open"
+      }
+    ],
+    "bom": [
+      {
+        "parent_code": "SA-120",
+        "child_code": "RM-307",
+        "qty_per": 1
+      }
+    ]
+  }
+}

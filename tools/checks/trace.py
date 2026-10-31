@@ -181,6 +181,7 @@ def check_migration(text: str) -> list[str]:
 
 
 M3_ID_RE = re.compile(r"^M3-[SAP]\d{2}$")
+SLICE_LEDGERS = {"m3": M3_ID_RE, "m4": re.compile(r"^M4-[A-Z]\d{2}$")}  # owner amendments A-03, A-04
 
 
 def _evidence_ok(root: Path, tid: str, evid: list[str]) -> list[str]:
@@ -228,9 +229,10 @@ def _fr_refs_for(root: Path, fr: str, cache: dict[int, dict[str, set[str]]]) -> 
     return {fr} | cache[phase].get(fr, set())
 
 
-def validate_m3(root: Path, ev: Evidence, violations: list[str]) -> tuple[bool, dict[str, int] | None]:
-    """The M3 slice ledger (A-03). Returns (any entry not done, status counts) or (False, None) if absent."""
-    lf = root / "docs" / "STATUS" / "m3.yaml"
+def validate_m3(root: Path, ev: Evidence, violations: list[str], name: str = "m3") -> tuple[bool, dict[str, int] | None]:
+    """A slice ledger (m3: A-03, m4: A-04). Returns (any entry not done, status counts) or (False, None) if absent."""
+    lf = root / "docs" / "STATUS" / f"{name}.yaml"
+    id_re = SLICE_LEDGERS[name]
     if not lf.is_file():
         return False, None
     data = yaml.safe_load(lf.read_text(encoding="utf-8"))
@@ -246,8 +248,8 @@ def validate_m3(root: Path, ev: Evidence, violations: list[str]) -> tuple[bool, 
     all_ids: set[str] = set().union(*(p.ids for p in ev.passed.values())) if ev.passed else set()
     for e in data:
         tid, st = str(e.get("id", "?")), e.get("status")
-        if not M3_ID_RE.match(tid):
-            violations.append(f"L1 {tid}: not an M3 id (M3-S01, M3-A01, M3-P01) in {lf.name}")
+        if not id_re.match(tid):
+            violations.append(f"L1 {tid}: not a {name.upper()} id (e.g. {name.upper()}-S01) in {lf.name}")
         counts[str(st)] = counts.get(str(st), 0) + 1
         if st not in VALID:
             violations.append(f"L2 {tid}: invalid status {st!r}")
@@ -332,10 +334,11 @@ def validate(root: Path, junit_globs: list[str]) -> tuple[list[str], dict[str, A
             # D6
             violations.extend(_migrations_ok(root, tid, evid))
         stats["phases"][phase] = counts
-    m3_not_done, m3_counts = validate_m3(root, ev, violations)
-    if m3_counts is not None:
-        stats["m3"] = m3_counts
-    any_not_done = any_not_done or m3_not_done
+    for name in SLICE_LEDGERS:
+        slice_not_done, slice_counts = validate_m3(root, ev, violations, name)
+        if slice_counts is not None:
+            stats[name] = slice_counts
+        any_not_done = any_not_done or slice_not_done
     # G1
     if any_not_done:
         for f in list(root.glob("docs/**/*.md")) + list(root.glob("docs/**/*.html")):
@@ -360,8 +363,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"junit files: {len(stats['junit_files'])}; passed tests indexed: {stats['passed_tests']}")
     for ph, c in sorted(stats["phases"].items()):
         print(f"phase {ph}: {c}")
-    if "m3" in stats:
-        print(f"m3: {stats['m3']}")
+    for name in SLICE_LEDGERS:
+        if name in stats:
+            print(f"{name}: {stats[name]}")
     if violations:
         print(f"[FAIL] {len(violations)} trace violation(s): {by_kind}")
         for v in violations[:200]:

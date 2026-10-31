@@ -1,0 +1,21 @@
+{
+  "contract": "scmtips.exchange/v1",
+  "message": "goods_receipt",
+  "message_id": "example-goods_receipt-0001",
+  "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+  "source_system": "partner",
+  "sent_at": "2026-11-03T12:00:00Z",
+  "rows": [
+    {
+      "event_id": "erp-gr-5000000871",
+      "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "po_ref": "4500001234-10",
+      "item_code": "RM-307",
+      "location_code": "PLANT-GOA",
+      "received_qty": 120,
+      "on_hand_after_qty": 420,
+      "received_at": "2026-11-03T11:40:00Z",
+      "evidence_ref": "cap-7f3a"
+    }
+  ]
+}

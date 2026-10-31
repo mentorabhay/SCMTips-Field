@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scmtips:exchange:v1:progress",
+  "title": "SCMTIPS Progress (scmtips.exchange/v1)",
+  "description": "Status of a released order from the PMO tool or the shop floor. Statuses only move forward: acknowledged, started, completed (or failed).",
+  "x-direction": "in",
+  "x-legs": [
+    "I7",
+    "I8"
+  ],
+  "x-file-import": true,
+  "type": "object",
+  "required": [
+    "contract",
+    "message",
+    "message_id",
+    "rows"
+  ],
+  "properties": {
+    "contract": {
+      "const": "scmtips.exchange/v1"
+    },
+    "message": {
+      "const": "progress"
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+      "description": "Idempotency key: a repeated id changes nothing."
+    },
+    "correlation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "The SCMTIPS decision id, for the audit trail."
+    },
+    "source_system": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+      "description": "The sending system, e.g. naradcue, sangamiq, erp."
+    },
+    "sent_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "simulated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Test data; shown labelled SIMULATED."
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "order_id",
+          "status"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "The sender's unique id for this event; a repeat changes nothing."
+          },
+          "decision_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The SCMTIPS decision this row belongs to."
+          },
+          "order_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The work order's order_id."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "acknowledged",
+              "started",
+              "completed",
+              "failed"
+            ],
+            "description": "One of the allowed values"
+          },
+          "percent_complete": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Number"
+          },
+          "forecast_finish": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Date, YYYY-MM-DD"
+          },
+          "occurred_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Date and time, ISO 8601 with a time zone, e.g. 2026-11-03T09:30:00Z"
+          },
+          "task_ref": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100,
+            "description": "The PMO tool's own task id."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "description": "Text"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "examples": [
+    {
+      "contract": "scmtips.exchange/v1",
+      "message": "progress",
+      "message_id": "example-progress-0001",
+      "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "source_system": "partner",
+      "sent_at": "2026-11-03T12:00:00Z",
+      "rows": [
+        {
+          "event_id": "hb-evt-000913",
+          "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "order_id": "8d1e6f0a-2b3c-4d5e-8f90-1a2b3c4d5e6f",
+          "status": "started",
+          "percent_complete": 25,
+          "forecast_finish": "2026-11-18",
+          "occurred_at": "2026-11-04T10:30:00Z"
+        }
+      ]
+    }
+  ]
+}

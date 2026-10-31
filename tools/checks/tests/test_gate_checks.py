@@ -194,7 +194,7 @@ def test_trace_m3_rejects_foreign_ids_and_duplicates(tmp_path: Path) -> None:
     _m3(root, [{"id": "T9.001", "status": "partial"}, {"id": "M3-S01", "status": "partial"},
                {"id": "M3-S01", "status": "partial"}])
     violations, _ = trace.validate(root, [])
-    assert any(v.startswith("L1 T9.001") and "not an M3 id" in v for v in violations)
+    assert any(v.startswith("L1 T9.001") and "not a M3 id" in v for v in violations)
     assert any(v.startswith("L1 M3-S01") and "duplicated" in v for v in violations)
 
 
@@ -204,3 +204,16 @@ def test_trace_m3_partial_counts_as_not_done_for_completion_claims(tmp_path: Pat
     (root / "docs" / "report.md").write_text("# M3\nALL PHASES REMEDIATED\n")
     violations, _ = trace.validate(root, ["reports/junit*.xml"])
     assert any(v.startswith("G1") for v in violations)
+
+
+def test_trace_m4_ledger_has_its_own_ids_and_the_same_done_rules(tmp_path: Path) -> None:
+    """Owner amendment A-04: docs/STATUS/m4.yaml is checked like m3.yaml, with M4-<stream><nn> ids."""
+    root = _repo(tmp_path, "done", ["tests/test_widget.py::test_pr9_01_widget"], with_junit=True)
+    (root / "docs" / "STATUS" / "m4.yaml").write_text(yaml.safe_dump([
+        {"id": "M4-C01", "status": "partial"}, {"id": "M3-S01", "status": "partial"},
+        {"id": "M4-B01", "status": "done", "evidence": ["src/widget.py"],
+         "tests": ["tests/test_widget.py::test_pr9_01_widget"], "frs": []}]))
+    violations, stats = trace.validate(root, ["reports/junit*.xml"])
+    assert stats["m4"] == {"partial": 2, "done": 1}
+    assert any(v.startswith("L1 M3-S01") and "not a M4 id" in v for v in violations)
+    assert any(v.startswith("M1 M4-B01") for v in violations)  # done needs device proof here too

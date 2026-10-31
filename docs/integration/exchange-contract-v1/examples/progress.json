@@ -1,0 +1,19 @@
+{
+  "contract": "scmtips.exchange/v1",
+  "message": "progress",
+  "message_id": "example-progress-0001",
+  "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+  "source_system": "partner",
+  "sent_at": "2026-11-03T12:00:00Z",
+  "rows": [
+    {
+      "event_id": "hb-evt-000913",
+      "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "order_id": "8d1e6f0a-2b3c-4d5e-8f90-1a2b3c4d5e6f",
+      "status": "started",
+      "percent_complete": 25,
+      "forecast_finish": "2026-11-18",
+      "occurred_at": "2026-11-04T10:30:00Z"
+    }
+  ]
+}

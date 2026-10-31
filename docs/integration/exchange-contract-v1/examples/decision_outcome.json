@@ -1,0 +1,25 @@
+{
+  "contract": "scmtips.exchange/v1",
+  "message": "decision_outcome",
+  "message_id": "example-decision_outcome-0001",
+  "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+  "source_system": "scmtips",
+  "sent_at": "2026-11-03T12:00:00Z",
+  "rows": [
+    {
+      "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "title": "Rare-earth magnet export curbs",
+      "status": "APPROVED",
+      "option_code": "OPT-2",
+      "option_title": "Second source",
+      "approval_amount": 18400,
+      "currency": "EUR",
+      "approver_roles": [
+        "approver"
+      ],
+      "approvals": 1,
+      "step_up": true,
+      "decided_at": "2026-11-03T09:02:00Z"
+    }
+  ]
+}

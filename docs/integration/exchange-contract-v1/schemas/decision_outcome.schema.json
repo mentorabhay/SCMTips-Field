@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scmtips:exchange:v1:decision_outcome",
+  "title": "SCMTIPS Decision outcome (scmtips.exchange/v1)",
+  "description": "What was decided, by which role, with which proof: exported for the record. Never imported: an approval read from a file would skip the step-up and the audit chain.",
+  "x-direction": "out",
+  "x-legs": [
+    "I4"
+  ],
+  "x-file-import": false,
+  "type": "object",
+  "required": [
+    "contract",
+    "message",
+    "message_id",
+    "rows"
+  ],
+  "properties": {
+    "contract": {
+      "const": "scmtips.exchange/v1"
+    },
+    "message": {
+      "const": "decision_outcome"
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,200}$",
+      "description": "Idempotency key: a repeated id changes nothing."
+    },
+    "correlation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "The SCMTIPS decision id, for the audit trail."
+    },
+    "source_system": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+      "description": "The sending system, e.g. naradcue, sangamiq, erp."
+    },
+    "sent_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "simulated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Test data; shown labelled SIMULATED."
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "decision_id",
+          "status"
+        ],
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The SCMTIPS decision this row answers."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500,
+            "description": "Text"
+          },
+          "signal_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Identifier (UUID), e.g. 3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED",
+              "DEFERRED",
+              "EXPIRED",
+              "EXECUTING",
+              "CLOSED"
+            ],
+            "description": "One of the allowed values"
+          },
+          "option_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "Text"
+          },
+          "option_title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "Text"
+          },
+          "approval_amount": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Number"
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Z]{3}$",
+            "description": "ISO 4217 currency code"
+          },
+          "approver_roles": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Roles that approved; never personal names."
+          },
+          "approvals": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Whole number"
+          },
+          "step_up": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Whether the approval passed a step-up check."
+          },
+          "decided_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Date and time, ISO 8601 with a time zone, e.g. 2026-11-03T09:30:00Z"
+          },
+          "committed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Date and time, ISO 8601 with a time zone, e.g. 2026-11-03T09:30:00Z"
+          },
+          "audit_entry_hash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 128,
+            "description": "Hash of the audit-chain entry that records the outcome."
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "examples": [
+    {
+      "contract": "scmtips.exchange/v1",
+      "message": "decision_outcome",
+      "message_id": "example-decision_outcome-0001",
+      "correlation_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+      "source_system": "scmtips",
+      "sent_at": "2026-11-03T12:00:00Z",
+      "rows": [
+        {
+          "decision_id": "3f2b8c1e-7a4d-4e1b-9c55-2d6f0a9b1e47",
+          "title": "Rare-earth magnet export curbs",
+          "status": "APPROVED",
+          "option_code": "OPT-2",
+          "option_title": "Second source",
+          "approval_amount": 18400,
+          "currency": "EUR",
+          "approver_roles": [
+            "approver"
+          ],
+          "approvals": 1,
+          "step_up": true,
+          "decided_at": "2026-11-03T09:02:00Z"
+        }
+      ]
+    }
+  ]
+}

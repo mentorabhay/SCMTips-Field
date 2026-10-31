@@ -1,6 +1,6 @@
 """Model client for the Field Assistant: OpenAI-compatible chat completions with tools, behind the budget guard.
 
-Primary: Meta Model API (``https://api.meta.ai/v1``, model ``muse-spark-1.2``, key from env MODEL_API_KEY).
+Primary: Meta Model API (``https://api.meta.ai/v1``, model ``muse-spark-1.3`` (ASSISTANT_MODEL), key from env MODEL_API_KEY).
 Fallback: Baseten (OpenAI-compatible; BASETEN_BASE_URL, BASETEN_MODEL_ID, key from env BASETEN_API_KEY), used
 only when all three are set and the model has a price in config/ai_pricing.yaml.
 
@@ -33,7 +33,8 @@ from field_api.ai.budget import BudgetGuard, BudgetRefused
 logger = structlog.get_logger(__name__)
 
 META_BASE_URL = "https://api.meta.ai/v1"
-META_MODEL = "muse-spark-1.2"
+# Owner choice, 31 Oct 2026 (amendment A-04): muse-spark-1.3, verified reachable from India (META_FIELD row 19).
+META_MODEL = "muse-spark-1.3"
 META_KEY_ENV = "MODEL_API_KEY"
 BASETEN_KEY_ENV = "BASETEN_API_KEY"
 CALL_TIMEOUT_S = 6.0
