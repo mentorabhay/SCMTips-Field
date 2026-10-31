@@ -49,6 +49,10 @@ def test_ports_default_avoid_scmtips_core_and_can_be_overridden(monkeypatch: pyt
     from tools.dev_stack import stack
 
     monkeypatch.delenv("FIELD_STACK_CORE_PORT", raising=False)
+    # This test covers the pre-M4 path (no core target). A developer's .env.local written by `stack up`
+    # holds FIELD_CORE_TARGET=standin, and an earlier test that loads .env.local leaves it in os.environ;
+    # the standin path is covered by its own tests (M4-C06).
+    monkeypatch.delenv("FIELD_CORE_TARGET", raising=False)
     assert stack.port("fake-core") == 8011  # 8001 is where SCMTips core itself often runs
     monkeypatch.setenv("FIELD_STACK_CORE_PORT", "8123")
     monkeypatch.setenv("FIELD_CORE_JWKS_URL", "http://127.0.0.1:8001/.well-known/jwks.json")  # stale .env.local value

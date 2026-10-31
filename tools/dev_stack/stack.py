@@ -19,7 +19,8 @@
 
 Services (logs in var/log, pids in var/run):
   fake-core  :8011  dev identity provider (EdDSA tokens + JWKS) and the stand-in core (a dev double of the
-                    SCMTIPS core's /v1 contract, never the core; tools/fake-core/README.md)
+                    SCMTIPS core's /v1 contract, never the core; tools/fake-core/README.md), bound like field-api
+                    so the phone on the same Wi-Fi can sign in against it
                     (not 8001: SCMTips core itself often runs there; FIELD_STACK_CORE_PORT overrides)
   erp-sim    :8002  S/4-shaped OData simulator with SAMPLE master data (FIELD_STACK_ERPSIM_PORT)
   field-api  :8000  bound to 0.0.0.0 so the phone on the same Wi-Fi can reach it (FIELD_STACK_API_PORT)
@@ -292,7 +293,7 @@ def seed_erp_sim() -> None:
 def services(host_ip: str) -> dict[str, list[str]]:
     py = sys.executable
     return {
-        "fake-core": [py, "-m", "uvicorn", "fake_core.app:app", "--host", "127.0.0.1", "--port", str(port("fake-core"))],
+        "fake-core": [py, "-m", "uvicorn", "fake_core.app:app", "--host", host_ip, "--port", str(port("fake-core"))],
         "erp-sim": [py, "-m", "uvicorn", "erp_sim.app:app", "--host", "127.0.0.1", "--port", str(port("erp-sim"))],
         "field-api": [py, "-m", "uvicorn", "field_api.app:app", "--host", host_ip, "--port", str(port("field-api"))],
         "field-worker": [py, "-m", "field_worker"],

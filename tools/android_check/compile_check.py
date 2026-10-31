@@ -51,15 +51,10 @@ ROOTS = [  # the app's direct dependencies (versions as in gradle/libs.versions.
     "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.9.0",
 ]
 APP = "app/src/main/kotlin/com/scmtips/field/app"
-SOURCES = [f"{APP}/{p}" for p in (
-    "MainActivity.kt", "FieldApplication.kt", "FieldController.kt", "CrashLog.kt",
-    "device/DeviceIo.kt", "device/PhoneLocation.kt", "glasses/DatGlasses.kt", "glasses/GlassesStatus.kt",
-    "net/FieldHttp.kt", "slice/Pairing.kt", "navigation/Screen.kt", "scan/WedgeBuffer.kt", "home/TodayModel.kt",
-    "jobs/JobModel.kt", "jobs/JobRequests.kt", "jobs/JobGrammar.kt", "jobs/JobRunner.kt", "jobs/Practice.kt", "jobs/ScanLookup.kt",
-    "ui/AppRoot.kt", "ui/Components.kt", "ui/ConnectScreen.kt", "ui/TodayScreen.kt", "ui/ScanScreen.kt", "ui/MeScreen.kt",
-    "ui/JobScreen.kt", "ui/CrashScreen.kt", "ui/theme/Theme.kt", "ui/theme/Color.kt",
-)]
-MODULES = ("core-common", "core-voice", "core-wearables", "core-safety")
+# every app source (a hand-kept list went stale twice: M3 session/assistant files, M4 sign-in/decisions)
+SOURCES = [str(p.relative_to(ANDROID)) for p in sorted((ANDROID / APP).rglob("*.kt"))]
+# the app's own project dependencies (apps/field-android/app/build.gradle.kts)
+MODULES = ("core-common", "core-voice", "core-wearables", "core-safety", "core-outbox", "feature-decisions")
 # --all: every module's main sources (the whole Gradle project, minus code generation such as Room/KSP)
 ALL_ROOTS = [
     "androidx.room:room-runtime:2.7.2", "androidx.room:room-ktx:2.7.2", "androidx.work:work-runtime-ktx:2.10.5",
@@ -146,7 +141,8 @@ def main() -> int:
         print("[FAIL] could not download the Kotlin compiler / Compose plugin / android-all jar")
         return 1
     everything = "--all" in sys.argv
-    libs = [p for (g, a), v in sorted(resolve(ROOTS + (ALL_ROOTS if everything else [])).items()) if (p := jar(g, a, v))]
+    # both modes resolve ALL_ROOTS: core-outbox, an app dependency, needs the Room/Retrofit jars
+    libs = [p for (g, a), v in sorted(resolve(ROOTS + ALL_ROOTS).items()) if (p := jar(g, a, v))]
     if everything:
         srcs = [str(p) for p in sorted(ANDROID.glob("*/src/main/kotlin/**/*.kt"))]
     else:
