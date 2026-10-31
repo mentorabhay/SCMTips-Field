@@ -1,10 +1,17 @@
-"""Rules mode (M3 contract §4, ``ai: "rules"``): fixed answers when the model is off, refused or failing.
+"""Rules mode (M3 contract §4, ``ai: "rules"``): fixed answers, at once and without the network.
+
+Since M4 (owner's field test, 31 Oct 2026: Start Work waited 6-7 s on model timeouts) rules answer FIRST: every
+event and every utterance these rules classify is answered here with no model call; only what they cannot
+classify (and "what is this" about a photo without a code) goes to the model, and any model failure comes back
+here.
 
 Covers: greeting + work list, "what do we have", "most urgent", "start <type or number>", "what's next",
 "how many left", "what is this" (code lookup only), the sandbox unknown-code dialog ("What is it?" -> name ->
 "How many?" -> add through the sandbox port), "summary", "repeat", "help", what done means, pause / resume /
-session end, step done, and the job words the phone may forward (post, all here, count N, cancel). Work never
-stops because of the AI. No network: only the database (task list, records) and the injected ports.
+session end, step done, and the job words the phone may forward (post, all here, count N, cancel). On sandbox
+sites (M4) also "new home receipt" and "count shelf <bin>" / "count a shelf" (then "Which shelf?"), which create
+the task through the sandbox ports and open it; "nothing assigned" offers both. Work never stops because of the
+AI. No network: only the database (task list, records) and the injected ports.
 """
 
 from __future__ import annotations
@@ -43,6 +50,14 @@ _TYPE_SYNONYMS = (
 INTENTS = (
     ("cancel", r"^(cancel|stop|never ?mind|forget it|no thanks?)\b"),
     ("confirm", r"\bconfirm\b"),
+    # M4 sandbox: before "start" (which opens an existing job) and "count" (which counts in the open job)
+    ("new_receipt", r"\b(?:new|another|create|make)\b(?: a| an)?(?: new)?(?: home)? (?:goods )?receipt\b|"
+                    r"\bhome receipt\b"),
+    ("new_count", r"^(?:(?:ok(?:ay)?|please|let'?s|can you) )*(?:(?:start|begin|do|create|make|open) )?"
+                  r"(?:(?:a|an|the) )?(?:new )?count (?:(?:of|for) )?(?:(?:a|an|the|one|this|that) )?(?:new )?"
+                  r"(?:shelf|shelves|bin)\b\s*(?P<arg>.*)$"),
+    ("new_count", r"\b(?:new|another|create|make)\b(?: a| an)?(?: new)?(?: shelf| bin)? count\b"
+                  r"(?: (?:of|for) (?:(?:the|a) )?(?:shelf |bin )?(?P<arg>.*))?$"),
     ("repeat", r"^(repeat|say (that|it) again|again|pardon|come again|what did you say)\b"),
     ("help", r"^help\b|what can (i|you) (say|do)"),
     ("summary", r"\bsummary\b|\brecap\b|how did (i|we) do|what did (i|we) do"),
@@ -62,6 +77,8 @@ INTENTS = (
     ("greet", r"^(hi|hello|hey|good (morning|afternoon|evening))\b"),
 )
 _COMPILED = tuple((name, re.compile(rx)) for name, rx in INTENTS)
+_DIGIT_WORDS = MappingProxyType({"zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+                                "six": "6", "seven": "7", "eight": "8", "nine": "9"})
 _YES = re.compile(r"^(yes|yeah|yep|yup|sure|correct|right|ok(ay)?|do it|add it|please do|go ahead)\b(?!.*\bnot?\b)")
 
 
@@ -82,6 +99,28 @@ def intent(text: str | None) -> tuple[str, str]:
             arg = m.groupdict().get("arg") or ""
             return name, arg.strip()
     return "unknown", ""
+
+
+def bin_key(text: str | None) -> str:
+    """A bin code as spoken or printed, reduced for matching: digit words to digits, separators and filler words
+    dropped, upper case ("zero three dash zero five" -> "0305", "HOME-A" -> "HOMEA", "shelf a" -> "A")."""
+    words = normalise(text).replace("-", " ").split()
+    out = [_DIGIT_WORDS.get(w, w) for w in words if w not in ("dash", "hyphen", "minus", "shelf", "bin", "the",
+                                                                    "number", "no", "code")]
+    return re.sub(r"[^0-9a-z]", "", "".join(out)).upper()
+
+
+def match_bin(text: str | None, bins: list[str]) -> str | None:
+    """The one bin ``text`` names: exact (after bin_key), else the only bin whose key ends with it."""
+    k = bin_key(text)
+    if not k:
+        return None
+    keyed = [(b, bin_key(b)) for b in bins]
+    exact = [b for b, bk in keyed if bk == k]
+    if len(exact) == 1:
+        return exact[0]
+    tail = [b for b, bk in keyed if bk.endswith(k)]
+    return tail[0] if len(tail) == 1 else None
 
 
 def is_yes(text: str | None) -> bool:
@@ -160,6 +199,11 @@ class Reply:
         return self
 
 
+def _sentence(text: Any) -> str:
+    t = " ".join(str(text or "").split())
+    return t if not t or t[-1] in ".!?" else t + "."
+
+
 def _card(title: str, body: str = "") -> dict[str, str]:
     return {"title": title, "body": body}
 
@@ -191,6 +235,10 @@ class RulesEngine:
         if event == "unknown_code":
             return self.unknown_code(code or "")
         if event == "scan":
+            if dialog and dialog.get("kind") == "new_count" and code:
+                picked = self._bin_of(code)
+                if picked:
+                    return self.create_count(picked)
             return self.code_reply(code or "", from_scan=True)
         if event == "photo":
             if code:
@@ -201,6 +249,10 @@ class RulesEngine:
         if dialog and dialog.get("kind") == "sandbox_item":
             return self.sandbox_dialog(text, dialog)
         name, arg = intent(text)
+        if dialog and dialog.get("kind") == "new_count":
+            answered = self.count_bin_dialog(text, name)
+            if answered is not None:
+                return answered
         if name == "what_is":
             if code:
                 return self.code_reply(code)
@@ -227,6 +279,8 @@ class RulesEngine:
             "count": lambda: self.count(arg),
             "work": self.work_list,
             "greet": lambda: self.work_list(greeting=True),
+            "new_receipt": self.new_receipt,
+            "new_count": lambda: self.new_count(arg),
         }
         handler = handlers.get(name)
         if handler is not None:
@@ -236,12 +290,97 @@ class RulesEngine:
                      [dict(LISTEN_CMD)])
 
     # ------------------------------------------------------------------ work
+    # ------------------------------------------------------------------ sandbox: new receipts and counts (M4)
+    @property
+    def _offers_new_work(self) -> bool:
+        return self.tools.ctx.site_mode == "sandbox" and self.tools.can_create
+
+    def no_work(self, prefix: str = "") -> Reply:
+        """Nothing open: on a sandbox site, offer a new home receipt or a shelf count (owner's test, 31 Oct)."""
+        if self._offers_new_work:  # two sentences at most, with or without the prefix sentence
+            say = (f"{prefix}Nothing is assigned here; say new home receipt, or count a shelf." if prefix
+                   else "Nothing is assigned here right now. Say new home receipt, or count a shelf.")
+            return Reply(say,
+                         _card("Nothing assigned", "new home receipt · count a shelf"), [dict(LISTEN_CMD)])
+        return Reply(prefix + "No open jobs at this site right now.", _card("No open jobs"), [dict(LISTEN_CMD)])
+
+    def _sandbox_refusal(self, what: str) -> Reply | None:
+        if self.tools.ctx.site_mode != "sandbox":
+            return Reply(f"This is a production site, so {what} come from the ERP. Ask what we have to hear the "
+                         "open jobs.", _card("Production site", f"New {what} only on a sandbox site"),
+                         [dict(LISTEN_CMD)])
+        if not self.tools.can_create:
+            return Reply(f"I can't create {what} in this build.", _card("Not available"))
+        return None
+
+    def new_receipt(self) -> Reply:
+        refused = self._sandbox_refusal("receipts")
+        if refused is not None:
+            return refused
+        r = self.tools.new_receipt()
+        if not r.get("ok"):
+            return Reply(f"I couldn't create the receipt. {_sentence(r.get('error'))}",
+                         _card("No receipt", str(r.get("error"))))
+        return Reply("New home receipt open. Look at each box's barcode and I'll add it.",
+                     _card(f"Delivery {r['ref_doc_no']}", DONE.get("receive", "")),
+                     [{"type": "open_task", "task_id": r["task_id"]}], task_id=r["task_id"])
+
+    def _bins_say(self, bins: list[str]) -> str:
+        if 0 < len(bins) <= 4:
+            return "Say " + (", ".join(bins[:-1]) + " or " + bins[-1] if len(bins) > 1 else bins[0]) + "."
+        return "Look at the shelf label and say its code."
+
+    def _bin_of(self, text: str) -> str | None:
+        return match_bin(text, self.tools.site_bins())
+
+    def new_count(self, arg: str) -> Reply:
+        refused = self._sandbox_refusal("counts")
+        if refused is not None:
+            return refused
+        bins = self.tools.site_bins()
+        if not bins:
+            return Reply("This site has no shelves set up, so I can't start a count.", _card("No shelves"))
+        if not arg.strip():
+            if len(bins) == 1:
+                return self.create_count(bins[0])
+            return Reply("Which shelf? " + self._bins_say(bins), _card("Which shelf?", "\n".join(bins[:20])),
+                         [dict(LISTEN_FREE)], dialog={"kind": "new_count"})
+        picked = match_bin(arg, bins)
+        if picked is None:
+            return Reply(f"I don't know shelf {arg} here. " + self._bins_say(bins),
+                         _card("Which shelf?", "\n".join(bins[:20])), [dict(LISTEN_FREE)], dialog={"kind": "new_count"})
+        return self.create_count(picked)
+
+    def count_bin_dialog(self, text: str | None, name: str) -> Reply | None:
+        """The answer to "Which shelf?"; None hands a different request back to the normal rules."""
+        if name == "cancel":
+            return Reply("OK, no count.", _card("Cancelled"))
+        if name == "new_count":
+            return None
+        picked = self._bin_of(text or "")
+        if picked is not None:
+            return self.create_count(picked)
+        if name != "unknown":
+            return None  # another request: the dialog closes
+        bins = self.tools.site_bins()
+        return Reply("Which shelf? " + self._bins_say(bins), _card("Which shelf?", "\n".join(bins[:20])),
+                     [dict(LISTEN_FREE)], dialog={"kind": "new_count"})
+
+    def create_count(self, storage_bin: str) -> Reply:
+        r = self.tools.new_count(storage_bin)
+        if not r.get("ok"):
+            return Reply(f"I couldn't start the count. {_sentence(r.get('error'))}",
+                         _card("No count", str(r.get("error"))))
+        return Reply(f"Count of shelf {storage_bin} open. Look at each box's barcode and say how many.",
+                     _card(f"Count {storage_bin}", DONE.get("count", "")),
+                     [{"type": "open_task", "task_id": r["task_id"]}], task_id=r["task_id"])
+
+    # ------------------------------------------------------------------ work
     def work_list(self, greeting: bool = False) -> Reply:
         work = self.tools.work()
         hello = "Hi, you" if greeting else "You"
         if not work:
-            return Reply(("Hi. " if greeting else "") + "No open jobs at this site right now.", _card("No open jobs"),
-                         [dict(LISTEN_CMD)])
+            return self.no_work("Hi. " if greeting else "")
         top = work[0]
         n = len(work)
         say = (f"{hello} have {n} {'job' if n == 1 else 'jobs'}: {count_by_type(work)}. "
@@ -252,7 +391,7 @@ class RulesEngine:
     def most_urgent(self) -> Reply:
         work = self.tools.work()
         if not work:
-            return Reply("No open jobs at this site right now.", _card("No open jobs"))
+            return self.no_work()
         t = work[0]
         why = " It's already started." if t["status"] == "in_progress" else ""
         return Reply(f"Most urgent is {t['title']}.{why} Say start to open it.",
@@ -346,7 +485,7 @@ class RulesEngine:
         if t is None:
             work = self.tools.work()
             if not work:
-                return Reply(pre + "No open jobs at this site right now.", _card("No open jobs"))
+                return self.no_work(pre)
             return Reply(pre + f"Next job: {work[0]['title']}. Say start to open it.",
                          _card(work[0]["title"], work[0]["subtitle"] or ""), [dict(LISTEN_CMD)])
         left = remaining_lines(t)
@@ -365,8 +504,9 @@ class RulesEngine:
         t = self.tools.current_task()
         if t is None:
             n = len(self.tools.work())
-            return Reply(f"{n} open {'job' if n == 1 else 'jobs'} at this site." if n else "No open jobs here.",
-                         _card("Open jobs", str(n)))
+            if not n:
+                return self.no_work()
+            return Reply(f"{n} open {'job' if n == 1 else 'jobs'} at this site.", _card("Open jobs", str(n)))
         lines = t.get("lines") or []
         left = remaining_lines(t)
         say = f"{len(left)} of {len(lines)} {'line' if len(lines) == 1 else 'lines'} left."
@@ -384,10 +524,13 @@ class RulesEngine:
                      task_id=t["id"])
 
     def help(self) -> Reply:
+        body = "what do we have · what's most urgent · start receipt · what's next · how many left · what is this · summary"
+        if self._offers_new_work:
+            return Reply("Ask what we have, what's next, how many left, or what is this. On this home site you can "
+                         "also say new home receipt, or count a shelf.",
+                         _card("You can say", body + " · new home receipt · count a shelf"), [dict(LISTEN_CMD)])
         return Reply("Ask what we have today, what's next, how many left, or what is this. Say start and a job to "
-                     "open it.", _card("You can say", "what do we have · what's most urgent · start receipt · "
-                                                      "what's next · how many left · what is this · summary"),
-                     [dict(LISTEN_CMD)])
+                     "open it.", _card("You can say", body), [dict(LISTEN_CMD)])
 
     def summary(self, ending: bool = False) -> Reply:
         s = self.tools.session_summary()

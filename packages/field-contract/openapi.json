@@ -4932,6 +4932,83 @@
           }
         }
       }
+    },
+    "/v1/briefs/spoken": {
+      "post": {
+        "tags": [
+          "Spoken briefs (M4)"
+        ],
+        "summary": "Post Spoken Brief",
+        "operationId": "post_spoken_brief_v1_briefs_spoken_post",
+        "parameters": [
+          {
+            "name": "X-Core-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "the app's core wearable token",
+              "title": "X-Core-Token"
+            },
+            "description": "the app's core wearable token"
+          },
+          {
+            "name": "X-Device-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Device-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpokenBriefIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpokenBriefOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7845,6 +7922,60 @@
         },
         "type": "object",
         "title": "SiteUpdate"
+      },
+      "SpokenBriefIn": {
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Decision Id"
+          },
+          "template_text": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Template Text",
+            "description": "the core's template brief"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision_id",
+          "template_text"
+        ],
+        "title": "SpokenBriefIn"
+      },
+      "SpokenBriefOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "model",
+              "template"
+            ],
+            "title": "Source"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "source",
+          "reasons"
+        ],
+        "title": "SpokenBriefOut"
       },
       "SystemStatusResponse": {
         "properties": {

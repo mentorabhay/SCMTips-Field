@@ -2,8 +2,14 @@
 
 What the server guarantees whatever the model answers: no confirm action ever, only visible task ids, two
 sentences, count tasks never send book or expected quantities to the model, photos go to the model only for
-"what is this" / unknown items, add_sandbox_item only after the operator's explicit yes, and any model failure
-falls back to rules for that turn.
+"what is this" without a code, the model can never add an item (rules-only since M4), and any model failure falls
+back to rules for that turn.
+
+M4 change (owner's field test, 31 Oct 2026, docs/design/M4_CONTRACT.md §4): rules answer first. Turns the rules can
+classify (session start, "what's next", "summary", "hello", unknown codes ...) never reach the model, so the tests
+here that used such turns to exercise the model now use utterances the rules cannot classify. That is a behaviour
+change the owner asked for, not a weakening: each property is still asserted on a turn that does go to the model,
+and test_assistant_rules_first.py proves the rules-first turns make zero model calls.
 """
 
 from __future__ import annotations
@@ -57,6 +63,7 @@ def _turn_rows(session_id: str, h: SimpleNamespace, tenant: str) -> list[tuple[A
 
 
 def test_model_answer_is_sanitised_and_costed(site: dict[str, Any], recorded_api: Any, h: SimpleNamespace) -> None:
+    """M4: was a session_start turn (now rules first); the same sanitising runs on an unclassified utterance."""
     recorded_api.script = [h.answer({
         "say": "Morning! Two jobs today. The count of bin 03-05-02 is most urgent. Want to start?",
         "card": {"title": "Today", "body": "Count bin 03-05-02\nDelivery 1800000022"},
@@ -67,18 +74,19 @@ def test_model_answer_is_sanitised_and_costed(site: dict[str, Any], recorded_api
                     {"type": "open_task", "task_id": str(uuid.uuid4())},
                     {"type": "listen", "mode": "free"}],
     }, prompt=1200, cached=1000, completion=60)]
-    r = turn(site, "session_start")
+    r = turn(site, "utterance", text="tell me something useful about this site")
     assert r["ai"] == "model"
     assert r["say"] == "Morning! Two jobs today."  # at most two sentences
     assert r["actions"] == [{"type": "open_task", "task_id": site["count"]}, {"type": "listen", "mode": "free"}]
     want = (Decimal(200) * Decimal("1.25") + Decimal(1000) * Decimal("0.15") + Decimal(60) * Decimal("4.25")) / 10**6
     assert Decimal(str(r["cost_usd"])) == want
     rows = _turn_rows(r["session_id"], h, site["tenant"])
-    assert rows[0][0:2] == ("session_start", "model") and Decimal(rows[0][5]) == want
+    assert rows[0][0:2] == ("utterance", "model") and Decimal(rows[0][5]) == want
     assert any(c.get("name") == "model_calls" for c in rows[0][4])
     sent = recorded_api.requests[0]
+    # M4: add_sandbox_item is no longer offered (every effect is rules-only); the four read tools remain
     assert sent["model"] == "muse-spark-1.2" and {t["function"]["name"] for t in sent["tools"]} == {
-        "list_work", "task_detail", "lookup_code", "add_sandbox_item", "session_summary"}
+        "list_work", "task_detail", "lookup_code", "session_summary"}
     assert "Definition of done" in sent["messages"][0]["content"]
 
 
@@ -112,11 +120,15 @@ def test_receive_task_detail_carries_quantities(site: dict[str, Any], recorded_a
 
 def test_photo_goes_to_the_model_only_for_what_is_this(site: dict[str, Any], recorded_api: Any,
                                                        h: SimpleNamespace) -> None:
+    """M4: "what's next" with a photo used to reach the model without the image; it is now answered by rules
+    (no model call at all), and an unclassified utterance with a photo still goes without the image."""
     photo = base64.b64encode(JPEG).decode()
     recorded_api.script = [h.answer({"say": "Looks like a coffee mug.", "actions": []}),
                            h.answer({"say": "Next is the bolts.", "actions": []})]
     r = turn(site, "utterance", text="what is this", photo_jpeg_b64=photo)
-    turn(site, "utterance", text="what's next", photo_jpeg_b64=photo, session_id=r["session_id"])
+    nxt = turn(site, "utterance", text="what's next", photo_jpeg_b64=photo, session_id=r["session_id"])
+    assert nxt["ai"] == "rules" and len(recorded_api.requests) == 1
+    turn(site, "utterance", text="is the dock busy", photo_jpeg_b64=photo, session_id=r["session_id"])
 
     def has_image(req: dict[str, Any]) -> bool:
         return any(isinstance(m["content"], list) and any(p.get("type") == "image_url" for p in m["content"])
@@ -151,44 +163,42 @@ class Ports:
         return {"line_id": str(uuid.uuid4()), "material": "HOME-0007", "created_material": True}
 
 
-def test_add_sandbox_item_needs_the_operators_explicit_yes(site: dict[str, Any], recorded_api: Any,
-                                                          h: SimpleNamespace) -> None:
+def test_sandbox_items_are_added_only_by_the_rules_dialog(site: dict[str, Any], recorded_api: Any,
+                                                           h: SimpleNamespace) -> None:
+    """Was test_add_sandbox_item_needs_the_operators_explicit_yes (the model ran the unknown-code dialog and could
+    add after an explicit yes). M4 rules first: the unknown-code dialog is answered by rules, with no model call,
+    and adds only after "What is it?" and "How many?" are answered; the model is no longer offered
+    add_sandbox_item, and a model that calls it anyway gets "unknown tool" and nothing is added. Stricter than
+    before: the model cannot add at all."""
     h.set_sandbox(site)
     ports = Ports()
     app.dependency_overrides[get_ports] = lambda: AssistantPorts(ports.resolve_code, ports.add_item)
     code = "5901234123457"
-    add = h.tool_call("add_sandbox_item", {"code": code, "description": "Blue mug", "qty": 4})
-    recorded_api.script = [
-        h.answer({"say": "Looks like a mug. What is it?", "actions": [{"type": "listen", "mode": "free"}]}),
-        h.answer(tool_calls=[add]),  # the model jumps the gun: no yes yet
-        h.answer({"say": "Blue mug, four. Shall I add it?", "actions": []}),
-        h.answer(tool_calls=[h.tool_call("add_sandbox_item", {"code": "OTHER-CODE", "description": "x", "qty": 1}),
-                             add]),
-        h.answer({"say": "Added blue mug, four.",
-                  "actions": [{"type": "refresh_task", "task_id": site["receive"], "focus_code": code}]}),
-    ]
     photo = base64.b64encode(JPEG).decode()
     r = turn(site, "unknown_code", code=code, photo_jpeg_b64=photo, task_id=site["receive"])
     sid = r["session_id"]
-    assert r["ai"] == "model" and r["say"].endswith("What is it?")
-    r = turn(site, "utterance", text="a blue mug, four of them", session_id=sid, task_id=site["receive"])
-    assert ports.added == []
-    refused = json.loads([m for m in recorded_api.requests[2]["messages"] if m["role"] == "tool"][-1]["content"])
-    assert refused["ok"] is False and "yes" in refused["error"]
-    r = turn(site, "utterance", text="yes", session_id=sid, task_id=site["receive"])
-    assert ports.added == [(site["receive"], code, "Blue mug", Decimal(4))]  # only the dialog's code
-    assert r["actions"] == [{"type": "refresh_task", "task_id": site["receive"], "focus_code": code}]
-    recorded_api.script = [h.answer(tool_calls=[add]), h.answer({"say": "Done.", "actions": []})]
-    turn(site, "utterance", text="yes", session_id=sid, task_id=site["receive"])  # dialog closed after the add
-    assert len(ports.added) == 1
+    assert r["ai"] == "rules" and r["say"].endswith("What is it?") and recorded_api.requests == []
+    r = turn(site, "utterance", text="yes add it", session_id=sid, task_id=site["receive"])  # taken as the name
+    assert r["ai"] == "rules" and r["say"].endswith("How many?") and ports.added == []
+    r = turn(site, "utterance", text="four", session_id=sid, task_id=site["receive"])
+    assert ports.added == [(site["receive"], code, "yes add it", Decimal(4))] and recorded_api.requests == []
+    add = h.tool_call("add_sandbox_item", {"code": code, "description": "Blue mug", "qty": 4})
+    recorded_api.script = [h.answer(tool_calls=[add]), h.answer({"say": "Added it.", "actions": []})]
+    r = turn(site, "utterance", text="please put another blue mug on it", session_id=sid, task_id=site["receive"])
+    assert r["ai"] == "model" and len(ports.added) == 1  # the model's call changed nothing
+    refused = json.loads([m for m in recorded_api.requests[1]["messages"] if m["role"] == "tool"][-1]["content"])
+    assert refused == {"ok": False, "error": "unknown tool add_sandbox_item"}
+    assert all(t["function"]["name"] != "add_sandbox_item" for t in recorded_api.requests[0]["tools"])
 
 
 @pytest.mark.parametrize("failure", [500, httpx.ReadTimeout, "garbage"])
 def test_model_failure_falls_back_to_rules(site: dict[str, Any], recorded_api: Any, h: SimpleNamespace,
                                           failure: Any) -> None:
+    """M4: was a session_start turn (now rules first, never a model call); the fallback is proven on an
+    unclassified utterance, which the rules then answer with their "didn't catch that" help."""
     recorded_api.script = [{"choices": []} if failure == "garbage" else failure]
-    r = turn(site, "session_start")
-    assert r["ai"] == "rules" and "2 jobs" in r["say"]
+    r = turn(site, "utterance", text="tell me something useful about this site")
+    assert r["ai"] == "rules" and "didn't catch" in r["say"] and len(recorded_api.requests) == 1
     rows = _turn_rows(r["session_id"], h, site["tenant"])
     fb = [c for c in rows[0][4] if c["name"] == "fallback"]
     assert fb and fb[0]["reasons"]
@@ -202,25 +212,30 @@ def test_ai_off_never_calls_the_model(site: dict[str, Any], recorded_api: Any, m
 
 
 def test_plain_text_answer_is_spoken_clipped(site: dict[str, Any], recorded_api: Any, h: SimpleNamespace) -> None:
+    """M4: "where now" is a rules intent (what's next) now answered first by rules; an unclassified one is used."""
     recorded_api.script = [h.answer("Sure. Go to bin 03-05-02. Then count. Then rest.")]
-    r = turn(site, "utterance", text="where now")
+    r = turn(site, "utterance", text="where should the forklift go")
     assert r["ai"] == "model" and r["say"] == "Sure. Go to bin 03-05-02." and r["actions"] == []
 
 
 def test_history_reaches_the_model(site: dict[str, Any], recorded_api: Any, h: SimpleNamespace) -> None:
-    recorded_api.script = [h.answer({"say": "Hi there.", "actions": []}), h.answer({"say": "Bolts.", "actions": []})]
+    """M4: "hello assistant" is answered by rules first (no model call); the model's next turn still gets that
+    turn, heard and said, as history."""
+    recorded_api.script = [h.answer({"say": "Bolts.", "actions": []})]
     r = turn(site, "utterance", text="hello assistant")
-    turn(site, "utterance", text="what next", session_id=r["session_id"])
-    msgs = recorded_api.requests[1]["messages"]
+    assert r["ai"] == "rules" and recorded_api.requests == []
+    turn(site, "utterance", text="which one is heavier", session_id=r["session_id"])
+    msgs = recorded_api.requests[0]["messages"]
     assert any(m["role"] == "user" and "hello assistant" in str(m["content"]) for m in msgs)
-    assert any(m["role"] == "assistant" and "Hi there." in str(m["content"]) for m in msgs)
+    assert any(m["role"] == "assistant" and r["say"] in str(m["content"]) for m in msgs)
 
 
 def test_budget_ledger_has_one_settled_row_per_call(site: dict[str, Any], recorded_api: Any,
                                                     h: SimpleNamespace) -> None:
+    """M4: "summary" is answered by rules first; an unclassified question drives the two model calls."""
     recorded_api.script = [h.answer(tool_calls=[h.tool_call("session_summary", {})]),
                            h.answer({"say": "Nothing done yet.", "actions": []})]
-    r = turn(site, "utterance", text="summary")
+    r = turn(site, "utterance", text="how is the shift going overall")
     admin = os.environ["FIELD_ADMIN_DATABASE_URL"]
     with psycopg.connect(admin) as c, c.cursor() as cur:
         cur.execute("SELECT count(*), sum(cost_usd) FROM ops.ai_usage WHERE tenant_id = %s AND status = 'settled'",

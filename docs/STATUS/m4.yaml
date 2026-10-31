@@ -1,5 +1,6 @@
 - id: M4-C02
-  title: Stand-in core in tools/fake-core (dev double of the core's /v1 contract) for the M4 slice
+  title: >-
+    Stand-in core in tools/fake-core (dev double of the core's /v1 contract) for the M4 slice
   workstream: M4-C
   role: Stream C (core link)
   status: partial
@@ -27,7 +28,8 @@
   - tools/fake-core/tests/test_fake_core.py::test_jwks_endpoint
   frs: []
   verified_at: null
-  note: Against the stand-in core; the real core is not deployed. A dev double (docstrings and tools/fake-core/README.md
+  note: >-
+    Against the stand-in core; the real core is not deployed. A dev double (docstrings and tools/fake-core/README.md
     say so), never presented as the core. Serves the handover paths (01, 01a) with the ported ARO client's shapes
     (api/Models.kt), which win where they differ; where neither gives a shape (brief bodies, sessions list, feed answer)
     the stand-in's choice is listed in the README. Ed25519 key made at start-up, kid scmtips-core-ed25519-standin-<hash>;
@@ -61,7 +63,8 @@
   - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_t1_038_device_exchange_requires_active_device_row
   frs: []
   verified_at: null
-  note: Against the stand-in core; the real core is not deployed. Settings FIELD_CORE_BASE_URL (default
+  note: >-
+    Against the stand-in core; the real core is not deployed. Settings FIELD_CORE_BASE_URL (default
     http://127.0.0.1:8011, the stand-in), FIELD_CORE_JWKS_URL (default {BASE}/v1/core/jwks.json),
     FIELD_CORE_DEVICE_STATUS_URL (template {device_id}, {tenant_id} from the token; unset keeps today's behaviour,
     fake-core /api/v1/devices/{id}/status when CORE_API_URL is set). JWKS re-read once on an unknown kid or a failed
@@ -73,7 +76,8 @@
     approver carries field.supervisor, which holds field.assistant.use (stream M's POST /v1/briefs/spoken). Partial until
     proven against the real core and on the owner's phone (A-04).
 - id: M4-C03
-  title: ErpReadPort (posted material document with PO reference, ERP on-hand) in the connector; erp-sim PO references
+  title: >-
+    ErpReadPort (posted material document with PO reference, ERP on-hand) in the connector; erp-sim PO references
     on ASN items and API_MATERIAL_STOCK_SRV
   workstream: M4-C
   role: Stream C (core link)
@@ -93,7 +97,8 @@
   - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c03_s4_adapter_conforms_and_refuses_reads
   frs: []
   verified_at: null
-  note: The F4 feed rows are read from the ERP through the port, not computed. ErpReadPort is a separate protocol so the
+  note: >-
+    The F4 feed rows are read from the ERP through the port, not computed. ErpReadPort is a separate protocol so the
     ErpPort test doubles stay as they are. erp-sim (migration erpsim_0004) keeps the PO line of an ASN item
     (ReferenceSDDocument/Item in S/4) and carries it into the GR item, read as A_MaterialDocumentItem.PurchaseOrder /
     PurchaseOrderItem; on-hand is A_MatlStkInAcctMod (unrestricted, InventoryStockType 01; erp-sim has one quantity per
@@ -124,7 +129,8 @@
   - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_property_signature_verifies_and_detects_tampering
   frs: []
   verified_at: null
-  note: Against the stand-in core; the real core is not deployed. Source event is the existing outbox event erp.posted
+  note: >-
+    Against the stand-in core; the real core is not deployed. Source event is the existing outbox event erp.posted
     with data.doc_type GoodsReceipt (movement 101), emitted by the posting worker. Staging reads the posted document
     and the on-hand after it from erp-sim through ErpReadPort and stores the exact JSON body per feed in
     field.core_feed_delivery (migration field_0062, forced RLS, UNIQUE tenant+event+feed). Delivery signs with
@@ -138,7 +144,8 @@
     them (upper-cased) or mapped by FIELD_CORE_CODE_MAP (JSON: materials, locations by plant or plant/sloc). Reversals
     (102) are not sent. Partial until delivered to the real core's feeds (A-04).
 - id: M4-C05
-  title: stack seed-core-export <dir>, a tolerant loader of the core's erp-sim export (CSV + JSON) into erp-sim
+  title: >-
+    stack seed-core-export <dir>, a tolerant loader of the core's erp-sim export (CSV + JSON) into erp-sim
   workstream: M4-C
   role: Stream C (core link)
   status: partial
@@ -150,7 +157,8 @@
   - tools/dev_stack/tests/test_core_link.py::test_m4_c05_export_json_envelope_and_csv_load_into_erpsim
   frs: []
   verified_at: null
-  note: The core's export (ARO\samples\exports\erp-sim) does not exist yet, so its layout is assumed and the loader is
+  note: >-
+    The core's export (ARO\samples\exports\erp-sim) does not exist yet, so its layout is assumed and the loader is
     tolerant; tested with the exchange contract's own erp_extract example plus CSV files. Recognises erp_extract
     envelopes (parts), objects of tables, row lists and CSV, tables items / locations / inventory / open_supply by
     file or key name (aliases), bom and unknown tables reported and ignored. Loads the core's codes as erp-sim's own
@@ -174,7 +182,8 @@
   - tools/dev_stack/tests/test_stack.py::test_ports_default_avoid_scmtips_core_and_can_be_overridden
   frs: []
   verified_at: null
-  note: FIELD_CORE_TARGET in .env.local (generated default standin) points FIELD_CORE_BASE_URL, _JWKS_URL (core
+  note: >-
+    FIELD_CORE_TARGET in .env.local (generated default standin) points FIELD_CORE_BASE_URL, _JWKS_URL (core
     path), _DEVICE_STATUS_URL and both feed URLs at the stack's stand-in; FIELD_CORE_INVENTORY_FEED_SECRET /
     FIELD_CORE_SUPPLY_FEED_SECRET are generated (fresh random, git-ignored, never printed). FIELD_CORE_TARGET=core keeps
     the owner's FIELD_CORE_* values (the real core); unset keeps the pre-M4 behaviour. `up` passes the field demo
@@ -184,3 +193,138 @@
     verified and recorded by the stand-in with on-hand = erp-sim and the PO line received, delivered once each, core
     revocation refuses the next exchange; smoke --all and smoke --home PASS on the same stack. Partial until run
     against the real core (A-04).
+- id: M4-M01
+  title: >-
+    Field Assistant rules first (no model call for what rules classify), per-turn model deadline 3.5 s
+    (ASSISTANT_MODEL_DEADLINE_S, 1.5..6), every effect rules-only
+  workstream: M4-F3
+  role: Stream M
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/service.py
+  - services/field-api/src/field_api/assistant/model.py
+  - services/field-api/src/field_api/assistant/rules.py
+  - services/field-api/src/field_api/assistant/tools.py
+  - services/field-api/src/field_api/assistant/prompts.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_rules_first_turns_make_zero_model_calls_and_answer_at_once
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_needs_model_only_for_what_rules_cannot_answer
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_sandbox_dialog_is_rules_only_with_ai_on
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_model_deadline_is_a_setting_within_bounds
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_unclassified_turn_gives_the_model_only_the_deadline
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_slow_model_falls_back_within_the_deadline
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_sandbox_items_are_added_only_by_the_rules_dialog
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_model_failure_falls_back_to_rules
+  frs: []
+  verified_at: null
+  note: >-
+    Owner's field-api log of 31 Oct 2026 (every turn tried Muse first, AI_TIMEOUT after 6 s, once AI_TRANSPORT, then
+    rules; Start Work answered 6-7 s late). needs_model() sends to the model only an utterance the rules cannot classify
+    (outside a dialog) and "what is this" about a photo without a code; session start/end, pause, resume, step done,
+    scan, unknown code, every open dialog and every classified utterance are answered by rules with zero model calls
+    (test with the AI on and a model double that would answer, plus the budget ledger). Measured on the build machine
+    through TestClient + Postgres, 21 rules-first turns: median 53 ms, max 149 ms. A model that does not answer costs
+    at most the deadline (real local HTTP server, deadline 1.5 s: answered by rules after about 1.7 s). The model is no
+    longer offered add_sandbox_item (it could add after an explicit yes); adds happen only in the rules dialog, a model
+    that calls it gets "unknown tool". Model-turn tests that used rules-classified turns now use unclassified utterances
+    (docstrings say why; behaviour change asked for by the owner, not a weakening). Partial until proven on the
+    owner's phone and glasses and with the real Meta API (A-04).
+- id: M4-M02
+  title: >-
+    Sandbox voice intents "new home receipt" and "count shelf <bin>" / "count a shelf" create and open the task;
+    "nothing assigned" offers both on sandbox sites
+  workstream: M4-F3
+  role: Stream M
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/rules.py
+  - services/field-api/src/field_api/assistant/ports.py
+  - services/field-api/src/field_api/assistant/tools.py
+  - services/field-api/src/field_api/assistant/work.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_new_work_intents
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_bins_match_as_spoken
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_new_home_receipt_creates_and_opens_it
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_production_site_refuses_new_work_politely
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_count_a_shelf_asks_which_then_creates
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_count_shelf_through_the_real_sandbox_service
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_nothing_assigned_offers_new_work_on_sandbox_sites
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_new_work_failures_are_spoken
+  - tests/e2e/test_m3_sandbox_e2e.py::test_assistant_starts_new_home_work_through_the_real_sandbox_service
+  frs: []
+  verified_at: null
+  note: >-
+    Owner's field test of 31 Oct 2026 (after the home receipt and count the site had no open jobs and the app said
+    "nothing assigned" with no way to start new work). Two new seams in assistant/ports.py (create_receipt,
+    create_count, like section 7 of M3_CONTRACT) wired in get_ports to field_api.sandbox.service.create_receipt /
+    create_count; rules answer them (no model call) and return open_task for the new task. "count a shelf" asks
+    "Which shelf? Say HOME-A or HOME-B." (one shelf - no question) and takes the next utterance or a scanned shelf label;
+    spoken bins match after digit words and separators are dropped, or by a unique ending ("shelf b" -> HOME-B).
+    Production sites refuse politely and nothing is created. Greeting, what's next, most urgent, how many left and help
+    offer both on sandbox sites when nothing is open. e2e against in-process erp-sim (real delivery, real count).
+    Partial until proven on the owner's phone and glasses (A-04).
+- id: M4-M04
+  title: >-
+    Model defaults (muse-spark-1.3 priced and used by assistant, brief router and assistant-check); Muse Image
+    refused by client, router and budget guard; transcribe and SAM 3.1 not built (feature off, UNVERIFIED)
+  workstream: M4-F3
+  role: Stream M
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/ai/budget.py
+  - services/field-api/src/field_api/assistant/model.py
+  - config/ai_pricing.yaml
+  - docs/META_FIELD.md
+  tests:
+  - services/field-api/tests/assistant/test_assistant_model.py::test_image_models_can_never_be_configured_or_called
+  - services/field-api/tests/assistant/test_assistant_model.py::test_default_model_is_muse_spark_1_3_and_priced
+  - services/field-api/tests/assistant/test_assistant_model.py::test_defaults_are_the_contract_values
+  frs: []
+  verified_at: null
+  note: >-
+    Any model id containing "image" is refused (validate_model_id -> the router skips the provider; BudgetGuard.reserve
+    -> AI_MODEL_PROHIBITED even when priced). muse-spark-1.3 was already the default (A-04, M4-00); its price is still the
+    1.2 Standard figure pending the owner's console check (META_FIELD row 20). POST /v1/ai/transcribe and /v1/ai/segment
+    were not added - no price, and the provider's request shapes were not checked (no key or route from the build
+    sandbox, no call attempted); recorded as
+    META_FIELD rows 22-23 (UNVERIFIED, not built). Partial until a real call (A-04, rule 2.4).
+- id: M4-M03
+  title: >-
+    F3 brief router POST /v1/briefs/spoken {decision_id, template_text} -> {text, source, reasons}: Muse rewrite
+    (4 s deadline), local number check, then the core's check with the forwarded core token; template on any failure
+  workstream: M4-F3
+  role: Stream M
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/briefs/api.py
+  - services/field-api/src/field_api/briefs/service.py
+  - services/field-api/src/field_api/briefs/numbers.py
+  - services/field-api/src/field_api/briefs/core.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_rewrite_accepted_by_the_core_is_spoken
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_core_refusal_speaks_the_cores_template
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_local_number_check_runs_before_the_core
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_core_errors_speak_the_template
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_model_off_or_over_budget_speaks_the_template_without_calls
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_model_failures_speak_the_template
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_model_gets_the_four_second_deadline
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_missing_headers_speak_the_template_without_any_call
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_core_token_is_never_stored_or_logged
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_permission_validation_and_idempotency
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_a_rewrite_with_a_new_number_is_always_refused
+  frs: []
+  verified_at: null
+  note: >-
+    Permission field.assistant.use (operator, technician, supervisor; field_api/auth is stream C's, so no new
+    permission was added); route_auth passes; POST needs Idempotency-Key like every write. Headers X-Core-Token and
+    X-Device-Id; a missing one answers the template with missing:x_core_token / missing:x_device_id and makes no call.
+    One Muse call through the router and the budget guard (purpose brief, deadline 4 s); off, no key, over budget,
+    refused or image model, HTTP error, timeout, cut-off or empty answer, or more than 150 words -> template with
+    model:* / local:too_long. The local check reads numbers in digits and in words: every number said must be in the
+    template and none of the template's may be dropped (local:number_not_in_template:N, local:number_dropped:N); a
+    local refusal never calls the core. The core check gets Authorization Bearer <X-Core-Token> and X-Device-Id;
+    refused -> its reasons (core:*) and its template_text when given; HTTP error, timeout, transport, bad JSON ->
+    core:http_N / core:timeout / core:transport / core:bad_response. The token is never stored, logged or sent to the
+    model (test greps stdout/stderr, ops.ai_usage and field.idempotency_record). UNVERIFIED against the real core and
+    the real Muse prompt (META_FIELD rows 20, 21); partial until proven with the owner's glasses and the real core.

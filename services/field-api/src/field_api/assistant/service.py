@@ -1,9 +1,15 @@
-"""One assistant turn: session, model (or rules), tools, safe actions, the record.
+"""One assistant turn: session, rules (or the model), tools, safe actions, the record.
 
-Model path: system prompt + a compact context (site mode, the open job, the open work, the pending sandbox
-dialog) + the last turns + this event, with the five server tools. At most MAX_MODEL_CALLS calls and a 6 s
-deadline for the whole AI part; any refusal (AI off, no key, budget), error or timeout falls back to rules mode
-for this turn. A photo goes to the model as an image only for "what is this" and unknown items, to suggest a
+Rules first (M4, owner's field test of 31 Oct 2026: every turn went to Muse first, timed out after 6 s and fell
+back, so Start Work answered 6-7 s late). ``needs_model`` decides: every event other than an utterance or a photo
+(session start and end, pause, resume, step done, scan, unknown code), an utterance while a dialog is open, and
+every utterance the rules classify are answered by rules at once, with no model call. Only an utterance the rules
+cannot classify, and "what is this" about a photo without a code, go to the model.
+
+Model path: system prompt + a compact context (site mode, the open job, the open work) + the last turns + this
+event, with the four read-only server tools. At most MAX_MODEL_CALLS calls within ASSISTANT_MODEL_DEADLINE_S
+(default 3.5 s) for the whole AI part; any refusal (AI off, no key, budget), error or timeout falls back to rules
+mode for this turn. A photo goes to the model as an image only for "what is this" without a code, to suggest a
 name; the barcode stays the key.
 
 Whatever path answered: ``say`` is clipped to two sentences, actions pass ``actions.sanitize`` (no confirm, only
@@ -25,7 +31,7 @@ import structlog
 
 from field_api.assistant import actions as safe_actions
 from field_api.assistant import records, work
-from field_api.assistant.model import CALL_TIMEOUT_S, CallLog, ModelError, ModelRouter
+from field_api.assistant.model import CallLog, ModelError, ModelRouter, model_deadline_s
 from field_api.assistant.photos import AssistantPhotoStore, decode_photo
 from field_api.assistant.ports import AssistantPorts
 from field_api.assistant.prompts import SYSTEM_PROMPT, clip_say
@@ -39,7 +45,8 @@ logger = structlog.get_logger(__name__)
 
 MAX_MODEL_CALLS = 3
 HISTORY_TURNS = 6
-VISION_EVENTS = frozenset({"photo", "unknown_code"})
+# Events the rules always answer (M4 rules first). "utterance" and "photo" are decided by needs_model.
+RULES_EVENTS = frozenset({"session_start", "session_end", "pause", "resume", "step_done", "scan", "unknown_code"})
 
 ERR_SITE_NOT_FOUND = FieldError(status=404, code="FIELD-AST-404-SITE", title="Site not found")
 ERR_SESSION_NOT_FOUND = FieldError(status=404, code="FIELD-AST-404-SESSION", title="Assistant session not found")
@@ -88,8 +95,23 @@ def _card_of(v: Any) -> dict[str, str]:
     return {"title": "", "body": ""}
 
 
+def needs_model(t: TurnIn, dialog: dict[str, Any] | None, has_photo: bool) -> bool:
+    """True only for what the rules cannot answer: an unclassified utterance outside a dialog, or "what is this"
+    (event photo, or the utterance) about a photo without a code. Everything else is rules first."""
+    if t.event in RULES_EVENTS:
+        return False
+    if t.event == "photo":
+        return has_photo and not t.code
+    if dialog:
+        return False
+    name = intent(t.text)[0]
+    if name == "what_is":
+        return has_photo and not t.code
+    return name == "unknown"
+
+
 def _wants_vision(t: TurnIn) -> bool:
-    return bool(t.photo_jpeg_b64) and (t.event in VISION_EVENTS or intent(t.text)[0] == "what_is")
+    return bool(t.photo_jpeg_b64) and not t.code and (t.event == "photo" or intent(t.text)[0] == "what_is")
 
 
 def _context(tools: AssistantTools, t: TurnIn) -> dict[str, Any]:
@@ -99,10 +121,7 @@ def _context(tools: AssistantTools, t: TurnIn) -> dict[str, Any]:
         "client_state": {"task_id": t.task_id, "line_id": t.line_id, "step": t.step},
         "open_job": tools.current_task(),
         "open_work": tools.list_work()[:10],
-        "pending_unknown_item": ({k: ctx.dialog.get(k) for k in ("code", "task_id", "name")}
-                                 if ctx.dialog and ctx.dialog.get("kind") == "sandbox_item" else None),
-        "operator_said_yes_now": ctx.explicit_yes,
-        "can_add_items": tools.can_add and ctx.site_mode == "sandbox",
+        "can_create_home_work": tools.can_create and ctx.site_mode == "sandbox",
     }
 
 
@@ -131,7 +150,7 @@ def _messages(tools: AssistantTools, t: TurnIn, history: list[dict[str, Any]], p
 def run_model(router: ModelRouter, tools: AssistantTools, t: TurnIn, history: list[dict[str, Any]],
               photo: bytes | None, log: CallLog, errors: list[str], request_id: str | None) -> Reply:
     """The model's answer, or ModelError. Tool calls run server side; at most MAX_MODEL_CALLS calls."""
-    deadline = time.monotonic() + CALL_TIMEOUT_S
+    deadline = time.monotonic() + model_deadline_s()
     msgs = _messages(tools, t, history, photo)
     specs = tool_specs()
     for _ in range(MAX_MODEL_CALLS):
@@ -165,13 +184,6 @@ def ai_enabled() -> bool:
     return os.getenv("AI_CLOUD_ENABLED", "false").strip().lower() == "true"
 
 
-def _added_reply(added: dict[str, Any]) -> Reply:
-    """The model added an item and then failed: answer from what was done."""
-    return Reply(f"Added {added['description']}.", {"title": "Added", "body": str(added["material"])},
-                 [{"type": "refresh_task", "task_id": added["task_id"], "focus_code": added["code"]}],
-                 task_id=added["task_id"])
-
-
 def run_turn(principal: Principal, t: TurnIn, *, idempotency_key: str, ports: AssistantPorts,
              router: ModelRouter, request_id: str | None = None,
              photo_store: AssistantPhotoStore | None = None) -> dict[str, Any]:
@@ -196,8 +208,6 @@ def run_turn(principal: Principal, t: TurnIn, *, idempotency_key: str, ports: As
 
     photo_ref = (photo_store or AssistantPhotoStore()).put(principal.tenant_id, photo) if photo is not None else None
     dialog = session.get("dialog") if isinstance(session.get("dialog"), dict) else None
-    if t.event == "unknown_code" and t.code:  # the model path needs the pending code for the explicit-yes gate
-        dialog = {"kind": "sandbox_item", "code": t.code.strip(), "task_id": t.task_id, "step": "model"}
     explicit_yes = t.event == "utterance" and is_yes(t.text) and bool(dialog)
     ctx = TurnContext(principal=principal, site_id=t.site_id, session_id=session["id"], site_mode=mode,
                       ports=ports, idempotency_key=idempotency_key, task_id=t.task_id, dialog=dialog,
@@ -208,29 +218,25 @@ def run_turn(principal: Principal, t: TurnIn, *, idempotency_key: str, ports: As
     log = CallLog()
     errors: list[str] = []
     ai = "rules"
-    reply: Reply
-    model_dialog_step = t.event == "unknown_code"
-    try:
-        if not ai_enabled():
-            raise ModelError("AI_CLOUD_DISABLED")
-        reply = run_model(router, tools, t, history, photo if _wants_vision(t) else None, log, errors, request_id)
-        ai = "model"
-        if tools.added is not None:
-            reply.dialog = None
-        elif model_dialog_step or (dialog and t.event == "utterance" and intent(t.text)[0] != "cancel"):
-            reply.dialog = dialog  # the model keeps the dialog open until it adds or the operator cancels
-        reply.task_id = t.task_id
-    except ModelError as e:
-        if e.code not in ("AI_UNAVAILABLE",):
-            errors.append(e.code)
-        logger.info("assistant_rules_fallback", reasons=errors)
-        if tools.added is not None:
-            reply = _added_reply(tools.added)
-        else:
-            if model_dialog_step:
-                tools.ctx.dialog = session.get("dialog") if isinstance(session.get("dialog"), dict) else None
-            last_said = next((h["said"] for h in reversed(history) if h.get("said")), None)
-            reply = RulesEngine(tools, last_said).answer(t.event, t.text, t.code, photo is not None)
+    path = "rules"
+    reply: Reply | None = None
+    if needs_model(t, dialog, photo is not None):
+        path = "model"
+        try:
+            if not ai_enabled():
+                raise ModelError("AI_CLOUD_DISABLED")
+            reply = run_model(router, tools, t, history, photo if _wants_vision(t) else None, log, errors,
+                              request_id)
+            ai = "model"
+            reply.task_id = t.task_id
+        except ModelError as e:
+            if e.code not in ("AI_UNAVAILABLE",):
+                errors.append(e.code)
+            logger.info("assistant_rules_fallback", reasons=errors)
+            path = "fallback"
+    if reply is None:
+        last_said = next((h["said"] for h in reversed(history) if h.get("said")), None)
+        reply = RulesEngine(tools, last_said).answer(t.event, t.text, t.code, photo is not None)
 
     proposed = list(reply.actions)
     visible = work.visible_task_ids(principal, t.site_id, safe_actions.task_ids(proposed))
@@ -246,6 +252,7 @@ def run_turn(principal: Principal, t: TurnIn, *, idempotency_key: str, ports: As
         tool_calls.append({"name": "model_calls", "calls": log.calls})
     cost: Decimal = log.cost_usd
     latency = int((time.perf_counter() - t0) * 1000)
+    logger.info("assistant_turn", turn_event=t.event, path=path, ai=ai, latency_ms=latency, model_calls=len(log.calls))
     records.record_turn(principal, session, event=t.event, heard=t.text, said=say, actions=acts,
                         tool_calls=tool_calls, code=t.code, photo_ref=photo_ref, ai=ai, cost_usd=cost,
                         latency_ms=latency, task_id=task_id, dialog=reply.dialog,
