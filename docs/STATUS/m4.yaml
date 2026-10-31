@@ -545,3 +545,26 @@
     start with "Field" (also heard as "feild" / "fields"), with the word removed; everything else is logged as ignored. Words said
     while holding the phone's talk button are not filtered (the press is the attention). The Me screen explains that "Hey Meta" is
     handed to Meta AI by the glasses before any app hears it. How the recogniser writes "Field" on the owner's phone is unknown.
+- id: M4-C07
+  title: >-
+    smoke --approver: the M4 done check against the stand-in core (approver sign-in, exchange, spoken brief, voice
+    approve, read-back, phone step-up, confirm)
+  workstream: M4-C
+  role: Integrator
+  status: partial
+  evidence:
+  - tools/dev_stack/stack.py
+  tests:
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_brief_check
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_wearable_guard
+  frs: []
+  verified_at: null
+  note: >-
+    Against the stand-in core; the real core is not deployed. Run on a fresh stack on 31 Oct (twice, PASS):
+    approver@demo signs in at the stand-in (RAYBAN_META_GEN2), the exchange returns the field device and
+    core_permissions, POST /v1/briefs/spoken answers (template here: no Muse key in the build sandbox, reason
+    model:meta:AI_CLOUD_DISABLED), "approve option two" is read back with the band's step-up flag, a replayed
+    command returns the same reply, a used challenge answers 409, "confirm" before the phone step-up is held, a
+    wrong code is refused, the step-up is accepted and "confirm" commits; the second decision (no step-up)
+    commits directly; nothing is left waiting. Done needs the same run against the real core and on the
+    owner's phone and glasses.

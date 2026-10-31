@@ -15,6 +15,7 @@
     uv run python -m tools.dev_stack.stack labels       # printable QR labels for every open job
     uv run python -m tools.dev_stack.stack assistant-check  # one real Field Assistant model call (track A's hook)
     uv run python -m tools.dev_stack.stack smoke --core  # stand-in core: app sign-in, exchange, device status, GR -> feeds
+    uv run python -m tools.dev_stack.stack smoke --approver  # stand-in core: sign-in, spoken brief, voice approve, step-up
     uv run python -m tools.dev_stack.stack seed-core-export <dir>  # the core's erp-sim export (CSV + JSON) into erp-sim
 
 Services (logs in var/log, pids in var/run):
@@ -1754,6 +1755,89 @@ def smoke_core(api: str, state: dict[str, Any], wait: float) -> None:
     print("         core revocation: the next exchange is refused (403)")
 
 
+def smoke_approver(api: str, state: dict[str, Any], wait: float) -> None:
+    """M4 F2 + F1 + F3 against the stand-in core, the way the approver app drives it: core sign-in, exchange at
+    field-api, next decision, spoken brief from field-api (model or template, checked by the core), voice challenge,
+    "approve option two" -> read-back -> "confirm" refused until the phone step-up -> step-up -> "confirm" committed;
+    the second decision (no step-up) committed directly; a used challenge and a replayed command behave."""
+    core = os.environ["FIELD_CORE_BASE_URL"].rstrip("/")
+    _accepted(httpx.post(f"{core}/_standin/decisions/reset", timeout=10), "reset the stand-in decisions")
+    device = f"smoke-approver-{uuid.uuid4().hex[:10]}"
+    password = os.environ.get("FAKE_CORE_DEMO_PASSWORD") or DEMO_PASSWORD_DEFAULT
+    signed = _accepted(httpx.post(f"{core}/v1/auth/app/token", headers={"X-Requested-With": "lr"}, timeout=10, json={
+        "email": DEMO_USERS[0][0], "password": password, "device_id": device, "device_model": "RAYBAN_META_GEN2",
+        "display_capable": False, "client": "scmtips-field"}), "approver sign-in at the stand-in")
+    _expect(signed["capabilities"]["approve_decisions"] is True, f"approver capabilities {signed['capabilities']}")
+    wtoken, wdevice = str(signed["wearable"]["token"]), str(signed["wearable"]["device_id"])
+    ex = _accepted(httpx.post(f"{api}/v1/auth/exchange", json={"device_token": signed["access_token"]}, timeout=10),
+                   "exchange of the approver's core token")
+    _expect("voice.approve" in ex.get("core_permissions", []), f"core_permissions {ex.get('core_permissions')}")
+    field_token = str(ex["access_token"])
+    print(f"approver signed in {DEMO_USERS[0][0]} at the stand-in; field device {ex['device_id']},"
+          f" core permissions {ex['core_permissions']}")
+
+    core_h = {"Authorization": f"Bearer {wtoken}", "X-Device-Id": wdevice}
+
+    def next_item() -> dict[str, Any] | None:
+        item = _accepted(httpx.get(f"{core}/v1/wearable/next", headers=core_h, timeout=10), "next decision")["item"]
+        return item if isinstance(item, dict) else None
+
+    def say(nonce: str, words: str, idem: str | None = None) -> dict[str, Any]:
+        h = {**core_h, "Idempotency-Key": idem or str(uuid.uuid4())}
+        return _accepted(httpx.post(f"{core}/v1/voice/commands", headers=h, timeout=10,
+                                    json={"nonce": nonce, "transcript": words}), f"voice command {words!r}")
+
+    done: list[str] = []
+    for spoken_choice, letter in (("approve option two", "B"), ("approve option one", "A")):
+        item = next_item()
+        _expect(item is not None, f"no decision waiting after {len(done)} approved")
+        assert item is not None
+        did, step_up = str(item["decision_id"]), bool(item["band"]["step_up"])
+        brief = _accepted(httpx.post(f"{api}/v1/briefs/spoken", timeout=30, json={
+            "decision_id": did, "template_text": item["spoken"]}, headers={
+            "Authorization": f"Bearer {field_token}", "Idempotency-Key": str(uuid.uuid4()),
+            "X-Core-Token": wtoken, "X-Device-Id": wdevice}), "spoken brief from field-api")
+        _expect(brief["source"] in ("model", "template") and brief["text"].strip(), f"brief {brief}")
+        if brief["source"] == "template":
+            _expect(brief["text"] == item["spoken"], "template brief differs from the core's template")
+        print(f"decision {did}: {item['waiting']} waiting, step-up {step_up}; brief from {brief['source']}"
+              + (f" ({', '.join(brief['reasons'])})" if brief["reasons"] else " (accepted by the core check)"))
+
+        ch = _accepted(httpx.post(f"{core}/v1/voice/challenges", headers=core_h, timeout=10,
+                                  json={"decision_id": did}), "voice challenge", 201)
+        idem = str(uuid.uuid4())
+        rb = say(ch["nonce"], spoken_choice, idem)
+        _expect(rb["outcome"] == "readback" and rb["pending"]["option"] == letter, f"read-back {rb}")
+        _expect(bool(rb["step_up_required"]) == step_up, f"step-up flag {rb['step_up_required']} != band {step_up}")
+        _expect(say(ch["nonce"], spoken_choice, idem) == rb, "replayed command did not return the same reply")
+        reuse = httpx.post(f"{core}/v1/voice/commands", timeout=10, headers={**core_h, "Idempotency-Key": "fresh"},
+                           json={"nonce": ch["nonce"], "transcript": "confirm"})
+        _expect(reuse.status_code == 409, f"a used challenge answered HTTP {reuse.status_code}")
+        nonce = str(rb["next"]["nonce"])
+        if step_up:
+            held = say(nonce, "confirm")
+            _expect(held["outcome"] == "readback" and held["decision"]["status"] == "open",
+                    f"confirm before the step-up committed: {held}")
+            code = os.environ.get("FAKE_CORE_STEP_UP_CODE") or STEP_UP_CODE_DEFAULT
+            bad = httpx.post(f"{core}/v1/auth/step-up", headers=core_h, timeout=10,
+                             json={"method": "totp", "code": "000000" if code != "000000" else "111111"})
+            _expect(bad.status_code == 401, f"a wrong step-up code answered HTTP {bad.status_code}")
+            su = _accepted(httpx.post(f"{core}/v1/auth/step-up", headers=core_h, timeout=10,
+                                      json={"method": "totp", "code": code}), "phone step-up")
+            _expect(su["fresh"] is True, f"step-up {su}")
+            nonce = str(held["next"]["nonce"])
+            print("         confirm before the phone step-up was held; wrong code refused; step-up accepted")
+        out = say(nonce, "confirm")
+        _expect(out["outcome"] == "executed" and out["decision"]["status"] == "approved" and out["approval_id"],
+                f"confirm: {out}")
+        print(f"         {spoken_choice!r} -> read-back -> confirm: {out['say']} (approval {out['approval_id']})")
+        done.append(did)
+    _expect(next_item() is None, "a decision is still waiting after both were approved")
+    late = httpx.post(f"{core}/v1/voice/challenges", headers=core_h, timeout=10, json={"decision_id": done[0]})
+    _expect(late.status_code == 409, f"a challenge on a decided decision answered HTTP {late.status_code}")
+    print("         nothing waiting; a decided decision refuses a new challenge (409)")
+
+
 def cmd_smoke(a: argparse.Namespace) -> int:
     """Receive one inbound delivery by voice as the app does; with --all, every job type end to end;
     with --home, the sandbox site (M3)."""
@@ -1761,6 +1845,19 @@ def cmd_smoke(a: argparse.Namespace) -> int:
     apply_ports()
     state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
     api = a.api or local("field-api")
+    if getattr(a, "approver", False):
+        if core_target() != "standin":
+            print("FAIL: smoke --approver runs against the stand-in core: set FIELD_CORE_TARGET=standin and run"
+                  " `stack up`")
+            return 1
+        try:
+            smoke_approver(api, state, a.wait)
+        except SmokeFailure as e:
+            print(f"FAIL: {e}")
+            return 1
+        print("PASS: approver flow against the stand-in core (sign-in, exchange, spoken brief, voice approve,"
+              " read-back, phone step-up, confirm, both decisions committed)")
+        return 0
     if getattr(a, "core", False):
         if core_target() != "standin":
             print("FAIL: smoke --core runs against the stand-in core: set FIELD_CORE_TARGET=standin and run `stack up`")
@@ -2037,6 +2134,8 @@ def main(argv: list[str] | None = None) -> int:
     sm.add_argument("--home", action="store_true", help="the home sandbox site: new barcode -> GR 101, count -> 561")
     sm.add_argument("--core", action="store_true",
                     help="the stand-in core: app sign-in, exchange, device status, GR 101 -> two signed feed rows")
+    sm.add_argument("--approver", action="store_true",
+                    help="the stand-in core: approver sign-in, spoken brief, voice approve, step-up, confirm")
     sc = sub.add_parser("seed-core-export", help="load the core's erp-sim export folder (CSV + JSON) into erp-sim")
     sc.add_argument("dir", help=r"the export folder, e.g. <workspace>\ARO\samples\exports\erp-sim")
     hm = sub.add_parser("home", help="sandbox site 'Home (sandbox)': bins HOME-A/B, an empty receipt, a HOME-A count")
