@@ -57,6 +57,7 @@
   - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_unbound_dev_token_is_not_asked_at_the_core_path
   - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_jwks_reread_on_new_key_same_kid_and_on_unknown_kid
   - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_core_settings
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_exchanged_approver_may_use_the_spoken_brief
   - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_t1_038_device_exchange_requires_active_device_row
   frs: []
   verified_at: null
@@ -68,7 +69,8 @@
     permissions echoed as core_permissions, e-mail never stored). The core's device id (app install id) is not a
     field.device id; the field device for it is the field.device whose id or serial_no equals it, registered by the
     exchange when the core device status answers active (the app then uses the device_id the exchange returns and
-    does not POST /v1/devices for it). Roles must still be field roles (unknown roles stay refused). Partial until
+    does not POST /v1/devices for it). Roles must still be field roles (unknown roles stay refused); the stand-in
+    approver carries field.supervisor, which holds field.assistant.use (stream M's POST /v1/briefs/spoken). Partial until
     proven against the real core and on the owner's phone (A-04).
 - id: M4-C03
   title: ErpReadPort (posted material document with PO reference, ERP on-hand) in the connector; erp-sim PO references
@@ -97,3 +99,41 @@
     PurchaseOrderItem; on-hand is A_MatlStkInAcctMod (unrestricted, InventoryStockType 01; erp-sim has one quantity per
     material, plant and storage location). The S/4 adapter raises NotImplementedError for both reads (UNVERIFIED, no
     S/4 system), like its postings.
+- id: M4-C04
+  title: 'F4: GR 101 -> the core''s inventory and open-supply feeds, signed, idempotent on the event id, retried, dead-lettered'
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - services/field-api/alembic/versions/field_0062_m4_core.py
+  - services/field-worker/src/field_worker/core_feeds/publisher.py
+  - services/field-worker/src/field_worker/core_feeds/rows.py
+  - services/field-worker/src/field_worker/core_feeds/signing.py
+  - services/field-worker/src/field_worker/core_feeds/config.py
+  - services/field-worker/src/field_worker/core_feeds/codes.py
+  - services/field-worker/src/field_worker/worker.py
+  tests:
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_gr_101_delivers_two_signed_rows_read_from_the_erp
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_nothing_without_both_urls
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_retry_with_backoff_then_dead_letter_and_permanent_refusal
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_a_retry_waits_for_its_backoff
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_sandbox_receipts_are_skipped_unless_switched_on
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_core_codes_from_the_mapping_file
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_rows_aggregate_and_storage_location_mapping
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_worker_builds_the_publisher_only_with_both_urls
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_property_signature_verifies_and_detects_tampering
+  frs: []
+  verified_at: null
+  note: Against the stand-in core; the real core is not deployed. Source event is the existing outbox event erp.posted
+    with data.doc_type GoodsReceipt (movement 101), emitted by the posting worker. Staging reads the posted document
+    and the on-hand after it from erp-sim through ErpReadPort and stores the exact JSON body per feed in
+    field.core_feed_delivery (migration field_0062, forced RLS, UNIQUE tenant+event+feed). Delivery signs with
+    X-SCMTIPS-Timestamp / X-SCMTIPS-Signature (HMAC-SHA256 of timestamp + "." + body), Idempotency-Key
+    <event_id>:<feed>; 400/413/415/422 dead at once, other failures retried with exponential backoff (+-20 % jitter)
+    up to FIELD_CORE_FEED_MAX_ATTEMPTS (8), then dead. Nothing is staged or sent unless both feed URLs are set; a URL
+    without its secret is refused. Assumptions (handover gives one example row each): as_of = due_date = posting
+    date, qty = quantity received on that PO line, PO ref <PO>-<item without leading zeros>, several items aggregated
+    per row key, a receipt without a PO reference sends the stock row only, sandbox receipts skipped unless
+    FIELD_CORE_FEED_SANDBOX, history older than FIELD_CORE_FEED_LOOKBACK_H (24 h) not replayed. Codes as erp-sim has
+    them (upper-cased) or mapped by FIELD_CORE_CODE_MAP (JSON: materials, locations by plant or plant/sloc). Reversals
+    (102) are not sent. Partial until delivered to the real core's feeds (A-04).
