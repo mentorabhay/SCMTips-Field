@@ -1,0 +1,78 @@
+K1, 31 Oct 2026: SCMTips-Field smokes against the REAL SCMTIPS core (raw output; no secrets, no tokens printed).
+Machine: Linux cloud container. Core: the private SCMTIPS core repository the core's integration branch, API 127.0.0.1:8000 + worker :8001, LR_ENV=local,
+Postgres 16 on 127.0.0.1:5434, demo organisation from scmtips-local-demo --with-team, two webhook feeds (inventory,
+open_supply, upsert). Field: slice/m4-core-integration, field-api :8020, erp-sim :8002, Postgres :5450, FIELD_CORE_TARGET=core.
+Command: uv run python -m tools.dev_stack.stack smoke --core|--approver --wait 120
+
+=== 1. smoke --core, core at 9adbb04 (before the brief-check fix; the fix does not touch feeds), FIELD_CORE_SMOKE_PO=4500261005 -> PO-26-1005
+core     signed in procurement@scmtips.local at the core http://127.0.0.1:8000: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77, kid ok, roles ['procurement']
+         exchanged at field-api: field.operator, field device 01a19305-709c-705a-8079-917bd2a596dd; core device smoke-core-32deefe7e5 active
+         core before: PO-26-1005 CP-207@PLANT-GOA qty 600.0000 status open; on-hand 560.0
+         core before: base plan run d454d399-7e0e-450c-99fe-87c5b2ac170d: CP-207 on_hand 560.0, scheduled [0, 0, 600], pab [244, 0, 324], first short bucket none
+         core before: starvation clock PLANT-GOA soonest stockout 81 d; CP-207 102 d to stockout on 2027-02-10, recovery lands before (exposure run 15004af7)
+         erp-sim opening stock of SAMPLE-MAT-0004 at 1020 set to the core's on-hand 560 (dev seed, once)
+         GR 4900000025/2026 in erp-sim: SAMPLE-MAT-0004 600 at 1020 against PO 4500261005 line 10 (the core's PO-26-1005); erp-sim on-hand now 1160
+         field-worker: both signed rows delivered to the core, once each [('inventory', 'delivered', 1), ('open_supply', 'delivered', 1)]
+         core after: PO-26-1005 status received qty 600.0000 (was open 600.0000); CP-207@PLANT-GOA on-hand 1160 (was 560.0)
+         core pipeline inventory: last run ok from Field ERP stock (goods receipts) 2026-10-31 1733.json rows 1
+         core pipeline open_supply: last run ok from Field ERP open supply (goods receipts) 2026-10-31 1733.json rows 1
+         re-plan: base plan run d454d399-7e0e-450c-99fe-87c5b2ac170d -> cbe553a8-dbeb-459b-a25a-91fce4647af5; CP-207 now on_hand 1160.0, scheduled [0, 0, 0], pab [844, 480, 324], first short bucket none
+         starvation clock after: PLANT-GOA soonest stockout 81 d; CP-207 102 d to stockout on 2027-02-10, recovery lands before (exposure run e2e43339) (observation only)
+         core revocation (DELETE /v1/wearable/sessions/{id}): device revoked at the core, next exchange 403
+PASS: core link against the real SCMTIPS core (sign-in, exchange, device status, GR 101 -> two signed feed rows accepted, PO line received and on-hand updated at the core, revocation)
+
+=== 2. smoke --approver, core at 6ea7c29 (brief-check fix), on the decision whose template 9adbb04 refused (net = committed)
+approver signed in approver1@scmtips.local at the core http://127.0.0.1:8000; field.supervisor, field device 01a19317-a4fd-71e4-8f5c-0efaec450c03
+decision d1e3422c-d01b-43ad-ac70-4900a079ea8d: 1 waiting, band 'committed 0 to 100000' step-up True; brief from template (model:meta:AI_CLOUD_DISABLED)
+         Field's core check client at the real core: template accepted; a changed number refused (core:These figures are not in any tool result: "987654".)
+         'approve option two' -> read-back: Approve option B, Malacca 30 d: air expedite (sample), cost 3,600.00 US dollars, committed spend 3,600.00 US d; replay same reply, reused challenge 409
+         the band asks for a step-up, and the core waives it (strict sign-in off: LR_ENV=local); the approval records the waiver
+         confirm -> Approved option B. The plan is committed. (approval 3366e1cd-c460-447f-b4fc-05bfd589a68e); the core's decision is EXECUTING
+         a decided decision refuses a new challenge (409)
+PASS: approver flow against the real SCMTIPS core (sign-in, exchange, next decision, spoken brief, core brief check, voice approve, read-back, step-up or its waiver, confirm, approved at the core)
+
+=== 3. smoke --core, core at 6ea7c29, FIELD_CORE_SMOKE_PO=4500261002 -> PO-26-1002
+core     signed in procurement@scmtips.local at the core http://127.0.0.1:8000: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77, kid ok, roles ['procurement']
+         exchanged at field-api: field.operator, field device 01a1931a-c0f4-740e-8969-20b666cd9c05; core device smoke-core-20f57418e7 active
+         core before: PO-26-1002 CP-204@PLANT-GOA qty 1600.0000 status open; on-hand 1680.0
+         core before: base plan run cbe553a8-dbeb-459b-a25a-91fce4647af5: CP-204 on_hand 1680.0, scheduled [0, 1600, 0], pab [1280, 2080, 1280], first short bucket none
+         core before: starvation clock PLANT-GOA soonest stockout 81 d; CP-204 128 d to stockout on 2027-03-08, recovery lands before (exposure run e2e43339)
+         erp-sim opening stock of SAMPLE-MAT-0002 at 1020 set to the core's on-hand 1680 (dev seed, once)
+         GR 4900000040/2026 in erp-sim: SAMPLE-MAT-0002 1600 at 1020 against PO 4500261002 line 10 (the core's PO-26-1002); erp-sim on-hand now 3280
+         field-worker: both signed rows delivered to the core, once each [('inventory', 'delivered', 1), ('open_supply', 'delivered', 1)]
+         core after: PO-26-1002 status received qty 1600.0000 (was open 1600.0000); CP-204@PLANT-GOA on-hand 3280 (was 1680.0)
+         core pipeline inventory: last run ok from Field ERP stock (goods receipts) 2026-10-31 1756.json rows 1
+         core pipeline open_supply: last run ok from Field ERP open supply (goods receipts) 2026-10-31 1756.json rows 1
+         re-plan: base plan run cbe553a8-dbeb-459b-a25a-91fce4647af5 -> e60fe81b-8215-4d79-a1c7-dafe4a143313; CP-204 now on_hand 3280.0, scheduled [0, 0, 0], pab [2880, 2080, 1280], first short bucket none
+         starvation clock after: PLANT-GOA soonest stockout 81 d; CP-204 128 d to stockout on 2027-03-08, recovery lands before (exposure run f172d60c) (observation only)
+         core revocation (DELETE /v1/wearable/sessions/{id}): device revoked at the core, next exchange 403
+PASS: core link against the real SCMTIPS core (sign-in, exchange, device status, GR 101 -> two signed feed rows accepted, PO line received and on-hand updated at the core, revocation)
+
+=== 4. smoke --approver, core at 6ea7c29 (nothing waiting: the planner prepares a decision)
+approver signed in approver1@scmtips.local at the core http://127.0.0.1:8000; field.supervisor, field device 01a1931b-57ca-779e-87f1-0f3cfb15dcf0
+         nothing was waiting: the planner opened decision 194cdcd4-a0f8-4a55-9830-00da50785656 on the sample scenarios and submitted it
+decision 194cdcd4-a0f8-4a55-9830-00da50785656: 1 waiting, band 'committed 0 to 100000' step-up True; brief from template (model:meta:AI_CLOUD_DISABLED)
+         Field's core check client at the real core: template accepted; a changed number refused (core:These figures are not in any tool result: "987654".)
+         'approve option two' -> read-back: Approve option B, Malacca 30 d: air expedite (sample), cost 3,600.00 US dollars, committed spend 3,600.00 US d; replay same reply, reused challenge 409
+         the band asks for a step-up, and the core waives it (strict sign-in off: LR_ENV=local); the approval records the waiver
+         confirm -> Approved option B. The plan is committed. (approval 314d5a53-26a9-4ded-be86-c6054910a4d0); the core's decision is EXECUTING
+         a decided decision refuses a new challenge (409)
+PASS: approver flow against the real SCMTIPS core (sign-in, exchange, next decision, spoken brief, core brief check, voice approve, read-back, step-up or its waiver, confirm, approved at the core)
+
+=== 5. smoke --core again within 10 minutes on PO-26-1002 (the identical PO row: the core's 409 duplicate)
+core     signed in procurement@scmtips.local at the core http://127.0.0.1:8000: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77, kid ok, roles ['procurement']
+         exchanged at field-api: field.operator, field device 01a1931b-8a29-7fc8-8831-72dae0144a7a; core device smoke-core-0446196895 active
+         core before: PO-26-1002 CP-204@PLANT-GOA qty 1600.0000 status received; on-hand 3280.0
+         core before: base plan run e60fe81b-8215-4d79-a1c7-dafe4a143313: CP-204 on_hand 3280.0, scheduled [0, 0, 0], pab [2880, 2080, 1280], first short bucket none
+         core before: starvation clock PLANT-GOA soonest stockout 81 d; CP-204 128 d to stockout on 2027-03-08, recovery lands before (exposure run f172d60c)
+         note: PO-26-1002 was received by an earlier run; this run receives it again (the row is an upsert), so the check below is the line's update time and the new on-hand
+         GR 4900000041/2026 in erp-sim: SAMPLE-MAT-0002 1600 at 1020 against PO 4500261002 line 10 (the core's PO-26-1002); erp-sim on-hand now 4880
+         field-worker: both signed rows delivered to the core, once each [('inventory', 'delivered', 1), ('open_supply', 'delivered', 1)]
+         the core answered 409 duplicate to the identical PO row (an earlier run sent it within 10 min); Field counted it delivered, as agreed. HTTP answers {'open_supply': 409, 'inventory': 202}
+         core after: PO-26-1002 status received qty 1600.0000 (was received 1600.0000); CP-204@PLANT-GOA on-hand 4880 (was 3280.0)
+         core pipeline inventory: last run ok from Field ERP stock (goods receipts) 2026-10-31 1757.json rows 1
+         core pipeline open_supply: last run ok from Field ERP open supply (goods receipts) 2026-10-31 1756.json rows 1
+         re-plan: base plan run e60fe81b-8215-4d79-a1c7-dafe4a143313 -> 4029d9a7-6f50-453b-bc51-1fac7806855f; CP-204 now on_hand 4880.0, scheduled [0, 0, 0], pab [4480, 3680, 2880], first short bucket none
+         starvation clock after: PLANT-GOA soonest stockout 81 d; no clock for CP-204 (exposure run 6a6f8e00) (observation only)
+         core revocation (DELETE /v1/wearable/sessions/{id}): device revoked at the core, next exchange 403
+PASS: core link against the real SCMTIPS core (sign-in, exchange, device status, GR 101 -> two signed feed rows accepted, PO line received and on-hand updated at the core, revocation)

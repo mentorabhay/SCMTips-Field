@@ -58,6 +58,7 @@
   - services/field-api/src/field_api/routes/auth.py
   - services/field-api/src/field_api/config.py
   - packages/field-contract/openapi.json
+  - docs/evidence/runs/2026-10-31-k1-real-core-smokes.txt
   tests:
   - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_core_app_token_exchanges_and_registers_the_core_device
   - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_core_revocation_and_field_revocation_both_refuse
@@ -85,6 +86,15 @@
     403 FIELD-AUTH-403-NO-FIELD-ROLE; the stand-in approver carries the core key approver, mapped to field.supervisor,
     which holds field.assistant.use (stream M's POST /v1/briefs/spoken). Partial until proven against the real core and
     on the owner's phone (A-04).
+    K1 (31 Oct 2026) against the REAL core (the core's integration branch 9adbb04 + 6ea7c29, local on Linux, LR_ENV=local; not yet
+    the owner's kit): app tokens from POST /v1/auth/app/token (EdDSA, kid scmtips-core-ed25519-<hash> in /v1/core/jwks.json,
+    iss/aud scmtips-core, tenant_id UUID, sites ['*'], plus an extra device_binding claim Field ignores) exchanged at
+    field-api for all four demo members: approver -> field.supervisor, procurement -> field.operator, org_admin ->
+    field.admin, planner -> field.viewer; the core device status template answered active; after a core restart (a new
+    local signing key) the next exchange re-read the JWKS and passed; DELETE /v1/wearable/sessions/{id} at the core ->
+    device status revoked -> the next exchange 403 (stack smoke --core / --approver with FIELD_CORE_TARGET=core, M4-C13,
+    logs docs/evidence/runs/2026-10-31-k1-real-core-smokes.txt). Still partial: not run on the owner's PC kit, phone or
+    glasses.
 - id: M4-C03
   title: >-
     ErpReadPort (posted material document with PO reference, ERP on-hand) in the connector; erp-sim PO references
@@ -127,6 +137,7 @@
   - services/field-worker/src/field_worker/core_feeds/config.py
   - services/field-worker/src/field_worker/core_feeds/codes.py
   - services/field-worker/src/field_worker/worker.py
+  - docs/evidence/runs/2026-10-31-k1-real-core-smokes.txt
   tests:
   - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_gr_101_delivers_two_signed_rows_read_from_the_erp
   - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_nothing_without_both_urls
@@ -155,6 +166,16 @@
     FIELD_CORE_FEED_SANDBOX, history older than FIELD_CORE_FEED_LOOKBACK_H (24 h) not replayed. Codes as erp-sim has
     them (upper-cased) or mapped by FIELD_CORE_CODE_MAP (JSON: materials, locations by plant or plant/sloc). Reversals
     (102) are not sent. Partial until delivered to the real core's feeds (A-04).
+    K1 (31 Oct 2026) against the REAL core's two webhook feeds (inventory and open_supply, upsert, made by the core's
+    Data and integration owner; secrets only in .env.local): GR 101 in erp-sim against an erp-sim PO mapped to the
+    core's PO-26-1005 (CP-207 at PLANT-GOA, 600 open) -> both signed rows answered 202, committed by the core's import
+    pipeline (pipeline runs ok, rows 1), the core's line PO-26-1005 open -> received qty 600, CP-207 on-hand 560 -> 1160
+    (= erp-sim); an identical PO row sent again within 10 minutes was answered 409 duplicate and counted delivered
+    (observed with PO-26-1001, and with PO-26-1002 in the log). Observed on the core (recorded for the core, not changed by Field): the inventory row is
+    keyed (item, location, as_of), so a receipt adds a row of today next to the older count and the latest as_of is the
+    on-hand; the received PO row replaces the whole line, so its supplier_code and lane_code become empty and its
+    due_date the posting date (the core's own receipt_feed_rows sends supplier_code when it has one; erp-sim's ASN
+    carries no vendor). Still partial: the owner's kit and phone.
 - id: M4-C05
   title: >-
     stack seed-core-export <dir>, a tolerant loader of the core's erp-sim export (CSV + JSON) into erp-sim
@@ -205,6 +226,10 @@
     verified and recorded by the stand-in with on-hand = erp-sim and the PO line received, delivered once each, core
     revocation refuses the next exchange; smoke --all and smoke --home PASS on the same stack. Partial until run
     against the real core (A-04).
+    K1 (31 Oct 2026): with FIELD_CORE_TARGET=core, smoke --core and smoke --approver now run against the real core with
+    its own API only (tools/dev_stack/core_smoke.py, M4-C13); with standin they stay the stand-in smokes. All four
+    stand-in smokes (--all, --home, --core, --approver) PASS after the change (field-api 8020, erp-sim 8002, stand-in
+    8011, DB 5450).
 - id: M4-M01
   title: >-
     Field Assistant rules first (no model call for what rules classify), per-turn model deadline 3.5 s
@@ -340,6 +365,11 @@
     core:http_N / core:timeout / core:transport / core:bad_response. The token is never stored, logged or sent to the
     model (test greps stdout/stderr, ops.ai_usage and field.idempotency_record). UNVERIFIED against the real core and
     the real Muse prompt (META_FIELD rows 20, 21); partial until proven with the owner's glasses and the real core.
+    K1 (31 Oct 2026) against the REAL core: POST /v1/briefs/spoken answered the core's template with reasons
+    [model:meta:AI_CLOUD_DISABLED] (no model key in this container), so the rewrite never reached the core check; the
+    check client itself was called against the real core by the smoke (template accepted, a changed figure refused;
+    META_FIELD row 21 VERIFIED for a local core). The core check refused its own template when net cost = committed
+    spend; fixed on the core (6ea7c29), after which the smoke passed on that decision.
 - id: M4-B01
   title: feature-decisions core client — wearable /v1 calls, app sign-in wire, spoken brief from field-api (F1, F2)
   workstream: M4-F1
@@ -580,6 +610,13 @@
     wrong code is refused, the step-up is accepted and "confirm" commits; the second decision (no step-up)
     commits directly; nothing is left waiting. Done needs the same run against the real core and on the
     owner's phone and glasses.
+    K1 (31 Oct 2026): the same flow PASSES against the REAL core (smoke --approver, FIELD_CORE_TARGET=core, M4-C13):
+    approver1 signs in, exchange -> field.supervisor, /v1/wearable/next, spoken brief from field-api (template, no model
+    key), Field's core check client (template accepted, a changed figure refused), challenge, 'approve option two' ->
+    read-back of option B, replay returns the same reply, a used challenge 409, step-up waived by the core
+    (LR_ENV=local; the audit entry records stepup=waived:strict_auth_off), confirm -> executed, the core's decision
+    EXECUTING (approved, plan committed), a new challenge on it 409. Not tried: a step-up with an authenticator code on
+    the real core (needs strict sign-in, whose app sign-in needs a pairing code from the web).
 - id: M4-C08
   title: >-
     Core reply section 2 (b): core role keys mapped to Field roles at /v1/auth/exchange (FIELD_CORE_ROLE_MAP), a clear
@@ -622,6 +659,8 @@
     role ["root"] was 401 and is now the distinct 403 FIELD-AUTH-403-NO-FIELD-ROLE (still refused, stricter code
     check; TC1.050 itself is the alg-none case and is unchanged). Stand-in demo users now carry approver and
     procurement (operator@demo stays the e-mail); the approver keeps field.assistant.use through field.supervisor.
+    K1 (31 Oct 2026): the default role table proven against the real core's tokens (approver, procurement, org_admin,
+    planner -> field.supervisor, field.operator, field.admin, field.viewer; core_roles echoed).
 - id: M4-C09
   title: >-
     Core reply sections 1(6) and 3: X-Requested-With lr on every call Field makes to the core; the stand-in enforces it
@@ -656,6 +695,10 @@
     decisions.read was only asserted in tests, nothing relied on it), checked on GET /v1/briefs/... and the check
     route; the procurement operator has none and gets 403. The core reports its own test proves the brief check with
     the wearable token (TO_FIELD section 1 item 6); META_FIELD row 21 stays UNVERIFIED until Field calls it.
+    K1 (31 Oct 2026): every call Field made to the real core carried X-Requested-With: lr and was accepted (app sign-in,
+    JWKS, device status, wearable next, briefs check, voice turns, session revoke, both feeds). FROM_FIELD open question
+    5, answered from the core's code: the feed door (POST /v1/inbound/feeds/{id}) is public and signed and does not
+    check the header.
 - id: M4-C10
   title: >-
     Core reply section 4: open-supply ref = the core's PO number (FIELD_CORE_CODE_MAP purchase_orders), body
@@ -699,6 +742,8 @@
     takes only {"rows": [...]}, answers 409 duplicate for the same body hash within 10 minutes per feed, ignores
     Idempotency-Key, and keys open supply by (kind, ref, item_code). Changed tests, owner-decided contract: the
     expected ref in test_m4_c04_* is now the PO number (was <PO>-<item>) and bodies are read from {"rows"}.
+    K1 (31 Oct 2026): proven against the real core: ref = the core's PO number exactly (PO-26-1005 received, no second
+    line), body {"rows": [...]}, sha256= HMAC of <ts>.<body> accepted, 409 duplicate counted delivered and not retried.
 - id: M4-C11
   title: >-
     Core reply section 1(1): field-api's dev port pinned at 8020 (the core keeps 8000, 8001, 8790, 3100); QR, app,
@@ -788,3 +833,49 @@
     lr on every call; the tests assert it. When field-api answers 403 FIELD-AUTH-403-NO-FIELD-ROLE after a core
     sign-in, its detail sentence is shown on the sign-in screen and as the connection error (FieldAccess.noFieldRole).
     The sign-in screen's default field address and the emulator default are 8020.
+- id: M4-C13
+  title: >-
+    Real-core smokes: stack smoke --core and --approver against the SCMTIPS core itself (FIELD_CORE_TARGET=core), its
+    own API only
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/dev_stack/core_smoke.py
+  - tools/dev_stack/stack.py
+  - .env.example
+  - docs/evidence/runs/2026-10-31-k1-real-core-smokes.txt
+  tests:
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c13_totp_is_rfc6238
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c13_member_settings_are_named_when_missing
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c13_the_code_map_names_the_cores_po_line
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c13_the_cores_on_hand_is_its_latest_count
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c13_core_target_runs_the_real_core_smokes_only
+  - tools/fake-core/tests/test_standin.py::test_m4_c13_voice_answers_follow_the_real_core
+  frs: []
+  verified_at: null
+  note: >-
+    K1 (31 Oct 2026, Field session in a Linux container; owner amendment A-05): the real SCMTIPS core
+    (the private SCMTIPS core repository the core's integration branch 9adbb04, then 6ea7c29 with the brief-check fix) ran here on 127.0.0.1:8000
+    (API) and :8001 (worker), LR_ENV=local (strict sign-in off), its own Postgres 16 on :5434, no object store (the
+    core's local-folder fallback); the demo organisation from the core kit's scmtips-local-demo --with-team and the two
+    webhook feeds made by its Data and integration owner. With FIELD_CORE_TARGET=core, `stack smoke --core` and `stack
+    smoke --approver` use only the core's own API (no /_standin helper, no fake-core token): app sign-in, core web
+    sign-in for reads, /v1/open-supply, /v1/inventory, /v1/pipeline/runs, /v1/plan, /v1/dashboard/sites, /v1/decisions,
+    the wearable and voice routes, DELETE /v1/wearable/sessions/{id}. A decision is prepared, when none waits, by the
+    demo planner on the sample scenarios (POST /v1/decisions, submit); the GR is posted against the erp-sim PO named by
+    FIELD_CORE_CODE_MAP purchase_orders (FIELD_CORE_SMOKE_PO), the Field site of the core's organisation is made by its
+    Org admin through field-api on an erp-sim plant mapped to the core's location, and erp-sim's opening stock of the
+    mapped material is seeded once from the core's on-hand (dev seed). Results: both smokes PASS on 9adbb04 and on
+    6ea7c29 (log docs/evidence/runs/2026-10-31-k1-real-core-smokes.txt); the four stand-in smokes PASS too. Q3
+    observation (no assertion): every feed commit re-ran the core's base plan (new run; the item's on-hand, scheduled
+    receipts and projected balance moved) and re-scored the open signal's exposure (new run), and the dashboard's
+    starvation clock (read from that exposure) did not move for CP-208 (81 d), CP-207 (102 d) or CP-204 (128 d) when the
+    receipt was supply the plan already had before the stockout, received earlier; it did move when a second receipt of
+    1600 raised CP-204's on-hand beyond the plan (3280 -> 4880): CP-204 no longer has a clock (no stockout). Mismatches
+    found and fixed: the stand-in's voice answers (M4-C02, Field), the core's brief check refusing its own template when
+    two facts share a figure (core 6ea7c29), the smoke reading the core's on-hand (the latest as_of row). Recorded for
+    the core: a received PO row empties supplier_code / lane_code; the spoken brief says 'asks for your second factor'
+    when the core waives it (LR_ENV=local). Partial: not run on the owner's PC kit (LAN address), his phone or glasses; the
+    strict sign-in path (pairing code, TOTP step-up) not run against the real core; no Muse key here, so no model
+    rewrite reached the core check.

@@ -14,8 +14,10 @@
     uv run python -m tools.dev_stack.stack smoke --home # sandbox receipt + count end to end, production refusal
     uv run python -m tools.dev_stack.stack labels       # printable QR labels for every open job
     uv run python -m tools.dev_stack.stack assistant-check  # one real Field Assistant model call (track A's hook)
-    uv run python -m tools.dev_stack.stack smoke --core  # stand-in core: app sign-in, exchange, device status, GR -> feeds
-    uv run python -m tools.dev_stack.stack smoke --approver  # stand-in core: sign-in, spoken brief, voice approve, step-up
+    uv run python -m tools.dev_stack.stack smoke --core  # app sign-in, exchange, device status, GR -> feeds, revocation
+    uv run python -m tools.dev_stack.stack smoke --approver  # sign-in, spoken brief, voice approve, step-up, approved
+        (both against the core FIELD_CORE_TARGET names: standin = the stand-in, via its /_standin dev helpers; core = the
+         real SCMTIPS core, its own API only, tools/dev_stack/core_smoke.py, with the FIELD_CORE_SMOKE_* members)
     uv run python -m tools.dev_stack.stack seed-core-export <dir>  # the core's erp-sim export (CSV + JSON) into erp-sim
 
 Services (logs in var/log, pids in var/run):
@@ -563,9 +565,11 @@ def cmd_pair(a: argparse.Namespace) -> int:
 
 
 def create_inbound_delivery(lines: int = 3, plant: str = SAMPLE_PLANT, sloc: str = "101A",
-                            purchase_order: str | None = None) -> str:
+                            purchase_order: str | None = None, materials: list[str] | None = None,
+                            qty: float | None = None) -> str:
     """A fresh open inbound delivery in erp-sim (stands in for a supplier ASN), with SAMPLE materials; with
-    ``purchase_order`` its items reference PO lines 10, 20, ... (M4 F4: the GR then closes those PO lines)."""
+    ``purchase_order`` its items reference PO lines 10, 20, ... (M4 F4: the GR then closes those PO lines).
+    ``materials`` / ``qty`` pin the lines (the real-core smoke delivers the core's open PO line exactly)."""
     import psycopg
 
     with psycopg.connect(_admin_url("erpsim"), autocommit=True) as c, c.cursor() as cur:
@@ -580,9 +584,12 @@ def create_inbound_delivery(lines: int = 3, plant: str = SAMPLE_PLANT, sloc: str
             time.sleep(0.1)
         if deliv is None:
             raise SystemExit("could not allocate a free delivery number")
-        cur.execute("SELECT material_no FROM erpsim.material WHERE material_no LIKE 'SAMPLE-MAT-%%'"
-                    " ORDER BY random() LIMIT %s", (lines,))
-        mats = [r[0] for r in cur.fetchall()]
+        if materials:
+            mats = list(materials)
+        else:
+            cur.execute("SELECT material_no FROM erpsim.material WHERE material_no LIKE 'SAMPLE-MAT-%%'"
+                        " ORDER BY random() LIMIT %s", (lines,))
+            mats = [r[0] for r in cur.fetchall()]
         if not mats:
             raise SystemExit("erp-sim has no materials; run `stack up` first")
         cur.execute("INSERT INTO erpsim.inbound_delivery (client, delivery_document, plant, storage_location, status)"
@@ -592,7 +599,7 @@ def create_inbound_delivery(lines: int = 3, plant: str = SAMPLE_PLANT, sloc: str
                 "INSERT INTO erpsim.inbound_delivery_item (client, delivery_document, item_no, material_no, delivery_qty,"
                 " actual_qty, uom, status, purchase_order, purchase_order_item)"
                 " VALUES ('100', %s, %s, %s, %s, 0, 'EA', 'open', %s, %s)",
-                (deliv, f"{i * 10:06d}", mat, 2 + secrets.randbelow(23), purchase_order,
+                (deliv, f"{i * 10:06d}", mat, qty if qty is not None else 2 + secrets.randbelow(23), purchase_order,
                  str(i * 10) if purchase_order else None),
             )
     return deliv
@@ -1847,17 +1854,43 @@ def smoke_approver(api: str, state: dict[str, Any], wait: float) -> None:
     print("         nothing waiting; a decided decision refuses a new challenge (409)")
 
 
+def smoke_real_core(a: argparse.Namespace, api: str) -> int:
+    """smoke --core / --approver with FIELD_CORE_TARGET=core: the real SCMTIPS core, its own API only
+    (tools/dev_stack/core_smoke.py); the stand-in's /_standin helpers are never called."""
+    from tools.dev_stack import core_smoke
+
+    state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
+    approver = bool(getattr(a, "approver", False))
+    try:
+        if approver:
+            core_smoke.smoke_approver_real(api, state, a.wait)
+        else:
+            core_smoke.smoke_core_real(api, state, a.wait)
+    except (SmokeFailure, core_smoke.SmokeFailure) as e:  # run as __main__, core_smoke sees tools.dev_stack.stack
+        print(f"FAIL: {e}")
+        return 1
+    if approver:
+        print("PASS: approver flow against the real SCMTIPS core (sign-in, exchange, next decision, spoken brief, core"
+              " brief check, voice approve, read-back, step-up or its waiver, confirm, approved at the core)")
+    else:
+        print("PASS: core link against the real SCMTIPS core (sign-in, exchange, device status, GR 101 -> two signed"
+              " feed rows accepted, PO line received and on-hand updated at the core, revocation)")
+    return 0
+
+
 def cmd_smoke(a: argparse.Namespace) -> int:
     """Receive one inbound delivery by voice as the app does; with --all, every job type end to end;
     with --home, the sandbox site (M3)."""
     load_env()
     apply_ports()
-    state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
     api = a.api or local("field-api")
+    if (getattr(a, "approver", False) or getattr(a, "core", False)) and core_target() == "core":
+        return smoke_real_core(a, api)
+    state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
     if getattr(a, "approver", False):
         if core_target() != "standin":
-            print("FAIL: smoke --approver runs against the stand-in core: set FIELD_CORE_TARGET=standin and run"
-                  " `stack up`")
+            print("FAIL: smoke --approver runs against a core: set FIELD_CORE_TARGET=standin (the stand-in) or core"
+                  " (the real SCMTIPS core) and run `stack up`")
             return 1
         try:
             smoke_approver(api, state, a.wait)
@@ -1869,7 +1902,8 @@ def cmd_smoke(a: argparse.Namespace) -> int:
         return 0
     if getattr(a, "core", False):
         if core_target() != "standin":
-            print("FAIL: smoke --core runs against the stand-in core: set FIELD_CORE_TARGET=standin and run `stack up`")
+            print("FAIL: smoke --core runs against a core: set FIELD_CORE_TARGET=standin (the stand-in) or core (the real"
+                  " SCMTIPS core) and run `stack up`")
             return 1
         try:
             smoke_core(api, state, a.wait)
