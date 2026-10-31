@@ -32,6 +32,15 @@ client = TestClient(app)
 adapter = SapWarehouseAdapter(http_client=client)
 
 
+@pytest.fixture(scope="module", autouse=True)
+def sample_master_data() -> None:
+    """The SAMPLE master data these parity tests post against. erp-sim refuses a material document for a
+    material missing from its master data (as S/4 does, since M3-S01); a migrated-only database has none."""
+    from erp_sim.seed import reset_database
+
+    reset_database("100")
+
+
 @pytest.fixture(autouse=True)
 def reset_inbound_sample() -> None:
     from erp_sim.db import get_conn
