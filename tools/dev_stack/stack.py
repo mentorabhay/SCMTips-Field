@@ -19,7 +19,10 @@
         (both against the core FIELD_CORE_TARGET names: standin = the stand-in, via its /_standin dev helpers; core = the
          real SCMTIPS core, its own API only, tools/dev_stack/core_smoke.py, with the FIELD_CORE_SMOKE_* members)
     uv run python -m tools.dev_stack.stack seed-core-export <dir>  # the core's erp-sim export into erp-sim, and the
-        Field sites of its site pack (field-site-pack next to it) in the core target's tenant
+        Field sites of its site pack (field-site-pack next to it) in the core target's tenant; --reset first puts the
+        export's plants back to exactly the export (the demo run after the core's SAMPLE reset, M4-C17)
+    uv run python -m tools.dev_stack.stack smoke --approver --decision <id>  # approve exactly that core decision
+    uv run python -m tools.dev_stack.demo_run --core <the core checkout>  # the 3-minute demo run, docs/DEMO_RUN.md
     uv run python -m tools.dev_stack.stack erp-feed     # stage a snapshot of erp-sim's stock and open POs for the core's
         feeds now (the worker also does it every FIELD_CORE_SNAPSHOT_INTERVAL_S, M4 Q10)
     uv run python -m tools.dev_stack.stack smoke --erp-feed  # snapshot -> the core's on-hand and open POs = erp-sim's
@@ -1868,8 +1871,10 @@ def smoke_real_core(a: argparse.Namespace, api: str) -> int:
     approver = bool(getattr(a, "approver", False))
     try:
         if approver:
-            scenario = getattr(a, "scenario", None)
-            if scenario:  # M4-C16: the decision comes from the core's SAMPLE scenario
+            scenario, decision = getattr(a, "scenario", None), getattr(a, "decision", None)
+            if decision:  # M4-C17: exactly the decision the core's scenario inject reported (the demo run)
+                core_smoke.smoke_approver_real(api, state, a.wait, decision=decision)
+            elif scenario:  # M4-C16: the decision comes from the core's SAMPLE scenario
                 core_smoke.smoke_approver_real(api, state, a.wait, scenario)
             else:
                 core_smoke.smoke_approver_real(api, state, a.wait)
@@ -1931,6 +1936,12 @@ def cmd_smoke(a: argparse.Namespace) -> int:
         return smoke_erp_feed_cmd(a, api)
     if getattr(a, "scenario", None) and not (getattr(a, "approver", False) and core_target() == "core"):
         print("FAIL: --scenario needs --approver against the real core (FIELD_CORE_TARGET=core, M4-C16)")
+        return 1
+    if getattr(a, "decision", None) and not (getattr(a, "approver", False) and core_target() == "core"):
+        print("FAIL: --decision needs --approver against the real core (FIELD_CORE_TARGET=core, M4-C17)")
+        return 1
+    if getattr(a, "decision", None) and getattr(a, "scenario", None):
+        print("FAIL: --decision and --scenario: give one (--decision approves a decision the core already made)")
         return 1
     if (getattr(a, "approver", False) or getattr(a, "core", False)) and core_target() == "core":
         return smoke_real_core(a, api)
@@ -2215,13 +2226,14 @@ def cmd_seed_core_export(a: argparse.Namespace) -> int:
     import psycopg
 
     with psycopg.connect(_admin_url("erpsim")) as c, c.cursor() as cur:
-        counts = load_into_erpsim(cur, ex)
+        counts = load_into_erpsim(cur, ex, reset=bool(getattr(a, "reset", False)))
         c.commit()
     what = f"{ex.manifest.get('export')} v{ex.manifest.get('version')}, {ex.manifest.get('world')}" if ex.manifest else (
         "no manifest")
     print(f"loaded into erp-sim ({what}): {', '.join(f'{k} {v}' for k, v in counts.items())}")
     print("assumed: the core's codes are erp-sim's own codes (no FIELD_CORE_CODE_MAP needed for them); the export's "
-          "storage locations (else FIELD_CORE_EXPORT_SLOC, default 0001); one ASN per open PO; bom rows ignored")
+          "storage locations (else FIELD_CORE_EXPORT_SLOC, default 0001); an ASN for each PO line with open quantity and"
+          " no open ASN; bom rows ignored")
     for n in ex.notes:
         print(f"  note: {n}")
     pack_dir = Path(a.site_pack) if getattr(a, "site_pack", None) else folder.parent / "field-site-pack"
@@ -2288,6 +2300,9 @@ def main(argv: list[str] | None = None) -> int:
     sm.add_argument("--scenario", metavar="NAME",
                     help="with --approver against the real core (M4-C16): the decision comes from the core's SAMPLE"
                          " scenario NAME (e.g. magnet-export-curbs), read from FIELD_CORE_SCENARIOS_DIR")
+    sm.add_argument("--decision", metavar="ID",
+                    help="with --approver against the real core (M4-C17): approve exactly this decision, e.g. the one"
+                         " the core's `scmtips-scenario inject <name> --wait` reported (submitted first if a draft)")
     sm.add_argument("--erp-feed", action="store_true",
                     help="erp-sim's stock and open POs as a snapshot to the core's feeds; the core then equals erp-sim")
     ef = sub.add_parser("erp-feed", help="stage a snapshot of erp-sim's stock and open POs for the core's feeds now")
@@ -2299,6 +2314,9 @@ def main(argv: list[str] | None = None) -> int:
     sc.add_argument("dir", help=r"the export folder, e.g. <workspace>\ARO\samples\exports\erp-sim")
     sc.add_argument("--site-pack", help="the core's Field site pack (default: field-site-pack next to the export)")
     sc.add_argument("--no-sites", action="store_true", help="load erp-sim only")
+    sc.add_argument("--reset", action="store_true",
+                    help="first put the export's plants back to exactly the export (earlier GRs against its PO lines"
+                         " cancelled, PO lines and stock it does not hold removed): the demo run after a core reset")
     sc.add_argument("--api", help="field-api URL (default: this stack's)")
     hm = sub.add_parser("home", help="sandbox site 'Home (sandbox)': bins HOME-A/B, an empty receipt, a HOME-A count")
     hm.add_argument("--simulate-differences", action="store_true",

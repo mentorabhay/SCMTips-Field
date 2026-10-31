@@ -1,0 +1,313 @@
+K5, 1 Nov 2026 (UTC 31 Oct 23:20-23:23): the 3-minute demo run (tools/dev_stack/demo_run.py, M4-C17; the core's Q15),
+twice in a row against the REAL SCMTIPS core. Raw transcripts as the run wrote them (var/demo-run/*.log); no secrets,
+tokens or passwords (scmtips-local-demo's output, which prints the kit's demo passwords, is never shown or logged; the
+transcripts were checked against the kit's and .env.local's secret values: 0 hits).
+Machine: Linux cloud container (the Field session's, owner amendment A-05). NOT the owner's PC, NOT his kit (<workspace>\ARO),
+NOT a phone and NOT the glasses: the approver and the warehouse operator are Field's Python smokes over HTTP.
+Core: the private SCMTIPS core repository the core's integration branch 392db14, API 127.0.0.1:8000 + worker :8001, Postgres 16 :5434, LR_ENV=local
+with LR_STRICT_AUTH=true and hosted demo mode on for the SAMPLE organisation (LR_DEMO_MODE, LR_DEMO_TENANT_ID exported
+for the API, the worker and the CLIs). Field: slice/m4-core-integration with this change (working tree on 4ee00dc),
+field-api :8020, erp-sim :8002, field-worker, FIELD_CORE_TARGET=core, FIELD_CORE_SNAPSHOT_TENANTS = the core's SAMPLE
+organisation. Every figure is SAMPLE data; the scenario is a SIMULATED signals workbook. No Muse key here: the spoken
+brief is the core's template (model:meta:AI_CLOUD_DISABLED).
+Command (both runs): scripts/dev/demo-run.sh /home/claude/scmtips   (= uv run python -m tools.dev_stack.demo_run --core ...)
+
+Found and fixed on the way (before these two runs):
+- erp-sim kept the GR of the previous run, so after the core's reset no ASN could be received again (K4's finding):
+  `stack seed-core-export --reset` cancels earlier GRs against the export's PO lines (erp-sim's own item cancel) and
+  removes PO lines and stock the export does not hold from its plants; an ASN is made for open quantity only.
+- smoke --erp-feed compared once, right after the 202s, before the core's worker committed: it now repeats the compare
+  until equal or the wait runs out.
+- An earlier attempt (run "A0", 23:13Z) FAILED at beat 3, as it should: the worker's 15-minute snapshot had read the drone
+  plants for 15 other Field tenants (made by the site-pack test) and their older rows (CP-204 3280, PO-26-1002 received)
+  reached the core after its reset, over the same two feeds. The run now requires FIELD_CORE_SNAPSHOT_TENANTS = the
+  core's SAMPLE organisation and no pending feed rows of other tenants, and waits for the core tenant's queue before
+  the reset.
+
+=== run A (var/demo-run/20261031T232013Z.log), exit code 0, 78 s wall
+demo run 2026-10-31 23:20:13Z: core /home/claude/scmtips (392db14), Field /home/claude/scmtips-field (4ee00dc); scenario magnet-export-curbs, PO PO-26-1002. SAMPLE data; scenario files are SIMULATED.
+
+=== beat 0/7: preflight
+  $ uv run --frozen scmtips-demo status
+    {
+      "env": "local",
+      "demo_mode": true,
+      "demo_tenant_id": "43ad1c4d-ee02-45a6-8eff-bacb3937ec77",
+      "organisation": "Demo Manufacturing (sample)",
+      "marked": true,
+      "reset_count": 5,
+      "last_reset_at": "2026-10-31T23:13:57.473932+00:00",
+      "nightly_reset": false,
+      "reset_hour_utc": 21,
+      "strict_auth_other_organisations": true
+    }
+  checked: the core checkout holds samples/exports/erp-sim/purchase_orders.csv
+  checked: the core checkout holds samples/exports/field-site-pack/sites.csv
+  checked: the core checkout holds samples/scenarios/scenarios.json
+  checked: FIELD_CORE_TARGET=core in Field's .env.local
+  checked: the core's API answers (http://127.0.0.1:8000/v1/health)
+  checked: the core's worker answers (http://127.0.0.1:8001/healthz)
+  checked: Field's field-api answers (http://127.0.0.1:8020)
+  checked: Field's erp-sim answers (http://127.0.0.1:8002)
+  checked: Field's field-worker runs (`stack up`)
+  checked: the core's demo mode is on and its organisation 'Demo Manufacturing (sample)' is marked
+  checked: FIELD_CORE_SNAPSHOT_TENANTS names exactly the core's SAMPLE organisation 43ad1c4d-ee02-45a6-8eff-bacb3937ec77 (now ['43ad1c4d-ee02-45a6-8eff-bacb3937ec77']; set it, then `stack down`, `stack up`)
+  checked: no feed rows of other Field tenants wait for the core (0 pending)
+beat 0 ok in 11.7 s (12 checked)
+
+=== beat 1/7: core reset (SAMPLE organisation)
+  $ uv run --frozen scmtips-demo reset
+    demo reset: 868 rows deleted, the sample is loading again (worker)
+  (scmtips-local-demo's output is not shown: it prints the kit's demo passwords)
+  $ uv run --frozen scmtips-local-demo --with-team
+  the core's PO-26-1002 CP-204@PLANT-GOA open qty 1600.0000
+  checked: no Field feed row for the core waits (none can land after the reset)
+  checked: the core reset its demo organisation
+  checked: the core's local demo re-created its planning samples and kept the team
+  checked: the core's PO-26-1002 (CP-204) is open again (wait_until read it)
+beat 1 ok in 15.6 s (4 checked)
+
+=== beat 2/7: Field seed from the core's export
+  $ python3 -m tools.dev_stack.stack seed-core-export /home/claude/scmtips/samples/exports/erp-sim --reset
+    loaded into erp-sim (erp-sim v1, SAMPLE drone OEM): gr_items_cancelled 0, po_lines_removed 0, stock_rows_removed 0, plants 2, storage_locations 2, materials 40, stock_rows 40, po_lines 10, asns_created 0
+    assumed: the core's codes are erp-sim's own codes (no FIELD_CORE_CODE_MAP needed for them); the export's storage locations (else FIELD_CORE_EXPORT_SLOC, default 0001); an ASN for each PO line with open quantity and no open ASN; bom rows ignored
+    site pack /home/claude/scmtips/samples/exports/field-site-pack: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77 via the core's Org admin (http://127.0.0.1:8000): sites 0, sites_kept 2, zones 0, bins 0
+      sites: DC-MIL (erp_plant DC-MIL), PLANT-GOA (erp_plant PLANT-GOA); 82 labels in /home/claude/scmtips/samples/exports/field-site-pack/labels.csv
+  erp-sim: open ASN 1888447384 for PO-26-1002, CP-204 1600
+  checked: erp-sim loaded from the export, site pack applied
+  checked: erp-sim holds an open ASN for PO-26-1002 (CP-204 at PLANT-GOA)
+beat 2 ok in 0.9 s (2 checked)
+
+=== beat 3/7: ERP snapshot to the core
+  $ python3 -m tools.dev_stack.stack smoke --erp-feed --wait 120
+    erp-feed erp-sim plants PLANT-GOA (10 PO lines); tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77; production sites on them; target the real SCMTIPS core http://127.0.0.1:8000
+             snapshot staged: 40 stock rows, 10 PO rows in 3 deliveries (batch 200); 0 unchanged
+             field-worker delivered them all, signed: [('inventory', 'delivered', 3), ('inventory', 'delivered', 37), ('open_supply', 'delivered', 10)]
+             core = erp-sim for 40 on-hand rows and 10 PO lines, e.g. CP-204@PLANT-GOA 1680; CP-207@PLANT-GOA 560; RM-307@PLANT-GOA 2600
+             e.g. PO-26-1001 CP-203 6000 in_transit due 2026-11-12; PO-26-1002 CP-204 1600 open due 2026-11-20; PO-26-1003 CP-208 150 open due 2026-12-04
+             second snapshot: nothing staged (50 rows unchanged)
+    PASS: ERP snapshot against the real SCMTIPS core (erp-sim's stock and open POs staged, delivered signed, the core's on-hand and PO lines equal erp-sim's, a second snapshot sends nothing)
+  checked: the core's on-hand and open POs equal erp-sim's
+beat 3 ok in 17.8 s (1 checked)
+
+=== beat 4/7: disruption: scenario injected in the core
+  $ uv run --frozen scmtips-scenario inject magnet-export-curbs --wait
+    signal 15bb3e53-fe7f-4975-85b7-f4b488f31614 HIGH 0.6162 (article), suppliers ['SUP-S02']; SIMULATED (signal_file)
+    exposure: items ['CP-204', 'CP-206', 'RM-301'], finished goods ['FG-100', 'FG-200', 'FG-300']; clock CP-206 87 d, CP-204 129 d
+    decision 355a4ba0-71a7-45f3-a1f2-664994c608a4 DRAFT auto_drafted=True: do_nothing: Do nothing (baseline) (ready); reallocate: Reallocate to the highest-margin products (ready)
+    the core's brief check: accepted=True, a changed number refused=True
+  checked: the scenario's expectations all met (unmet [])
+  checked: the core auto-drafted a decision
+  checked: the core accepts its brief and refuses a changed number
+beat 4 ok in 10 s (3 checked)
+
+=== beat 5/7: approval by voice through Field
+  $ python3 -m tools.dev_stack.stack smoke --approver --decision 355a4ba0-71a7-45f3-a1f2-664994c608a4 --wait 120
+    approver signed in approver1@scmtips.local at the core http://127.0.0.1:8000; field.supervisor, field device 01a19444-5a7c-71c3-8510-13dd96660be8
+             decision 355a4ba0-71a7-45f3-a1f2-664994c608a4 (Response to: Export licence checks on rare-earth magnets hol): 2 options (do_nothing, reallocate), submitted
+    decision 355a4ba0-71a7-45f3-a1f2-664994c608a4: 1 waiting, band 'committed 0.0000 and above' step-up False; brief from template (model:meta:AI_CLOUD_DISABLED)
+             Field's core check client at the real core: template accepted; a changed number refused (core:These figures are not in any tool result: "987654".)
+             'approve option two' -> read-back: Approve option B, Reallocate to the highest-margin products, cost 0.00 US dollars, committed spend 0.00 US dol; replay same reply, reused challenge 409
+             confirm -> Approved option B. The plan is committed. (approval f74ba4ce-57c6-45df-b5db-d7dc6ba2f73f); the core's decision is EXECUTING
+             a decided decision refuses a new challenge (409)
+    PASS: approver flow against the real SCMTIPS core (sign-in, exchange, next decision, spoken brief, core brief check, voice approve, read-back, step-up or its waiver, confirm, approved at the core)
+  checked: the approver approved decision 355a4ba0-71a7-45f3-a1f2-664994c608a4 by voice through Field
+beat 5 ok in 2.6 s (1 checked)
+
+=== beat 6/7: goods receipt in Field -> the core re-plans
+  $ python3 -m tools.dev_stack.stack smoke --core --wait 120
+    core     signed in procurement@scmtips.local at the core http://127.0.0.1:8000: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77, kid ok, roles ['procurement']
+             exchanged at field-api: field.operator, field device 01a19444-694b-7eb6-8033-1ac82679bcd3; core device smoke-core-901c8539da active
+             export mode: erp-sim holds the core PO under its own codes, no code map
+             core before: PO-26-1002 CP-204@PLANT-GOA qty 1600.0000 status open; on-hand 1680.0
+             core before: base plan run 61b1844a-f6d7-47df-8de7-00a1e6e90355: CP-204 on_hand 1680.0, scheduled [0, 1600, 0], pab [1280, 2080, 1280], first short bucket none
+             core before: starvation clock PLANT-GOA soonest stockout 87 d; CP-204 129 d to stockout on 2027-03-09, recovery lands before (exposure run 78573219)
+             receiving the PO's seeded ASN 1888447384 (CP-204 1600) at site 01a1936b-3142-752f-80cf-473394bf0d51
+             GR 4900000010/2026 in erp-sim: CP-204 1600 at PLANT-GOA against PO PO-26-1002 line 10 (the core's PO-26-1002); erp-sim on-hand now 3280
+             field-worker: both signed rows delivered to the core, once each [('inventory', 'delivered', 1), ('open_supply', 'delivered', 1)]
+             core after: PO-26-1002 status received qty 1600.0000 (was open 1600.0000); CP-204@PLANT-GOA on-hand 3280 (was 1680.0)
+             core pipeline inventory: last run ok from Field ERP stock (goods receipts) 2026-10-31 2321.json rows 1
+             core pipeline open_supply: last run ok from Field ERP open supply (goods receipts) 2026-10-31 2321.json rows 1
+             re-plan: base plan run 61b1844a-f6d7-47df-8de7-00a1e6e90355 -> f88368b5-9c69-4c20-a2ee-b2c2a7b6d3f0; CP-204 now on_hand 3280.0, scheduled [0, 0, 0], pab [2880, 2080, 1280], first short bucket none
+             starvation clock after: PLANT-GOA soonest stockout 87 d; CP-204 129 d to stockout on 2027-03-09, recovery lands before (exposure run aa7f78f8) (observation only)
+             core revocation (DELETE /v1/wearable/sessions/{id}): device revoked at the core, next exchange 403
+    PASS: core link against the real SCMTIPS core (sign-in, exchange, device status, GR 101 -> two signed feed rows accepted, PO line received and on-hand updated at the core, revocation)
+  checked: the GR went against the core's own PO (export mode, no code map)
+  checked: the core's PO-26-1002 is received
+  checked: the core re-planned after the receipt (new base plan run)
+beat 6 ok in 18.5 s (3 checked)
+
+=== beat 7/7: what the judges see
+  beat 1 (plan beat set-up): http://app.localhost:3100/home: the SAMPLE banner, the restored sample
+      say: The SAMPLE drone OEM, reset to its seeded state.
+      file / fallback: the nightly reset (LR_DEMO_NIGHTLY_RESET) or POST /v1/demo/reset on the web
+  beat 2 (plan beat set-up for 6): http://127.0.0.1:8002/_sim/ui: erp-sim's stock and the open ASN of the PO
+      say: The ERP holds the same SAMPLE world as the core.
+      file / fallback: none needed: the same command without --reset loads the export again
+  beat 3 (plan beat 6 (leg I9) and 7): http://app.localhost:3100/data/pipeline and http://app.localhost:3100/data/systems: the ERP card, last sync, rows
+      say: Stock and open purchase orders come from the ERP, signed.
+      file / fallback: the ERP extract file through the core's file mode (POST /v1/exchange/messages/erp_extract/import-file)
+  beat 4 (plan beat 1 and 2): http://app.localhost:3100/signals (the SIMULATED magnet-curbs signal), http://app.localhost:3100/exposure (CP-204 -> SA-120 -> FG-100, FG-200; starvation clock)
+      say: Only a signal that touches our suppliers and parts becomes a decision.
+      file / fallback: the signals workbook file (`uv run scmtips-scenario file <name> -o x.csv`, upload on the web), labelled SIMULATED; the live market-intelligence pull is not part of this run
+  beat 5 (plan beat 4): glasses POV or the phone: the spoken brief, 'approve option two', the read-back, 'confirm'; http://app.localhost:3100/decisions/355a4ba0-71a7-45f3-a1f2-664994c608a4: EXECUTING, the audit entry
+      say: The approver hears a short brief and approves by voice; the core checks every number first.
+      file / fallback: the core's phone approval page (http://app.localhost:3100/decisions/355a4ba0-71a7-45f3-a1f2-664994c608a4); the HUD simulator (F5) is not built
+  beat 6 (plan beat 6, the finale): the phone's receive job (or erp-sim's documents at http://127.0.0.1:8002/_sim/ui), then http://app.localhost:3100/data/open-supply (PO-26-1002 received), http://app.localhost:3100/data/inventory (CP-204 on-hand), http://app.localhost:3100/exposure (the clock)
+      say: The motors arrive, the ERP posts the receipt, and the core re-plans on that evidence.
+      file / fallback: the goods-receipt file through the core's file mode (POST /v1/exchange/messages/goods_receipt/import-file)
+  beat 7 (plan beat 7): http://app.localhost:3100/data/systems: Connected systems (modes, last sync, failures); http://app.localhost:3100/settings/audit: the audit chain
+      say: Every system has a live and a file mode; switching one keeps the run going.
+beat 7 printed (nothing to check)
+
+summary: 6 of 6 beats ok, preflight ok, 77.2 s in all: 0 ok 11.7 s, 1 ok 15.6 s, 2 ok 0.9 s, 3 ok 17.8 s, 4 ok 10 s, 5 ok 2.6 s, 6 ok 18.5 s; screens printed
+
+=== run B, right after run A (var/demo-run/20261031T232136Z.log), exit code 0, 77 s wall
+demo run 2026-10-31 23:21:36Z: core /home/claude/scmtips (392db14), Field /home/claude/scmtips-field (4ee00dc); scenario magnet-export-curbs, PO PO-26-1002. SAMPLE data; scenario files are SIMULATED.
+
+=== beat 0/7: preflight
+  $ uv run --frozen scmtips-demo status
+    {
+      "env": "local",
+      "demo_mode": true,
+      "demo_tenant_id": "43ad1c4d-ee02-45a6-8eff-bacb3937ec77",
+      "organisation": "Demo Manufacturing (sample)",
+      "marked": true,
+      "reset_count": 6,
+      "last_reset_at": "2026-10-31T23:20:30.652251+00:00",
+      "nightly_reset": false,
+      "reset_hour_utc": 21,
+      "strict_auth_other_organisations": true
+    }
+  checked: the core checkout holds samples/exports/erp-sim/purchase_orders.csv
+  checked: the core checkout holds samples/exports/field-site-pack/sites.csv
+  checked: the core checkout holds samples/scenarios/scenarios.json
+  checked: FIELD_CORE_TARGET=core in Field's .env.local
+  checked: the core's API answers (http://127.0.0.1:8000/v1/health)
+  checked: the core's worker answers (http://127.0.0.1:8001/healthz)
+  checked: Field's field-api answers (http://127.0.0.1:8020)
+  checked: Field's erp-sim answers (http://127.0.0.1:8002)
+  checked: Field's field-worker runs (`stack up`)
+  checked: the core's demo mode is on and its organisation 'Demo Manufacturing (sample)' is marked
+  checked: FIELD_CORE_SNAPSHOT_TENANTS names exactly the core's SAMPLE organisation 43ad1c4d-ee02-45a6-8eff-bacb3937ec77 (now ['43ad1c4d-ee02-45a6-8eff-bacb3937ec77']; set it, then `stack down`, `stack up`)
+  checked: no feed rows of other Field tenants wait for the core (0 pending)
+beat 0 ok in 6.3 s (12 checked)
+
+=== beat 1/7: core reset (SAMPLE organisation)
+  $ uv run --frozen scmtips-demo reset
+    demo reset: 861 rows deleted, the sample is loading again (worker)
+  (scmtips-local-demo's output is not shown: it prints the kit's demo passwords)
+  $ uv run --frozen scmtips-local-demo --with-team
+  the core's PO-26-1002 CP-204@PLANT-GOA open qty 1600.0000
+  checked: no Field feed row for the core waits (none can land after the reset)
+  checked: the core reset its demo organisation
+  checked: the core's local demo re-created its planning samples and kept the team
+  checked: the core's PO-26-1002 (CP-204) is open again (wait_until read it)
+beat 1 ok in 14.8 s (4 checked)
+
+=== beat 2/7: Field seed from the core's export
+  $ python3 -m tools.dev_stack.stack seed-core-export /home/claude/scmtips/samples/exports/erp-sim --reset
+    loaded into erp-sim (erp-sim v1, SAMPLE drone OEM): gr_items_cancelled 1, po_lines_removed 0, stock_rows_removed 0, plants 2, storage_locations 2, materials 40, stock_rows 40, po_lines 10, asns_created 1
+    assumed: the core's codes are erp-sim's own codes (no FIELD_CORE_CODE_MAP needed for them); the export's storage locations (else FIELD_CORE_EXPORT_SLOC, default 0001); an ASN for each PO line with open quantity and no open ASN; bom rows ignored
+    site pack /home/claude/scmtips/samples/exports/field-site-pack: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77 via the core's Org admin (http://127.0.0.1:8000): sites 0, sites_kept 2, zones 0, bins 0
+      sites: DC-MIL (erp_plant DC-MIL), PLANT-GOA (erp_plant PLANT-GOA); 82 labels in /home/claude/scmtips/samples/exports/field-site-pack/labels.csv
+  erp-sim: open ASN 1888918418 for PO-26-1002, CP-204 1600
+  checked: erp-sim loaded from the export, site pack applied
+  checked: erp-sim holds an open ASN for PO-26-1002 (CP-204 at PLANT-GOA)
+beat 2 ok in 0.7 s (2 checked)
+
+=== beat 3/7: ERP snapshot to the core
+  $ python3 -m tools.dev_stack.stack smoke --erp-feed --wait 120
+    erp-feed erp-sim plants PLANT-GOA (10 PO lines); tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77; production sites on them; target the real SCMTIPS core http://127.0.0.1:8000
+             snapshot staged: 40 stock rows, 10 PO rows in 3 deliveries (batch 200); 0 unchanged
+             field-worker delivered them all, signed: [('inventory', 'delivered', 3), ('inventory', 'delivered', 37), ('open_supply', 'delivered', 10)]
+             core = erp-sim for 40 on-hand rows and 10 PO lines, e.g. CP-204@PLANT-GOA 1680; CP-207@PLANT-GOA 560; RM-307@PLANT-GOA 2600
+             e.g. PO-26-1001 CP-203 6000 in_transit due 2026-11-12; PO-26-1002 CP-204 1600 open due 2026-11-20; PO-26-1003 CP-208 150 open due 2026-12-04
+             second snapshot: nothing staged (50 rows unchanged)
+    PASS: ERP snapshot against the real SCMTIPS core (erp-sim's stock and open POs staged, delivered signed, the core's on-hand and PO lines equal erp-sim's, a second snapshot sends nothing)
+  checked: the core's on-hand and open POs equal erp-sim's
+beat 3 ok in 24.8 s (1 checked)
+
+=== beat 4/7: disruption: scenario injected in the core
+  $ uv run --frozen scmtips-scenario inject magnet-export-curbs --wait
+    signal 5a8dc477-3839-471c-95cc-7fc4e0d7ce9c HIGH 0.6162 (article), suppliers ['SUP-S02']; SIMULATED (signal_file)
+    exposure: items ['CP-204', 'CP-206', 'RM-301'], finished goods ['FG-100', 'FG-200', 'FG-300']; clock CP-206 87 d, CP-204 129 d
+    decision 42b7b21c-704d-4f9e-8073-9143c52b8557 DRAFT auto_drafted=True: do_nothing: Do nothing (baseline) (ready); reallocate: Reallocate to the highest-margin products (ready)
+    the core's brief check: accepted=True, a changed number refused=True
+  checked: the scenario's expectations all met (unmet [])
+  checked: the core auto-drafted a decision
+  checked: the core accepts its brief and refuses a changed number
+beat 4 ok in 11.4 s (3 checked)
+
+=== beat 5/7: approval by voice through Field
+  $ python3 -m tools.dev_stack.stack smoke --approver --decision 42b7b21c-704d-4f9e-8073-9143c52b8557 --wait 120
+    approver signed in approver1@scmtips.local at the core http://127.0.0.1:8000; field.supervisor, field device 01a19445-ad19-719e-8f65-0faf342d9245
+             decision 42b7b21c-704d-4f9e-8073-9143c52b8557 (Response to: Export licence checks on rare-earth magnets hol): 2 options (do_nothing, reallocate), submitted
+    decision 42b7b21c-704d-4f9e-8073-9143c52b8557: 1 waiting, band 'committed 0.0000 and above' step-up False; brief from template (model:meta:AI_CLOUD_DISABLED)
+             Field's core check client at the real core: template accepted; a changed number refused (core:These figures are not in any tool result: "987654".)
+             'approve option two' -> read-back: Approve option B, Reallocate to the highest-margin products, cost 0.00 US dollars, committed spend 0.00 US dol; replay same reply, reused challenge 409
+             confirm -> Approved option B. The plan is committed. (approval 38d82aa5-da40-4ba9-8b52-54bae559dece); the core's decision is EXECUTING
+             a decided decision refuses a new challenge (409)
+    PASS: approver flow against the real SCMTIPS core (sign-in, exchange, next decision, spoken brief, core brief check, voice approve, read-back, step-up or its waiver, confirm, approved at the core)
+  checked: the approver approved decision 42b7b21c-704d-4f9e-8073-9143c52b8557 by voice through Field
+beat 5 ok in 2 s (1 checked)
+
+=== beat 6/7: goods receipt in Field -> the core re-plans
+  $ python3 -m tools.dev_stack.stack smoke --core --wait 120
+    core     signed in procurement@scmtips.local at the core http://127.0.0.1:8000: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77, kid ok, roles ['procurement']
+             exchanged at field-api: field.operator, field device 01a19445-b5c6-7c53-85d8-0b25e22523a3; core device smoke-core-d9917e4d7e active
+             export mode: erp-sim holds the core PO under its own codes, no code map
+             core before: PO-26-1002 CP-204@PLANT-GOA qty 1600.0000 status open; on-hand 1680.0
+             core before: base plan run 1945bbca-ee40-451b-81ff-9b92f881b8a6: CP-204 on_hand 1680.0, scheduled [0, 1600, 0], pab [1280, 2080, 1280], first short bucket none
+             core before: starvation clock PLANT-GOA soonest stockout 87 d; CP-204 129 d to stockout on 2027-03-09, recovery lands before (exposure run 0374f014)
+             receiving the PO's seeded ASN 1888918418 (CP-204 1600) at site 01a1936b-3142-752f-80cf-473394bf0d51
+             GR 4900000011/2026 in erp-sim: CP-204 1600 at PLANT-GOA against PO PO-26-1002 line 10 (the core's PO-26-1002); erp-sim on-hand now 3280
+             field-worker: both signed rows delivered to the core, once each [('inventory', 'delivered', 1), ('open_supply', 'delivered', 1)]
+             core after: PO-26-1002 status received qty 1600.0000 (was open 1600.0000); CP-204@PLANT-GOA on-hand 3280 (was 1680.0)
+             core pipeline inventory: last run ok from Field ERP stock (goods receipts) 2026-10-31 2322.json rows 1
+             core pipeline open_supply: last run ok from Field ERP open supply (goods receipts) 2026-10-31 2322.json rows 1
+             re-plan: base plan run 1945bbca-ee40-451b-81ff-9b92f881b8a6 -> 1dd0afdf-2330-4136-ac94-6a7ff3dbc4f1; CP-204 now on_hand 3280.0, scheduled [0, 0, 0], pab [2880, 2080, 1280], first short bucket none
+             starvation clock after: PLANT-GOA soonest stockout 87 d; CP-204 129 d to stockout on 2027-03-09, recovery lands before (exposure run d5bdb31a) (observation only)
+             core revocation (DELETE /v1/wearable/sessions/{id}): device revoked at the core, next exchange 403
+    PASS: core link against the real SCMTIPS core (sign-in, exchange, device status, GR 101 -> two signed feed rows accepted, PO line received and on-hand updated at the core, revocation)
+  checked: the GR went against the core's own PO (export mode, no code map)
+  checked: the core's PO-26-1002 is received
+  checked: the core re-planned after the receipt (new base plan run)
+beat 6 ok in 16.5 s (3 checked)
+
+=== beat 7/7: what the judges see
+  beat 1 (plan beat set-up): http://app.localhost:3100/home: the SAMPLE banner, the restored sample
+      say: The SAMPLE drone OEM, reset to its seeded state.
+      file / fallback: the nightly reset (LR_DEMO_NIGHTLY_RESET) or POST /v1/demo/reset on the web
+  beat 2 (plan beat set-up for 6): http://127.0.0.1:8002/_sim/ui: erp-sim's stock and the open ASN of the PO
+      say: The ERP holds the same SAMPLE world as the core.
+      file / fallback: none needed: the same command without --reset loads the export again
+  beat 3 (plan beat 6 (leg I9) and 7): http://app.localhost:3100/data/pipeline and http://app.localhost:3100/data/systems: the ERP card, last sync, rows
+      say: Stock and open purchase orders come from the ERP, signed.
+      file / fallback: the ERP extract file through the core's file mode (POST /v1/exchange/messages/erp_extract/import-file)
+  beat 4 (plan beat 1 and 2): http://app.localhost:3100/signals (the SIMULATED magnet-curbs signal), http://app.localhost:3100/exposure (CP-204 -> SA-120 -> FG-100, FG-200; starvation clock)
+      say: Only a signal that touches our suppliers and parts becomes a decision.
+      file / fallback: the signals workbook file (`uv run scmtips-scenario file <name> -o x.csv`, upload on the web), labelled SIMULATED; the live market-intelligence pull is not part of this run
+  beat 5 (plan beat 4): glasses POV or the phone: the spoken brief, 'approve option two', the read-back, 'confirm'; http://app.localhost:3100/decisions/42b7b21c-704d-4f9e-8073-9143c52b8557: EXECUTING, the audit entry
+      say: The approver hears a short brief and approves by voice; the core checks every number first.
+      file / fallback: the core's phone approval page (http://app.localhost:3100/decisions/42b7b21c-704d-4f9e-8073-9143c52b8557); the HUD simulator (F5) is not built
+  beat 6 (plan beat 6, the finale): the phone's receive job (or erp-sim's documents at http://127.0.0.1:8002/_sim/ui), then http://app.localhost:3100/data/open-supply (PO-26-1002 received), http://app.localhost:3100/data/inventory (CP-204 on-hand), http://app.localhost:3100/exposure (the clock)
+      say: The motors arrive, the ERP posts the receipt, and the core re-plans on that evidence.
+      file / fallback: the goods-receipt file through the core's file mode (POST /v1/exchange/messages/goods_receipt/import-file)
+  beat 7 (plan beat 7): http://app.localhost:3100/data/systems: Connected systems (modes, last sync, failures); http://app.localhost:3100/settings/audit: the audit chain
+      say: Every system has a live and a file mode; switching one keeps the run going.
+beat 7 printed (nothing to check)
+
+summary: 6 of 6 beats ok, preflight ok, 76.6 s in all: 0 ok 6.3 s, 1 ok 14.8 s, 2 ok 0.7 s, 3 ok 24.8 s, 4 ok 11.4 s, 5 ok 2 s, 6 ok 16.5 s; screens printed
+
+=== the failure path: --po PO-99 (var/demo-run/20261031T232300Z.log), exit code 1
+demo run 2026-10-31 23:23:00Z: core /home/claude/scmtips (392db14), Field /home/claude/scmtips-field (4ee00dc); scenario magnet-export-curbs, PO PO-99. SAMPLE data; scenario files are SIMULATED.
+
+=== beat 0/7: preflight
+  checked: the core checkout holds samples/exports/erp-sim/purchase_orders.csv
+  checked: the core checkout holds samples/exports/field-site-pack/sites.csv
+  checked: the core checkout holds samples/scenarios/scenarios.json
+beat 0 FAILED after 0 s: PO-99 is not a PO line of the core's export (/home/claude/scmtips/samples/exports/erp-sim/purchase_orders.csv)
+  recovery: start the core kit (API :8000, worker :8001) with demo mode on, then the Field stack (`stack up`), and set FIELD_CORE_TARGET=core in Field's .env.local
+
+summary: 0 of 6 beats ok, preflight FAILED, 0 s in all: 0 FAILED 0 s; stopped, see the recovery above

@@ -628,7 +628,31 @@ def prepare_scenario_decision(base: str, wait: float, name: str) -> str:
         planner.close()
 
 
-def smoke_approver_real(api: str, state: dict[str, Any], wait: float, scenario: str | None = None) -> None:
+def prepare_given_decision(base: str, wait: float, did: str) -> str:
+    """The decision ``did`` (``--decision``, M4-C17: the one the core's ``scmtips-scenario inject --wait`` reported),
+    waiting for approval: read by the planner, submitted when it is still a draft once an option is ready. A decision
+    that is already decided (or gone) is refused, so the demo run never approves another one by accident."""
+    planner = CoreWeb(base, "PLANNER")
+    try:
+        def ready() -> dict[str, Any] | None:
+            d: dict[str, Any] = planner.get(f"/v1/decisions/{did}")
+            return d if any(o["status"] == "ready" for o in d["options"]) else None
+
+        d = wait_until(f"decision {did}'s options", ready, wait * 2)  # a missing decision: core GET raises at once
+        _expect(d["status"] in ("DRAFT", "PENDING_APPROVAL"),
+                f"decision {did} is {d['status']}, not waiting for approval (reset the core's demo and inject again)")
+        if d["status"] == "DRAFT":
+            _accepted(planner.post(f"/v1/decisions/{did}/submit", {"version": d["version"]}),
+                      "planner submits the decision")
+        print(f"         decision {did} ({d.get('title', '')[:60]}): {len(d['options'])} options"
+              f" ({', '.join(o['template'] for o in d['options'])}), {'submitted' if d['status'] == 'DRAFT' else 'waiting'}")
+        return did
+    finally:
+        planner.close()
+
+
+def smoke_approver_real(api: str, state: dict[str, Any], wait: float, scenario: str | None = None,
+                        decision: str | None = None) -> None:
     """M4 F2 + F1 + F3 against the real core: app sign-in, exchange (approver -> field.supervisor), next decision,
     field-api spoken brief, Field's core brief check (template accepted, a changed number refused), voice challenge,
     "approve option two" -> read-back -> replay and reuse rules -> step-up when the band needs it -> confirm ->
@@ -662,8 +686,9 @@ def smoke_approver_real(api: str, state: dict[str, Any], wait: float, scenario: 
         return _accepted(httpx.post(f"{base}/v1/voice/commands", headers=h, timeout=30,
                                     json={"nonce": nonce, "transcript": words}), f"voice command {words!r}")
 
-    if scenario:
-        wanted = prepare_scenario_decision(base, wait, scenario)
+    if scenario or decision:
+        wanted = prepare_given_decision(base, wait, decision) if decision else prepare_scenario_decision(
+            base, wait, str(scenario))
 
         def scenario_item() -> dict[str, Any] | None:
             got = next_item()

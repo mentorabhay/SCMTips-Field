@@ -29,7 +29,10 @@ and their storage locations (a plant without one gets FIELD_CORE_EXPORT_SLOC, de
 barcode (default: the code), absolute on-hand per storage location, every open PO line as an erp-sim purchase order
 (supplier, delivery date, the core's status and lane: what the snapshot to the core reads back, M4 Q10), and one
 inbound delivery (ASN) per PO whose items reference the PO lines, so receiving it posts a GR 101 against them.
-Re-running is safe: existing rows are updated, an ASN per PO is made once.
+Re-running is safe: existing rows are updated, and an ASN is made only for a PO line that has open quantity (order
+less its goods receipts 101) and no open ASN yet. ``--reset`` (the demo run, M4-C17) first puts the export's plants
+back to exactly the export (``reset_export_plants``): earlier goods receipts against its PO lines are cancelled, and
+PO lines and stock rows the export does not hold are removed from those plants, so the next ASN can be received again.
 """
 
 from __future__ import annotations
@@ -241,9 +244,75 @@ def plant_slocs(ex: Export, sloc: str | None = None) -> dict[str, list[str]]:
     return {p: sorted(s) or [default_sloc(sloc)] for p, s in out.items()}
 
 
-def load_into_erpsim(cur: Any, ex: Export, sloc: str | None = None, client: str = "100") -> dict[str, int]:
-    """Write the export into erp-sim (one transaction on ``cur``). Returns counts."""
+RESET_MARK = "seed-core-export --reset"
+
+
+def reset_export_plants(cur: Any, ex: Export, slocs: dict[str, list[str]], client: str = "100") -> dict[str, int]:
+    """``--reset`` (the demo run, M4-C17): erp-sim's plants of the export go back to exactly what the export holds,
+    so a demo can run again after the core's SAMPLE reset (K4: erp-sim, not reset with the core, raised no receive
+    task). Only the export's plants are touched:
+
+    1. goods receipts 101 against the export's PO lines are cancelled with the simulator's own item cancel (the flag
+       ``POST .../CancelMaterialDocumentItem`` sets; the documents stay), so each line has its open quantity again;
+    2. PO lines in those plants that the export does not hold (left by earlier tests or code-map runs) are removed,
+       with a PO header left without lines;
+    3. stock rows in those plants that the export does not hold are removed.
+
+    The upsert that follows sets stock, PO lines and their status to the export's values, and an ASN is made for every
+    PO line that has open quantity and no open ASN."""
+    plants = sorted(ex.locations)
+    keep = sorted({(ln["po"], ln["po_item"]) for ln in ex.po_lines})
+    pos, items = [p for p, _ in keep], [i for _, i in keep]
+    cur.execute("UPDATE erpsim.document_item di SET item_data = di.item_data || jsonb_build_object('cancelled', true,"
+                " 'cancelled_by', %s::text) FROM unnest(%s::text[], %s::text[]) AS k(po, item)"
+                " WHERE di.client = %s AND di.movement_type = '101' AND di.plant = ANY(%s)"
+                " AND di.item_data->>'PurchaseOrder' = k.po AND di.item_data->>'PurchaseOrderItem' = k.item"
+                " AND COALESCE((di.item_data->>'cancelled')::boolean, false) = false",
+                (RESET_MARK, pos, items, client, plants))
+    cancelled = int(cur.rowcount or 0)
+    cur.execute("DELETE FROM erpsim.purchase_order_item i WHERE i.client = %s AND i.plant = ANY(%s) AND NOT EXISTS"
+                " (SELECT 1 FROM unnest(%s::text[], %s::text[]) AS k(po, item)"
+                "  WHERE k.po = i.purchase_order AND k.item = i.item_no) RETURNING i.purchase_order",
+                (client, plants, pos, items))
+    removed = [str(r[0]) for r in cur.fetchall()]
+    gone = sorted(set(removed))
+    if gone:
+        cur.execute("DELETE FROM erpsim.purchase_order h WHERE h.client = %s AND h.purchase_order = ANY(%s)"
+                    " AND NOT EXISTS (SELECT 1 FROM erpsim.purchase_order_item i"
+                    "  WHERE i.client = h.client AND i.purchase_order = h.purchase_order)", (client, gone))
+    stock_keys = sorted({(code, loc, sl or slocs[loc][0]) for (code, loc, sl) in ex.stock})
+    cur.execute("DELETE FROM erpsim.stock s WHERE s.client = %s AND s.plant = ANY(%s) AND NOT EXISTS"
+                " (SELECT 1 FROM unnest(%s::text[], %s::text[], %s::text[]) AS k(material, plant, sloc)"
+                "  WHERE k.material = s.material_no AND k.plant = s.plant AND k.sloc = s.storage_location)",
+                (client, plants, [k[0] for k in stock_keys], [k[1] for k in stock_keys], [k[2] for k in stock_keys]))
+    stock_gone = int(cur.rowcount or 0)
+    return {"gr_items_cancelled": cancelled, "po_lines_removed": len(removed), "stock_rows_removed": stock_gone}
+
+
+def _needs_asn(cur: Any, client: str, line: dict[str, Any]) -> bool:
+    """A PO line gets an ASN when it has open quantity (order less the goods receipts 101 that count, as erp-sim's
+    PO read computes it) and no open ASN item references it yet."""
+    cur.execute("SELECT 1 FROM erpsim.inbound_delivery d JOIN erpsim.inbound_delivery_item i"
+                " USING (client, delivery_document) WHERE d.client = %s AND d.status = 'open' AND i.status = 'open'"
+                " AND i.purchase_order = %s AND i.purchase_order_item = %s LIMIT 1", (client, line["po"], line["po_item"]))
+    if cur.fetchone():
+        return False
+    cur.execute("SELECT COALESCE(SUM(di.quantity), 0) FROM erpsim.document_item di"
+                " JOIN erpsim.document d USING (client, doc_number, fiscal_year)"
+                " WHERE di.client = %s AND di.movement_type = '101' AND di.item_data->>'PurchaseOrder' = %s"
+                " AND di.item_data->>'PurchaseOrderItem' = %s AND d.status <> 'reversed'"
+                " AND COALESCE((di.item_data->>'cancelled')::boolean, false) = false",
+                (client, line["po"], line["po_item"]))
+    row = cur.fetchone()
+    return float(row[0] if row else 0) < float(line["qty"])
+
+
+def load_into_erpsim(cur: Any, ex: Export, sloc: str | None = None, client: str = "100",
+                     reset: bool = False) -> dict[str, int]:
+    """Write the export into erp-sim (one transaction on ``cur``). Returns counts. ``reset``: first make the export's
+    plants hold exactly the export again (``reset_export_plants``)."""
     slocs = plant_slocs(ex, sloc)
+    reset_counts = reset_export_plants(cur, ex, slocs, client) if reset else {}
     for code, name in ex.locations.items():
         cur.execute("INSERT INTO erpsim.plant (client, plant, name) VALUES (%s, %s, %s)"
                     " ON CONFLICT (client, plant) DO UPDATE SET name = EXCLUDED.name", (client, code, name[:60]))
@@ -282,10 +351,9 @@ def load_into_erpsim(cur: Any, ex: Export, sloc: str | None = None, client: str 
                      json.dumps({"lane_code": line["lane_code"]} if line["lane_code"] else {})))
         by_po.setdefault((line["po"], line["location_code"]), []).append({**line, "sloc": line_sloc, "uom": uom})
     asns = 0
-    for (po, loc), lines in by_po.items():
-        cur.execute("SELECT 1 FROM erpsim.inbound_delivery WHERE client = %s AND header_data->>'PurchaseOrder' = %s",
-                    (client, po))
-        if cur.fetchone():
+    for (po, loc), all_lines in by_po.items():
+        lines = [ln for ln in all_lines if _needs_asn(cur, client, ln)]
+        if not lines:
             continue
         deliv = _free_delivery_no(cur, client)
         head = {"PurchaseOrder": po, "Source": "core-export", **({"Supplier": lines[0]["supplier"]}
@@ -300,7 +368,7 @@ def load_into_erpsim(cur: Any, ex: Export, sloc: str | None = None, client: str 
                         (client, deliv, f"{n * 10:06d}", line["item_code"], line["qty"], line["uom"], po,
                          line["po_item"]))
         asns += 1
-    return {"plants": len(ex.locations), "storage_locations": sum(len(v) for v in slocs.values()),
+    return {**reset_counts, "plants": len(ex.locations), "storage_locations": sum(len(v) for v in slocs.values()),
             "materials": len(ex.items), "stock_rows": len(ex.stock), "po_lines": len(ex.po_lines),
             "asns_created": asns}
 

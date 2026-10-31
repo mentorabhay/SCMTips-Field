@@ -111,6 +111,17 @@ def erp_view(plants: list[str], codes: Any) -> tuple[dict[tuple[str, str], float
     return stock, pos
 
 
+def wait_equal(diff_now: Any, wait: float, every: float = 2.0, clock: Any = time.monotonic,
+               sleep: Any = time.sleep) -> list[str]:
+    """``diff_now()`` until it is empty or ``wait`` seconds have passed; returns the last difference list."""
+    end = clock() + wait
+    while True:
+        diff: list[str] = diff_now()
+        if not diff or clock() >= end:
+            return diff
+        sleep(every)
+
+
 def compare(stock: dict[tuple[str, str], float], pos: dict[tuple[str, str], dict[str, Any]],
             core_stock: dict[tuple[str, str], float], core_pos: dict[tuple[str, str], dict[str, Any]]) -> list[str]:
     """Differences between erp-sim and the core for the erp-sim rows (the core may hold more, e.g. work orders)."""
@@ -178,18 +189,22 @@ def smoke_erp_feed(api: str, state: dict[str, Any], wait: float) -> None:
     if rows:
         print(f"         field-worker delivered them all, signed: {rows}")
     stock, pos = erp_view(sorted(mine), feed.codes)
-    if target == "core":
-        core_stock = _latest_on_hand(core_smoke._all(web, "/v1/inventory"))
-        core_pos = {(str(x["ref"]), str(x["item_code"])): x for x in core_smoke._all(web, "/v1/open-supply")
-                    if str(x.get("kind", "PO")).upper() == "PO"}
-        web.close()
-    else:
+
+    def core_view() -> tuple[dict[tuple[str, str], float], dict[tuple[str, str], dict[str, Any]]]:
+        if target == "core":
+            return (_latest_on_hand(core_smoke._all(web, "/v1/inventory")),
+                    {(str(x["ref"]), str(x["item_code"])): x for x in core_smoke._all(web, "/v1/open-supply")
+                     if str(x.get("kind", "PO")).upper() == "PO"})
         st = _accepted(httpx.get(f"{os.environ['FIELD_CORE_BASE_URL'].rstrip('/')}/_standin/feeds/state", timeout=10),
                        "stand-in feed state")
-        core_stock = _latest_on_hand(st["inventory"])
-        core_pos = {(str(x["ref"]), str(x["item_code"])): x for x in st["open_supply"]}
-    diff = compare(stock, pos, core_stock, core_pos)
-    _expect(not diff, f"{len(diff)} difference(s) between erp-sim and the core: {diff[:8]}")
+        return _latest_on_hand(st["inventory"]), {(str(x["ref"]), str(x["item_code"])): x for x in st["open_supply"]}
+
+    # "delivered" is the core's 202; the real core commits the rows in its worker a moment later (K5 saw a compare
+    # run before that commit), so the compare is repeated until the core equals erp-sim or the wait runs out
+    diff = wait_equal(lambda: compare(stock, pos, *core_view()), wait)
+    if web is not None:
+        web.close()
+    _expect(not diff, f"{len(diff)} difference(s) between erp-sim and the core after {wait:.0f} s: {diff[:8]}")
     sample = [k for k in (("CP-204", "PLANT-GOA"), ("CP-207", "PLANT-GOA"), ("RM-307", "PLANT-GOA")) if k in stock]
     print(f"         core = erp-sim for {len(stock)} on-hand rows and {len(pos)} PO lines, e.g. "
           + "; ".join(f"{i}@{loc} {stock[(i, loc)]:g}" for i, loc in sample))

@@ -133,6 +133,11 @@ def test_m4_c05_export_json_envelope_and_csv_load_into_erpsim(tmp_path: Path) ->
         _c05_client(cur)
         cur.execute("DELETE FROM erpsim.inbound_delivery WHERE client = %s"
                     " AND header_data->>'PurchaseOrder' = '4500001234'", (C05_CLIENT,))
+        # this test's own earlier GRs against the line in its own client: cancelled, so the line has open quantity
+        # again and gets its ASN (an ASN is made only for open quantity, M4-C17)
+        cur.execute("UPDATE erpsim.document_item SET item_data = item_data || '{\"cancelled\": true}'::jsonb"
+                    " WHERE client = %s AND movement_type = '101' AND item_data->>'PurchaseOrder' = '4500001234'",
+                    (C05_CLIENT,))
         counts = load_into_erpsim(cur, ex, client=C05_CLIENT)
         c.commit()
     assert counts["asns_created"] == 2 and counts["materials"] >= 2

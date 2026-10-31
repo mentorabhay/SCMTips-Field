@@ -1079,3 +1079,65 @@
     archive/pre-q12-removal (cc5ffe3) under apps/wearable-android/app/src/main/java/com/scmtips/wearable/glasses/
     and src/test; it needs mwdat-display, which is not a Field dependency yet (rule 2.4: its coordinates must come
     from a real build). Field already formats the card text (feature-decisions CardFormatter, ported).
+- id: M4-C17
+  title: >-
+    The 3-minute demo run (core Q15): one command that resets the core's SAMPLE organisation, re-seeds Field's
+    erp-sim and sites from the core's export, sends the ERP snapshot, injects magnet-export-curbs in the core, approves
+    that decision by voice through Field and receives PO-26-1002 (GR 101 -> feeds -> the core re-plans), each beat
+    checked and timed
+  workstream: M4-C
+  role: Integration (K5, owner amendment A-05)
+  status: partial
+  evidence:
+  - tools/dev_stack/demo_run.py
+  - tools/dev_stack/core_export.py
+  - tools/dev_stack/erp_feed.py
+  - tools/dev_stack/core_smoke.py
+  - tools/dev_stack/stack.py
+  - scripts/dev/demo-run.ps1
+  - scripts/dev/demo-run.cmd
+  - scripts/dev/demo-run.sh
+  - docs/DEMO_RUN.md
+  - docs/evidence/runs/2026-11-01-k5-demo-run.txt
+  tests:
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_the_beats_run_in_order_and_stop_at_the_first_failure
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_a_failing_tool_fails_its_beat_and_withheld_output_stays_withheld
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_the_reset_beat_never_shows_or_logs_the_kits_passwords
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_the_reset_waits_until_no_feed_row_for_the_core_is_pending
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_the_receipt_beat_requires_the_cores_re_plan
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_the_scenario_report_is_checked_and_names_the_decision
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_the_approval_beat_approves_exactly_the_injected_decision
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_core_commands_get_the_callers_env_without_field_values_or_its_venv
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_the_po_comes_from_the_cores_export
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_main_refuses_a_missing_core_checkout
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_wait_equal_repeats_the_compare_until_the_core_has_committed
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_decision_only_with_the_approver_against_the_real_core
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_the_demo_run_page_matches_the_orchestrator
+  - tools/dev_stack/tests/test_demo_run.py::test_m4_c17_reset_puts_the_exports_plants_back_so_the_receipt_can_run_again
+  frs: []
+  verified_at: null
+  note: >-
+    K5 (1 Nov 2026, Linux container; owner amendment A-05). `scripts/dev/demo-run.ps1|.cmd|.sh <core checkout>` =
+    `uv run python -m tools.dev_stack.demo_run`: beat 0 preflight (the core's API, worker and demo mode via
+    scmtips-demo status; Field's services; FIELD_CORE_TARGET=core; FIELD_CORE_SNAPSHOT_TENANTS exactly the core's SAMPLE
+    organisation; no pending feed rows of another tenant), 1 the core's scmtips-demo reset and scmtips-local-demo
+    --with-team (its output, which prints the kit's passwords, never shown or logged) after Field's feed queue for the
+    core is empty, 2 stack seed-core-export --reset, 3 stack smoke --erp-feed, 4 the core's scmtips-scenario inject
+    magnet-export-curbs --wait (report checked: nothing unmet, auto-drafted, brief accepted, a changed number
+    refused), 5 stack smoke --approver --decision <that decision> (new flag), 6 stack smoke --core with
+    FIELD_CORE_SMOKE_PO=PO-26-1002 (export mode, received at the core, a new base plan run required), 7 the screens per
+    beat. Exit code 1 at the first failed beat with its recovery; nothing printed that was not checked. Fixed on the
+    way: K4's finding (erp-sim not reset with the core, so no receive task): --reset cancels the earlier GRs against
+    the export's PO lines with erp-sim's own item cancel (documents kept), removes PO lines and stock the export does
+    not hold from its plants, and an ASN is now made for every PO line with open quantity and no open ASN (the C05
+    test's own client cancels its own earlier GRs in its set-up for this); smoke --erp-feed compared once before the
+    core's worker had committed and now repeats the compare until equal or the wait ends; and the worker's snapshot read
+    the drone plants for 15 other Field tenants made by tests, whose older rows reached the core after its reset (run
+    A0 FAILED at beat 3, as it should): the run requires FIELD_CORE_SNAPSHOT_TENANTS. Results: two runs in a row against
+    the real core (the core's integration branch 392db14, demo mode, LR_STRICT_AUTH=true), exit code 0, 77.2 s and 76.6 s, every
+    beat ok; run B cancelled run A's GR and received a fresh ASN; --po PO-99 fails beat 0 with exit code 1 (log
+    docs/evidence/runs/2026-11-01-k5-demo-run.txt). Partial: Python smokes over HTTP, not the Android app; not run
+    on the owner's PC or kit (<workspace>\ARO may need the core branch with scmtips-demo and scmtips-scenario: his OK), the phone
+    or the glasses; the brief is the core's template (no Muse key here); plan beats 3 and 5 (planning, PMO) and the
+    live-to-file switch of beat 7 are not driven; shellcheck and PSScriptAnalyzer not available here, the .ps1 and
+    .cmd were not run.
