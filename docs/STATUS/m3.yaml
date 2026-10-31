@@ -111,6 +111,22 @@
   verified_at: null
   note: 'Migration field_0061 has down_revision field_0059 on this branch; the integrator re-points it to field_0060.
     Reads need field.assistant.review (supervisor). Console Sessions page (track P) not built against it yet.'
+- id: M3-A06
+  title: Worker retention - assistant heard / said text and photos purged after 30 days
+  workstream: WP5
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/retention/assistant.py
+  - services/field-worker/src/field_worker/worker.py
+  tests:
+  - services/field-worker/tests/unit/test_assistant_retention.py::test_purge_clears_old_content_and_deletes_unused_photos
+  - services/field-worker/tests/unit/test_assistant_retention.py::test_worker_tick_runs_the_retention_job
+  - services/field-worker/tests/unit/test_assistant_retention.py::test_retention_days_default_and_validation
+  frs: []
+  verified_at: null
+  note: 'Runs as field_worker through the SECURITY DEFINER field.worker_purge_assistant_content; tested on Postgres.
+    Not yet run on the owner''s PC stack.'
 - id: M3-A08
   title: Seams to track S (contract §7) - CodeResolver and SandboxItems Protocols, injected, not wired on this branch
   workstream: WP3
