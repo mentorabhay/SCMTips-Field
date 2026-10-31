@@ -6,6 +6,7 @@ Every call goes through the real fake-core app over HTTP (TestClient); shapes ar
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
@@ -16,6 +17,7 @@ from typing import Any
 
 import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from fake_core.app import app
 from fake_core.standin.decisions import check_brief, normalize, parse, sample_decisions
 from fake_core.standin.keys import KID_PREFIX
@@ -69,7 +71,7 @@ def test_m4_c02_app_sign_in_shape_and_core_claims() -> None:
     assert head["alg"] == "EdDSA" and head["kid"].startswith(KID_PREFIX)
     jwks = client.get("/v1/core/jwks.json").json()["keys"]
     key = next(k for k in jwks if k["kid"] == head["kid"])
-    pub = jwt.algorithms.OKPAlgorithm.from_jwk(json.dumps(key))
+    pub: Any = Ed25519PublicKey.from_public_bytes(base64.urlsafe_b64decode(key["x"] + "=="))  # stubs: RSA only
     claims = jwt.decode(s["access_token"], pub, algorithms=["EdDSA"], audience="scmtips-core", issuer="scmtips-core")
     assert claims["permissions"] == ["voice.approve", "decisions.read", "evidence.upload"]
     assert claims["email"] == APPROVER and claims["device_id"] == s["wearable"]["device_id"]

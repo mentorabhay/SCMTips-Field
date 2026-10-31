@@ -25,7 +25,15 @@ from fake_core.app import app as core_app
 from fake_core.standin.state import StandInState
 from field_sap.ports.erp_port import MaterialDocument, MaterialDocumentItem
 from field_sap.sim.adapter import SimAdapter
-from field_worker.core_feeds import CodeMap, CoreFeedPublisher, FeedConfig, build_rows, load_code_map, sign, verify
+from field_worker.core_feeds import (
+    CodeMap,
+    CoreFeedPublisher,
+    FeedConfig,
+    build_rows,
+    load_code_map,
+    sign,
+    verify,
+)
 from field_worker.core_feeds.publisher import backoff_s
 from field_worker.posting import DATABASE_URL, PostingQueueWorker, enqueue_posting_job
 from hypothesis import given, settings
