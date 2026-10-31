@@ -59,6 +59,12 @@ def test_conventions_validates_commits() -> None:
     valid, _ = validate_commit_message("remediation(r0): make gates honest")
     assert valid is True
 
+    # M3 slice IDs (owner amendment A-03): M3-<track S|A|P><two digits>, or M3-00
+    valid, _ = validate_commit_message("feat(assistant): rules fallback (M3-A03)")
+    assert valid is True
+    valid, _ = validate_commit_message("feat(assistant): something (M3-X1)")
+    assert valid is False
+
     # Invalid: no conventional prefix
     valid, msg = validate_commit_message("just fixed something T1.001")
     assert valid is False

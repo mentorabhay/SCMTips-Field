@@ -23,7 +23,8 @@ VALID_BRANCH_PATTERNS = [
 ]
 
 TASK_ID_PATTERN = re.compile(
-    r"(T[1-4]\.\d{3}|WS[1-4]\.\d|R[0-7](\.\d)?|PR[1-4]\.\d{2}|FR[1-4]\.\d{3}|remediation|bootstrap|initial|baseline)",
+    # M3-<track><nn> (owner amendment A-03, 31 Oct 2026): M3 glasses-first slice, ledger docs/STATUS/m3.yaml.
+    r"(T[1-4]\.\d{3}|WS[1-4]\.\d|R[0-7](\.\d)?|PR[1-4]\.\d{2}|FR[1-4]\.\d{3}|M3-(?:[SAP]\d{2}|00)\b|remediation|bootstrap|initial|baseline)",
     re.IGNORECASE,
 )
 
@@ -60,7 +61,7 @@ def validate_commit_message(msg: str) -> tuple[bool, str]:
 
     # Check task reference
     if not TASK_ID_PATTERN.search(msg):
-        return False, f"Commit message must reference task ID (T*.***, WS*.*, R*.*, PR*.*, FR*.*): '{first_line}'"
+        return False, f"Commit message must reference task ID (T*.***, WS*.*, R*.*, PR*.*, FR*.*, M3-S01): '{first_line}'"
 
     return True, "Commit message valid"
 
