@@ -7,6 +7,8 @@ Before any paid call, ``reserve()`` records a reservation for the worst-case cos
 - the provider's lifetime spend + open reservations + this call would exceed its cap
   (AI_BUDGET_LLAMA_USD / AI_BUDGET_BASETEN_USD / AI_BUDGET_META_USD), or today's (UTC) spend across
   providers would exceed AI_DAILY_CAP_USD.
+- the model id contains "image" (Muse Image is prohibited in India, owner amendment A-04): refused even when
+  someone has given it a price.
 After the call, ``settle()`` replaces the reservation by the actual cost (or ``fail()`` by the cost
 the provider still billed, default 0). Reservations that are never settled keep counting.
 
@@ -41,6 +43,7 @@ CAP_ENV: Mapping[str, str] = MappingProxyType(
 )
 DAILY_ENV = "AI_DAILY_CAP_USD"
 LOCK_KEY = 0x41494255  # "AIBU": one global lock for budget decisions
+PROHIBITED_MODEL_WORDS = ("image",)  # A-04: Muse Image is never called
 PRICING_FILE = Path(os.getenv("FIELD_AI_PRICING_FILE", Path(__file__).resolve().parents[5] / "config" / "ai_pricing.yaml"))
 
 
@@ -146,6 +149,8 @@ class BudgetGuard:
             raise BudgetRefused("AI_PROVIDER_UNKNOWN", f"unknown provider {provider!r}")
         if input_tokens < 0 or max_output_tokens <= 0:
             raise BudgetRefused("AI_REQUEST_INVALID", "token counts must be positive")
+        if any(w in model.lower() for w in PROHIBITED_MODEL_WORDS):
+            raise BudgetRefused("AI_MODEL_PROHIBITED", f"{model!r}: image models are prohibited (A-04)")
         price = self._price(provider, model)
         est = price.cost(input_tokens, max_output_tokens)
         cap, daily = _cap(CAP_ENV[provider]), _cap(DAILY_ENV)

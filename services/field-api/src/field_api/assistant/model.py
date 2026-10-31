@@ -11,6 +11,9 @@ reservation is settled with the provider's own usage counts (prompt, cached prom
 whose outcome is unknown (transport error, timeout) is closed at the reserved worst case; an HTTP error answer
 is closed at 0; a success without usage is closed at the reserved worst case.
 
+Model ids: '-contributor' models are refused (spec T1.062), and so is any id containing "image": Muse Image is
+prohibited in India (owner amendment A-04); the budget guard refuses such ids too, whatever the price file says.
+
 Keys are read from the environment by NAME at call time and are never logged, stored or put in an error.
 UNVERIFIED beyond access (docs/META_FIELD.md rows 19-20): access from India is verified, tool calls and images are not; CI
 exercises this client against a test double of the HTTP API that lives in test code only.
@@ -30,7 +33,7 @@ from typing import Any
 import httpx
 import structlog
 
-from field_api.ai.budget import BudgetGuard, BudgetRefused
+from field_api.ai.budget import PROHIBITED_MODEL_WORDS, BudgetGuard, BudgetRefused
 
 logger = structlog.get_logger(__name__)
 
@@ -84,9 +87,17 @@ class ModelError(Exception):
         self.code = code
 
 
+def model_prohibited(model: str) -> bool:
+    """True for a model id that must never be called (any id containing "image": Muse Image, A-04)."""
+    low = model.lower()
+    return any(w in low for w in PROHIBITED_MODEL_WORDS)
+
+
 def validate_model_id(model: str) -> str:
     if "-contributor" in model.lower():
         raise ValueError(f"model id {model!r} is refused: '-contributor' models are not allowed (spec T1.062)")
+    if model_prohibited(model):
+        raise ValueError(f"model id {model!r} is refused: image models (Muse Image) are prohibited in India (A-04)")
     if not model.strip():
         raise ValueError("model id is empty")
     return model

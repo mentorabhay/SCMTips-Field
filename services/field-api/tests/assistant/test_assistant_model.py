@@ -233,3 +233,33 @@ def test_output_cap_is_a_setting_within_bounds(monkeypatch: pytest.MonkeyPatch) 
         monkeypatch.setenv("ASSISTANT_MAX_OUTPUT_TOKENS", raw)
         assert max_output_tokens() == want
 
+
+
+def test_image_models_can_never_be_configured_or_called(monkeypatch: pytest.MonkeyPatch, h: SimpleNamespace) -> None:
+    """A-04: Muse Image is prohibited in India. No model id containing "image" passes the client, the router or the
+    budget guard (even with a price), and the price file lists none."""
+    from field_api.ai.budget import BudgetRefused, load_prices
+
+    for bad in ("muse-image-1.0", "Muse-Image", "llama-image-x", "muse-spark-1.3-image"):
+        with pytest.raises(ValueError, match="prohibited"):
+            validate_model_id(bad)
+        with pytest.raises(ValueError):
+            ProviderConfig("meta", META_BASE_URL, bad, "MODEL_API_KEY")
+        monkeypatch.setenv("ASSISTANT_MODEL", bad)
+        monkeypatch.delenv("BASETEN_BASE_URL", raising=False)
+        assert build_router().models == []
+        guard = BudgetGuard(prices={"llama": {}, "baseten": {}, "meta": {bad: h.META_PRICE}})
+        monkeypatch.setenv("AI_CLOUD_ENABLED", "true")
+        with pytest.raises(BudgetRefused) as e:
+            guard.reserve("meta", bad, input_tokens=10, max_output_tokens=10, purpose="t")
+        assert e.value.code == "AI_MODEL_PROHIBITED"
+    assert not [m for models in load_prices().values() for m in models if "image" in m.lower()]
+
+
+def test_default_model_is_muse_spark_1_3_and_priced(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A-04 default: muse-spark-1.3 is what the assistant, the brief router and `stack assistant-check` call (all
+    through build_router / meta_config), and the budget guard has a price for it."""
+    from field_api.ai.budget import load_prices
+
+    monkeypatch.delenv("ASSISTANT_MODEL", raising=False)
+    assert meta_config().model == "muse-spark-1.3" and "muse-spark-1.3" in load_prices()["meta"]
