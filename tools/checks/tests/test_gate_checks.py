@@ -154,3 +154,53 @@ def test_trace_flags_stale_completion_claims(tmp_path: Path) -> None:
     (root / "docs" / "report.md").write_text("# Phase 9\nALL PHASES REMEDIATED\n")
     violations, _ = trace.validate(root, [])
     assert any(v.startswith("G1") for v in violations)
+
+
+# ---------------------------------------------------------------- trace: M3 ledger (owner amendment A-03)
+def _m3(root: Path, entries: list[dict[str, object]]) -> None:
+    (root / "docs" / "STATUS" / "m3.yaml").write_text(yaml.safe_dump(entries))
+
+
+def test_trace_m3_partial_entries_pass_and_are_counted(tmp_path: Path) -> None:
+    root = _repo(tmp_path, "done", ["tests/test_widget.py::test_pr9_01_widget"], with_junit=True)
+    _m3(root, [{"id": "M3-S01", "status": "partial", "evidence": [], "tests": [], "frs": []}])
+    violations, stats = trace.validate(root, ["reports/junit*.xml"])
+    assert violations == []
+    assert stats["m3"] == {"partial": 1}
+
+
+def test_trace_m3_done_needs_evidence_tests_and_device_proof(tmp_path: Path) -> None:
+    root = _repo(tmp_path, "done", ["tests/test_widget.py::test_pr9_01_widget"], with_junit=True)
+    _m3(root, [{"id": "M3-A01", "status": "done", "evidence": ["src/missing.py"], "tests": ["tests/x.py::test_y"],
+                "frs": ["FR9.001"]}])
+    violations, _ = trace.validate(root, ["reports/junit*.xml"])
+    kinds = {v.split()[0] for v in violations if "M3-A01" in v}
+    assert {"D1", "D2", "M1"} <= kinds
+    assert not any(v.startswith("D3 M3-A01") for v in violations)  # FR9.001 has a passing test
+
+
+def test_trace_m3_done_with_device_proof_passes(tmp_path: Path) -> None:
+    root = _repo(tmp_path, "done", ["tests/test_widget.py::test_pr9_01_widget"], with_junit=True)
+    (root / "docs" / "STATUS" / "device-log.txt").write_text("receive posted on Gen 2, document 4900000106 " * 3)
+    _m3(root, [{"id": "M3-P01", "status": "done", "evidence": ["src/widget.py"],
+                "tests": ["tests/test_widget.py::test_pr9_01_widget"], "frs": [],
+                "device_proof": "docs/STATUS/device-log.txt"}])
+    violations, _ = trace.validate(root, ["reports/junit*.xml"])
+    assert violations == []
+
+
+def test_trace_m3_rejects_foreign_ids_and_duplicates(tmp_path: Path) -> None:
+    root = _repo(tmp_path, "partial", [], with_junit=False)
+    _m3(root, [{"id": "T9.001", "status": "partial"}, {"id": "M3-S01", "status": "partial"},
+               {"id": "M3-S01", "status": "partial"}])
+    violations, _ = trace.validate(root, [])
+    assert any(v.startswith("L1 T9.001") and "not an M3 id" in v for v in violations)
+    assert any(v.startswith("L1 M3-S01") and "duplicated" in v for v in violations)
+
+
+def test_trace_m3_partial_counts_as_not_done_for_completion_claims(tmp_path: Path) -> None:
+    root = _repo(tmp_path, "done", ["tests/test_widget.py::test_pr9_01_widget"], with_junit=True)
+    _m3(root, [{"id": "M3-S01", "status": "partial"}])
+    (root / "docs" / "report.md").write_text("# M3\nALL PHASES REMEDIATED\n")
+    violations, _ = trace.validate(root, ["reports/junit*.xml"])
+    assert any(v.startswith("G1") for v in violations)

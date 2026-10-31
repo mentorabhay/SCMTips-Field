@@ -17,6 +17,10 @@ For every ``done`` entry:
       with the spec's method and path
   D6  every migration listed as evidence enables AND forces RLS and creates a policy for each
       table it creates. (Spec column matching is NOT implemented yet; reported as such.)
+M3 ledger ``docs/STATUS/m3.yaml`` (owner amendment A-03; no spec file, so no L1 completeness):
+  L1  ids are M3-S<nn> | M3-A<nn> | M3-P<nn>, unique; L2 statuses as above
+  D1, D2, D3 (FR ids against their phase's spec), D6 for every ``done`` entry, as above
+  M1  a ``done`` entry names ``device_proof``: a committed log from the owner's phone and glasses
 Global:
   G1  no report under docs/ claims completion unless it carries the SUPERSEDED banner or is
       generated from the ledger (marker ``<!-- generated-from-ledger -->``)
@@ -176,6 +180,97 @@ def check_migration(text: str) -> list[str]:
     return errs
 
 
+M3_ID_RE = re.compile(r"^M3-[SAP]\d{2}$")
+
+
+def _evidence_ok(root: Path, tid: str, evid: list[str]) -> list[str]:
+    """D1: every evidence path is an existing, non-trivial, non-placeholder file."""
+    out: list[str] = []
+    if not evid:
+        out.append(f"D1 {tid}: done without evidence")
+    for p in evid:
+        fp = root / p
+        if not fp.is_file():
+            out.append(f"D1 {tid}: evidence is not an existing file: {p}")
+        elif fp.stat().st_size < 64 or PLACEHOLDER_RE.search(fp.read_text(encoding="utf-8", errors="ignore")):
+            out.append(f"D1 {tid}: evidence is trivial or placeholder: {p}")
+    return out
+
+
+def _tests_ok(ev: Evidence, tid: str, listed: list[str]) -> list[str]:
+    """D2: at least one listed test node passed in the junit evidence."""
+    tests = [t for t in listed if "::" in t]
+    if not [ev.passed[t] for t in tests if t in ev.passed]:
+        return [f"D2 {tid}: no listed test node passed in junit ({len(listed)} listed)"]
+    return []
+
+
+def _migrations_ok(root: Path, tid: str, evid: list[str]) -> list[str]:
+    """D6: migrations listed as evidence enable and force RLS with a policy per created table."""
+    out: list[str] = []
+    for p in evid:
+        if "alembic/versions" in p and (root / p).is_file():
+            for err in check_migration((root / p).read_text(encoding="utf-8")):
+                out.append(f"D6 {tid}: {p}: {err}")
+    return out
+
+
+def _fr_refs_for(root: Path, fr: str, cache: dict[int, dict[str, set[str]]]) -> set[str]:
+    m = re.match(r"FR(\d)\.", fr)
+    if not m:
+        return {fr}
+    phase = int(m.group(1))
+    if phase not in cache:
+        try:
+            cache[phase] = load_spec(root, phase)["fr_refs"]
+        except FileNotFoundError:
+            cache[phase] = {}
+    return {fr} | cache[phase].get(fr, set())
+
+
+def validate_m3(root: Path, ev: Evidence, violations: list[str]) -> tuple[bool, dict[str, int] | None]:
+    """The M3 slice ledger (A-03). Returns (any entry not done, status counts) or (False, None) if absent."""
+    lf = root / "docs" / "STATUS" / "m3.yaml"
+    if not lf.is_file():
+        return False, None
+    data = yaml.safe_load(lf.read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        violations.append(f"{lf.name}: ledger must be a YAML list")
+        return False, None
+    seen = [str(e.get("id")) for e in data]
+    for x in sorted({x for x in seen if seen.count(x) > 1}):
+        violations.append(f"L1 {x}: duplicated in {lf.name}")
+    any_not_done = False
+    counts: dict[str, int] = {}
+    cache: dict[int, dict[str, set[str]]] = {}
+    all_ids: set[str] = set().union(*(p.ids for p in ev.passed.values())) if ev.passed else set()
+    for e in data:
+        tid, st = str(e.get("id", "?")), e.get("status")
+        if not M3_ID_RE.match(tid):
+            violations.append(f"L1 {tid}: not an M3 id (M3-S01, M3-A01, M3-P01) in {lf.name}")
+        counts[str(st)] = counts.get(str(st), 0) + 1
+        if st not in VALID:
+            violations.append(f"L2 {tid}: invalid status {st!r}")
+            continue
+        if st != "done":
+            any_not_done = True
+            continue
+        evid = list(e.get("evidence") or [])
+        violations.extend(_evidence_ok(root, tid, evid))
+        violations.extend(_tests_ok(ev, tid, list(e.get("tests") or [])))
+        for fr in e.get("frs") or []:
+            refs = _fr_refs_for(root, str(fr), cache)
+            if not (refs & all_ids):
+                violations.append(f"D3 {tid}: {fr} has no passing test (looked for {sorted(refs)})")
+        violations.extend(_migrations_ok(root, tid, evid))
+        proof = e.get("device_proof")
+        if not proof:
+            violations.append(f"M1 {tid}: done without device_proof (A-03: proven on the owner's phone and glasses)")
+        else:
+            violations.extend(v.replace("D1 ", "M1 ", 1) for v in _evidence_ok(root, tid, [str(proof)]))
+    return any_not_done, counts
+
+
 def validate(root: Path, junit_globs: list[str]) -> tuple[list[str], dict[str, Any]]:
     violations: list[str] = []
     ev = load_evidence(root, junit_globs)
@@ -211,21 +306,10 @@ def validate(root: Path, junit_globs: list[str]) -> tuple[list[str], dict[str, A
                 continue
             task = spec["tasks"].get(tid, {})
             text = " ".join(str(task.get(k, "")) for k in ("title", "description", "done_when"))
-            # D1
+            # D1, D2
             evid = e.get("evidence") or []
-            if not evid:
-                violations.append(f"D1 {tid}: done without evidence")
-            for p in evid:
-                fp = root / p
-                if not fp.is_file():
-                    violations.append(f"D1 {tid}: evidence is not an existing file: {p}")
-                elif fp.stat().st_size < 64 or PLACEHOLDER_RE.search(fp.read_text(encoding="utf-8", errors="ignore")):
-                    violations.append(f"D1 {tid}: evidence is trivial or placeholder: {p}")
-            # D2
-            tests = [t for t in (e.get("tests") or []) if "::" in t]
-            passing = [ev.passed[t] for t in tests if t in ev.passed]
-            if not passing:
-                violations.append(f"D2 {tid}: no listed test node passed in junit ({len(e.get('tests') or [])} listed)")
+            violations.extend(_evidence_ok(root, tid, evid))
+            violations.extend(_tests_ok(ev, tid, list(e.get("tests") or [])))
             # D3
             all_ids: set[str] = set().union(*(p.ids for p in ev.passed.values())) if ev.passed else set()
             for fr in e.get("frs") or task.get("frs") or []:
@@ -246,11 +330,12 @@ def validate(root: Path, junit_globs: list[str]) -> tuple[list[str], dict[str, A
                 elif (a["method"].upper(), norm_path(a["path"])) not in ops:
                     violations.append(f"D5 {tid}: {api} {a['method']} {a['path']} not in OpenAPI")
             # D6
-            for p in evid:
-                if "alembic/versions" in p and (root / p).is_file():
-                    for err in check_migration((root / p).read_text(encoding="utf-8")):
-                        violations.append(f"D6 {tid}: {p}: {err}")
+            violations.extend(_migrations_ok(root, tid, evid))
         stats["phases"][phase] = counts
+    m3_not_done, m3_counts = validate_m3(root, ev, violations)
+    if m3_counts is not None:
+        stats["m3"] = m3_counts
+    any_not_done = any_not_done or m3_not_done
     # G1
     if any_not_done:
         for f in list(root.glob("docs/**/*.md")) + list(root.glob("docs/**/*.html")):
@@ -275,6 +360,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"junit files: {len(stats['junit_files'])}; passed tests indexed: {stats['passed_tests']}")
     for ph, c in sorted(stats["phases"].items()):
         print(f"phase {ph}: {c}")
+    if "m3" in stats:
+        print(f"m3: {stats['m3']}")
     if violations:
         print(f"[FAIL] {len(violations)} trace violation(s): {by_kind}")
         for v in violations[:200]:
