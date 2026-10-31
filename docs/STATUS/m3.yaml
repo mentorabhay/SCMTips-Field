@@ -161,3 +161,162 @@
     `smoke --all` (both PASS, 31 Oct 2026, Linux sandbox, private ports). `assistant-check` imports
     tools.dev_stack.assistant_check at call time and calls its main(args); without it, it says the hook is not
     installed (exit 1). Partial until proven on the owner''s phone and glasses (A-03).'
+# M3 glasses-first slice ledger (owner amendment A-03; docs/design/M3_CONTRACT.md §1). Same fields as the phase
+# ledgers. Every M3 entry stays at most `partial` until proven on the owner's phone and glasses.
+# Track A (Field Assistant + records) entries: M3-A01..M3-A08.
+- id: M3-A01
+  title: Budget guard provider meta (AI_BUDGET_META_USD) with cached-input pricing; muse-spark-1.2 in config/ai_pricing.yaml
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/ai/budget.py
+  - config/ai_pricing.yaml
+  - services/field-api/alembic/versions/field_0061_m3_assistant.py
+  tests:
+  - services/field-api/tests/unit/test_ai_budget.py::test_meta_provider_has_its_own_cap_and_records_cached_tokens
+  - services/field-api/tests/unit/test_ai_budget.py::test_cached_input_tokens_are_billed_at_the_cached_rate
+  - services/field-api/tests/unit/test_ai_budget.py::test_cached_cost_never_exceeds_uncached
+  - services/field-api/tests/unit/test_ai_budget.py::test_pricing_file_has_muse_spark_with_cached_input
+  - services/field-api/tests/unit/test_ai_budget.py::test_pricing_file_loads_with_non_negative_prices
+  frs: []
+  verified_at: null
+  note: 'Guard tested on Postgres (reserve worst case without cache, settle with prompt/cached/completion tokens,
+    ops.ai_usage.cached_input_tokens, provider check allows meta). The prices (input 1.25, cached 0.15, output 4.25
+    USD per million) are the M3 contract figures, not checked against the provider by this build: owner to confirm.
+    llama and baseten unchanged; their tests stay green.'
+- id: M3-A02
+  title: Field Assistant model client - Meta Model API (muse-spark-1.2) with Baseten fallback, every call through the budget guard
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/model.py
+  - docs/META_FIELD.md
+  tests:
+  - services/field-api/tests/assistant/test_assistant_model.py::test_success_settles_with_the_providers_usage_incl_cached
+  - services/field-api/tests/assistant/test_assistant_model.py::test_failures_close_the_reservation
+  - services/field-api/tests/assistant/test_assistant_model.py::test_fallback_to_baseten_when_meta_fails
+  - services/field-api/tests/assistant/test_assistant_model.py::test_contributor_model_ids_are_refused
+  - services/field-api/tests/assistant/test_assistant_model.py::test_no_key_and_ai_off_make_no_call_and_no_reservation
+  - services/field-api/tests/assistant/test_assistant_model.py::test_budget_refusal_makes_no_call
+  - services/field-api/tests/assistant/test_assistant_model.py::test_timeout_is_at_most_six_seconds
+  frs: []
+  verified_at: null
+  note: 'UNVERIFIED dependency (docs/META_FIELD.md row 19): the live Meta Model API was not reachable from the build
+    sandbox (egress proxy refused CONNECT to api.meta.ai, HTTP 403) and no MODEL_API_KEY exists there. Tested only
+    against an HTTP test double (hand-written OpenAI-compatible answers, test code only). Baseten fallback is wired but
+    has no priced model yet, so the guard refuses it until the owner adds one.'
+- id: M3-A03
+  title: POST /v1/assistant/turns (contract §4) - server tools, prompts with definitions of done, action safety, vision for names
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/api.py
+  - services/field-api/src/field_api/assistant/service.py
+  - services/field-api/src/field_api/assistant/tools.py
+  - services/field-api/src/field_api/assistant/actions.py
+  - services/field-api/src/field_api/assistant/prompts.py
+  - services/field-api/src/field_api/assistant/work.py
+  - services/field-api/src/field_api/auth/permissions.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_model_answer_is_sanitised_and_costed
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_count_task_never_sends_book_quantities_to_the_model
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_photo_goes_to_the_model_only_for_what_is_this
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_add_sandbox_item_needs_the_operators_explicit_yes
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_model_failure_falls_back_to_rules
+  - services/field-api/tests/assistant/test_assistant_property.py::test_no_response_ever_contains_a_confirm_action
+  - services/field-api/tests/assistant/test_assistant_property.py::test_count_tasks_never_leak_book_quantity_in_task_data
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_permissions_scope_and_idempotency
+  frs: []
+  verified_at: null
+  note: 'Depends on the UNVERIFIED Meta Model API (M3-A02): the model path is proven only against the test double.
+    Permission field.assistant.use for operator, technician, supervisor; Idempotency-Key required. Never on the
+    owner''s phone or glasses yet.'
+- id: M3-A04
+  title: Rules mode (ai rules) - fixed answers when AI is off, keyless, refused, failing or slow, incl. the sandbox unknown-code dialog
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/rules.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_greeting_lists_work_most_urgent_first
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_start_by_type_and_number_opens_the_task
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_next_and_left_on_receive_say_quantities
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_count_task_never_says_the_book_quantity
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_what_is_this_from_task_lines_when_codes_port_is_not_wired
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_sandbox_unknown_code_dialog_name_then_quantity_then_add
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_repeat_summary_pause_resume_and_end
+  - services/field-api/tests/assistant/test_assistant_property.py::test_rules_never_confirm_and_never_say_count_quantities
+  frs: []
+  verified_at: null
+  note: 'Fully tested without network on Postgres. Not yet heard through the glasses (phone track P routes utterances
+    here); the sandbox add is tested through a double of track S''s port, not the real one.'
+- id: M3-A05
+  title: Assistant records - field.assistant_session / field.assistant_turn (forced RLS), supervisor list, detail, CSV export, photo
+  workstream: WP5
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/alembic/versions/field_0061_m3_assistant.py
+  - services/field-api/src/field_api/assistant/records.py
+  - services/field-api/src/field_api/assistant/photos.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_records.py::test_list_detail_and_documents
+  - services/field-api/tests/assistant/test_assistant_records.py::test_csv_export_escapes_formulas
+  - services/field-api/tests/assistant/test_assistant_records.py::test_reads_need_review_permission_and_respect_tenancy
+  - services/field-api/tests/assistant/test_assistant_records.py::test_tables_have_forced_rls
+  - services/field-api/tests/assistant/test_assistant_records.py::test_pagination_and_session_end
+  frs: []
+  verified_at: null
+  note: 'Migration field_0061 has down_revision field_0059 on this branch; the integrator re-points it to field_0060.
+    Reads need field.assistant.review (supervisor). Console Sessions page (track P) not built against it yet.'
+- id: M3-A06
+  title: Worker retention - assistant heard / said text and photos purged after 30 days
+  workstream: WP5
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/retention/assistant.py
+  - services/field-worker/src/field_worker/worker.py
+  tests:
+  - services/field-worker/tests/unit/test_assistant_retention.py::test_purge_clears_old_content_and_deletes_unused_photos
+  - services/field-worker/tests/unit/test_assistant_retention.py::test_worker_tick_runs_the_retention_job
+  - services/field-worker/tests/unit/test_assistant_retention.py::test_retention_days_default_and_validation
+  frs: []
+  verified_at: null
+  note: 'Runs as field_worker through the SECURITY DEFINER field.worker_purge_assistant_content; tested on Postgres.
+    Not yet run on the owner''s PC stack.'
+- id: M3-A07
+  title: stack assistant-check - one real model call through the budget guard, prints OK or BLOCKED, never the key
+  workstream: WP3
+  role: DevOps
+  status: partial
+  evidence:
+  - tools/dev_stack/assistant_check.py
+  tests:
+  - tools/dev_stack/tests/test_assistant_check.py::test_ok_line
+  - tools/dev_stack/tests/test_assistant_check.py::test_blocked_lines
+  - tools/dev_stack/tests/test_assistant_check.py::test_run_prints_one_line_and_exit_code
+  frs: []
+  verified_at: null
+  note: 'In the build sandbox it prints BLOCKED (AI_CLOUD_DISABLED, or meta:AI_NO_KEY with AI on): the live call was
+    never made. Track S registers the stack subcommand (lazy import of run()); on this branch it runs as
+    python -m tools.dev_stack.assistant_check.'
+- id: M3-A08
+  title: Seams to track S (contract §7) - CodeResolver and SandboxItems Protocols, injected, not wired on this branch
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/ports.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_sandbox_dialog_cancel_and_not_wired
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_production_site_refuses_the_sandbox_dialog
+  frs: []
+  verified_at: null
+  note: 'get_ports() returns no ports here; the integrator wires field_api.codes.resolve.resolve_code and
+    field_api.sandbox.service.add_item. Tested with doubles in test code only.'

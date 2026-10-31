@@ -1238,7 +1238,8 @@ def cmd_assistant_check(a: argparse.Namespace) -> int:
             raise
         print("assistant-check is not installed in this build (tools/dev_stack/assistant_check.py is missing)")
         return 1
-    return int(mod.main(a))
+    load_env()
+    return int(mod.run([]))
 
 
 # --- smoke ----------------------------------------------------------------------------------------

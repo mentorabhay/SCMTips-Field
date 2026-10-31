@@ -9,6 +9,8 @@ Every FIELD_IBD_POLL_S (spec default 300 s; set lower for a field test):
   - imports open outbound deliveries of the same plant (pick tasks, FR3.017)
 Every 10 min:
   - purges expired idempotency records
+Every FIELD_ASSISTANT_PURGE_S (3600 s):
+  - clears Field Assistant heard / said text and photos older than FIELD_ASSISTANT_RETENTION_DAYS (30)
 
 Connects as field_worker (NOBYPASSRLS) via FIELD_WORKER_DATABASE_URL and discovers tenants through
 SECURITY DEFINER functions (migration field_0057). The ERP adapter is chosen by FIELD_ERP_ADAPTER:
@@ -36,6 +38,7 @@ from field_sap.sim.adapter import SimAdapter
 from field_worker.material_sync import MaterialCacheSynchronizer
 from field_worker.posting.equipment_queue import process_next_tower_job
 from field_worker.posting.queue import PostingQueueWorker
+from field_worker.retention.assistant import purge_assistant_content
 from field_worker.warehouse.ibd_import import poll_and_import_inbound_deliveries
 from field_worker.warehouse.obd_import import poll_and_import_outbound_deliveries
 
@@ -47,6 +50,7 @@ TICK_S = float(os.getenv("FIELD_WORKER_TICK_S", "1"))
 IBD_POLL_S = float(os.getenv("FIELD_IBD_POLL_S", "300"))
 PURGE_S = 600.0
 MATERIAL_SYNC_S = float(os.getenv("FIELD_MATERIAL_SYNC_S", "900"))
+ASSISTANT_PURGE_S = float(os.getenv("FIELD_ASSISTANT_PURGE_S", "3600"))
 
 
 def build_erp_port() -> ErpPort:
@@ -70,6 +74,7 @@ class FieldWorker:
         self.tasks_imported = 0
         self._last_ibd = 0.0
         self._last_purge = 0.0
+        self._last_assistant_purge: float | None = None
         self._last_material_sync: dict[tuple[str, str], float] = {}
         self.last_heartbeat: str | None = None
 
@@ -137,6 +142,10 @@ class FieldWorker:
         rows = self._query("SELECT field.worker_purge_idempotency()")
         return int(rows[0][0]) if rows else 0
 
+    def purge_assistant_content(self) -> int:
+        """Field Assistant retention (30 days); returns the number of photo files deleted."""
+        return purge_assistant_content(self.db_url).photos_deleted
+
     async def tick(self, now: float) -> None:
         """One pass over every loop. A failing loop is logged and must not starve the others."""
         await self._guard("posting", self.process_posting_queue())
@@ -147,6 +156,9 @@ class FieldWorker:
         if now - self._last_purge >= PURGE_S:
             self._last_purge = now
             await self._guard("idempotency_purge", asyncio.to_thread(self.purge_expired_idempotency_records))
+        if self._last_assistant_purge is None or now - self._last_assistant_purge >= ASSISTANT_PURGE_S:
+            self._last_assistant_purge = now
+            await self._guard("assistant_retention", asyncio.to_thread(self.purge_assistant_content))
         self.last_heartbeat = datetime.now(UTC).isoformat()
         await asyncio.to_thread(self.record_heartbeat)
 

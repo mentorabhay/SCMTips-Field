@@ -24,6 +24,7 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.device.pair",
             "field.visit.checkin",
             "field.visit.ack",
+            "field.assistant.use",  # spoken Field Assistant (M3 contract §4)
         ),
         "field.technician": (
             "field.capture.create",
@@ -43,6 +44,7 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.safety.checklist",
             "field.swap.post",
             "field.task.read",
+            "field.assistant.use",
         ),
         "field.supervisor": (
             "field.system.read",
@@ -70,6 +72,8 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.visit.override",
             "field.visit.ack",  # acknowledge a lone-worker escalation (FR4.044, console)
             "field.trail.read",
+            "field.assistant.use",
+            "field.assistant.review",  # assistant session records: list, detail, CSV export (M3 contract §4)
         ),
         "inventory.controller": (
             "field.stock.read",

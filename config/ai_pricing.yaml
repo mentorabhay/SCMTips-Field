@@ -1,11 +1,20 @@
 # Prices used by the AI budget guard (field_api.ai.budget) to estimate a call's cost BEFORE it is made.
 # USD per million tokens. A model that is not listed here is refused: the guard never guesses a price.
-# Fill these from your provider console (llama.developer.meta.com, baseten.co) — they are owner-supplied,
-# UNVERIFIED by any build, and must be re-checked when the provider changes pricing.
+# cached_input_per_mtok (optional): rate for prompt tokens the provider reports as cache hits
+# (usage.prompt_tokens_details.cached_tokens); without it cached tokens are billed at input_per_mtok.
+#
+# OWNER-CHECKABLE. These are owner-supplied figures, UNVERIFIED by any build, and must be re-checked in the
+# provider console whenever the provider changes pricing.
 #
 # llama:
 #   <model id>: {input_per_mtok: 0.0, output_per_mtok: 0.0}
 # baseten:
 #   <model id>: {input_per_mtok: 0.0, output_per_mtok: 0.0}
+#   (the Field Assistant fallback model id is set by BASETEN_MODEL_ID; it is used only once it has a price here)
 llama: {}
 baseten: {}
+# Meta Model API (M3 Field Assistant, docs/design/M3_CONTRACT.md §4). Standard tier. Figures as given in the M3
+# contract from the provider's published rates on 2026-10-31; the build sandbox could not reach the provider to
+# check them. Owner: confirm on the Meta developer console.
+meta:
+  muse-spark-1.2: {input_per_mtok: 1.25, cached_input_per_mtok: 0.15, output_per_mtok: 4.25}

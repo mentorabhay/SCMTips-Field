@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from field_api.assistant.api import router as assistant_router
 from field_api.audit.api import router as audit_router
 from field_api.audits.reports import router as audit_reports_router
 from field_api.codes.api import router as codes_router
@@ -234,6 +235,7 @@ def create_app() -> FastAPI:
     app.include_router(job_console_router)
     app.include_router(codes_router)
     app.include_router(sandbox_router)
+    app.include_router(assistant_router)
 
     return app
 

@@ -157,7 +157,7 @@ The tower jobs live on a separate site, **SAMPLE tower 0001**, with a real geofe
   - Recalls and Industry packs are placeholders for later phases.
 
 ## Step 8: AI credits (optional; nothing here uses them)
-Barcodes, speech and spoken prompts run on the phone and glasses for free. Cloud AI is off (`AI_CLOUD_ENABLED=false`). If you enable it later, keys go in `.env.local` only. Hard caps are enforced in Postgres (`AI_BUDGET_LLAMA_USD=40`, `AI_BUDGET_BASETEN_USD=25`, `AI_DAILY_CAP_USD=3`), and spend shows at `GET /v1/system/ai-usage`. Don't deploy dedicated Baseten models; they bill while idle.
+Barcodes, speech and spoken prompts run on the phone and glasses for free. Cloud AI is off (`AI_CLOUD_ENABLED=false`). If you enable it later, keys go in `.env.local` only. Hard caps are enforced in Postgres (`AI_BUDGET_LLAMA_USD=40`, `AI_BUDGET_BASETEN_USD=25`, `AI_DAILY_CAP_USD=3`), and spend shows at `GET /v1/system/ai-usage`. Don't deploy dedicated Baseten models; they bill while idle. The M3 Field Assistant uses the Meta Model API (`MODEL_API_KEY`, cap `AI_BUDGET_META_USD`, prices in `config/ai_pricing.yaml`); `uv run python -m tools.dev_stack.assistant_check` makes one capped call and prints `OK` or `BLOCKED <reason>`. Without AI the assistant still answers in rules mode.
 
 ---
 

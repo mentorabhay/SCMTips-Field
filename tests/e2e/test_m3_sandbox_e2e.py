@@ -25,6 +25,7 @@ import httpx
 import psycopg
 import pytest
 from erp_sim.app import app as erp_app
+from erp_sim.seed import reset_database
 from fastapi.testclient import TestClient
 from field_api.app import app
 from field_api.auth.jwt import Principal, create_dev_token, verify_token
@@ -157,6 +158,7 @@ def _task(h: dict[str, Any], site: str, task_id: str) -> dict[str, Any]:
 def test_erp_sim_barcodes_read_the_s4_way() -> None:
     """erpsim.material_barcode (MEAN): SAMPLE materials carry barcode = material number, read as
     A_ProductUnitsOfMeasureEAN and as $expand on A_ProductPlant (M3-S01)."""
+    reset_database("100")  # the SAMPLE seed this test reads; a migrated-only database has none
     erp = TestClient(erp_app)
     r = erp.get("/sap/opu/odata/sap/API_PRODUCT_SRV/A_ProductUnitsOfMeasureEAN",
                 params={"$filter": "ProductStandardID eq 'SAMPLE-MAT-0001'"})
@@ -425,3 +427,33 @@ def test_section_7_seams_have_the_contract_signatures(home: dict[str, Any]) -> N
     with pytest.raises(FieldError) as e:
         add_item(sup, str(uuid.uuid4()), "x", "x", None, "k")
     assert e.value.code == "FIELD-AUTH-403-PERMISSION"
+
+
+def test_assistant_adds_an_unknown_box_through_the_real_sandbox_service(home: dict[str, Any]) -> None:
+    """Contract section 7 wired: on a sandbox receipt an unknown barcode, its spoken name and quantity become a
+    receipt line carrying that barcode (rules mode, no AI); on the production site no add is offered (M3-A03, M3-S03)."""
+    h = home
+    r = api.post("/v1/sandbox/receipts", json={"site_id": h["sbx"]}, headers=_h(h["op"]))
+    assert r.status_code == 201, r.text
+    task_id = r.json()["task_id"]
+    code = _code()
+
+    def turn(site: str, event: str, sid: str | None, **extra: Any) -> dict[str, Any]:
+        body = {"site_id": site, "event": event, "session_id": sid, "client_state": {"task_id": task_id}, **extra}
+        res = api.post("/v1/assistant/turns", json=body, headers=_h(h["op"]))
+        assert res.status_code == 200, res.text
+        return dict(res.json())
+
+    sid = turn(h["sbx"], "session_start", None)["session_id"]
+    assert "What is it" in turn(h["sbx"], "unknown_code", sid, code=code)["say"]
+    assert "How many" in turn(h["sbx"], "utterance", sid, text="water bottle")["say"]
+    done = turn(h["sbx"], "utterance", sid, text="two")
+    assert done["ai"] == "rules"
+    assert done["actions"] == [{"type": "refresh_task", "task_id": task_id, "focus_code": code}]
+    lines = [ln for ln in _task(h, h["sbx"], task_id)["lines"] if code in ln["barcodes"]]
+    assert len(lines) == 1 and lines[0]["material"].startswith("HOME-")
+    assert "water bottle" in str(lines[0]["description"]).lower()
+
+    prod_sid = turn(h["prod"], "session_start", None)["session_id"]
+    refused = turn(h["prod"], "unknown_code", prod_sid, code=_code(), client_state={})
+    assert not refused["actions"] and "What is it" not in refused["say"]

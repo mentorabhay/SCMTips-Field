@@ -337,7 +337,7 @@ def test_assistant_check_says_clearly_when_track_a_is_not_in_this_build(monkeypa
     assert "assistant-check is not installed in this build" in capsys.readouterr().out
 
     hook = types.ModuleType("tools.dev_stack.assistant_check")
-    vars(hook)["main"] = lambda a: 0  # stands in for the module track A adds; imported only at call time
+    vars(hook)["run"] = lambda argv: 0  # stands in for track A's module: run(argv) -> int, imported only at call time
     monkeypatch.setattr(importlib, "import_module", real)
     monkeypatch.setitem(sys.modules, "tools.dev_stack.assistant_check", hook)
     assert stack.cmd_assistant_check(argparse.Namespace()) == 0

@@ -126,8 +126,10 @@ def test_price_cost_is_linear_and_non_negative(tin: int, tout: int) -> None:
 
 def test_pricing_file_loads_with_non_negative_prices() -> None:
     prices = load_prices()
-    assert set(prices) == {"llama", "baseten"}
+    assert set(prices) == {"llama", "baseten", "meta"}
     assert all(p.input_per_mtok >= 0 and p.output_per_mtok >= 0 for m in prices.values() for p in m.values())
+    assert all(p.cached_input_per_mtok is None or p.cached_input_per_mtok >= 0
+               for m in prices.values() for p in m.values())
 
 
 def test_ai_usage_endpoint_needs_system_read() -> None:
@@ -136,4 +138,48 @@ def test_ai_usage_endpoint_needs_system_read() -> None:
     assert c.get("/v1/system/ai-usage", headers={"Authorization": f"Bearer {op}"}).status_code == 403
     sup = create_dev_token("sup", str(uuid.uuid4()), ["field.supervisor"])
     r = c.get("/v1/system/ai-usage", headers={"Authorization": f"Bearer {sup}"})
-    assert r.status_code == 200 and set(r.json()["providers"]) == {"llama", "baseten"}
+    assert r.status_code == 200 and set(r.json()["providers"]) == {"llama", "baseten", "meta"}
+
+
+# --------------------------------------------------------------------------- M3: Meta Model API provider
+MUSE = Price(Decimal("1.25"), Decimal("4.25"), Decimal("0.15"))
+
+
+def test_pricing_file_has_muse_spark_with_cached_input() -> None:
+    """config/ai_pricing.yaml (M3 contract §4): muse-spark-1.2 at 1.25 / cached 0.15 / 4.25 USD per million."""
+    assert load_prices()["meta"]["muse-spark-1.2"] == MUSE
+
+
+def test_cached_input_tokens_are_billed_at_the_cached_rate() -> None:
+    assert MUSE.cost(1_000_000, 0) == Decimal("1.25")
+    assert MUSE.cost(1_000_000, 0, cached_input_tokens=1_000_000) == Decimal("0.15")
+    assert MUSE.cost(1_000_000, 1_000_000, cached_input_tokens=400_000) == Decimal("0.75") + Decimal("0.06") + Decimal("4.25")
+    assert PRICE.cost(1000, 0, cached_input_tokens=1000) == PRICE.cost(1000, 0)  # no cached rate: normal input rate
+    with pytest.raises(ValueError):
+        MUSE.cost(10, 0, cached_input_tokens=11)
+
+
+@settings(max_examples=100, deadline=None)
+@given(st.integers(0, 10**7), st.integers(0, 10**6), st.integers(0, 10**7))
+def test_cached_cost_never_exceeds_uncached(tin: int, tout: int, cached_part: int) -> None:
+    cached = min(cached_part, tin)
+    assert 0 <= MUSE.cost(tin, tout, cached) <= MUSE.cost(tin, tout)
+
+
+def test_meta_provider_has_its_own_cap_and_records_cached_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AI_CLOUD_ENABLED", "true")
+    spent = _spent("meta")
+    monkeypatch.setenv("AI_BUDGET_META_USD", str(spent + Decimal("0.010")))
+    monkeypatch.setenv("AI_DAILY_CAP_USD", str(_today() + Decimal("1")))
+    g = BudgetGuard(prices={"llama": {}, "baseten": {}, "meta": {"muse-spark-1.2": MUSE}})
+    r = g.reserve("meta", "muse-spark-1.2", input_tokens=1000, max_output_tokens=300, purpose="t")
+    assert r.reserved_usd == Decimal("0.002525")  # worst case, no cache hit: 1000 x 1.25 + 300 x 4.25 per M
+    cost = g.settle(r, input_tokens=1000, output_tokens=100, cached_input_tokens=800)
+    assert cost == (Decimal(200) * Decimal("1.25") + Decimal(800) * Decimal("0.15") + Decimal(100) * Decimal("4.25")) / 10**6
+    assert _spent("meta") == spent + cost.quantize(Decimal("0.000001"))
+    monkeypatch.delenv("AI_BUDGET_META_USD")
+    with pytest.raises(BudgetRefused) as e:
+        g.reserve("meta", "muse-spark-1.2", input_tokens=1, max_output_tokens=1, purpose="t")
+    assert e.value.code == "AI_CAP_UNSET"
+    usage = BudgetGuard(prices={}).usage()
+    assert usage["providers"]["meta"]["spent_usd"] is not None
