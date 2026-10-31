@@ -57,9 +57,11 @@ class ClaimedJob:
 
 
 # Doc families whose success means the ERP document is posted (item PATCHes are intermediate).
-FINAL_DOC_FAMILIES = frozenset({"GoodsReceipt", "GoodsIssue", "Cancellation", "PhysicalInventory", "Transfer"})
+FINAL_DOC_FAMILIES = frozenset({"GoodsReceipt", "GoodsIssue", "Cancellation", "PhysicalInventory", "Transfer",
+                                "InitialStockEntry"})
 MOVEMENT_TYPES = MappingProxyType(
-    {"GoodsReceipt": "101", "GoodsIssue": "601", "PhysicalInventory": "701/702", "Transfer": "311"}
+    {"GoodsReceipt": "101", "GoodsIssue": "601", "PhysicalInventory": "701/702", "Transfer": "311",
+     "InitialStockEntry": "561"}
 )
 
 
@@ -99,6 +101,11 @@ def finalize_erp_document(cur: psycopg.Cursor[Any], job: ClaimedJob, doc_no: str
                    "doc_type": doc_type, "reversal": bool(reverses)})
     if doc_type == "GI":
         apply_goods_issue_to_bins(cur, tenant_id, site_id, line_ids)
+    elif doc_type == "INIT_STOCK":  # M3 sandbox count: opening stock (561) for items with no book stock
+        apply_count_to_bins(cur, tenant_id, site_id, line_ids)
+        if payload.get("pi_document_id") and payload.get("closes_pi"):
+            cur.execute("UPDATE field.pi_document SET status = 'posted', difference_doc_no = %s, closed_at = NOW()"
+                        " WHERE id = %s", (str(doc_no), payload["pi_document_id"]))
     elif doc_type == "PI_DIFF":
         apply_count_to_bins(cur, tenant_id, site_id, line_ids)
         if payload.get("pi_document_id"):
@@ -108,12 +115,12 @@ def finalize_erp_document(cur: psycopg.Cursor[Any], job: ClaimedJob, doc_no: str
                 (str(doc_no), payload["pi_document_id"]),
             )
     line_status = payload.get("line_status_after", "posted")
+    task_id = payload.get("task_id") if payload.get("updates_task", True) else None
     if line_ids:
         cur.execute(
             "UPDATE field.task_line SET status = %s, version = version + 1, updated_at = NOW() WHERE id = ANY(%s::uuid[])",
             (line_status, line_ids),
         )
-    task_id = payload.get("task_id")
     if task_id:
         cur.execute(
             """
@@ -356,6 +363,7 @@ class PostingQueueWorker:
                         "Plant": req.plant, "StorageLocation": hdr.get("StorageLocation", ""),
                         "PhysicalInventoryDocumentFiscalYear": year, "PostingBlocked": True,
                         "FreezeBookInventory": True,
+                        "YY1_FieldSandbox": bool(hdr.get("Sandbox")), "YY1_FieldSimulated": bool(hdr.get("Simulated")),
                         "to_PhysicalInventoryDocItem": [
                             {"Material": it["Material"], "Plant": req.plant,
                              "StorageLocation": hdr.get("StorageLocation", "")}
@@ -468,6 +476,8 @@ class PostingQueueWorker:
                 erp_res = await self._post_physical_inventory(claimed, post_req)
             elif doc_family == "Transfer":
                 erp_res = await self.erp_port.post_transfer_posting(post_req)
+            elif doc_family == "InitialStockEntry":
+                erp_res = await self.erp_port.post_initial_stock_entry(post_req)
             else:
                 raise NotImplementedError(f"Unsupported doc family: {doc_family}")
 

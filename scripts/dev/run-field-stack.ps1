@@ -3,6 +3,10 @@
 #   .\scripts\dev\run-field-stack.ps1 pair       # show the QR code for the phone app
 #   .\scripts\dev\run-field-stack.ps1 smoke      # prove the phone -> ERP path without a phone
 #   .\scripts\dev\run-field-stack.ps1 delivery   # create a new inbound delivery to receive
+#   .\scripts\dev\run-field-stack.ps1 home       # sandbox site "Home (sandbox)": any box becomes a material (M3)
+#   .\scripts\dev\run-field-stack.ps1 pair --home   # pairing QR for the home sandbox site
+#   .\scripts\dev\run-field-stack.ps1 smoke --home  # sandbox receipt + count end to end (smoke --all: every job)
+#   .\scripts\dev\run-field-stack.ps1 labels     # printable QR labels for every open job
 #   .\scripts\dev\run-field-stack.ps1 down
 # All logic lives in tools/dev_stack/stack.py (tested); this file only forwards the command.
 param([string]$Command = "up", [Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest)

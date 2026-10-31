@@ -1,0 +1,163 @@
+- id: M3-S01
+  title: erp-sim barcodes (MEAN), sandbox materials and deliveries, movement 561; ErpPort / ErpSandboxPort in the connector
+  workstream: M3-WP1
+  role: Track S
+  status: partial
+  evidence:
+  - services/erp-sim/alembic/versions/erpsim_0003_m3_barcodes.py
+  - services/erp-sim/src/erp_sim/services/product.py
+  - services/erp-sim/src/erp_sim/routes/sandbox.py
+  - services/erp-sim/src/erp_sim/services/matdoc.py
+  - services/erp-sim/src/erp_sim/services/inbound.py
+  - services/erp-sim/src/erp_sim/admin_ui.py
+  - connectors/sap/src/field_sap/ports/erp_port.py
+  - connectors/sap/src/field_sap/sim/adapter.py
+  - connectors/sap/src/field_sap/s4/adapter.py
+  tests:
+  - connectors/sap/tests/contract/test_sandbox_port_contract.py::test_s4_adapter_refuses_sandbox_operations
+  - connectors/sap/tests/contract/test_sandbox_port_contract.py::test_sim_sandbox_material_delivery_and_561
+  - connectors/sap/tests/contract/test_sandbox_port_contract.py::test_both_adapters_implement_the_sandbox_port
+  frs: []
+  verified_at: null
+  note: erpsim.material_barcode (PK client+barcode) with barcode = material number for every SAMPLE material
+    (migration and seed, so reset keeps them); read S/4-style as A_ProductUnitsOfMeasureEAN and as $expand on
+    A_ProductPlant (the sim flattens S/4's A_Product/to_ProductUnitsOfMeasure/to_InternationalArticleNumber). Sandbox
+    admin routes /_sim/sandbox/* (X-Sim-Admin-Token) create HOME-nnnn materials of one plant, empty sandbox
+    deliveries (numbers 19xxxxxxxx from the clock, so a simulator reset never reuses one the field still holds)
+    and their items; the S/4 adapter refuses them (FIELD_SANDBOX_NOT_SAP). 561 through the
+    material-document deep insert, now idempotent per Idempotency-Key. Documents of sandbox sites carry
+    header_data.sandbox (GR from the delivery header, 561 and PI differences from YY1_FieldSandbox) and show a badge
+    on the simulator pages. Soft pegging is OriginalDeliveryQuantity on the item PATCH, accepted only on sandbox
+    deliveries (S/4 has no such write; the sim models the outcome). The S/4 adapter's 561 is NotImplementedError like
+    its other postings (UNVERIFIED). Partial until proven on the owner's phone and glasses (A-03).
+- id: M3-S02
+  title: field.material_barcode synced by the worker, site mode, GET /v1/codes/{code}, barcodes on task lines and in product confirmations
+  workstream: M3-WP1
+  role: Track S
+  status: partial
+  evidence:
+  - services/field-api/alembic/versions/field_0060_m3_sandbox.py
+  - services/field-api/src/field_api/codes/resolve.py
+  - services/field-api/src/field_api/codes/api.py
+  - services/field-api/src/field_api/routes/sites.py
+  - services/field-api/src/field_api/tasks/api.py
+  - services/field-api/src/field_api/jobs/confirmations.py
+  - services/field-worker/src/field_worker/material_sync.py
+  tests:
+  - tests/e2e/test_m3_sandbox_e2e.py::test_erp_sim_barcodes_read_the_s4_way
+  - tests/e2e/test_m3_sandbox_e2e.py::test_site_mode_is_listed_and_only_an_admin_changes_it
+  - tests/e2e/test_m3_sandbox_e2e.py::test_sandbox_receipt_new_barcode_soft_pegging_gr_101
+  frs: []
+  verified_at: null
+  note: field.material_barcode (forced RLS, tenant_isolation + permissive base like field.material) is written by
+    the worker's material sync from MaterialItem.barcodes and, for a new sandbox item, by field-api at once.
+    field.site.mode production|sandbox (CHECK, default production); POST/PATCH /v1/sites accept mode only from
+    field.admin (field.site.edit is not enough), each change audited in field.outbox as site.mode_changed. GET
+    /v1/codes/{code}?site_id= (field.task.read) answers material (number, GTIN or barcode of the site plant's active
+    materials) / bin / serial / unknown with site_mode. Task-list lines carry barcodes; product confirmations match
+    the material number, GTIN or any barcode. Partial until proven on the owner's phone and glasses (A-03).
+- id: M3-S03
+  title: Sandbox receipts and items (POST /v1/sandbox/receipts, POST /v1/sandbox/tasks/{task_id}/items), FIELD-SBX-403-PRODUCTION
+  workstream: M3-WP1
+  role: Track S
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/sandbox/service.py
+  - services/field-api/src/field_api/sandbox/api.py
+  - services/field-api/src/field_api/sandbox/erp.py
+  - services/field-worker/src/field_worker/warehouse/ibd_import.py
+  tests:
+  - tests/e2e/test_m3_sandbox_e2e.py::test_sandbox_receipt_new_barcode_soft_pegging_gr_101
+  frs: []
+  verified_at: null
+  note: A receipt opens an empty sandbox delivery in erp-sim through the adapter chosen by FIELD_ERP_ADAPTER and
+    creates its receive task in the same request; the worker's delivery import skips new sandbox deliveries so
+    there is never a second task. An unknown code becomes HOME-nnnn (erp-sim) plus field.material and
+    field.material_barcode, then a delivery item and a task line; the same Idempotency-Key, or the same material
+    again, returns the first line. Production sites answer 403 FIELD-SBX-403-PRODUCTION; an S/4 tenant 409
+    FIELD-SBX-409-NOT-SUPPORTED. Permission field.task.execute (operator, technician; admin by wildcard), no new
+    permission. Partial until proven on the owner's phone and glasses (A-03).
+- id: M3-S04
+  title: Soft pegging at receive post (delivery quantity = counted, then GR 101 marked sandbox)
+  workstream: M3-WP1
+  role: Track S
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/tasks/api.py
+  - services/field-api/src/field_api/warehouse/receiving/post.py
+  - connectors/sap/src/field_sap/sim/adapter.py
+  tests:
+  - tests/e2e/test_m3_sandbox_e2e.py::test_sandbox_receipt_new_barcode_soft_pegging_gr_101
+  frs: []
+  verified_at: null
+  note: On a sandbox site the receive post sets each line's expected quantity to the counted one (no tolerance
+    stop), and each item PATCH carries SoftPegging so the erp-sim delivery quantity becomes the counted quantity
+    before PostGoodsReceipt; the GR document carries header_data.sandbox. The put-away task follows as on any
+    site. Partial until proven on the owner's phone and glasses (A-03).
+- id: M3-S05
+  title: Sandbox counts (POST /v1/sandbox/counts) and movement 561 for opening stock
+  workstream: M3-WP1
+  role: Track S
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/sandbox/service.py
+  - services/field-api/src/field_api/jobs/finish.py
+  - services/field-api/src/field_api/pi/api.py
+  - services/field-api/src/field_api/jobs/console.py
+  - services/field-worker/src/field_worker/posting/queue.py
+  tests:
+  - tests/e2e/test_m3_sandbox_e2e.py::test_sandbox_count_posts_561_for_new_boxes_and_a_difference_for_known_stock
+  - tests/e2e/test_m3_sandbox_e2e.py::test_production_count_never_posts_561
+  frs: []
+  verified_at: null
+  note: POST /v1/sandbox/counts {site_id, bin, simulated?} is not in the contract text; it is how `stack home` makes
+    the empty HOME-A count, and items are added to it with the section-3 items route (a count item's qty is its
+    blind count). At finish on a sandbox site, items with book 0 and a count > 0 post 561 (INIT_STOCK, queue
+    PID:<doc>, Sandbox flag) instead of a PI difference; the other items follow tolerance / approval as before and
+    their PI difference excludes the 561 items (a recount too). Production never posts 561. Sandbox counts have no
+    posting block (the same bin is received into at home). Partial until proven on the owner's phone and glasses
+    (A-03).
+- id: M3-S06
+  title: Section-7 seams for track A (resolve_code, add_item) with the exact signatures
+  workstream: M3-WP1
+  role: Track S
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/codes/resolve.py
+  - services/field-api/src/field_api/sandbox/service.py
+  tests:
+  - tests/e2e/test_m3_sandbox_e2e.py::test_section_7_seams_have_the_contract_signatures
+  frs: []
+  verified_at: null
+  note: resolve_code(principal, site_id, code) -> CodeLookup and add_item(principal, task_id, code, description, qty,
+    idempotency_key) -> SandboxItemResult (raises FieldError FIELD-SBX-403-PRODUCTION on production sites). Both are
+    synchronous and run the ERP call to completion also when called inside an event loop. Not wired to the
+    assistant yet (the integrator does that at merge). Partial until proven on the owner's phone and glasses (A-03).
+- id: M3-S07
+  title: Dev stack home sandbox (stack home [--simulate-differences], pair --home, smoke --home, labels, assistant-check hook)
+  workstream: M3-WP1
+  role: Track S
+  status: partial
+  evidence:
+  - tools/dev_stack/stack.py
+  - scripts/dev/run-field-stack.cmd
+  - scripts/dev/run-field-stack.ps1
+  - scripts/dev/run-field-stack.sh
+  tests:
+  - tools/dev_stack/tests/test_stack.py::test_m3_home_commands_are_registered
+  - tools/dev_stack/tests/test_stack.py::test_assistant_check_says_clearly_when_track_a_is_not_in_this_build
+  - tools/dev_stack/tests/test_stack.py::test_pair_home_points_the_phone_at_the_sandbox_site
+  - tools/dev_stack/tests/test_stack.py::test_new_barcodes_are_ean13_shaped_and_fresh
+  frs: []
+  verified_at: null
+  note: '`stack home` makes plant HOME / HM01 in erp-sim, the field site "Home (sandbox)" (code HOME-SBX, mode
+    sandbox, created by field.admin through POST /v1/sites), bins HOME-A and HOME-B, one empty home receipt and one
+    count of HOME-A, and prints `stack pair --home`. `--simulate-differences` (opt-in) gives SAMPLE-MAT-0005/0006 a
+    book stock of 10 in HOME-A through a 561 marked sandbox+simulated and adds them to the count, whose PI document
+    is marked simulated (its 701/702 then carries simulated too). `smoke --home`: sandbox receipt with a never-seen
+    EAN-13 -> HOME-nnnn -> barcode product scan -> counted 3 against 1 -> GR 101 marked sandbox; the production
+    warehouse sees the code as unknown, refuses it on a real delivery line (409) and refuses sandbox actions (403
+    FIELD-SBX-403-PRODUCTION); a HOME-B count of a new box -> 561 of 4, task done. Run on a fresh stack together with
+    `smoke --all` (both PASS, 31 Oct 2026, Linux sandbox, private ports). `assistant-check` imports
+    tools.dev_stack.assistant_check at call time and calls its main(args); without it, it says the hook is not
+    installed (exit 1). Partial until proven on the owner''s phone and glasses (A-03).'

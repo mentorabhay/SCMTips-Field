@@ -3,6 +3,9 @@
 Pages ErpPort.list_materials(plant) and upserts field.material on
 (tenant_id, erp_material_no, plant); records synced_at and source_hash;
 tracks sync generations and marks deleted_in_erp_at after 3 absent syncs.
+
+M3: each material's barcodes (MaterialItem.barcodes, the ERP's MEAN / A_ProductUnitsOfMeasureEAN) replace
+its rows in field.material_barcode, so a scan of any barcode finds the material.
 """
 
 from datetime import UTC, datetime
@@ -10,9 +13,24 @@ from typing import Any
 
 import psycopg
 import structlog
-from field_sap.ports.erp_port import ErpPort
+from field_sap.ports.erp_port import ErpPort, MaterialBarcode
 
 logger = structlog.get_logger(__name__)
+
+
+def sync_barcodes(cur: psycopg.Cursor[Any], tenant_id: str, material_id: str,
+                  barcodes: tuple[MaterialBarcode, ...]) -> int:
+    """The material's field.material_barcode rows become exactly the ERP's barcodes. Returns how many."""
+    codes = {b.barcode.strip(): b for b in barcodes if b.barcode.strip()}
+    cur.execute("DELETE FROM field.material_barcode WHERE tenant_id = %s AND material_id = %s"
+                " AND NOT (barcode = ANY(%s))", (tenant_id, material_id, list(codes)))
+    for code, b in codes.items():
+        cur.execute(
+            "INSERT INTO field.material_barcode (tenant_id, material_id, barcode, uom) VALUES (%s, %s, %s, %s)"
+            " ON CONFLICT (tenant_id, material_id, barcode) DO UPDATE SET uom = EXCLUDED.uom, updated_at = NOW()",
+            (tenant_id, material_id, code, b.uom or "EA"),
+        )
+    return len(codes)
 
 
 class MaterialCacheSynchronizer:
@@ -89,11 +107,15 @@ class MaterialCacheSynchronizer:
                             base_uom = EXCLUDED.base_uom,
                             deleted_in_erp_at = NULL,
                             status = 'active',
-                            updated_at = EXCLUDED.updated_at;
+                            updated_at = EXCLUDED.updated_at
+                        RETURNING id;
                     """,
                         (tenant_id, plant, mat_no, items_by_no[mat_no].description or None,
                          items_by_no[mat_no].base_uom or "EA", now),
                     )
+                    row = cur.fetchone()
+                    if row:
+                        sync_barcodes(cur, tenant_id, str(row[0]), items_by_no[mat_no].barcodes)
 
                 # Check absences: if existing in DB was not seen across 3 syncs
                 if len(self._sync_history[plant_key]) >= 3:

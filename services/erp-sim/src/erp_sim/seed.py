@@ -3,7 +3,7 @@
 Loads:
 - Plant 1010
 - Storage locations 101A (Unrestricted) and 101Q (Quality Inspection)
-- 50 materials SAMPLE-MAT-0001..0050
+- 50 materials SAMPLE-MAT-0001..0050, each with barcode = material number (erpsim.material_barcode, M3)
 - Initial stock for each material
 - 20 open inbound deliveries (180000001..180000020)
 - 10 outbound deliveries (80000001..80000010)
@@ -53,6 +53,15 @@ def seed_sample_data(client: str = "100") -> dict[str, int]:
                     ON CONFLICT (client, material_no) DO NOTHING;
                 """,
                     (client, mat_no, desc),
+                )
+                # M3: the printed labels carry the material number, so it is also the material's barcode (MEAN)
+                cur.execute(
+                    """
+                    INSERT INTO erpsim.material_barcode (client, material_no, barcode, uom, is_main)
+                    VALUES (%s, %s, %s, 'EA', true)
+                    ON CONFLICT (client, barcode) DO NOTHING;
+                """,
+                    (client, mat_no, mat_no),
                 )
 
                 # Seed stock: 100.000 EA in 101A
@@ -170,6 +179,7 @@ def reset_database(client: str = "100") -> None:
                     erpsim.equipment_install,
                     erpsim.equipment,
                     erpsim.stock,
+                    erpsim.material_barcode,
                     erpsim.material,
                     erpsim.storage_location,
                     erpsim.plant,

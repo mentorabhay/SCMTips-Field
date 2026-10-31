@@ -12,6 +12,9 @@ POST /v1/tasks/{task_id}/lines/{line_id}/confirmations  {kind: bin|product|hu|se
   old unit, not installed anywhere else).
 - receive / count: ``product`` / ``hu`` / ``bin`` scans are recorded; a product must match the line.
 
+A ``product`` code matches the line's material number, its GTIN, or any of its barcodes
+(field.material_barcode, M3 contract section 2).
+
 Bins and products under an open PI document with posting block are refused for putaway and pick
 (FR3.036, 423 FIELD-PI-423-POSTING-BLOCKED). Every scan, accepted or not, is kept in
 field.task_line_confirmation.
@@ -26,6 +29,7 @@ from psycopg import sql
 from pydantic import BaseModel, Field
 
 from field_api.auth.jwt import Principal
+from field_api.codes.resolve import codes_of_material
 from field_api.db import principal_tx
 from field_api.deps import require_permission
 from field_api.errors import FieldError
@@ -99,8 +103,10 @@ def _load(cur: Any, task_id: str, line_id: str) -> dict[str, Any]:
         raise FieldError(status=404, code="FIELD-HTTP-404-NOT-FOUND", title="Task line not found")
     keys = ("id", "task_id", "site_id", "status", "bin", "material_id", "material", "expected_serial",
             "confirmed_bin", "captured_serial", "new_serial", "type", "task_status", "gtin")
-    return {k: (str(v) if k in ("id", "task_id", "site_id", "material_id") and v is not None else v)
-            for k, v in zip(keys, r, strict=True)}
+    ln = {k: (str(v) if k in ("id", "task_id", "site_id", "material_id") and v is not None else v)
+          for k, v in zip(keys, r, strict=True)}
+    ln["codes"] = codes_of_material(cur, ln["material_id"], ln["material"], ln["gtin"])
+    return ln
 
 
 def _set(cur: Any, line_id: str, **cols: Any) -> str:
@@ -194,7 +200,7 @@ def _pick(cur: Any, ln: dict[str, Any], body: ConfirmationIn, code: str) -> dict
     if body.kind == "product":
         if norm(ln["confirmed_bin"]) != bin_:
             raise _wrong(f"Scan bin {bin_} first.")
-        if code not in {norm(ln["material"]), norm(ln["gtin"])}:
+        if code not in ln["codes"]:
             raise _wrong(f"That is {code}. Pick {ln['material']}.")
         return {"_status": _set(cur, ln["id"], confirmed_product=code, status=_progress_status(ln["status"])),
                 "product": code}
@@ -241,7 +247,7 @@ def _keep_open(status: str) -> str:
 
 
 def _record_only(ln: dict[str, Any], body: ConfirmationIn, code: str) -> dict[str, Any]:
-    if body.kind == "product" and ln["material"] and code not in {norm(ln["material"]), norm(ln["gtin"])}:
+    if body.kind == "product" and ln["material"] and code not in ln["codes"]:
         raise _wrong(f"That is {code}. This line is {ln['material']}.")
     if body.kind == "bin" and ln["bin"] and code != norm(ln["bin"]):
         raise _wrong(f"That is bin {code}. Go to {norm(ln['bin'])}.")

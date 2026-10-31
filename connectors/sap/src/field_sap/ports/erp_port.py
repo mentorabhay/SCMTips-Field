@@ -35,6 +35,15 @@ class ErpError(Exception):
 
 
 @dataclass(frozen=True)
+class MaterialBarcode:
+    """One barcode of a material (SAP MEAN / A_ProductUnitsOfMeasureEAN), M3."""
+
+    barcode: str
+    uom: str = "EA"
+    is_main: bool = False
+
+
+@dataclass(frozen=True)
 class MaterialItem:
     material_no: str
     description: str
@@ -43,6 +52,7 @@ class MaterialItem:
     storage_locations: tuple[str, ...] = ()
     source_hash: str = ""
     deleted_in_erp: bool = False
+    barcodes: tuple[MaterialBarcode, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -73,6 +83,57 @@ class ErpResult:
     posted_at: datetime
     raw_response: dict[str, Any] = field(default_factory=dict)
     reversal_of: str | None = None
+
+
+@dataclass(frozen=True)
+class SandboxMaterial:
+    """A material the sandbox created for a barcode (or the one the barcode already belongs to)."""
+
+    material_no: str
+    description: str
+    base_uom: str
+    barcode: str
+    created: bool
+
+
+@dataclass(frozen=True)
+class SandboxDelivery:
+    delivery_document: str
+    last_change: str | None = None
+
+
+@dataclass(frozen=True)
+class SandboxDeliveryItem:
+    delivery_document: str
+    item_no: str
+    last_change: str | None = None
+
+
+SANDBOX_NOT_SAP = "FIELD_SANDBOX_NOT_SAP"
+
+
+@runtime_checkable
+class ErpSandboxPort(Protocol):
+    """Sandbox (home / training) operations, M3 contract section 3.
+
+    Not SAP capabilities: only the simulator adapter implements them. An S/4 adapter refuses every call
+    with ErpError(kind=BUSINESS, code=SANDBOX_NOT_SAP).
+    """
+
+    async def create_sandbox_material(self, plant: str, description: str, base_uom: str,
+                                      barcode: str) -> SandboxMaterial:
+        """A new material for this barcode, or the material the barcode already belongs to."""
+        ...
+
+    async def create_sandbox_inbound_delivery(self, plant: str, storage_location: str, supplier: str,
+                                              simulated: bool = False) -> SandboxDelivery:
+        """An open inbound delivery with no items, marked sandbox."""
+        ...
+
+    async def add_sandbox_inbound_delivery_item(self, delivery_document: str, material: str, quantity: str,
+                                                uom: str, idempotency_key: str) -> SandboxDeliveryItem:
+        """The next item of a sandbox delivery; the same key returns the first item."""
+        ...
 
 
 @runtime_checkable
@@ -126,4 +187,9 @@ class ErpPort(Protocol):
 
     async def post_transfer_posting(self, req: ErpPostingRequest) -> ErpResult:
         """Transfer posting (Movement 321 / 301)."""
+        ...
+
+    async def post_initial_stock_entry(self, req: ErpPostingRequest) -> ErpResult:
+        """Initial entry of stock balances (Movement 561, GoodsMovementCode 05). items: Material,
+        QuantityInEntryUnit, EntryUnit; header_data: StorageLocation, Sandbox, Simulated (M3)."""
         ...

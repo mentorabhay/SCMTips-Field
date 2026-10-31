@@ -15,7 +15,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from erp_sim.db import get_conn
 from erp_sim.dedupe import check_dedupe, compute_request_hash, record_dedupe
@@ -39,6 +39,9 @@ class PiDocCreate(BaseModel):
     PhysicalInventoryDocumentFiscalYear: str = "2026"
     PostingBlocked: bool = True
     FreezeBookInventory: bool = True
+    # Key-user extension fields (S/4 YY1_ convention, M3): created for a sandbox site / by --simulate-differences
+    field_sandbox: bool = Field(default=False, alias="YY1_FieldSandbox")
+    field_simulated: bool = Field(default=False, alias="YY1_FieldSimulated")
     to_PhysicalInventoryDocItem: dict[str, list[PiItemCreate]] | list[PiItemCreate] | None = None  # noqa: N815
 
 
@@ -66,11 +69,13 @@ async def create_pi_doc(
         cur.execute(
             """
             INSERT INTO erpsim.physical_inventory_doc (
-                client, pi_document, fiscal_year, plant, storage_location, status
+                client, pi_document, fiscal_year, plant, storage_location, status, header_data
             )
-            VALUES (%s, %s, %s, %s, %s, 'created');
+            VALUES (%s, %s, %s, %s, %s, 'created', %s);
         """,
-            (sap_client, pi_num, doc_year, doc_in.Plant, doc_in.StorageLocation),
+            (sap_client, pi_num, doc_year, doc_in.Plant, doc_in.StorageLocation,
+             json.dumps({k: True for k, on in (("sandbox", doc_in.field_sandbox),
+                                               ("simulated", doc_in.field_simulated)) if on})),
         )
 
         items_raw = doc_in.to_PhysicalInventoryDocItem
@@ -263,7 +268,7 @@ async def post_differences(
         try:
             cur.execute(
                 """
-                SELECT plant, storage_location, status
+                SELECT plant, storage_location, status, header_data
                 FROM erpsim.physical_inventory_doc
                 WHERE client = %s AND pi_document = %s AND fiscal_year = %s;
             """,
@@ -274,6 +279,10 @@ async def post_differences(
                 raise HTTPException(status_code=404, detail=f"PI doc {pi_doc} not found")
 
             plant, sloc = hdr[0], hdr[1]
+            diff_head: dict[str, Any] = {"PhysicalInventoryDocument": pi_doc}
+            for flag in ("sandbox", "simulated"):
+                if isinstance(hdr[3], dict) and hdr[3].get(flag):
+                    diff_head[flag] = True
 
             cur.execute(
                 """
@@ -295,7 +304,7 @@ async def post_differences(
                 )
                 VALUES (%s, %s, %s, 'WI', '701', NULL, %s, 'posted');
             """,
-                (sap_client, mat_doc, doc_year, json.dumps({"PhysicalInventoryDocument": pi_doc})),
+                (sap_client, mat_doc, doc_year, json.dumps(diff_head)),
             )
 
             doc_line = 1

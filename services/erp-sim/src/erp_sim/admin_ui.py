@@ -168,6 +168,16 @@ def _status_badge(status: str | None) -> str:
     return f'<span class="badge {cls}">{e(status)}</span>'
 
 
+def _flags(header: Any) -> str:
+    """Badges for documents posted for a sandbox site (M3): ``sandbox`` and, if opted in, ``simulated``."""
+    head = header if isinstance(header, dict) else {}
+    out = ' <span class="badge badge-yellow" title="posted for a sandbox (home / training) site">sandbox</span>' \
+        if head.get("sandbox") else ""
+    if head.get("simulated"):
+        out += ' <span class="badge badge-red" title="caused by stack home --simulate-differences">simulated</span>'
+    return out
+
+
 def _doc_link(doc: str | None, year: str | None) -> str:
     if not doc:
         return "-"
@@ -196,7 +206,7 @@ async def admin_overview() -> str:
 
             cur.execute(
                 """
-                SELECT doc_number, fiscal_year, doc_type, movement_type, reversal_of, status, created_at
+                SELECT doc_number, fiscal_year, doc_type, movement_type, reversal_of, status, created_at, header_data
                 FROM erpsim.document
                 ORDER BY created_at DESC LIMIT 10;
             """
@@ -208,7 +218,7 @@ async def admin_overview() -> str:
             <td>{_doc_link(r[0], r[1])}</td>
             <td>{e(r[1])}</td>
             <td>{e(r[2])}</td>
-            <td><span class="badge badge-green">{e(r[3])}</span></td>
+            <td><span class="badge badge-green">{e(r[3])}</span>{_flags(r[7])}</td>
             <td>{e(r[4])}</td>
             <td>{_status_badge(r[5])}</td>
             <td class="mono">{_when(r[6], "%H:%M:%S")}</td>
@@ -246,13 +256,13 @@ async def admin_documents(movement: str | None = None) -> str:
                    (SELECT r.doc_number FROM erpsim.document r
                      WHERE r.client = d.client AND r.reversal_of = d.doc_number ORDER BY r.created_at LIMIT 1),
                    count(i.line_no), coalesce(sum(i.quantity), 0),
-                   string_agg(DISTINCT i.material_no, ', ')
+                   string_agg(DISTINCT i.material_no, ', '), d.header_data
             FROM erpsim.document d
             LEFT JOIN erpsim.document_item i
               ON i.client = d.client AND i.doc_number = d.doc_number AND i.fiscal_year = d.fiscal_year
             WHERE d.client = %s AND (%s::text IS NULL OR d.movement_type = %s)
             GROUP BY d.client, d.doc_number, d.fiscal_year, d.doc_type, d.movement_type, d.status, d.created_at,
-                     d.reversal_of
+                     d.reversal_of, d.header_data
             ORDER BY d.created_at DESC
             LIMIT 200;
             """,
@@ -277,7 +287,7 @@ async def admin_documents(movement: str | None = None) -> str:
             <td>{_doc_link(r[0], r[1])}</td>
             <td>{e(r[1])}</td>
             <td>{e(r[2])}</td>
-            <td><span class="badge badge-green">{e(r[3])}</span></td>
+            <td><span class="badge badge-green">{e(r[3])}</span>{_flags(r[11])}</td>
             <td class="num">{int(r[8])}</td>
             <td class="num mono">{e(r[9])}</td>
             <td class="mono">{e(r[10])}</td>
@@ -294,7 +304,7 @@ async def admin_documents(movement: str | None = None) -> str:
         f"""
     <div class="card">
         <h3>Material Documents</h3>
-        <p class="muted">101 goods receipt · 601 goods issue · 701/702 inventory differences · 102/602 reversals. Newest 200. Movement: {chips or "none yet"}</p>
+        <p class="muted">101 goods receipt · 601 goods issue · 701/702 inventory differences · 561 initial stock entry · 102/602 reversals. A yellow <span class="badge badge-yellow">sandbox</span> badge marks documents posted for a sandbox (home / training) site. Newest 200. Movement: {chips or "none yet"}</p>
         <table>
             <thead><tr><th>Doc Number</th><th>Year</th><th>Type</th><th>Movement</th><th>Items</th><th>Total Qty</th>
                 <th>Materials</th><th>Reverses</th><th>Reversed By</th><th>Status</th><th>Posted</th></tr></thead>
@@ -360,7 +370,7 @@ async def admin_document(doc_number: str, fiscal_year: str) -> HTMLResponse:
         <h3>Material Document <span class="mono">{e(head[0])}</span> / {e(head[1])}</h3>
         <table>
             <tbody>
-                <tr><th>Type</th><td>{e(head[2])}</td><th>Movement</th><td><span class="badge badge-green">{e(head[3])}</span></td></tr>
+                <tr><th>Type</th><td>{e(head[2])}</td><th>Movement</th><td><span class="badge badge-green">{e(head[3])}</span>{_flags(head[5])}</td></tr>
                 <tr><th>Status</th><td>{_status_badge(head[6])}</td><th>Posted</th><td class="mono">{_when(head[7])}</td></tr>
             </tbody>
         </table>

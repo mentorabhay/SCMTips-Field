@@ -7,6 +7,9 @@ receive and pick keep the API3.06 path (tasks/api.py confirm_task). Here:
 - count: within tolerance the PI difference is staged for the worker (701/702 in erp-sim, queue
   PID:<doc>), status ``queued``; beyond tolerance an approval request for the console, task
   ``awaiting_approval``, live event ``count.awaiting_approval``; nothing posts.
+  On a sandbox site (M3 contract section 3) a counted item with no book stock is opening stock: it posts
+  movement 561 (initial entry) for the counted quantity, in the same queue, instead of a PI difference;
+  the other items follow the rules above. Production never posts 561 from the field.
 - audit: positions are reconciled (audit/reconcile.py); mismatches and missing units become open
   findings for the console (GET /v1/mismatches). Nothing posts to SAP. ``completed`` + ``task.completed``.
 - swap: dismantle old + install new, two jobs with consecutive seq in the tower equipment queue
@@ -29,6 +32,7 @@ from field_api.auth.jwt import Principal
 from field_api.errors import FieldError
 from field_api.jobs.counting import count_outcome, earlier_counters, pi_of_line
 from field_api.pi.api import band_for, stage_pi_posting
+from field_api.posting.staging import JobSpec, stage_document
 from field_api.routes.live import emit_device_tick
 
 COUNT_REASON = "count differed from the books"
@@ -113,6 +117,13 @@ def finish_count(cur: Any, principal: Principal, task: dict[str, Any], line_ids:
     cur.execute("SELECT 1 FROM field.erp_document WHERE payload->>'pi_document_id' = %s", (pi_id,))
     if cur.fetchone():
         raise _state("This count was already sent")
+    initial: dict[str, Any] | None = None
+    if _site_mode(cur, task["site_id"]) == "sandbox":
+        initial = stage_initial_entries(cur, principal, task, pi_id, len(lines), idempotency_key)
+        if initial and initial["closes_pi"]:
+            return {"status": "queued", "posting_request_id": initial["erp_document_id"],
+                    "queue_key": initial["queue_key"], "initial_entry_request_id": initial["erp_document_id"]}
+    extra = {"initial_entry_request_id": initial["erp_document_id"]} if initial else {}
     beyond, value, currency = count_outcome(cur, pi_id)
     if beyond:
         cur.execute("SELECT 1 FROM field.approval_request WHERE pi_document_id = %s::uuid AND status = 'pending'",
@@ -136,9 +147,59 @@ def finish_count(cur: Any, principal: Principal, task: dict[str, Any], line_ids:
                     " WHERE id = %s::uuid", (task["id"],))
         _tick(cur, principal, "count.awaiting_approval", {"task_id": task["id"]})
         # Never the value or the difference to the operator (FR3.029): only that a decision is pending.
-        return {"status": "awaiting_approval", "approval_request_id": apr}
+        return {"status": "awaiting_approval", "approval_request_id": apr, **extra}
     erp_doc = stage_pi_posting(cur, principal.tenant_id, pi_id, idempotency_key, None, device_id=principal.device_id)
-    return {"status": "queued", "posting_request_id": erp_doc, "queue_key": _queue_of(cur, erp_doc)}
+    return {"status": "queued", "posting_request_id": erp_doc, "queue_key": _queue_of(cur, erp_doc), **extra}
+
+
+def _site_mode(cur: Any, site_id: str) -> str:
+    cur.execute("SELECT mode FROM field.site WHERE id = %s::uuid", (site_id,))
+    row = cur.fetchone()
+    return str(row[0]) if row else "production"
+
+
+def stage_initial_entries(cur: Any, principal: Principal, task: dict[str, Any], pi_id: str, line_count: int,
+                          idempotency_key: str) -> dict[str, Any] | None:
+    """Sandbox count: items counted with no book stock post movement 561 (initial entry), queue PID:<doc>.
+
+    Returns {erp_document_id, queue_key, closes_pi} or None when no item is opening stock. ``closes_pi``:
+    every item of the count is opening stock, so this document finishes the count and the task.
+    """
+    cur.execute(
+        """
+        SELECT l.id, m.erp_material_no, l.counted_qty, l.uom, l.storage_bin
+          FROM field.pi_book b JOIN field.task_line l ON l.id = b.task_line_id
+          JOIN field.material m ON m.id = l.material_id
+         WHERE b.pi_document_id = %s::uuid AND b.book_qty = 0 AND l.counted_qty > 0 AND l.status = 'counted'
+         ORDER BY l.line_no
+        """,
+        (pi_id,),
+    )
+    rows = cur.fetchall()
+    if not rows:
+        return None
+    cur.execute("SELECT doc_number, plant, storage_location, simulated FROM field.pi_document WHERE id = %s::uuid",
+                (pi_id,))
+    doc_no, plant, sloc, simulated = cur.fetchone()
+    closes = len(rows) == line_count
+    line_ids = [str(r[0]) for r in rows]
+    staged = stage_document(
+        cur, tenant_id=principal.tenant_id, site_id=task["site_id"], doc_type="INIT_STOCK", movement_type="561",
+        queue_key=f"PID:{doc_no}", ref_doc_no=doc_no, plant=plant, idempotency_key=f"{idempotency_key}:561",
+        payload={"task_id": task["id"], "line_ids": line_ids, "pi_document_id": pi_id, "closes_pi": closes,
+                 "updates_task": closes, "line_status_after": "posted", "requested_by": principal.id,
+                 "device_id": principal.device_id},
+        jobs=[JobSpec("InitialStockEntry", {"StorageLocation": sloc, "Sandbox": True, "Simulated": bool(simulated)},
+                      tuple({"Material": r[1], "QuantityInEntryUnit": f"{Decimal(r[2]):.3f}", "EntryUnit": r[3],
+                             "StorageBin": r[4]} for r in rows))],
+    )
+    cur.execute("UPDATE field.task_line SET status = 'posting', version = version + 1, updated_at = NOW()"
+                " WHERE id = ANY(%s::uuid[])", (line_ids,))
+    if closes:
+        cur.execute("UPDATE field.pi_document SET status = 'counted' WHERE id = %s::uuid", (pi_id,))
+        cur.execute("UPDATE field.task SET status = 'posting', version = version + 1, updated_at = NOW()"
+                    " WHERE id = %s::uuid", (task["id"],))
+    return {"erp_document_id": staged.erp_document_id, "queue_key": staged.queue_key, "closes_pi": closes}
 
 
 def _queue_of(cur: Any, erp_doc_id: str) -> str | None:

@@ -28,6 +28,8 @@ router = APIRouter(prefix="/sap/opu/odata/sap/API_INBOUND_DELIVERY_SRV", tags=["
 class PatchItemBody(BaseModel):
     ActualDeliveryQuantity: str | float | None = None
     StorageBin: str | None = None
+    # M3 soft pegging (sandbox deliveries only): the delivery quantity becomes what was counted.
+    OriginalDeliveryQuantity: str | float | None = None
 
 
 def generate_item_etag(delivery_document: str, item_no: str, actual_qty: Any) -> str:
@@ -264,13 +266,23 @@ async def patch_inbound_delivery_item(
                 raise HTTPException(status_code=412, detail="Precondition Failed: ETag mismatch")
 
             new_qty = Decimal(str(body.ActualDeliveryQuantity)) if body.ActualDeliveryQuantity is not None else row[3]
+            deliv_qty = row[2]
+            if body.OriginalDeliveryQuantity is not None:
+                cur.execute("SELECT header_data FROM erpsim.inbound_delivery WHERE client = %s AND delivery_document = %s",
+                            (sap_client, delivery_document))
+                head = cur.fetchone()
+                if not (head and isinstance(head[0], dict) and head[0].get("sandbox")):
+                    raise HTTPException(status_code=400, detail={"error": {"code": "ZSIM/NOT-SANDBOX", "message": {
+                        "lang": "en", "value": "The delivery quantity is changed only on sandbox deliveries"}}})
+                deliv_qty = Decimal(str(body.OriginalDeliveryQuantity))
             cur.execute(
                 """
                     UPDATE erpsim.inbound_delivery_item
-                    SET actual_qty = %s, status = CASE WHEN status = 'open' THEN 'qty_set' ELSE status END
+                    SET actual_qty = %s, delivery_qty = %s,
+                        status = CASE WHEN status = 'open' THEN 'qty_set' ELSE status END
                     WHERE client = %s AND delivery_document = %s AND item_no = %s;
                 """,
-                (new_qty, sap_client, delivery_document, item_no),
+                (new_qty, deliv_qty, sap_client, delivery_document, item_no),
             )
             conn.commit()
 
@@ -323,7 +335,7 @@ async def post_goods_receipt(
             try:
                 cur.execute(
                     """
-                    SELECT plant, storage_location, status
+                    SELECT plant, storage_location, status, header_data
                     FROM erpsim.inbound_delivery
                     WHERE client = %s AND delivery_document = %s;
                 """,
@@ -349,7 +361,7 @@ async def post_goods_receipt(
                         (sap_client, delivery_document),
                     )
                     conn.commit()
-                    hdr = ("1010", "101A", "open")
+                    hdr = ("1010", "101A", "open", {})
 
                 if not hdr:
                     raise HTTPException(
@@ -365,7 +377,11 @@ async def post_goods_receipt(
                         },
                     )
 
-                plant, sloc, status = hdr
+                plant, sloc, status, deliv_head = hdr
+                gr_head: dict[str, Any] = {"DeliveryDocument": delivery_document}
+                for flag in ("sandbox", "simulated"):  # M3: a sandbox site's receipt says so in its document
+                    if isinstance(deliv_head, dict) and deliv_head.get(flag):
+                        gr_head[flag] = True
                 if status in ("posted", "completed", "C"):
                     raise HTTPException(
                         status_code=400,
@@ -405,7 +421,7 @@ async def post_goods_receipt(
                         sap_client,
                         doc_no,
                         doc_year,
-                        json.dumps({"DeliveryDocument": delivery_document}),
+                        json.dumps(gr_head),
                     ),
                 )
 

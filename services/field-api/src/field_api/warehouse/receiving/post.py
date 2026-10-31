@@ -20,8 +20,13 @@ def goods_receipt_queue_key(delivery_document: str) -> str:
     return f"IBD:{delivery_document}"
 
 
-def goods_receipt_jobs(delivery_document: str, received: Sequence[tuple[int | str, float]]) -> list[JobSpec]:
-    """PATCH per (line_no, received_qty) in the given order, then one PostGoodsReceipt."""
+def goods_receipt_jobs(delivery_document: str, received: Sequence[tuple[int | str, float]],
+                       soft_pegging: bool = False) -> list[JobSpec]:
+    """PATCH per (line_no, received_qty) in the given order, then one PostGoodsReceipt.
+
+    ``soft_pegging`` (M3 sandbox receipts): each PATCH also sets the delivery quantity to the received one,
+    so expected = counted in the ERP too.
+    """
     if not received:
         raise ValueError("a goods receipt needs at least one line")
     jobs = [
@@ -29,6 +34,7 @@ def goods_receipt_jobs(delivery_document: str, received: Sequence[tuple[int | st
             "DeliveryDocument": delivery_document,
             "DeliveryDocumentItem": str(line_no).zfill(6),
             "ActualDeliveryQuantity": f"{max(0.0, qty):.3f}",
+            **({"SoftPegging": True} if soft_pegging else {}),
         })
         for line_no, qty in received
     ]

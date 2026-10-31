@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from field_api.audit.api import router as audit_router
 from field_api.audits.reports import router as audit_reports_router
+from field_api.codes.api import router as codes_router
 from field_api.equipment.api import router as equipment_router
 from field_api.errors import (
     ERR_NOT_FOUND,
@@ -44,6 +45,7 @@ from field_api.routes.sites import router as sites_router
 from field_api.routes.status import router as status_router
 from field_api.routes.voice import router as voice_router
 from field_api.safety.api import router as safety_router
+from field_api.sandbox.api import router as sandbox_router
 from field_api.secrets import missing_required_secrets
 from field_api.sitepack.api import router as sitepack_router
 from field_api.sites.tree import router as site_tree_router
@@ -230,6 +232,8 @@ def create_app() -> FastAPI:
     app.include_router(installed_base_router)
     app.include_router(job_confirmations_router)
     app.include_router(job_console_router)
+    app.include_router(codes_router)
+    app.include_router(sandbox_router)
 
     return app
 

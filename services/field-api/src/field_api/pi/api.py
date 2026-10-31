@@ -253,17 +253,19 @@ def stage_pi_posting(cur: Any, principal_tenant: str, pi_id: str, idem: str, app
     ``device_id`` (the phone that finished the count) receives the erp.posted / erp.failed event.
     """
     cur.execute(
-        "SELECT site_id, plant, doc_number, fiscal_year, task_id, storage_location"
-        " FROM field.pi_document WHERE id = %s::uuid",
+        "SELECT d.site_id, d.plant, d.doc_number, d.fiscal_year, d.task_id, d.storage_location, d.simulated,"
+        " s.mode = 'sandbox' FROM field.pi_document d LEFT JOIN field.site s ON s.id = d.site_id"
+        " WHERE d.id = %s::uuid",
         (pi_id,),
     )
-    site_id, plant, doc_no, year, task_id, sloc = cur.fetchone()
+    site_id, plant, doc_no, year, task_id, sloc, simulated, sandbox = cur.fetchone()
+    # Lines already sent as a sandbox opening-stock entry (561, M3) are not part of the difference posting.
     cur.execute(
         """
         SELECT l.id, l.line_no, m.erp_material_no, l.storage_bin, l.counted_qty, b.book_qty, l.uom
           FROM field.pi_book b JOIN field.task_line l ON l.id = b.task_line_id
           LEFT JOIN field.material m ON m.id = l.material_id
-         WHERE b.pi_document_id = %s::uuid ORDER BY l.line_no
+         WHERE b.pi_document_id = %s::uuid AND l.status NOT IN ('posting', 'posted') ORDER BY l.line_no
         """,
         (pi_id,),
     )
@@ -279,8 +281,8 @@ def stage_pi_posting(cur: Any, principal_tenant: str, pi_id: str, idem: str, app
         queue_key=f"PID:{doc_no}", ref_doc_no=doc_no, plant=plant, idempotency_key=idem,
         payload={"task_id": str(task_id), "line_ids": [str(r[0]) for r in rows], "pi_document_id": pi_id,
                  "approved_by": approver, "line_status_after": "posted", "device_id": device_id},
-        jobs=[JobSpec("PhysicalInventory", {"FieldPiDocument": doc_no, "FiscalYear": year,
-                                            "StorageLocation": sloc}, tuple(items))],
+        jobs=[JobSpec("PhysicalInventory", {"FieldPiDocument": doc_no, "FiscalYear": year, "StorageLocation": sloc,
+                                            "Sandbox": bool(sandbox), "Simulated": bool(simulated)}, tuple(items))],
     )
     cur.execute("UPDATE field.pi_document SET status = 'counted' WHERE id = %s::uuid", (pi_id,))
     cur.execute("UPDATE field.task_line SET status = 'posting', version = version + 1, updated_at = NOW()"

@@ -2,6 +2,10 @@
 rem Field-test stack on Windows - double-click, or run from a Command Prompt:
 rem   run-field-stack.cmd              start everything, smoke test, new delivery, pairing QR
 rem   run-field-stack.cmd up|down|status|smoke|delivery|pair
+rem   run-field-stack.cmd home              sandbox site "Home (sandbox)": any box becomes a material (M3)
+rem   run-field-stack.cmd pair --home       pairing QR for the home sandbox site
+rem   run-field-stack.cmd smoke --home      sandbox receipt + count end to end (smoke --all: every job type)
+rem   run-field-stack.cmd labels            printable QR labels for every open job
 rem Same logic as run-field-stack.ps1 / tools/dev_stack/stack.py (the .sh file is for Linux/macOS).
 setlocal
 cd /d "%~dp0..\.."

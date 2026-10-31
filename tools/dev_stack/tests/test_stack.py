@@ -299,3 +299,69 @@ def test_tower_location_accepts_what_maps_copies(text: str, want: tuple[float, f
 def test_tower_location_refuses_nonsense(text: str) -> None:
     with pytest.raises(ValueError):
         stack.parse_lat_lon(text)
+
+
+def test_m3_home_commands_are_registered(monkeypatch: pytest.MonkeyPatch) -> None:
+    """M3 contract section 3: `home [--simulate-differences]`, `smoke --home`, `assistant-check` exist (M3-S07)."""
+    seen: list[str] = []
+
+    def recorder(name: str) -> object:
+        def run(a: object) -> int:
+            seen.append(f"{name}:{getattr(a, 'simulate_differences', None)}:{getattr(a, 'home', None)}")
+            return 0
+        return run
+
+    for cmd in ("home", "smoke", "assistant_check"):
+        monkeypatch.setattr(stack, f"cmd_{cmd}", recorder(cmd))
+    assert stack.main(["home"]) == 0 and stack.main(["home", "--simulate-differences"]) == 0
+    assert stack.main(["smoke", "--home"]) == 0 and stack.main(["assistant-check"]) == 0
+    assert seen == ["home:False:None", "home:True:None", "smoke:None:True", "assistant_check:None:None"]
+
+
+def test_assistant_check_says_clearly_when_track_a_is_not_in_this_build(monkeypatch: pytest.MonkeyPatch,
+                                                                         capsys: pytest.CaptureFixture[str]) -> None:
+    import argparse
+    import importlib
+    import sys
+    import types
+
+    real = importlib.import_module
+
+    def missing(name: str, package: str | None = None) -> types.ModuleType:
+        if name == "tools.dev_stack.assistant_check":
+            raise ModuleNotFoundError(f"No module named {name!r}", name=name)
+        return real(name, package)
+
+    monkeypatch.setattr(importlib, "import_module", missing)
+    assert stack.cmd_assistant_check(argparse.Namespace()) == 1
+    assert "assistant-check is not installed in this build" in capsys.readouterr().out
+
+    hook = types.ModuleType("tools.dev_stack.assistant_check")
+    vars(hook)["main"] = lambda a: 0  # stands in for the module track A adds; imported only at call time
+    monkeypatch.setattr(importlib, "import_module", real)
+    monkeypatch.setitem(sys.modules, "tools.dev_stack.assistant_check", hook)
+    assert stack.cmd_assistant_check(argparse.Namespace()) == 0
+
+
+def test_pair_home_points_the_phone_at_the_sandbox_site(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import argparse
+
+    seen: dict[str, Any] = {}
+    monkeypatch.setattr(stack, "load_env", lambda: {})
+    monkeypatch.setattr(stack, "ROOT", tmp_path)
+    monkeypatch.setattr(stack, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(stack, "ensure_demo_site", lambda s: {"tenant": "t", "site": "wh", "site_name": "Warehouse"})
+    monkeypatch.setattr(stack, "ensure_home", lambda s: {**s, "home_site": "hm"})
+    monkeypatch.setattr(stack, "_core_token", lambda user, tenant, site, ttl: seen.setdefault("token_site", site) and "tok")
+    monkeypatch.setattr(stack, "pairing_payload", lambda api, token, tenant, site, name: seen.update(site=site, name=name)
+                        or f"{api}|{site}")
+    args = argparse.Namespace(user="op-1", hours=1, api="http://10.0.0.2:8000", no_ascii=True, no_open=True, tower=False,
+                              home=True)
+    assert stack.cmd_pair(args) == 0
+    assert seen == {"token_site": "hm", "site": "hm", "name": stack.HOME_SITE_NAME}
+    assert (tmp_path / "var" / "pairing-qr-home.svg").exists() and not (tmp_path / "var" / "pairing-qr.svg").exists()
+
+
+def test_new_barcodes_are_ean13_shaped_and_fresh() -> None:
+    codes = {stack.new_barcode() for _ in range(50)}
+    assert len(codes) == 50 and all(len(c) == 13 and c.isdigit() and c.startswith("2") for c in codes)

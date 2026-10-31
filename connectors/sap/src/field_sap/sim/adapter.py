@@ -18,13 +18,19 @@ from field_sap.ports.erp_port import (
     ErpErrorKind,
     ErpPostingRequest,
     ErpResult,
+    MaterialBarcode,
     MaterialItem,
     MaterialPage,
+    SandboxDelivery,
+    SandboxDeliveryItem,
+    SandboxMaterial,
 )
 
 logger = structlog.get_logger(__name__)
 
 DEFAULT_ERPSIM_URL = os.getenv("FIELD_ERP_SIM_URL", "http://127.0.0.1:8002")
+# The simulator's admin token for its /_sim/sandbox routes (M3). Read by name; erp-sim has the same dev default.
+SIM_ADMIN_TOKEN_ENV = "ERPSIM_ADMIN_TOKEN"
 
 
 def _odata_d(resp: httpx.Response) -> dict[str, Any]:
@@ -149,7 +155,8 @@ class SimAdapter:
         """Page A_ProductPlant for a plant; the cursor is the $skip offset of the next page."""
         skip = int(cursor) if cursor else 0
         url = "/sap/opu/odata/sap/API_PRODUCT_SRV/A_ProductPlant"
-        params = {"$filter": f"Plant eq '{plant}'", "$top": str(limit), "$skip": str(skip), "$inlinecount": "allpages"}
+        params = {"$filter": f"Plant eq '{plant}'", "$top": str(limit), "$skip": str(skip), "$inlinecount": "allpages",
+                  "$expand": "to_ProductUnitsOfMeasureEAN"}
         async with self._get_client() as client:
             try:
                 resp = await client.get(url, params=params, headers={"sap-client": self.sap_client})
@@ -166,6 +173,12 @@ class SimAdapter:
                 description=str(r.get("ProductDescription") or ""),
                 plant=str(r.get("Plant") or plant),
                 base_uom=str(r.get("BaseUnit") or "EA"),
+                barcodes=tuple(
+                    MaterialBarcode(barcode=str(e["ProductStandardID"]), uom=str(e.get("AlternativeUnit") or "EA"),
+                                    is_main=bool(e.get("IsMainGlobalTradeItemNumber")))
+                    for e in (r.get("to_ProductUnitsOfMeasureEAN") or {}).get("results") or []
+                    if e.get("ProductStandardID")
+                ),
             )
             for r in rows
         )
@@ -188,8 +201,11 @@ class SimAdapter:
                 "x-csrf-token": self._csrf_token or "",
                 "If-Match": "*",
             }
+            body: dict[str, str] = {"ActualDeliveryQuantity": str(qty)}
+            if req.header_data.get("SoftPegging"):  # M3 sandbox: the delivery quantity becomes the counted one
+                body["OriginalDeliveryQuantity"] = str(qty)
             try:
-                resp = await client.patch(url, headers=headers, json={"ActualDeliveryQuantity": str(qty)})
+                resp = await client.patch(url, headers=headers, json=body)
             except (httpx.TimeoutException, httpx.NetworkError) as e:
                 raise ErpError(kind=ErpErrorKind.TIMEOUT, message=f"ERP timeout: {e}", retryable=True) from e
             if resp.status_code != 200:
@@ -399,3 +415,80 @@ class SimAdapter:
                 document_family="TransferPosting",
                 posted_at=datetime.now(UTC),
             )
+
+    async def post_initial_stock_entry(self, req: ErpPostingRequest) -> ErpResult:
+        """Movement 561 (initial entry of stock balances) as an API_MATERIAL_DOCUMENT_SRV deep insert."""
+        sloc = str(req.header_data.get("StorageLocation") or "")
+        body = {
+            "GoodsMovementCode": "05",
+            "PostingDate": req.posting_date,
+            "MaterialDocumentHeaderText": f"FIELD:{req.idempotency_key}",
+            "YY1_FieldSandbox": bool(req.header_data.get("Sandbox")),
+            "YY1_FieldSimulated": bool(req.header_data.get("Simulated")),
+            "to_MaterialDocumentItem": [
+                {"Material": it["Material"], "Plant": req.plant, "StorageLocation": sloc, "GoodsMovementType": "561",
+                 "QuantityInEntryUnit": str(it["QuantityInEntryUnit"]), "EntryUnit": it.get("EntryUnit", "EA")}
+                for it in req.items
+            ],
+        }
+        url = "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader"
+        async with self._get_client() as client:
+            try:
+                resp = await client.post(url, json=body, headers={"sap-client": self.sap_client,
+                                                                   "Idempotency-Key": req.idempotency_key})
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                existing = await self.find_by_idempotency_key(req.idempotency_key)
+                if existing:
+                    return existing
+                raise ErpError(kind=ErpErrorKind.TIMEOUT, message=f"ERP timeout: {e}", retryable=True) from e
+            if resp.status_code not in (200, 201):
+                raise self._parse_error(resp)
+            data = _odata_d(resp)
+            return ErpResult(
+                idempotency_key=req.idempotency_key,
+                document_number=str(data.get("MaterialDocument", "")),
+                fiscal_year=str(data.get("MaterialDocumentYear", "")),
+                document_family="InitialStockEntry",
+                posted_at=datetime.now(UTC),
+                raw_response=data,
+            )
+
+    # --- ErpSandboxPort (M3 contract section 3): erp-sim admin routes, not SAP capabilities ------------
+    def _admin_headers(self) -> dict[str, str]:
+        return {"sap-client": self.sap_client,
+                "X-Sim-Admin-Token": os.getenv(SIM_ADMIN_TOKEN_ENV, "dev-sim-admin-token")}
+
+    async def _sandbox_post(self, path: str, body: dict[str, Any], idempotency_key: str | None = None) -> dict[str, Any]:
+        headers = self._admin_headers()
+        if idempotency_key:
+            headers["Idempotency-Key"] = idempotency_key
+        async with self._get_client() as client:
+            try:
+                resp = await client.post(f"/_sim/sandbox/{path}", json=body, headers=headers)
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                raise ErpError(kind=ErpErrorKind.TIMEOUT, message=f"ERP timeout: {e}", retryable=True) from e
+        if resp.status_code not in (200, 201):
+            raise self._parse_error(resp)
+        return _odata_d(resp)
+
+    async def create_sandbox_material(self, plant: str, description: str, base_uom: str,
+                                      barcode: str) -> SandboxMaterial:
+        d = await self._sandbox_post("materials", {"Plant": plant, "Description": description[:40],
+                                                   "BaseUnit": base_uom, "Barcode": barcode})
+        return SandboxMaterial(material_no=str(d["Product"]), description=str(d.get("ProductDescription") or ""),
+                               base_uom=str(d.get("BaseUnit") or base_uom), barcode=str(d.get("ProductStandardID") or barcode),
+                               created=bool(d.get("Created")))
+
+    async def create_sandbox_inbound_delivery(self, plant: str, storage_location: str, supplier: str,
+                                              simulated: bool = False) -> SandboxDelivery:
+        d = await self._sandbox_post("inbound-deliveries", {"Plant": plant, "StorageLocation": storage_location,
+                                                            "Supplier": supplier, "Simulated": simulated})
+        return SandboxDelivery(delivery_document=str(d["DeliveryDocument"]), last_change=d.get("LastChangeDateTime"))
+
+    async def add_sandbox_inbound_delivery_item(self, delivery_document: str, material: str, quantity: str,
+                                                uom: str, idempotency_key: str) -> SandboxDeliveryItem:
+        d = await self._sandbox_post(f"inbound-deliveries/{delivery_document}/items",
+                                     {"Material": material, "DeliveryQuantity": quantity, "DeliveryQuantityUnit": uom},
+                                     idempotency_key)
+        return SandboxDeliveryItem(delivery_document=str(d["DeliveryDocument"]), item_no=str(d["DeliveryDocumentItem"]),
+                                   last_change=d.get("LastChangeDateTime"))
