@@ -3722,6 +3722,107 @@
         }
       }
     },
+    "/_sim/ui/documents": {
+      "get": {
+        "tags": [
+          "Simulator UI"
+        ],
+        "summary": "Admin Documents",
+        "description": "Material documents, newest first, with item totals and the document each one reverses or is reversed by.",
+        "operationId": "admin_documents__sim_ui_documents_get",
+        "parameters": [
+          {
+            "name": "movement",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Movement"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/ui/documents/{doc_number}/{fiscal_year}": {
+      "get": {
+        "tags": [
+          "Simulator UI"
+        ],
+        "summary": "Admin Document",
+        "operationId": "admin_document__sim_ui_documents__doc_number___fiscal_year__get",
+        "parameters": [
+          {
+            "name": "doc_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Number"
+            }
+          },
+          {
+            "name": "fiscal_year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fiscal Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/_sim/ui/stock": {
       "get": {
         "tags": [
@@ -3737,6 +3838,145 @@
                 "schema": {
                   "type": "string"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/ui/locks": {
+      "get": {
+        "tags": [
+          "Simulator UI"
+        ],
+        "summary": "Admin Locks",
+        "operationId": "admin_locks__sim_ui_locks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/ui/faults": {
+      "get": {
+        "tags": [
+          "Simulator UI"
+        ],
+        "summary": "Admin Faults",
+        "operationId": "admin_faults__sim_ui_faults_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Simulator UI"
+        ],
+        "summary": "Admin Fault Create",
+        "operationId": "admin_fault_create__sim_ui_faults_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_admin_fault_create__sim_ui_faults_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/ui/faults/{rule_id}/off": {
+      "post": {
+        "tags": [
+          "Simulator UI"
+        ],
+        "summary": "Admin Fault Off",
+        "operationId": "admin_fault_off__sim_ui_faults__rule_id__off_post",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/ui/reset": {
+      "post": {
+        "tags": [
+          "Simulator UI"
+        ],
+        "summary": "Admin Reset",
+        "operationId": "admin_reset__sim_ui_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           }
@@ -3811,6 +4051,34 @@
   },
   "components": {
     "schemas": {
+      "Body_admin_fault_create__sim_ui_faults_post": {
+        "properties": {
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "default": 1
+          },
+          "minutes": {
+            "type": "integer",
+            "title": "Minutes",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "target",
+          "kind"
+        ],
+        "title": "Body_admin_fault_create__sim_ui_faults_post"
+      },
       "DismantleRequest": {
         "properties": {
           "Equipment": {
