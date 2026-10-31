@@ -138,3 +138,24 @@ All gates green, `smoke --all` passes, a new `smoke --home` passes (sandbox rece
 → GR 101 with a HOME material; production site refuses the same code; sandbox count with 561), assistant
 endpoint answers in rules mode with AI off and through the recorded model double in CI, CI green including
 the emulator launch. Then the owner tests on glasses; only then may entries move toward done.
+
+## 7. Seams between tracks S and A (wired by the integrator at merge)
+
+Track A must not import track S's modules (they do not exist on its branch). It depends on two
+Protocols it defines in `field_api/assistant/ports.py`, receives them by injection, and tests them
+with doubles in test code. Track S implements exactly these signatures; the integrator wires them in.
+
+```python
+class CodeResolver(Protocol):            # S implements in field_api/codes/resolve.py as resolve_code
+    def __call__(self, principal: Principal, site_id: str, code: str) -> CodeLookup: ...
+#   CodeLookup = TypedDict: code, kind ('material'|'bin'|'serial'|'unknown'),
+#                material: {material, description, uom} | None, bin: str | None, site_mode: str
+
+class SandboxItems(Protocol):            # S implements in field_api/sandbox/service.py as add_item
+    def __call__(self, principal: Principal, task_id: str, code: str, description: str,
+                 qty: Decimal | None, idempotency_key: str) -> SandboxItemResult: ...
+#   SandboxItemResult = TypedDict: line_id, material, created_material (bool)
+#   raises FieldError FIELD-SBX-403-PRODUCTION on a production site
+```
+`Principal` is `field_api.auth.jwt.Principal` (the type the routes use).
+Until wired, the assistant answers "what is this" from `task_detail` lines only and offers no sandbox add.
