@@ -11,6 +11,8 @@ Every 10 min:
   - purges expired idempotency records
 Every FIELD_ASSISTANT_PURGE_S (3600 s):
   - clears Field Assistant heard / said text and photos older than FIELD_ASSISTANT_RETENTION_DAYS (30)
+Every tick, when FIELD_CORE_INVENTORY_FEED_URL and FIELD_CORE_SUPPLY_FEED_URL are set (M4 F4):
+  - delivers posted goods receipts to the core's two feeds (field_worker.core_feeds), signed, retried
 
 Connects as field_worker (NOBYPASSRLS) via FIELD_WORKER_DATABASE_URL and discovers tenants through
 SECURITY DEFINER functions (migration field_0057). The ERP adapter is chosen by FIELD_ERP_ADAPTER:
@@ -32,9 +34,10 @@ from typing import Any
 import httpx
 import psycopg
 import structlog
-from field_sap.ports.erp_port import ErpPort
+from field_sap.ports.erp_port import ErpPort, ErpReadPort
 from field_sap.sim.adapter import SimAdapter
 
+from field_worker.core_feeds import CoreFeedPublisher, FeedConfig
 from field_worker.material_sync import MaterialCacheSynchronizer
 from field_worker.posting.equipment_queue import process_next_tower_job
 from field_worker.posting.queue import PostingQueueWorker
@@ -69,6 +72,7 @@ class FieldWorker:
         self.erp_port = erp_port or build_erp_port()
         self.posting = PostingQueueWorker(erp_port=self.erp_port, db_url=db_url)
         self.materials = MaterialCacheSynchronizer(db_url=db_url, erp_port=self.erp_port)
+        self.core_feeds = self._core_feeds(db_url)
         self.is_running = False
         self.jobs_processed = 0
         self.tasks_imported = 0
@@ -77,6 +81,15 @@ class FieldWorker:
         self._last_assistant_purge: float | None = None
         self._last_material_sync: dict[tuple[str, str], float] = {}
         self.last_heartbeat: str | None = None
+
+    def _core_feeds(self, db_url: str) -> CoreFeedPublisher | None:
+        cfg = FeedConfig.from_env()
+        if not cfg.enabled:
+            return None
+        if not isinstance(self.erp_port, ErpReadPort):
+            logger.error("core_feeds_disabled", reason="the ERP adapter cannot read documents and stock")
+            return None
+        return CoreFeedPublisher(self.erp_port, db_url, cfg)
 
     def _query(self, sql: str) -> list[tuple[Any, ...]]:
         with psycopg.connect(self.db_url, autocommit=True) as conn, conn.cursor() as cur:
@@ -150,6 +163,8 @@ class FieldWorker:
         """One pass over every loop. A failing loop is logged and must not starve the others."""
         await self._guard("posting", self.process_posting_queue())
         await self._guard("tower", asyncio.to_thread(self.process_tower_queues))
+        if self.core_feeds is not None:
+            await self._guard("core_feeds", self.core_feeds.run_once())
         if now - self._last_ibd >= IBD_POLL_S:
             self._last_ibd = now
             await self._guard("ibd_import", self.poll_inbound_deliveries())
@@ -183,7 +198,7 @@ class FieldWorker:
 
     async def run(self) -> None:
         self.is_running = True
-        logger.info("field_worker_started", erp=ERP_URL, ibd_poll_s=IBD_POLL_S)
+        logger.info("field_worker_started", erp=ERP_URL, ibd_poll_s=IBD_POLL_S, core_feeds=self.core_feeds is not None)
         while self.is_running:
             try:
                 await self.tick(time.monotonic())

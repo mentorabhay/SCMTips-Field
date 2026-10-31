@@ -8,6 +8,7 @@ on timeout calls find_by_idempotency_key before reporting failure.
 
 import os
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -19,6 +20,8 @@ from field_sap.ports.erp_port import (
     ErpPostingRequest,
     ErpResult,
     MaterialBarcode,
+    MaterialDocument,
+    MaterialDocumentItem,
     MaterialItem,
     MaterialPage,
     SandboxDelivery,
@@ -492,3 +495,56 @@ class SimAdapter:
                                      idempotency_key)
         return SandboxDeliveryItem(delivery_document=str(d["DeliveryDocument"]), item_no=str(d["DeliveryDocumentItem"]),
                                    last_change=d.get("LastChangeDateTime"))
+
+    # --- ErpReadPort (M4 F4): what the goods-receipt feed rows are read from ----------------------------
+    async def _get_d(self, url: str, params: dict[str, str]) -> dict[str, Any]:
+        async with self._get_client() as client:
+            try:
+                resp = await client.get(url, params=params, headers={"sap-client": self.sap_client})
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                raise ErpError(kind=ErpErrorKind.TIMEOUT, message=f"ERP timeout: {e}", retryable=True) from e
+        if resp.status_code != 200:
+            raise self._parse_error(resp)
+        return _odata_d(resp)
+
+    async def read_material_document(self, document_number: str, fiscal_year: str) -> MaterialDocument:
+        """A_MaterialDocumentHeader(...)?$expand=to_MaterialDocumentItem, as S/4 serves it."""
+        d = await self._get_d(
+            "/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/"
+            f"A_MaterialDocumentHeader(MaterialDocument='{document_number}',MaterialDocumentYear='{fiscal_year}')",
+            {"$expand": "to_MaterialDocumentItem"},
+        )
+        items = tuple(
+            MaterialDocumentItem(
+                item=str(it.get("MaterialDocumentItem") or ""),
+                material=str(it["Material"]),
+                plant=str(it.get("Plant") or ""),
+                storage_location=str(it.get("StorageLocation") or ""),
+                quantity=Decimal(str(it.get("QuantityInEntryUnit") or "0")),
+                unit=str(it.get("EntryUnit") or "EA"),
+                movement_type=str(it.get("GoodsMovementType") or ""),
+                purchase_order=str(it.get("PurchaseOrder") or ""),
+                purchase_order_item=str(it.get("PurchaseOrderItem") or ""),
+            )
+            for it in (d.get("to_MaterialDocumentItem") or {}).get("results") or []
+        )
+        return MaterialDocument(
+            document_number=str(d.get("MaterialDocument") or document_number),
+            fiscal_year=str(d.get("MaterialDocumentYear") or fiscal_year),
+            posting_date=str(d.get("PostingDate") or "")[:10],
+            items=items,
+            sandbox=bool(d.get("YY1_FieldSandbox")),
+            simulated=bool(d.get("YY1_FieldSimulated")),
+        )
+
+    async def read_stock(self, material: str, plant: str, storage_location: str | None = None) -> Decimal:
+        """Sum of unrestricted stock (InventoryStockType 01) in API_MATERIAL_STOCK_SRV/A_MatlStkInAcctMod."""
+        flt = f"Material eq '{material}' and Plant eq '{plant}'"
+        if storage_location:
+            flt += f" and StorageLocation eq '{storage_location}'"
+        d = await self._get_d("/sap/opu/odata/sap/API_MATERIAL_STOCK_SRV/A_MatlStkInAcctMod", {"$filter": flt})
+        return sum(
+            (Decimal(str(r.get("MatlWrhsStkQtyInMatlBaseUnit") or "0")) for r in d.get("results") or []
+             if str(r.get("InventoryStockType") or "01") == "01"),
+            Decimal("0"),
+        )

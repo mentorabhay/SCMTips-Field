@@ -400,7 +400,8 @@ async def post_goods_receipt(
 
                 cur.execute(
                     """
-                    SELECT item_no, material_no, delivery_qty, actual_qty, uom, status
+                    SELECT item_no, material_no, delivery_qty, actual_qty, uom, status,
+                           purchase_order, purchase_order_item
                     FROM erpsim.inbound_delivery_item
                     WHERE client = %s AND delivery_document = %s
                     ORDER BY item_no;
@@ -427,7 +428,7 @@ async def post_goods_receipt(
 
                 line_no = 1
                 for item in items:
-                    item_no, mat_no, deliv_qty, act_qty, uom, item_status = item
+                    item_no, mat_no, deliv_qty, act_qty, uom, item_status, po_no, po_item = item
                     # A PATCHed quantity always wins, including 0 (nothing received); an item never
                     # PATCHed receives its delivery quantity (S/4 default).
                     qty_to_post = Decimal(str(act_qty if item_status == "qty_set" else deliv_qty))
@@ -451,7 +452,10 @@ async def post_goods_receipt(
                             sloc,
                             qty_to_post,
                             uom,
-                            json.dumps({"DeliveryItem": item_no}),
+                            # M4 F4: the PO line of an ASN item travels into the GR item (S/4 does the same)
+                            json.dumps({"DeliveryItem": item_no,
+                                        **({"PurchaseOrder": po_no, "PurchaseOrderItem": po_item or ""}
+                                           if po_no else {})}),
                         ),
                     )
                     cur.execute(

@@ -145,7 +145,7 @@ async def get_material_document(
         if expand and "to_MaterialDocumentItem" in expand:
             cur.execute(
                 """
-                SELECT line_no, material_no, plant, storage_location, quantity, uom, movement_type
+                SELECT line_no, material_no, plant, storage_location, quantity, uom, movement_type, item_data
                 FROM erpsim.document_item
                 WHERE client = %s AND doc_number = %s AND fiscal_year = %s
                 ORDER BY line_no ASC;
@@ -154,6 +154,7 @@ async def get_material_document(
             )
             items = []
             for it in cur.fetchall():
+                idata = it[7] if isinstance(it[7], dict) else json.loads(it[7] or "{}")
                 items.append({
                     "MaterialDocument": doc_number,
                     "MaterialDocumentYear": fiscal_year,
@@ -164,6 +165,9 @@ async def get_material_document(
                     "QuantityInEntryUnit": str(it[4]),
                     "EntryUnit": it[5],
                     "GoodsMovementType": it[6],
+                    # S/4 A_MaterialDocumentItem: empty strings when the movement has no PO (M4 F4)
+                    "PurchaseOrder": str(idata.get("PurchaseOrder") or ""),
+                    "PurchaseOrderItem": str(idata.get("PurchaseOrderItem") or ""),
                 })
             d_data["to_MaterialDocumentItem"] = {"results": items}
 

@@ -7,7 +7,10 @@ class Settings(BaseSettings):
     FIELD_ENV: str = "development"
     FIELD_PORT: int = 8000
     FIELD_DATABASE_URL: str = "postgresql://field_app:devpassword@localhost:5450/field"
-    FIELD_CORE_JWKS_URL: str = "http://localhost:8001/.well-known/jwks.json"
+    # SCMTIPS core (M4 F7). Read at call time by field_api.auth.core; listed here for documentation only.
+    FIELD_CORE_BASE_URL: str = "http://127.0.0.1:8011"
+    FIELD_CORE_JWKS_URL: str = "http://127.0.0.1:8011/v1/core/jwks.json"
+    FIELD_CORE_DEVICE_STATUS_URL: str = ""
     FIELD_ERP_SIM_URL: str = "http://localhost:8002"
     FIELD_JWKS_MAX_STALE_S: int = 3600
     FIELD_IDEMPOTENCY_TTL_S: int = 86400  # 24 hours

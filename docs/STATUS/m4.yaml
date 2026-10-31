@@ -1,0 +1,186 @@
+- id: M4-C02
+  title: Stand-in core in tools/fake-core (dev double of the core's /v1 contract) for the M4 slice
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/fake-core/src/fake_core/standin/routes.py
+  - tools/fake-core/src/fake_core/standin/state.py
+  - tools/fake-core/src/fake_core/standin/decisions.py
+  - tools/fake-core/src/fake_core/standin/keys.py
+  - tools/fake-core/src/fake_core/app.py
+  - tools/fake-core/README.md
+  tests:
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_app_sign_in_shape_and_core_claims
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_sign_in_refusals
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_pairing_code_sign_in_and_aro_pairing
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_device_status_at_the_core_path
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_wearable_guard
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_sample_decisions_next_and_briefs
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_brief_check
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_property_check_accepts_template_numbers_only
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_grammar
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_voice_approve_confirm_step_up_committed
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_voice_other_turns_and_backup_code
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_evidence_photo
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_feed_receiver_verifies_and_records
+  - tools/fake-core/tests/test_fake_core.py::test_jwks_endpoint
+  frs: []
+  verified_at: null
+  note: Against the stand-in core; the real core is not deployed. A dev double (docstrings and tools/fake-core/README.md
+    say so), never presented as the core. Serves the handover paths (01, 01a) with the ported ARO client's shapes
+    (api/Models.kt), which win where they differ; where neither gives a shape (brief bodies, sessions list, feed answer)
+    the stand-in's choice is listed in the README. Ed25519 key made at start-up, kid scmtips-core-ed25519-standin-<hash>;
+    /v1/core/jwks.json carries it and the legacy dev key, /.well-known/jwks.json keeps the legacy key only. Demo users
+    approver (voice.approve) and operator, password FAKE_CORE_DEMO_PASSWORD (dev value), step-up code
+    FAKE_CORE_STEP_UP_CODE. Feed receivers verify X-SCMTIPS-Timestamp (<= 300 s) and the HMAC-SHA256 signature over
+    timestamp + "." + raw body, check rows against the exchange contract's inventory / open_supply columns and keep
+    them (upsert view, read at /_standin/feeds/*). State is process memory. Partial until the same flows run against
+    the real core and on the owner's phone and glasses (A-04).
+- id: M4-C01
+  title: 'F7: core settings, /exchange accepts core app tokens (permissions, email), JWKS re-read, device-status URL template'
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/auth/core.py
+  - services/field-api/src/field_api/auth/jwks.py
+  - services/field-api/src/field_api/routes/auth.py
+  - services/field-api/src/field_api/config.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_core_app_token_exchanges_and_registers_the_core_device
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_core_revocation_and_field_revocation_both_refuse
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_unknown_core_device_without_a_core_check_stays_refused
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_binding_mismatch_is_401
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_malformed_extra_claims_are_refused
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_unbound_dev_token_is_not_asked_at_the_core_path
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_jwks_reread_on_new_key_same_kid_and_on_unknown_kid
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_core_settings
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_exchanged_approver_may_use_the_spoken_brief
+  - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_t1_038_device_exchange_requires_active_device_row
+  frs: []
+  verified_at: null
+  note: Against the stand-in core; the real core is not deployed. Settings FIELD_CORE_BASE_URL (default
+    http://127.0.0.1:8011, the stand-in), FIELD_CORE_JWKS_URL (default {BASE}/v1/core/jwks.json),
+    FIELD_CORE_DEVICE_STATUS_URL (template {device_id}, {tenant_id} from the token; unset keeps today's behaviour,
+    fake-core /api/v1/devices/{id}/status when CORE_API_URL is set). JWKS re-read once on an unknown kid or a failed
+    signature, at most every FIELD_JWKS_FORCED_REFRESH_MIN_S (5 s). permissions / email claims accepted (validated,
+    permissions echoed as core_permissions, e-mail never stored). The core's device id (app install id) is not a
+    field.device id; the field device for it is the field.device whose id or serial_no equals it, registered by the
+    exchange when the core device status answers active (the app then uses the device_id the exchange returns and
+    does not POST /v1/devices for it). Roles must still be field roles (unknown roles stay refused); the stand-in
+    approver carries field.supervisor, which holds field.assistant.use (stream M's POST /v1/briefs/spoken). Partial until
+    proven against the real core and on the owner's phone (A-04).
+- id: M4-C03
+  title: ErpReadPort (posted material document with PO reference, ERP on-hand) in the connector; erp-sim PO references
+    on ASN items and API_MATERIAL_STOCK_SRV
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - connectors/sap/src/field_sap/ports/erp_port.py
+  - connectors/sap/src/field_sap/sim/adapter.py
+  - connectors/sap/src/field_sap/s4/adapter.py
+  - services/erp-sim/alembic/versions/erpsim_0004_m4_po_refs.py
+  - services/erp-sim/src/erp_sim/services/stock_api.py
+  - services/erp-sim/src/erp_sim/services/inbound.py
+  - services/erp-sim/src/erp_sim/services/matdoc.py
+  - packages/field-contract/erp-sim.openapi.json
+  tests:
+  - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c03_gr_document_carries_the_po_line_and_stock_is_the_erps
+  - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c03_unknown_document_and_bad_filter_are_errors
+  - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c03_s4_adapter_conforms_and_refuses_reads
+  frs: []
+  verified_at: null
+  note: The F4 feed rows are read from the ERP through the port, not computed. ErpReadPort is a separate protocol so the
+    ErpPort test doubles stay as they are. erp-sim (migration erpsim_0004) keeps the PO line of an ASN item
+    (ReferenceSDDocument/Item in S/4) and carries it into the GR item, read as A_MaterialDocumentItem.PurchaseOrder /
+    PurchaseOrderItem; on-hand is A_MatlStkInAcctMod (unrestricted, InventoryStockType 01; erp-sim has one quantity per
+    material, plant and storage location). The S/4 adapter raises NotImplementedError for both reads (UNVERIFIED, no
+    S/4 system), like its postings.
+- id: M4-C04
+  title: 'F4: GR 101 -> the core''s inventory and open-supply feeds, signed, idempotent on the event id, retried, dead-lettered'
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - services/field-api/alembic/versions/field_0062_m4_core.py
+  - services/field-worker/src/field_worker/core_feeds/publisher.py
+  - services/field-worker/src/field_worker/core_feeds/rows.py
+  - services/field-worker/src/field_worker/core_feeds/signing.py
+  - services/field-worker/src/field_worker/core_feeds/config.py
+  - services/field-worker/src/field_worker/core_feeds/codes.py
+  - services/field-worker/src/field_worker/worker.py
+  tests:
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_gr_101_delivers_two_signed_rows_read_from_the_erp
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_nothing_without_both_urls
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_retry_with_backoff_then_dead_letter_and_permanent_refusal
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_a_retry_waits_for_its_backoff
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_sandbox_receipts_are_skipped_unless_switched_on
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_core_codes_from_the_mapping_file
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_rows_aggregate_and_storage_location_mapping
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_worker_builds_the_publisher_only_with_both_urls
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_property_signature_verifies_and_detects_tampering
+  frs: []
+  verified_at: null
+  note: Against the stand-in core; the real core is not deployed. Source event is the existing outbox event erp.posted
+    with data.doc_type GoodsReceipt (movement 101), emitted by the posting worker. Staging reads the posted document
+    and the on-hand after it from erp-sim through ErpReadPort and stores the exact JSON body per feed in
+    field.core_feed_delivery (migration field_0062, forced RLS, UNIQUE tenant+event+feed). Delivery signs with
+    X-SCMTIPS-Timestamp / X-SCMTIPS-Signature (HMAC-SHA256 of timestamp + "." + body), Idempotency-Key
+    <event_id>:<feed>; 400/413/415/422 dead at once, other failures retried with exponential backoff (+-20 % jitter)
+    up to FIELD_CORE_FEED_MAX_ATTEMPTS (8), then dead. Nothing is staged or sent unless both feed URLs are set; a URL
+    without its secret is refused. Assumptions (handover gives one example row each): as_of = due_date = posting
+    date, qty = quantity received on that PO line, PO ref <PO>-<item without leading zeros>, several items aggregated
+    per row key, a receipt without a PO reference sends the stock row only, sandbox receipts skipped unless
+    FIELD_CORE_FEED_SANDBOX, history older than FIELD_CORE_FEED_LOOKBACK_H (24 h) not replayed. Codes as erp-sim has
+    them (upper-cased) or mapped by FIELD_CORE_CODE_MAP (JSON: materials, locations by plant or plant/sloc). Reversals
+    (102) are not sent. Partial until delivered to the real core's feeds (A-04).
+- id: M4-C05
+  title: stack seed-core-export <dir>, a tolerant loader of the core's erp-sim export (CSV + JSON) into erp-sim
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/dev_stack/core_export.py
+  - tools/dev_stack/stack.py
+  tests:
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_seed_core_export_missing_folder_is_a_clear_failure
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_export_json_envelope_and_csv_load_into_erpsim
+  frs: []
+  verified_at: null
+  note: The core's export (ARO\samples\exports\erp-sim) does not exist yet, so its layout is assumed and the loader is
+    tolerant; tested with the exchange contract's own erp_extract example plus CSV files. Recognises erp_extract
+    envelopes (parts), objects of tables, row lists and CSV, tables items / locations / inventory / open_supply by
+    file or key name (aliases), bom and unknown tables reported and ignored. Loads the core's codes as erp-sim's own
+    codes (plants, one storage location per plant FIELD_CORE_EXPORT_SLOC=0001, materials with barcode = code,
+    absolute on-hand, one ASN per open PO with items referencing the PO lines). Re-runs are safe. Missing folder ->
+    exit 1 with where the core writes it. A field site per core plant is not created by it (next step printed).
+    Partial until run on the core's real export.
+- id: M4-C06
+  title: 'Dev stack: stand-in core target, generated feed secrets, demo sign-in print, smoke --core'
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/dev_stack/stack.py
+  - .env.example
+  tests:
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_standin_target_points_every_core_url_at_the_stack
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_core_target_keeps_the_owners_values
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_env_local_gets_feed_secrets_and_the_target
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_demo_print_shows_dev_defaults_never_owner_values
+  - tools/dev_stack/tests/test_stack.py::test_ports_default_avoid_scmtips_core_and_can_be_overridden
+  frs: []
+  verified_at: null
+  note: FIELD_CORE_TARGET in .env.local (generated default standin) points FIELD_CORE_BASE_URL, _JWKS_URL (core
+    path), _DEVICE_STATUS_URL and both feed URLs at the stack's stand-in; FIELD_CORE_INVENTORY_FEED_SECRET /
+    FIELD_CORE_SUPPLY_FEED_SECRET are generated (fresh random, git-ignored, never printed). FIELD_CORE_TARGET=core keeps
+    the owner's FIELD_CORE_* values (the real core); unset keeps the pre-M4 behaviour. `up` passes the field demo
+    tenant to the stand-in and prints the demo sign-in (dev values only; an owner-set password is never printed).
+    smoke --core (fresh stack, private ports 8200/8202/8211, DB 5451, 31 Oct 2026) PASS - stand-in app sign-in, core
+    JWKS kid, exchange (core device registered), core device status active, GR 101 against a PO, two signed feed rows
+    verified and recorded by the stand-in with on-hand = erp-sim and the PO line received, delivered once each, core
+    revocation refuses the next exchange; smoke --all and smoke --home PASS on the same stack. Partial until run
+    against the real core (A-04).

@@ -32,6 +32,7 @@ from erp_sim.services.matdoc import router as matdoc_router
 from erp_sim.services.outbound import router as obd_router
 from erp_sim.services.physinv import router as pi_router
 from erp_sim.services.product import router as product_router
+from erp_sim.services.stock_api import router as stock_router
 
 logger = structlog.get_logger(__name__)
 
@@ -96,6 +97,7 @@ app.include_router(ibd_router)
 app.include_router(obd_router)
 app.include_router(matdoc_router)
 app.include_router(product_router)
+app.include_router(stock_router)
 app.include_router(pi_router)
 app.include_router(equipment_router)
 app.include_router(maint_router)

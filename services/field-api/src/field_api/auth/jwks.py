@@ -1,7 +1,10 @@
 """JWKS Client with Caching, Dynamic Key Refresh, and Signature Verification (Task T1.036 / PR1.17).
 
-Fetches and caches JWKS (FIELD_JWKS_TTL_S), refreshes once on unknown kid,
+Fetches and caches JWKS (FIELD_JWKS_TTL_S), re-reads it once on an unknown kid or a failed signature check
+(M4 F7: the core makes a new signing key at every local start-up, handover 01a), at most once per
+FIELD_JWKS_FORCED_REFRESH_MIN_S (5 s) so forged tokens cannot make field-api hammer the core;
 allows only EdDSA and RS256/ES256 per config, checks iss, aud, exp, nbf with 60 s skew.
+The JWKS URL is FIELD_CORE_JWKS_URL, default {FIELD_CORE_BASE_URL}/v1/core/jwks.json (field_api.auth.core).
 """
 
 import base64
@@ -14,9 +17,11 @@ import jwt
 import structlog
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
+from field_api.auth.core import core_jwks_url
+
 logger = structlog.get_logger(__name__)
 
-DEFAULT_JWKS_URL = os.getenv("FIELD_CORE_JWKS_URL", "http://127.0.0.1:8001/.well-known/jwks.json")
+DEFAULT_JWKS_URL = core_jwks_url()
 JWKS_TTL_SECONDS = int(os.getenv("FIELD_JWKS_TTL_S", "300"))
 ALLOWED_ALGORITHMS = ("EdDSA", "RS256", "ES256")
 
@@ -35,6 +40,17 @@ class JwksCache:
         self._transport = transport  # tests: httpx.ASGITransport(app=fake_core.app)
         self._keys_by_kid: dict[str, Any] = {}
         self._last_fetched: float = 0.0
+        self._last_forced: float = float("-inf")
+        self.forced_min_s = float(os.getenv("FIELD_JWKS_FORCED_REFRESH_MIN_S", "5"))
+
+    async def refresh_forced(self) -> bool:
+        """Re-read the JWKS now (unknown kid, failed signature), unless one was forced < forced_min_s ago."""
+        now = time.monotonic()
+        if now - self._last_forced < self.forced_min_s:
+            return False
+        self._last_forced = now
+        await self.refresh()
+        return True
 
     async def get_key_for_kid(self, kid: str | None) -> Any:
         """Get public key matching kid, refreshing cache if necessary."""
@@ -46,8 +62,8 @@ class JwksCache:
         if kid and kid in self._keys_by_kid:
             return self._keys_by_kid[kid]
 
-        # Unknown kid: refresh once
-        await self.refresh()
+        # Unknown kid: refresh once (rate-limited)
+        await self.refresh_forced()
         if kid and kid in self._keys_by_kid:
             return self._keys_by_kid[kid]
 
@@ -103,12 +119,21 @@ async def verify_core_jwt(token: str, expected_audience: str = "scmtips-core") -
         raise ValueError(f"Algorithm '{alg}' is not in allowed list: {ALLOWED_ALGORITHMS}")
 
     key = await jwks_cache.get_key_for_kid(kid)
+    try:
+        return _decode(token, key, alg, expected_audience)
+    except jwt.InvalidSignatureError:
+        # The core may have restarted with a new key under the same kid (01a): re-read once, then decide.
+        if not await jwks_cache.refresh_forced():
+            raise
+        return _decode(token, await jwks_cache.get_key_for_kid(kid), alg, expected_audience)
 
+
+def _decode(token: str, key: Any, alg: str, audience: str) -> dict[str, Any]:
     payload: dict[str, Any] = jwt.decode(
         token,
         key,
         algorithms=[alg],
-        audience=expected_audience,
+        audience=audience,
         issuer="scmtips-core",
         leeway=60,  # 60s clock skew tolerance
         options={"require": ["exp", "iss", "sub"]},
