@@ -991,3 +991,38 @@
     plant) were reopened to open 1600 / 600. Partial: not run on the owner's PC kit; the S/4 reads are UNVERIFIED (the S/4
     adapter refuses them; S/4 keeps the received quantity in the PO history, not on A_PurchaseOrderItem); the worker's
     interval was proven only at start-up, not on a later tick.
+- id: M4-F01
+  title: >-
+    docs/EXCHANGE_CONTRACT.md for the public Field repo (Q4; F6 open-source readiness): the eight exchange messages,
+    which ones Field uses and how, the core APIs it calls, settings by name, versioning and what is proven where
+  workstream: M4-F6
+  role: Integration (K3, owner amendment A-05)
+  status: partial
+  evidence:
+  - docs/EXCHANGE_CONTRACT.md
+  - docs/integration/exchange-contract-v1/README.md
+  - docs/integration/exchange-contract-v1/contract.json
+  - tests/test_m4_f01_exchange_contract_doc.py
+  tests:
+  - tests/test_m4_f01_exchange_contract_doc.py::test_m4_f01_the_contract_folder_is_the_cores_export_of_31_october_byte_for_byte
+  - tests/test_m4_f01_exchange_contract_doc.py::test_m4_f01_every_message_of_the_contract_is_in_the_table_with_its_schema
+  - tests/test_m4_f01_exchange_contract_doc.py::test_m4_f01_every_relative_link_resolves
+  - tests/test_m4_f01_exchange_contract_doc.py::test_m4_f01_every_setting_named_is_one_field_reads_and_no_value_is_given
+  - tests/test_m4_f01_exchange_contract_doc.py::test_m4_f01_nothing_in_the_page_looks_like_a_credential
+  frs: []
+  verified_at: null
+  note: >-
+    K3 (1 Nov 2026). The page explains the eight messages of scmtips.exchange/v1 and links their schemas in
+    docs/integration/exchange-contract-v1/; Field uses goods_receipt (a GR 101 becomes one inventory and one open_supply
+    row to the core's two signed feeds) and erp_extract (the ERP snapshot, inventory and open_supply only) and never
+    sends or imports decision_outcome; it also documents the core APIs Field calls (app sign-in, /v1/auth/exchange,
+    device status, /v1/wearable/next, briefs and the brief check, voice turns, step-up, evidence photos, device
+    sessions), the feed rules (body {"rows"}, HMAC signature, 409 = delivered, staging order with supersede, retries
+    and dead letters), the drone-world export and site pack, the core's file-mode fallbacks, the settings by name and
+    the versioning. The contract folder is pinned by a fingerprint test as the core's export of 31 Oct; a fresh export
+    from the core's the core's integration branch head (1 Nov) has the same schemas, examples, CSV, contract.json and XLSX sheets
+    (only docProps/core.xml times differ) and a README whose status lines are newer (file uploads for goods_receipt,
+    erp_extract, signal, progress), which the page says. The "proven where" table is honest: passed against a local
+    run of the real core (K1, K2, Linux container; step-up waived by LR_ENV=local; Python smokes, not the Android app);
+    not run on the owner's PC kit, his phone or the glasses; file uploads not run by Field. The rest of F6 (licence,
+    README, example client, secret scan over the history, no-core-code check, public CI) is not in this row.
