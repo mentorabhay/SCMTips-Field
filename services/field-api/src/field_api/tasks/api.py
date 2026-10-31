@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from field_api.auth.jwt import Principal
 from field_api.auth.permissions import has_permission
+from field_api.codes.resolve import barcodes_of
 from field_api.db import principal_tx
 from field_api.deps import require_permission
 from field_api.errors import FieldError
@@ -122,7 +123,7 @@ def list_tasks(
                 SELECT l.task_id, l.id, l.line_no, l.storage_bin, m.erp_material_no, l.uom,
                        l.expected_qty, l.counted_qty, l.status, l.version, t.type, l.picked_qty,
                        COALESCE(m.description, e.equipment_class), l.position, l.expected_serial,
-                       COALESCE(m.erp_material_no, e.material)
+                       COALESCE(m.erp_material_no, e.material), l.material_id
                   FROM field.task_line l
                   JOIN field.task t ON t.id = l.task_id
                   LEFT JOIN field.material m ON m.id = l.material_id
@@ -135,7 +136,10 @@ def list_tasks(
                 """,  # pick stops in walking order (bin code order, field_common.bin_stock.walking_order)
                 (ids,),
             )
-            for r in cur.fetchall():
+            line_rows = cur.fetchall()
+            # M3: every barcode of the line's material, so the phone matches a scan on either (contract §2)
+            codes = barcodes_of(cur, [str(r[16]) for r in line_rows if r[16]])
+            for r in line_rows:
                 ttype = r[10]
                 item: dict[str, Any] = {
                     "id": str(r[1]),
@@ -148,6 +152,7 @@ def list_tasks(
                     "expected_serial": r[14],
                     "status": line_state_out(r[8]),
                     "version": r[9],
+                    "barcodes": codes.get(str(r[16]), []) if r[16] else [],
                 }
                 if ttype != "count":  # blind count: never expected/book quantities (FR3.029)
                     item["expected_qty"] = float(r[6])
@@ -390,9 +395,10 @@ def confirm_task(
         for r in lines:
             if r[2] != "counted":
                 raise _err(409, "FIELD-TASK-409-STATE", f"Line {r[1]} is {r[2]}, not counted")
-        cur.execute("SELECT erp_plant FROM field.site WHERE id = %s", (site_id,))
+        cur.execute("SELECT erp_plant, mode FROM field.site WHERE id = %s", (site_id,))
         srow = cur.fetchone()
         plant = (srow[0] if srow else None) or "1000"
+        sandbox = bool(srow and srow[1] == "sandbox")
         # FR3.036: no movements on bin/material pairs under an open PI with posting block.
         cur.execute(
             """
@@ -411,10 +417,13 @@ def confirm_task(
         over_where: str | None = None
         if ttype == "receive":
             received: list[tuple[int | str, float]] = []
+            if sandbox:  # M3 soft pegging: a home receipt expects exactly what was counted
+                cur.execute("UPDATE field.task_line SET expected_qty = counted_qty, version = version + 1,"
+                            " updated_at = NOW() WHERE id = ANY(%s::uuid[])", ([str(r[0]) for r in lines],))
             for r in lines:
                 counted, damaged = float(r[4]), float(r[6])
                 decision = evaluate_receipt_tolerance(
-                    expected_qty=float(r[3]), counted_qty=counted,
+                    expected_qty=counted if sandbox else float(r[3]), counted_qty=counted,
                     over_tolerance_pct=float(r[7]), under_tolerance_pct=float(r[8]),
                     reason_code=r[9],
                 )
@@ -434,7 +443,7 @@ def confirm_task(
                 received.append((r[1], counted - damaged))  # FIELD_DAMAGED_MODE=reject (spec default)
             doc_type, mvt, queue_key = GR_DOC_TYPE, GR_MOVEMENT_TYPE, goods_receipt_queue_key(ref_doc)
             if not over_where:
-                job_specs = goods_receipt_jobs(ref_doc, received)
+                job_specs = goods_receipt_jobs(ref_doc, received, soft_pegging=sandbox)
         else:
             for r in lines:
                 job_specs.append(JobSpec("OutboundDeliveryPick", {

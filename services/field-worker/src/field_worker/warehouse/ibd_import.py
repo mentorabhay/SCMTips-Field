@@ -107,6 +107,9 @@ async def poll_and_import_inbound_deliveries(
 
             if not existing_task and d.get("OverallGoodsReceiptStatus") == "C":
                 continue  # already fully received in the ERP: nothing to do in the field
+            head = d.get("HeaderData")
+            if not existing_task and isinstance(head, dict) and head.get("sandbox"):
+                continue  # M3: field-api creates a sandbox receipt's task itself, at once; never a second one
 
             if not existing_task:
                 # 1. Create new receive task

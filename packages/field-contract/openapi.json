@@ -1886,7 +1886,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CountIn"
+                "$ref": "#/components/schemas/field_api__tasks__api__CountIn"
               }
             }
           }
@@ -4470,6 +4470,204 @@
           }
         }
       }
+    },
+    "/v1/codes/{code}": {
+      "get": {
+        "tags": [
+          "Codes (M3)"
+        ],
+        "summary": "Get Code",
+        "operationId": "get_code_v1_codes__code__get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Code"
+            }
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "the site the code was scanned on",
+              "title": "Site Id"
+            },
+            "description": "the site the code was scanned on"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeLookup"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sandbox/receipts": {
+      "post": {
+        "tags": [
+          "Sandbox (M3)"
+        ],
+        "summary": "Post Receipt",
+        "operationId": "post_receipt_v1_sandbox_receipts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxTaskResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sandbox/counts": {
+      "post": {
+        "tags": [
+          "Sandbox (M3)"
+        ],
+        "summary": "Post Count",
+        "operationId": "post_count_v1_sandbox_counts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/field_api__sandbox__api__CountIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxTaskResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sandbox/tasks/{task_id}/items": {
+      "post": {
+        "tags": [
+          "Sandbox (M3)"
+        ],
+        "summary": "Post Item",
+        "operationId": "post_item_v1_sandbox_tasks__task_id__items_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxItemResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4613,6 +4811,81 @@
           "events"
         ],
         "title": "ClimbEventsUploadRequest"
+      },
+      "CodeLookup": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "material",
+              "bin",
+              "serial",
+              "unknown"
+            ],
+            "title": "Kind"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodeMaterial"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bin"
+          },
+          "site_mode": {
+            "type": "string",
+            "title": "Site Mode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "kind",
+          "material",
+          "bin",
+          "site_mode"
+        ],
+        "title": "CodeLookup"
+      },
+      "CodeMaterial": {
+        "properties": {
+          "material": {
+            "type": "string",
+            "title": "Material"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "uom": {
+            "type": "string",
+            "title": "Uom"
+          }
+        },
+        "type": "object",
+        "required": [
+          "material",
+          "description",
+          "uom"
+        ],
+        "title": "CodeMaterial"
       },
       "ConfirmIn": {
         "properties": {
@@ -4856,77 +5129,6 @@
           "device_id"
         ],
         "title": "ConsentRequest"
-      },
-      "CountIn": {
-        "properties": {
-          "qty": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "title": "Qty"
-          },
-          "uom": {
-            "type": "string",
-            "title": "Uom"
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "voice",
-              "scan",
-              "manual"
-            ],
-            "title": "Source",
-            "default": "voice"
-          },
-          "confidence": {
-            "anyOf": [
-              {
-                "type": "number",
-                "maximum": 1.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Confidence"
-          },
-          "voice_event_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Voice Event Id"
-          },
-          "capture_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Capture Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "qty",
-          "uom"
-        ],
-        "title": "CountIn"
       },
       "CountRecordRequest": {
         "properties": {
@@ -5779,6 +5981,45 @@
           "status"
         ],
         "title": "HealthResponse"
+      },
+      "ItemIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Code",
+            "description": "the scanned barcode (or a material number)"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Description",
+            "description": "what the operator says it is",
+            "default": ""
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty",
+            "description": "receipt: delivery quantity; count: the count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "ItemIn"
       },
       "LocationCreate": {
         "properties": {
@@ -6673,6 +6914,19 @@
         ],
         "title": "ReadinessResponse"
       },
+      "ReceiptIn": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id"
+        ],
+        "title": "ReceiptIn"
+      },
       "ReconcileRequest": {
         "properties": {
           "tower_location_id": {
@@ -6867,6 +7121,47 @@
         ],
         "title": "SafetyEventItem"
       },
+      "SandboxItemResult": {
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "title": "Line Id"
+          },
+          "material": {
+            "type": "string",
+            "title": "Material"
+          },
+          "created_material": {
+            "type": "boolean",
+            "title": "Created Material"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "material",
+          "created_material"
+        ],
+        "title": "SandboxItemResult"
+      },
+      "SandboxTaskResult": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "ref_doc_no": {
+            "type": "string",
+            "title": "Ref Doc No"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "ref_doc_no"
+        ],
+        "title": "SandboxTaskResult"
+      },
       "SignoffRequest": {
         "properties": {
           "waiver_reason": {
@@ -6972,6 +7267,15 @@
               }
             ],
             "title": "Geofence Radius M"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "production",
+              "sandbox"
+            ],
+            "title": "Mode",
+            "default": "production"
           }
         },
         "type": "object",
@@ -7074,6 +7378,11 @@
               }
             ],
             "title": "Geofence Radius M"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "default": "production"
           }
         },
         "type": "object",
@@ -7185,6 +7494,21 @@
               }
             ],
             "title": "Geofence Radius M"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "production",
+                  "sandbox"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
           }
         },
         "type": "object",
@@ -7497,6 +7821,103 @@
         },
         "type": "object",
         "title": "CheckInRequest"
+      },
+      "field_api__sandbox__api__CountIn": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "bin": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Bin"
+          },
+          "simulated": {
+            "type": "boolean",
+            "title": "Simulated",
+            "description": "set by `stack home --simulate-differences`: its ERP documents are marked simulated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id",
+          "bin"
+        ],
+        "title": "CountIn"
+      },
+      "field_api__tasks__api__CountIn": {
+        "properties": {
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          },
+          "uom": {
+            "type": "string",
+            "title": "Uom"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "voice",
+              "scan",
+              "manual"
+            ],
+            "title": "Source",
+            "default": "voice"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "voice_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Event Id"
+          },
+          "capture_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "qty",
+          "uom"
+        ],
+        "title": "CountIn"
       },
       "field_api__visits__api__CheckInRequest": {
         "properties": {

@@ -93,10 +93,12 @@ def count_outcome(cur: Any, pi_id: str) -> tuple[bool, Decimal, str]:
 
     Beyond tolerance when any item breaks FR3.031 or the document value exceeds FIELD_PI_APPROVAL_VALUE
     (FR3.034). Contract §4: beyond tolerance -> an approval request for the console, no posting.
+    Items already sent as a sandbox opening-stock entry (561, status posting/posted) are not differences.
     """
     cur.execute(
         "SELECT l.counted_qty, b.book_qty, b.unit_price, b.currency FROM field.pi_book b"
-        " JOIN field.task_line l ON l.id = b.task_line_id WHERE b.pi_document_id = %s::uuid",
+        " JOIN field.task_line l ON l.id = b.task_line_id WHERE b.pi_document_id = %s::uuid"
+        " AND l.status NOT IN ('posting', 'posted')",
         (pi_id,),
     )
     rows = cur.fetchall()

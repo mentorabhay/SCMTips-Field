@@ -1,17 +1,23 @@
 """Sites (API1.05 / API1.06 / API1.07) on Postgres with RLS (C4; was an in-process store).
 
 Also fixes authorization: create/patch required only a login; the spec requires field.site.edit.
+
+M3: every site has a ``mode``, production (default) or sandbox (home / training: unknown boxes may become
+materials, see field_api/sandbox). Only field.admin sets or changes it (field.site.edit alone is not
+enough), and every change is audited in field.outbox as ``site.mode_changed``.
 """
 
 from __future__ import annotations
 
-from typing import Any
+import json
+from typing import Any, Literal
 
 import psycopg
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
 
 from field_api.auth.jwt import Principal
+from field_api.auth.permissions import has_permission
 from field_api.db import principal_tx
 from field_api.deps import require_permission
 from field_api.errors import FieldError
@@ -22,9 +28,12 @@ from field_api.rows import fetch_dict, fetch_dicts
 router = APIRouter(prefix="/v1/sites", tags=["Sites"])
 
 COLS = ("id, tenant_id, code, name, kind, erp_plant, erp_storage_locations, timezone, lat, lon, status, "
-        "version, created_at, updated_at, geofence_radius_m")
+        "version, created_at, updated_at, geofence_radius_m, mode")
 ERR_SITE_NOT_FOUND = FieldError(code="FIELD-SITE-404-NOT-FOUND", status=404, title="Site not found")
 ERR_SITE_CODE_EXISTS = FieldError(code="FIELD-SITE-409-CODE-EXISTS", status=409, title="Site code taken")
+ERR_MODE_ADMIN = FieldError(code="FIELD-AUTH-403-PERMISSION", status=403, title="Only an administrator sets the site mode",
+                            detail="production / sandbox is changed by field.admin only")
+SiteMode = Literal["production", "sandbox"]
 
 
 class SiteCreate(BaseModel):
@@ -37,6 +46,7 @@ class SiteCreate(BaseModel):
     lat: float | None = Field(None, ge=-90, le=90)
     lon: float | None = Field(None, ge=-180, le=180)
     geofence_radius_m: int | None = Field(None, ge=10, le=5000)
+    mode: SiteMode = "production"
 
 
 class SiteUpdate(BaseModel):
@@ -47,6 +57,7 @@ class SiteUpdate(BaseModel):
     lat: float | None = Field(None, ge=-90, le=90)
     lon: float | None = Field(None, ge=-180, le=180)
     geofence_radius_m: int | None = Field(None, ge=10, le=5000)
+    mode: SiteMode | None = None
 
 
 class SiteRecord(BaseModel):
@@ -65,6 +76,19 @@ class SiteRecord(BaseModel):
     created_at: str
     updated_at: str
     geofence_radius_m: int | None = None
+    mode: str = "production"
+
+
+def _require_admin(principal: Principal) -> None:
+    if not has_permission(principal.permissions, "field.*"):
+        raise ERR_MODE_ADMIN
+
+
+def _audit_mode(cur: Any, principal: Principal, site_id: str, old: str | None, new: str) -> None:
+    cur.execute(
+        "INSERT INTO field.outbox (tenant_id, event_type, aggregate_id, payload) VALUES (%s, 'site.mode_changed', %s, %s)",
+        (principal.tenant_id, site_id, json.dumps({"site_id": site_id, "from": old, "to": new, "by": principal.id})),
+    )
 
 
 def _norm(row: dict[str, Any]) -> dict[str, Any]:
@@ -99,19 +123,24 @@ async def create_site(
     response: Response,
     principal: Principal = Depends(require_permission("field.site.edit")),
 ) -> SiteRecord:
+    if site_in.mode != "production":
+        _require_admin(principal)
     try:
         with principal_tx(principal) as cur:
             cur.execute(
                 f"""
                 INSERT INTO field.site (tenant_id, code, name, kind, erp_plant, erp_storage_locations, timezone,
-                       lat, lon, geofence_radius_m, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, 150), 'active')
+                       lat, lon, geofence_radius_m, status, mode)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, 150), 'active', %s)
                 RETURNING {COLS}
                 """,  # noqa: S608
                 (principal.tenant_id, site_in.code, site_in.name, site_in.kind, site_in.erp_plant,
-                 site_in.erp_storage_locations, site_in.timezone, site_in.lat, site_in.lon, site_in.geofence_radius_m),
+                 site_in.erp_storage_locations, site_in.timezone, site_in.lat, site_in.lon, site_in.geofence_radius_m,
+                 site_in.mode),
             )
             row = _norm(fetch_dict(cur) or {})
+            if site_in.mode != "production":
+                _audit_mode(cur, principal, str(row["id"]), None, site_in.mode)
     except psycopg.errors.UniqueViolation as e:
         raise ERR_SITE_CODE_EXISTS from e
     response.headers["ETag"] = generate_etag(row["id"], row["version"])
@@ -151,9 +180,16 @@ async def update_site(
     principal: Principal = Depends(require_permission("field.site.edit")),
 ) -> SiteRecord:
     changes = update_in.model_dump(exclude_unset=True)
+    if "mode" in changes:
+        if changes["mode"] is None:
+            changes.pop("mode")
+        else:
+            _require_admin(principal)
     with principal_tx(principal) as cur:
         current = _get(cur, site_id)
         verify_if_match(request, int(current["version"]), current["id"])
+        if "mode" in changes and changes["mode"] != current.get("mode"):
+            _audit_mode(cur, principal, str(current["id"]), current.get("mode"), changes["mode"])
         sets = ", ".join(f"{k} = %s" for k in changes)
         cur.execute(
             f"UPDATE field.site SET {sets}{', ' if sets else ''}version = version + 1, updated_at = NOW()"  # noqa: S608

@@ -1024,6 +1024,7 @@
           "Material Document"
         ],
         "summary": "Create Material Document",
+        "description": "Deep insert of a material document (e.g. 561 initial entry, GoodsMovementCode 05; 321 transfer).\n\nWith an Idempotency-Key the same request returns the first document (header text FIELD:<key> finds it).",
         "operationId": "create_material_document_sap_opu_odata_sap_API_MATERIAL_DOCUMENT_SRV_A_MaterialDocumentHeader_post",
         "parameters": [
           {
@@ -1034,6 +1035,22 @@
               "type": "string",
               "default": "100",
               "title": "Sap-Client"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -1351,6 +1368,22 @@
             }
           },
           {
+            "name": "$expand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Expand"
+            }
+          },
+          {
             "name": "sap-client",
             "in": "header",
             "required": false,
@@ -1370,6 +1403,62 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response List Product Plant Sap Opu Odata Sap Api Product Srv A Productplant Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_PRODUCT_SRV/A_ProductUnitsOfMeasureEAN": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "List Product Eans",
+        "operationId": "list_product_eans_sap_opu_odata_sap_API_PRODUCT_SRV_A_ProductUnitsOfMeasureEAN_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Product eq '<material>' or ProductStandardID eq '<code>'",
+              "title": "$Filter"
+            },
+            "description": "Product eq '<material>' or ProductStandardID eq '<code>'"
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Product Eans Sap Opu Odata Sap Api Product Srv A Productunitsofmeasureean Get"
                 }
               }
             }
@@ -3509,6 +3598,244 @@
         }
       }
     },
+    "/_sim/sandbox/materials": {
+      "post": {
+        "tags": [
+          "Simulator sandbox (M3)"
+        ],
+        "summary": "Create Sandbox Material",
+        "operationId": "create_sandbox_material__sim_sandbox_materials_post",
+        "parameters": [
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SandboxMaterialIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Sandbox Material  Sim Sandbox Materials Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/sandbox/inbound-deliveries": {
+      "post": {
+        "tags": [
+          "Simulator sandbox (M3)"
+        ],
+        "summary": "Create Sandbox Delivery",
+        "operationId": "create_sandbox_delivery__sim_sandbox_inbound_deliveries_post",
+        "parameters": [
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SandboxDeliveryIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Sandbox Delivery  Sim Sandbox Inbound Deliveries Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_sim/sandbox/inbound-deliveries/{delivery_document}/items": {
+      "post": {
+        "tags": [
+          "Simulator sandbox (M3)"
+        ],
+        "summary": "Add Sandbox Delivery Item",
+        "operationId": "add_sandbox_delivery_item__sim_sandbox_inbound_deliveries__delivery_document__items_post",
+        "parameters": [
+          {
+            "name": "delivery_document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Document"
+            }
+          },
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SandboxItemIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Add Sandbox Delivery Item  Sim Sandbox Inbound Deliveries  Delivery Document  Items Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sap/opu/odata/sap/API_FUNCTIONALLOCATION/A_FunctionalLocation": {
       "get": {
         "tags": [
@@ -4305,6 +4632,27 @@
             ],
             "title": "Postingdate"
           },
+          "MaterialDocumentHeaderText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Materialdocumentheadertext"
+          },
+          "YY1_FieldSandbox": {
+            "type": "boolean",
+            "title": "Yy1 Fieldsandbox",
+            "default": false
+          },
+          "YY1_FieldSimulated": {
+            "type": "boolean",
+            "title": "Yy1 Fieldsimulated",
+            "default": false
+          },
           "to_MaterialDocumentItem": {
             "anyOf": [
               {
@@ -4483,6 +4831,20 @@
               }
             ],
             "title": "Storagebin"
+          },
+          "OriginalDeliveryQuantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originaldeliveryquantity"
           }
         },
         "type": "object",
@@ -4548,6 +4910,16 @@
             "type": "boolean",
             "title": "Freezebookinventory",
             "default": true
+          },
+          "YY1_FieldSandbox": {
+            "type": "boolean",
+            "title": "Yy1 Fieldsandbox",
+            "default": false
+          },
+          "YY1_FieldSimulated": {
+            "type": "boolean",
+            "title": "Yy1 Fieldsimulated",
+            "default": false
           },
           "to_PhysicalInventoryDocItem": {
             "anyOf": [
@@ -4616,6 +4988,107 @@
           "Material"
         ],
         "title": "PiItemCreate"
+      },
+      "SandboxDeliveryIn": {
+        "properties": {
+          "Plant": {
+            "type": "string",
+            "maxLength": 4,
+            "minLength": 1,
+            "title": "Plant"
+          },
+          "StorageLocation": {
+            "type": "string",
+            "maxLength": 4,
+            "minLength": 1,
+            "title": "Storagelocation"
+          },
+          "Supplier": {
+            "type": "string",
+            "title": "Supplier",
+            "default": "HOME"
+          },
+          "Simulated": {
+            "type": "boolean",
+            "title": "Simulated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "Plant",
+          "StorageLocation"
+        ],
+        "title": "SandboxDeliveryIn"
+      },
+      "SandboxItemIn": {
+        "properties": {
+          "Material": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Material"
+          },
+          "DeliveryQuantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Deliveryquantity",
+            "default": "0"
+          },
+          "DeliveryQuantityUnit": {
+            "type": "string",
+            "title": "Deliveryquantityunit",
+            "default": "EA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "Material"
+        ],
+        "title": "SandboxItemIn"
+      },
+      "SandboxMaterialIn": {
+        "properties": {
+          "Plant": {
+            "type": "string",
+            "maxLength": 4,
+            "minLength": 1,
+            "title": "Plant"
+          },
+          "Description": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "BaseUnit": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 1,
+            "title": "Baseunit",
+            "default": "EA"
+          },
+          "Barcode": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Barcode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "Plant",
+          "Description",
+          "Barcode"
+        ],
+        "title": "SandboxMaterialIn"
       },
       "ValidationError": {
         "properties": {

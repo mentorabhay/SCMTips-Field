@@ -144,8 +144,8 @@ def request_recount(
             """
             SELECT l.line_no, l.material_id, l.uom, l.storage_bin, b.book_qty, b.unit_price, b.currency
               FROM field.pi_book b JOIN field.task_line l ON l.id = b.task_line_id
-             WHERE b.pi_document_id = %s ORDER BY l.line_no
-            """,
+             WHERE b.pi_document_id = %s AND l.status NOT IN ('posting', 'posted') ORDER BY l.line_no
+            """,  # a sandbox item already posted as opening stock (561, M3) is not counted again
             (d[0],),
         )
         items = cur.fetchall()
@@ -186,7 +186,7 @@ def request_recount(
                     " reason = COALESCE(reason, '') || ' | superseded by recount'"
                     " WHERE pi_document_id = %s AND status = 'pending'", (principal.id, d[0]))
         cur.execute("UPDATE field.task_line SET status = 'cancelled', version = version + 1, updated_at = NOW()"
-                    " WHERE task_id = %s::uuid", (task_id,))
+                    " WHERE task_id = %s::uuid AND status NOT IN ('posting', 'posted')", (task_id,))
         cur.execute("UPDATE field.task SET status = 'cancelled', version = version + 1, updated_at = NOW()"
                     " WHERE id = %s::uuid", (task_id,))
     return {"task_id": new_task, "recount_of": task_id, "count_round": new_round, "reason": reason,
