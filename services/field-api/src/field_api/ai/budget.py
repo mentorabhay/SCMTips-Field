@@ -5,10 +5,16 @@ Before any paid call, ``reserve()`` records a reservation for the worst-case cos
 - AI_CLOUD_ENABLED is not "true";
 - the model has no price in config/ai_pricing.yaml (the guard never guesses a price);
 - the provider's lifetime spend + open reservations + this call would exceed its cap
-  (AI_BUDGET_LLAMA_USD / AI_BUDGET_BASETEN_USD), or today's (UTC) spend across providers would
-  exceed AI_DAILY_CAP_USD.
+  (AI_BUDGET_LLAMA_USD / AI_BUDGET_BASETEN_USD / AI_BUDGET_META_USD), or today's (UTC) spend across
+  providers would exceed AI_DAILY_CAP_USD.
 After the call, ``settle()`` replaces the reservation by the actual cost (or ``fail()`` by the cost
 the provider still billed, default 0). Reservations that are never settled keep counting.
+
+Providers: ``llama`` (the retired Llama API spike), ``baseten`` (fallback), ``meta`` (Meta Model API,
+the M3 Field Assistant). A price may carry ``cached_input_per_mtok``: prompt tokens the provider reports
+as served from its prompt cache (usage.prompt_tokens_details.cached_tokens) are billed at that rate; a
+model without it bills cached tokens at the normal input rate. The reservation always assumes no cache
+hit (worst case).
 
 All checks and the insert run under one transaction-level advisory lock, so concurrent callers
 cannot overspend. Caps are read per call: lowering a cap in .env.local takes effect on restart.
@@ -29,8 +35,10 @@ import yaml
 
 from field_api.db import get_conn
 
-PROVIDERS = ("llama", "baseten")
-CAP_ENV: Mapping[str, str] = MappingProxyType({"llama": "AI_BUDGET_LLAMA_USD", "baseten": "AI_BUDGET_BASETEN_USD"})
+PROVIDERS = ("llama", "baseten", "meta")
+CAP_ENV: Mapping[str, str] = MappingProxyType(
+    {"llama": "AI_BUDGET_LLAMA_USD", "baseten": "AI_BUDGET_BASETEN_USD", "meta": "AI_BUDGET_META_USD"}
+)
 DAILY_ENV = "AI_DAILY_CAP_USD"
 LOCK_KEY = 0x41494255  # "AIBU": one global lock for budget decisions
 PRICING_FILE = Path(os.getenv("FIELD_AI_PRICING_FILE", Path(__file__).resolve().parents[5] / "config" / "ai_pricing.yaml"))
@@ -46,9 +54,17 @@ class BudgetRefused(Exception):
 class Price:
     input_per_mtok: Decimal
     output_per_mtok: Decimal
+    cached_input_per_mtok: Decimal | None = None
 
-    def cost(self, input_tokens: int, output_tokens: int) -> Decimal:
-        return (self.input_per_mtok * input_tokens + self.output_per_mtok * output_tokens) / Decimal(1_000_000)
+    def cost(self, input_tokens: int, output_tokens: int, cached_input_tokens: int = 0) -> Decimal:
+        """USD for one call. ``input_tokens`` is the provider's prompt_tokens (cached ones included);
+        ``cached_input_tokens`` of them are billed at the cached rate when the model has one."""
+        if not 0 <= cached_input_tokens <= max(input_tokens, 0):
+            raise ValueError("cached_input_tokens must be between 0 and input_tokens")
+        cached_rate = self.input_per_mtok if self.cached_input_per_mtok is None else self.cached_input_per_mtok
+        fresh = input_tokens - cached_input_tokens
+        return (self.input_per_mtok * fresh + cached_rate * cached_input_tokens
+                + self.output_per_mtok * output_tokens) / Decimal(1_000_000)
 
 
 @dataclass(frozen=True)
@@ -75,10 +91,17 @@ def load_prices(path: Path = PRICING_FILE) -> dict[str, dict[str, Price]]:
     out: dict[str, dict[str, Price]] = {}
     for provider in PROVIDERS:
         models = data.get(provider) or {}
-        out[provider] = {
-            str(m): Price(Decimal(str(p["input_per_mtok"])), Decimal(str(p["output_per_mtok"]))) for m, p in models.items()
-        }
+        out[provider] = {str(m): _price_from(p) for m, p in models.items()}
     return out
+
+
+def _price_from(p: Mapping[str, Any]) -> Price:
+    cached = p.get("cached_input_per_mtok")
+    price = Price(Decimal(str(p["input_per_mtok"])), Decimal(str(p["output_per_mtok"])),
+                  None if cached is None else Decimal(str(cached)))
+    if price.input_per_mtok < 0 or price.output_per_mtok < 0 or (cached is not None and Decimal(str(cached)) < 0):
+        raise ValueError("prices must be >= 0")
+    return price
 
 
 class BudgetGuard:
@@ -143,20 +166,21 @@ class BudgetGuard:
         assert row is not None
         return Reservation(str(row[0]), provider, model, est, price)
 
-    def settle(self, r: Reservation, *, input_tokens: int, output_tokens: int) -> Decimal:
-        cost = r.price.cost(input_tokens, output_tokens)
-        self._close(r, "settled", cost, input_tokens, output_tokens)
+    def settle(self, r: Reservation, *, input_tokens: int, output_tokens: int, cached_input_tokens: int = 0) -> Decimal:
+        cost = r.price.cost(input_tokens, output_tokens, cached_input_tokens)
+        self._close(r, "settled", cost, input_tokens, output_tokens, cached_input_tokens)
         return cost
 
     def fail(self, r: Reservation, *, billed_usd: Decimal = Decimal(0)) -> None:
-        self._close(r, "failed", billed_usd, None, None)
+        self._close(r, "failed", billed_usd, None, None, None)
 
-    def _close(self, r: Reservation, status: str, cost: Decimal, tin: int | None, tout: int | None) -> None:
+    def _close(self, r: Reservation, status: str, cost: Decimal, tin: int | None, tout: int | None,
+               tcached: int | None) -> None:
         with get_conn(self._db_url) as conn, conn.cursor() as cur:
             cur.execute(
                 "UPDATE ops.ai_usage SET status = %s, cost_usd = %s, input_tokens = %s, output_tokens = %s,"
-                " settled_at = NOW() WHERE id = %s AND status = 'reserved'",
-                (status, cost, tin, tout, r.id),
+                " cached_input_tokens = %s, settled_at = NOW() WHERE id = %s AND status = 'reserved'",
+                (status, cost, tin, tout, tcached, r.id),
             )
             if cur.rowcount != 1:
                 raise RuntimeError(f"reservation {r.id} is not open")

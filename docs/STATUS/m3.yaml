@@ -1,0 +1,24 @@
+# M3 glasses-first slice ledger (owner amendment A-03; docs/design/M3_CONTRACT.md §1). Same fields as the phase
+# ledgers. Every M3 entry stays at most `partial` until proven on the owner's phone and glasses.
+# Track A (Field Assistant + records) entries: M3-A01..M3-A08.
+- id: M3-A01
+  title: Budget guard provider meta (AI_BUDGET_META_USD) with cached-input pricing; muse-spark-1.2 in config/ai_pricing.yaml
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/ai/budget.py
+  - config/ai_pricing.yaml
+  - services/field-api/alembic/versions/field_0061_m3_assistant.py
+  tests:
+  - services/field-api/tests/unit/test_ai_budget.py::test_meta_provider_has_its_own_cap_and_records_cached_tokens
+  - services/field-api/tests/unit/test_ai_budget.py::test_cached_input_tokens_are_billed_at_the_cached_rate
+  - services/field-api/tests/unit/test_ai_budget.py::test_cached_cost_never_exceeds_uncached
+  - services/field-api/tests/unit/test_ai_budget.py::test_pricing_file_has_muse_spark_with_cached_input
+  - services/field-api/tests/unit/test_ai_budget.py::test_pricing_file_loads_with_non_negative_prices
+  frs: []
+  verified_at: null
+  note: 'Guard tested on Postgres (reserve worst case without cache, settle with prompt/cached/completion tokens,
+    ops.ai_usage.cached_input_tokens, provider check allows meta). The prices (input 1.25, cached 0.15, output 4.25
+    USD per million) are the M3 contract figures, not checked against the provider by this build: owner to confirm.
+    llama and baseten unchanged; their tests stay green.'
