@@ -1,0 +1,30 @@
+# M3 glasses-first slice ledger (owner amendment A-03; docs/design/M3_CONTRACT.md). Every entry is at most
+# partial until proven on the owner's phone and glasses. Track P (phone + console) entries: M3-P01...
+- id: M3-P04
+  title: Barcodes on task lines and the sandbox unknown-code path
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobModel.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/assistant/SiteModes.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::taskParserReadsLineBarcodes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::receiveAndCountMatchABarcodeLikeTheMaterialNumber
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::putawayAndPickMatchABarcodeAndThePickConfirmationSendsTheScannedCode
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::anUnknownCodeOnASandboxSiteGoesToTheHandlerInsteadOfBeingRefused
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::anUnknownCodeOnAProductionSiteIsRefusedAsBefore
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::refreshedLinesAreMergedProgressIsKeptAndTheFocusCodeSelectsTheNewLine
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::theJobStateNamesTheStep
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/SiteModesTest.kt::parsesTheSiteListAndTheCodeLookup
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/SiteModesTest.kt::sandboxIsAskedOnceThenRemembered
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/SiteModesTest.kt::productionOrNoAnswerRefusesNewItems
+  frs: []
+  verified_at: null
+  note: 'TaskParser reads line `barcodes` (contract §2; absent = empty, so an older field-api still works); receive,
+    count, put-away and pick product scans match the material OR any barcode, and the pick product confirmation sends
+    the scanned code as is (the server matches either). A code on no line of a receive/count job goes to the sandbox
+    handler: during a work session on a site whose mode (GET /v1/sites `mode`, else `site_mode` of
+    GET /v1/codes/{code}) is sandbox it becomes an `unknown_code` turn with a glasses JPEG (scaled to 1280 px, at most
+    1 MB, base64), once per code per minute; otherwise (production, unknown mode, no session) it is refused as before.
+    refresh_task re-reads GET /v1/tasks and merges the task into the open job without losing progress, then handles
+    focus_code as a scan. Track S''s endpoints and line fields do not exist on this branch; tested with doubles only.'

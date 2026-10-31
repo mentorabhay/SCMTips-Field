@@ -33,7 +33,12 @@ data class JobLine(
     val expectedSerial: String? = null,
     val status: String = "open",
     val version: Int = 1,
+    /** Every barcode of the line's material (M3 contract §2); a product scan matches the material OR any of these. */
+    val barcodes: List<String> = emptyList(),
 ) {
+    /** True when [code] is this line's material number or one of its barcodes (trimmed, case-insensitive). */
+    fun isProduct(code: String): Boolean = JobRunner.same(code, material) || barcodes.any { JobRunner.same(code, it) }
+
     /** What the operator calls this line: the description, else the material, else the position. */
     val label: String get() = description?.takeIf { it.isNotBlank() } ?: material ?: position ?: "Line $lineNo"
 }
@@ -96,6 +101,7 @@ object TaskParser {
         expectedSerial = l.s("expected_serial"),
         status = l.s("status") ?: "open",
         version = l.i("version") ?: 1,
+        barcodes = (l["barcodes"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf(String::isNotEmpty) },
         )
     }
 
@@ -144,6 +150,9 @@ interface JobTransport {
 interface Speaker {
     fun say(text: String)
     fun earcon(cue: EarconCue)
+
+    /** Speaks [text] after whatever is being said now (default: like [say]). */
+    fun queue(text: String) = say(text)
 }
 
 object ProblemText {
