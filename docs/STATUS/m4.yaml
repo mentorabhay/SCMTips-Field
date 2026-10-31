@@ -137,3 +137,50 @@
     FIELD_CORE_FEED_SANDBOX, history older than FIELD_CORE_FEED_LOOKBACK_H (24 h) not replayed. Codes as erp-sim has
     them (upper-cased) or mapped by FIELD_CORE_CODE_MAP (JSON: materials, locations by plant or plant/sloc). Reversals
     (102) are not sent. Partial until delivered to the real core's feeds (A-04).
+- id: M4-C05
+  title: stack seed-core-export <dir>, a tolerant loader of the core's erp-sim export (CSV + JSON) into erp-sim
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/dev_stack/core_export.py
+  - tools/dev_stack/stack.py
+  tests:
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_seed_core_export_missing_folder_is_a_clear_failure
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_export_json_envelope_and_csv_load_into_erpsim
+  frs: []
+  verified_at: null
+  note: The core's export (ARO\samples\exports\erp-sim) does not exist yet, so its layout is assumed and the loader is
+    tolerant; tested with the exchange contract's own erp_extract example plus CSV files. Recognises erp_extract
+    envelopes (parts), objects of tables, row lists and CSV, tables items / locations / inventory / open_supply by
+    file or key name (aliases), bom and unknown tables reported and ignored. Loads the core's codes as erp-sim's own
+    codes (plants, one storage location per plant FIELD_CORE_EXPORT_SLOC=0001, materials with barcode = code,
+    absolute on-hand, one ASN per open PO with items referencing the PO lines). Re-runs are safe. Missing folder ->
+    exit 1 with where the core writes it. A field site per core plant is not created by it (next step printed).
+    Partial until run on the core's real export.
+- id: M4-C06
+  title: 'Dev stack: stand-in core target, generated feed secrets, demo sign-in print, smoke --core'
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/dev_stack/stack.py
+  - .env.example
+  tests:
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_standin_target_points_every_core_url_at_the_stack
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_core_target_keeps_the_owners_values
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_env_local_gets_feed_secrets_and_the_target
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_demo_print_shows_dev_defaults_never_owner_values
+  - tools/dev_stack/tests/test_stack.py::test_ports_default_avoid_scmtips_core_and_can_be_overridden
+  frs: []
+  verified_at: null
+  note: FIELD_CORE_TARGET in .env.local (generated default standin) points FIELD_CORE_BASE_URL, _JWKS_URL (core
+    path), _DEVICE_STATUS_URL and both feed URLs at the stack's stand-in; FIELD_CORE_INVENTORY_FEED_SECRET /
+    FIELD_CORE_SUPPLY_FEED_SECRET are generated (fresh random, git-ignored, never printed). FIELD_CORE_TARGET=core keeps
+    the owner's FIELD_CORE_* values (the real core); unset keeps the pre-M4 behaviour. `up` passes the field demo
+    tenant to the stand-in and prints the demo sign-in (dev values only; an owner-set password is never printed).
+    smoke --core (fresh stack, private ports 8200/8202/8211, DB 5451, 31 Oct 2026) PASS - stand-in app sign-in, core
+    JWKS kid, exchange (core device registered), core device status active, GR 101 against a PO, two signed feed rows
+    verified and recorded by the stand-in with on-hand = erp-sim and the PO line received, delivered once each, core
+    revocation refuses the next exchange; smoke --all and smoke --home PASS on the same stack. Partial until run
+    against the real core (A-04).

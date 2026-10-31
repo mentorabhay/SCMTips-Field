@@ -14,9 +14,12 @@
     uv run python -m tools.dev_stack.stack smoke --home # sandbox receipt + count end to end, production refusal
     uv run python -m tools.dev_stack.stack labels       # printable QR labels for every open job
     uv run python -m tools.dev_stack.stack assistant-check  # one real Field Assistant model call (track A's hook)
+    uv run python -m tools.dev_stack.stack smoke --core  # stand-in core: app sign-in, exchange, device status, GR -> feeds
+    uv run python -m tools.dev_stack.stack seed-core-export <dir>  # the core's erp-sim export (CSV + JSON) into erp-sim
 
 Services (logs in var/log, pids in var/run):
-  fake-core  :8011  dev identity provider (EdDSA tokens + JWKS); stands in for SCMTips core
+  fake-core  :8011  dev identity provider (EdDSA tokens + JWKS) and the stand-in core (a dev double of the
+                    SCMTIPS core's /v1 contract, never the core; tools/fake-core/README.md)
                     (not 8001: SCMTips core itself often runs there; FIELD_STACK_CORE_PORT overrides)
   erp-sim    :8002  S/4-shaped OData simulator with SAMPLE master data (FIELD_STACK_ERPSIM_PORT)
   field-api  :8000  bound to 0.0.0.0 so the phone on the same Wi-Fi can reach it (FIELD_STACK_API_PORT)
@@ -28,7 +31,15 @@ other program.)
   field-worker      posts confirmed documents to erp-sim, imports inbound deliveries
 
 Secrets (A-02): .env.local is created from .env.example on first run with freshly generated signing
-keys. This tool never prints a secret value; it reports variable names only.
+keys. This tool never prints a secret value; it reports variable names only. (The stand-in core's demo
+password and step-up code are dev values, not secrets: `up` prints their defaults.)
+
+Core target (FIELD_CORE_TARGET in .env.local, M4 contract section 2):
+  standin  (the generated default) every FIELD_CORE_* URL points at this stack's stand-in core, incl. the two feed
+           URLs; the feed secrets are generated into .env.local.
+  core     the owner's FIELD_CORE_BASE_URL / _JWKS_URL / _DEVICE_STATUS_URL / feed URLs and secrets are used as set
+           (the real core; e.g. http://127.0.0.1:8000).
+  unset    the pre-M4 behaviour: fake-core's /.well-known/jwks.json, no core device check, no feeds.
 """
 
 from __future__ import annotations
@@ -55,7 +66,15 @@ ENV_EXAMPLE = ROOT / ".env.example"
 RUN = ROOT / "var" / "run"
 LOG = ROOT / "var" / "log"
 STATE = ROOT / "var" / "dev_stack.json"
-GENERATED_SECRETS = ("FIELD_JWT_SECRET", "FIELD_CURSOR_HMAC_SECRET", "FIELD_P13F_WEBHOOK_SECRET", "FIELD_EVIDENCE_SECRET")
+GENERATED_SECRETS = ("FIELD_JWT_SECRET", "FIELD_CURSOR_HMAC_SECRET", "FIELD_P13F_WEBHOOK_SECRET", "FIELD_EVIDENCE_SECRET",
+                     "FIELD_CORE_INVENTORY_FEED_SECRET", "FIELD_CORE_SUPPLY_FEED_SECRET")
+# Settings an older .env.local gets appended once (not secrets; the owner may change them).
+ENV_DEFAULTS = (("FIELD_CORE_TARGET", "standin"),)
+STANDIN_FEEDS = {"FIELD_CORE_INVENTORY_FEED_URL": ("FAKE_CORE_INVENTORY_FEED_ID", "standin-inventory"),
+                 "FIELD_CORE_SUPPLY_FEED_URL": ("FAKE_CORE_SUPPLY_FEED_ID", "standin-open-supply")}
+DEMO_USERS = (("approver@demo.scmtips.test", "approves decisions"), ("operator@demo.scmtips.test", "warehouse operator"))
+DEMO_PASSWORD_DEFAULT = "field-demo-2026"  # = fake_core.standin.state.DEFAULT_DEMO_PASSWORD (dev value)
+STEP_UP_CODE_DEFAULT = "246810"  # = fake_core.standin.state.DEFAULT_STEP_UP_CODE (dev value)
 PAIRING_ROLES = ("field.operator", "field.supervisor")
 SAMPLE_PLANT = "1010"
 
@@ -87,6 +106,9 @@ def ensure_env_local(example: Path = ENV_EXAMPLE, target: Path = ENV_LOCAL) -> l
         if name not in present:
             out.append(f"{name}={secrets.token_hex(32)}")
             filled.append(name)
+    for name, value in ENV_DEFAULTS:
+        if name not in present:
+            out.append(f"{name}={value}")
     target.write_text("\n".join(out) + "\n", encoding="utf-8")
     return filled
 
@@ -160,9 +182,22 @@ def local(name: str) -> str:
     return f"http://127.0.0.1:{port(name)}"
 
 
+def core_target() -> str:
+    return os.environ.get("FIELD_CORE_TARGET", "").strip().lower()
+
+
 def apply_ports() -> None:
     """The stack decides where its services listen, so it also tells every service where the others are."""
-    os.environ["FIELD_CORE_JWKS_URL"] = f"{local('fake-core')}/.well-known/jwks.json"
+    target = core_target()
+    core = local("fake-core")
+    if target == "standin":
+        os.environ["FIELD_CORE_BASE_URL"] = core
+        os.environ["FIELD_CORE_JWKS_URL"] = f"{core}/v1/core/jwks.json"
+        os.environ["FIELD_CORE_DEVICE_STATUS_URL"] = core + "/v1/core/devices/{device_id}/status?tenant_id={tenant_id}"
+        for url_var, (id_var, default_id) in STANDIN_FEEDS.items():
+            os.environ[url_var] = f"{core}/v1/inbound/feeds/{os.environ.get(id_var) or default_id}"
+    elif target != "core":  # the real core keeps the owner's FIELD_CORE_* values
+        os.environ["FIELD_CORE_JWKS_URL"] = f"{core}/.well-known/jwks.json"
     os.environ["FIELD_ERP_SIM_URL"] = local("erp-sim")
 
 
@@ -345,6 +380,12 @@ def cmd_up(a: argparse.Namespace) -> int:
             print(f"FAIL: port {port(n)} for {n} is used by {owner_of_port(port(n))}. Stop it, or set "
                   f"{PORTS[n][0]}=<free port> in .env.local and run again.")
         return 1
+    state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
+    if not state.get("tenant"):  # the stand-in core's demo users belong to the field demo tenant
+        state["tenant"] = str(uuid.uuid4())
+        STATE.parent.mkdir(parents=True, exist_ok=True)
+        STATE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    os.environ["FAKE_CORE_TENANT_ID"] = state["tenant"]
     ensure_database()
     migrate()
     seed_erp_sim()
@@ -358,7 +399,33 @@ def cmd_up(a: argparse.Namespace) -> int:
         ok["field-worker"] = False
     if all(ok.values()):
         print(f"\nPhone URL: http://{lan_ip()}:{port('field-api')}   next: `uv run python -m tools.dev_stack.stack pair`")
+        print_core_target()
     return 0 if all(ok.values()) else 1
+
+
+def print_core_target() -> None:
+    """Where Field's core calls go, and the stand-in's demo sign-in (dev values only, never a secret)."""
+    target = core_target()
+    if target == "core":
+        names = ("FIELD_CORE_BASE_URL", "FIELD_CORE_JWKS_URL", "FIELD_CORE_DEVICE_STATUS_URL",
+                 "FIELD_CORE_INVENTORY_FEED_URL", "FIELD_CORE_SUPPLY_FEED_URL")
+        missing = [n for n in names if not os.environ.get(n)]
+        print(f"Core: FIELD_CORE_TARGET=core, the SCMTIPS core at {os.environ.get('FIELD_CORE_BASE_URL', '(unset)')}"
+              + (f"; not set: {', '.join(missing)}" if missing else ""))
+        return
+    if target != "standin":
+        print("Core: FIELD_CORE_TARGET unset: fake-core dev tokens only, no core device check, no goods-receipt feeds")
+        return
+    pw = "(FAKE_CORE_DEMO_PASSWORD from .env.local)" if os.environ.get("FAKE_CORE_DEMO_PASSWORD") else (
+        f"{DEMO_PASSWORD_DEFAULT} (dev default; set FAKE_CORE_DEMO_PASSWORD in .env.local to change it)")
+    code = "(FAKE_CORE_STEP_UP_CODE from .env.local)" if os.environ.get("FAKE_CORE_STEP_UP_CODE") else (
+        f"{STEP_UP_CODE_DEFAULT} (dev default)")
+    print(f"\nStand-in core (a dev double of the SCMTIPS core contract, NOT the core): {local('fake-core')}")
+    for email, what in DEMO_USERS:
+        print(f"  sign in: {email}  ({what})")
+    print(f"  password: {pw}\n  phone step-up code: {code}")
+    print("  goods-receipt feeds: inventory + open supply -> the stand-in (secrets in .env.local, never printed)")
+    print("  real core later: FIELD_CORE_TARGET=core plus the FIELD_CORE_* values in .env.local (see .env.example)")
 
 
 STACK_PROCESS = r"fake_core\.app:app|erp_sim\.app:app|field_api\.app:app|-m field_worker"
@@ -488,8 +555,10 @@ def cmd_pair(a: argparse.Namespace) -> int:
     return 0
 
 
-def create_inbound_delivery(lines: int = 3, plant: str = SAMPLE_PLANT, sloc: str = "101A") -> str:
-    """A fresh open inbound delivery in erp-sim (stands in for a supplier ASN), with SAMPLE materials."""
+def create_inbound_delivery(lines: int = 3, plant: str = SAMPLE_PLANT, sloc: str = "101A",
+                            purchase_order: str | None = None) -> str:
+    """A fresh open inbound delivery in erp-sim (stands in for a supplier ASN), with SAMPLE materials; with
+    ``purchase_order`` its items reference PO lines 10, 20, ... (M4 F4: the GR then closes those PO lines)."""
     import psycopg
 
     with psycopg.connect(_admin_url("erpsim"), autocommit=True) as c, c.cursor() as cur:
@@ -514,8 +583,10 @@ def create_inbound_delivery(lines: int = 3, plant: str = SAMPLE_PLANT, sloc: str
         for i, mat in enumerate(mats, start=1):
             cur.execute(
                 "INSERT INTO erpsim.inbound_delivery_item (client, delivery_document, item_no, material_no, delivery_qty,"
-                " actual_qty, uom, status) VALUES ('100', %s, %s, %s, %s, 0, 'EA', 'open')",
-                (deliv, f"{i * 10:06d}", mat, 2 + secrets.randbelow(23)),
+                " actual_qty, uom, status, purchase_order, purchase_order_item)"
+                " VALUES ('100', %s, %s, %s, %s, 0, 'EA', 'open', %s, %s)",
+                (deliv, f"{i * 10:06d}", mat, 2 + secrets.randbelow(23), purchase_order,
+                 str(i * 10) if purchase_order else None),
             )
     return deliv
 
@@ -1580,6 +1651,108 @@ def smoke_home(phone: Phone, wh_phone: Phone, state: dict[str, Any], wait: float
           f" 561 {ev['doc_number']} {moves}, sandbox")
 
 
+def erp_plant_stock(material: str, plant: str) -> float:
+    """erp-sim's on-hand of a material over every storage location of a plant (what the stock feed row carries)."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("erpsim")) as c, c.cursor() as cur:
+        cur.execute("SELECT COALESCE(sum(quantity), 0) FROM erpsim.stock WHERE client = '100' AND plant = %s"
+                    " AND material_no = %s", (plant, material))
+        row = cur.fetchone()
+        return float(row[0]) if row else 0.0
+
+
+def core_deliveries(tenant: str, doc_number: str) -> list[tuple[str, str, int]]:
+    """(feed, status, attempts) of field.core_feed_delivery for one goods receipt."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT feed, status, attempts FROM field.core_feed_delivery WHERE tenant_id = %s"
+                    " AND doc_number = %s ORDER BY feed", (tenant, doc_number))
+        return [(str(r[0]), str(r[1]), int(r[2])) for r in cur.fetchall()]
+
+
+def smoke_core(api: str, state: dict[str, Any], wait: float) -> None:
+    """M4 stream C against the stand-in core: app sign-in, exchange of the core token (core JWKS path), core device
+    status (template), a GR 101 whose two signed feed rows the stand-in verifies and records, core revocation."""
+    from field_worker.core_feeds import load_code_map
+
+    core = os.environ["FIELD_CORE_BASE_URL"].rstrip("/")
+    device = f"smoke-core-{uuid.uuid4().hex[:10]}"
+    password = os.environ.get("FAKE_CORE_DEMO_PASSWORD") or DEMO_PASSWORD_DEFAULT
+    r = httpx.post(f"{core}/v1/auth/app/token", headers={"X-Requested-With": "lr"}, timeout=10, json={
+        "email": DEMO_USERS[1][0], "password": password, "device_id": device, "device_model": "PHONE_ONLY",
+        "display_capable": False, "client": "scmtips-field"})
+    signed = _accepted(r, "stand-in app sign-in")
+    claims = signed["claims"]
+    _expect(claims["tenant_id"] == state["tenant"], f"stand-in tenant {claims['tenant_id']} != field demo tenant")
+    _expect({"permissions", "email", "device_id"} <= set(claims), f"core claims {sorted(claims)}")
+    import jwt
+
+    kid = jwt.get_unverified_header(signed["access_token"])["kid"]
+    kids = {k["kid"] for k in _accepted(httpx.get(f"{core}/v1/core/jwks.json", timeout=10), "core JWKS")["keys"]}
+    _expect(kid.startswith("scmtips-core-ed25519-") and kid in kids, f"kid {kid} not in the core JWKS")
+    print(f"core     signed in {DEMO_USERS[1][0]} at the stand-in: kid {kid}, permissions {claims['permissions']}")
+
+    ex = _accepted(httpx.post(f"{api}/v1/auth/exchange", json={"device_token": signed["access_token"]}, timeout=10),
+                   "exchange of the core token")
+    field_dev = str(ex["device_id"])
+    status = _accepted(httpx.get(f"{core}/v1/core/devices/{device}/status", params={"tenant_id": state["tenant"]},
+                                 timeout=10), "core device status")
+    _expect(status["status"] == "active", f"core device status {status}")
+    again = _accepted(httpx.post(f"{api}/v1/auth/exchange", timeout=10,
+                                 json={"device_token": signed["access_token"], "device_id": field_dev}), "re-exchange")
+    _expect(again["device_id"] == field_dev, "re-exchange gave another device")
+    print(f"         exchanged at field-api: field device {field_dev} (core device {device} is active at the core)")
+
+    phone = Phone(api, signed["access_token"])
+    phone.token, phone.device_id = str(ex["access_token"]), field_dev
+    po = f"45{int(time.time()) % 10**8:08d}"
+    deliv = create_inbound_delivery(1, purchase_order=po)
+    task = _wait_task(phone, state["site"], "receive", lambda t: t.get("ref_doc_no") == deliv, wait)
+    staged: list[tuple[str, float]] = []
+    for ln in task["lines"]:
+        cr = phone.count(ln, float(ln["expected_qty"]))
+        _accepted(cr, "count", 201)
+        staged.append((ln["id"], phone.counted(cr, float(ln["expected_qty"]))))
+    _expect(_accepted(phone.finish(task["id"], staged), "post (touch)", 202)["status"] == "queued", "GR not queued")
+    ev = phone.wait_event(("erp.posted",), task["id"], wait)
+    _expect(ev["kind"] == "erp.posted", f"GR: {ev}")
+    [(material, mvt, qty)] = erp_movements(ev["doc_number"], ev["doc_year"])
+    _expect(mvt == "101", f"movement {mvt}")
+    print(f"         GR {ev['doc_number']}/{ev['doc_year']} in erp-sim: {material} {qty:g} against PO {po}-10")
+
+    codes = load_code_map(os.environ.get("FIELD_CORE_CODE_MAP", ""))
+    item, loc = codes.item(material), codes.location(SAMPLE_PLANT, "101A")[0]
+    on_hand = erp_plant_stock(material, SAMPLE_PLANT)
+    ref = f"{po}-10"
+    deadline = time.monotonic() + wait
+    inv: dict[str, Any] | None = None
+    sup: dict[str, Any] | None = None
+    while time.monotonic() < deadline and not (inv and sup):
+        for p in _accepted(httpx.get(f"{core}/_standin/feeds/pushes", timeout=10), "stand-in pushes")["items"]:
+            for row in p["rows"]:
+                if p["kind"] == "inventory" and row["item_code"] == item and row["on_hand_qty"] == on_hand:
+                    inv = row
+                if p["kind"] == "open_supply" and row["ref"] == ref:
+                    sup = row
+        time.sleep(1)
+    _expect(inv is not None, f"no stock row for {item} at {loc} with on-hand {on_hand:g} reached the stand-in")
+    _expect(sup is not None and sup["status"] == "received" and sup["qty"] == qty, f"PO row for {ref}: {sup}")
+    assert inv is not None and sup is not None
+    _expect(inv["location_code"] == loc and sup["item_code"] == item, f"codes {inv} {sup}")
+    dl = core_deliveries(state["tenant"], ev["doc_number"])
+    _expect(dl == [("inventory", "delivered", 1), ("open_supply", "delivered", 1)], f"deliveries {dl}")
+    print(f"         feeds: stock {item}@{loc} on_hand {inv['on_hand_qty']} (= erp-sim) and PO {ref} received "
+          f"{sup['qty']}, both signed and verified by the stand-in; delivered once each")
+
+    _accepted(httpx.post(f"{core}/_standin/devices/{device}/revoke", timeout=10), "revoke at the stand-in")
+    gone = httpx.post(f"{api}/v1/auth/exchange", timeout=10,
+                      json={"device_token": signed["access_token"], "device_id": field_dev})
+    _expect(gone.status_code == 403, f"exchange after core revocation: HTTP {gone.status_code}")
+    print("         core revocation: the next exchange is refused (403)")
+
+
 def cmd_smoke(a: argparse.Namespace) -> int:
     """Receive one inbound delivery by voice as the app does; with --all, every job type end to end;
     with --home, the sandbox site (M3)."""
@@ -1587,6 +1760,18 @@ def cmd_smoke(a: argparse.Namespace) -> int:
     apply_ports()
     state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
     api = a.api or local("field-api")
+    if getattr(a, "core", False):
+        if core_target() != "standin":
+            print("FAIL: smoke --core runs against the stand-in core: set FIELD_CORE_TARGET=standin and run `stack up`")
+            return 1
+        try:
+            smoke_core(api, state, a.wait)
+        except SmokeFailure as e:
+            print(f"FAIL: {e}")
+            return 1
+        print("PASS: core link against the stand-in core (sign-in, exchange, device status, GR 101 -> two signed feed"
+              " rows, revocation)")
+        return 0
     if getattr(a, "home", False):
         state = ensure_home(state)
         phone = Phone(api, _core_token("smoke-home", state["tenant"], state["home_site"], 1800)).pair(
@@ -1786,6 +1971,37 @@ def cmd_labels(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_seed_core_export(a: argparse.Namespace) -> int:
+    """Load the core's erp-sim export (CSV + JSON) into erp-sim; see tools/dev_stack/core_export.py."""
+    from tools.dev_stack.core_export import load_into_erpsim, parse_export
+
+    folder = Path(a.dir)
+    if not folder.is_dir():
+        print(f"FAIL: {folder} does not exist. The SCMTIPS core session writes its SAMPLE export to "
+              "ARO\\samples\\exports\\erp-sim\\ (CSV + JSON: item codes, plants, open POs); it has not been made "
+              "yet. Copy it here when it is, and run this again.")
+        return 1
+    load_env()
+    ex = parse_export(folder)
+    if not (ex.items or ex.po_lines or ex.inventory):
+        print(f"FAIL: nothing to load from {folder}")
+        for n in ex.notes:
+            print(f"  - {n}")
+        return 1
+    import psycopg
+
+    with psycopg.connect(_admin_url("erpsim")) as c, c.cursor() as cur:
+        counts = load_into_erpsim(cur, ex)
+        c.commit()
+    print(f"loaded into erp-sim: {', '.join(f'{k} {v}' for k, v in counts.items())}")
+    print("assumed: the core's codes are used as erp-sim's own codes (no FIELD_CORE_CODE_MAP needed); one storage "
+          "location per plant (FIELD_CORE_EXPORT_SLOC, default 0001); one ASN per open PO; bom rows ignored")
+    for n in ex.notes:
+        print(f"  note: {n}")
+    print("next: a field site per plant (erp_plant = the core's location code), then receive an ASN with the glasses")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="stack")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -1818,6 +2034,10 @@ def main(argv: list[str] | None = None) -> int:
     sm.add_argument("--wait", type=float, default=90)
     sm.add_argument("--all", action="store_true", help="every job type: receive, putaway, pick, count, audit, swap")
     sm.add_argument("--home", action="store_true", help="the home sandbox site: new barcode -> GR 101, count -> 561")
+    sm.add_argument("--core", action="store_true",
+                    help="the stand-in core: app sign-in, exchange, device status, GR 101 -> two signed feed rows")
+    sc = sub.add_parser("seed-core-export", help="load the core's erp-sim export folder (CSV + JSON) into erp-sim")
+    sc.add_argument("dir", help=r"the export folder, e.g. <workspace>\ARO\samples\exports\erp-sim")
     hm = sub.add_parser("home", help="sandbox site 'Home (sandbox)': bins HOME-A/B, an empty receipt, a HOME-A count")
     hm.add_argument("--simulate-differences", action="store_true",
                     help="opt-in: give two SAMPLE materials a simulated book stock in HOME-A (documents marked simulated)")
@@ -1825,7 +2045,8 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     return {"up": cmd_up, "down": cmd_down, "status": cmd_status, "pair": cmd_pair, "smoke": cmd_smoke,
             "delivery": cmd_delivery, "outbound": cmd_outbound, "count": cmd_count, "tower": cmd_tower,
-            "labels": cmd_labels, "home": cmd_home, "assistant-check": cmd_assistant_check}[a.cmd](a)
+            "labels": cmd_labels, "home": cmd_home, "assistant-check": cmd_assistant_check,
+            "seed-core-export": cmd_seed_core_export}[a.cmd](a)
 
 
 if __name__ == "__main__":
