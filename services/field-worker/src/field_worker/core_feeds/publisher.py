@@ -19,7 +19,12 @@ Every worker tick (field_worker.worker.FieldWorker.tick), when both feed URLs ar
    Before a stock delivery is sent, every row of it for which a NEWER stock delivery (later in staging order, i.e.
    read from the ERP later) with the same item and location was already delivered is dropped; a delivery left with
    no rows is marked ``skipped`` with skip_reason ``superseded`` (no new status, so no migration). Staging order is
-   the order the on-hand was read from the ERP, which is what makes one row newer than another.
+   the order the on-hand was read from the ERP, which is what makes one row newer than another. The same rule holds
+   for open-supply rows, keyed by (kind, ref, item_code), since the ERP snapshot (M4 Q10, core_feeds.snapshot) sends
+   PO lines too: a late retry of an "open" line never reopens a line a newer receipt row already closed.
+
+The ERP snapshot (M4 Q10) stages its rows in the same table (doc_number ``SNAPSHOT-<plant>``), with created_at set
+to the moment it read the ERP, so receipts and snapshot rows share one staging order and these rules.
 
 The feed URL and secret are resolved at delivery time, so pointing at the real core later re-routes pending rows.
 """
@@ -65,6 +70,14 @@ def body_rows(body: str) -> list[dict[str, Any]]:
 
 def stock_key(row: dict[str, Any]) -> tuple[str, str]:
     return str(row.get("item_code", "")).upper(), str(row.get("location_code", "")).upper()
+
+
+def supply_key(row: dict[str, Any]) -> tuple[str, str]:
+    """How the core identifies an open-supply line: (kind, ref, item_code) (TO_FIELD section 4)."""
+    return f"{str(row.get('kind', 'PO')).upper()}:{row.get('ref', '')}", str(row.get("item_code", "")).upper()
+
+
+ROW_KEY = {"inventory": stock_key, "open_supply": supply_key}
 
 
 def backoff_s(attempts: int, base: float, cap: float, rnd: Callable[[], float] = random.random) -> float:
@@ -196,30 +209,32 @@ class CoreFeedPublisher:
             got = sorted(cur.fetchall(), key=lambda r: (r[6], str(r[0])))  # RETURNING keeps no order: staging order
             return [(str(r[0]), str(r[1]), str(r[2]), int(r[3]), int(r[4]), str(r[5])) for r in got]
 
-    def _newer_delivered_stock(self, tenant: str, row_id: str) -> set[tuple[str, str]]:
-        """(item, location) of stock rows delivered by deliveries staged after ``row_id``."""
+    def _newer_delivered(self, tenant: str, row_id: str, feed: str) -> set[tuple[str, str]]:
+        """Row keys of ``feed`` delivered by deliveries staged after ``row_id``."""
+        key = ROW_KEY[feed]
         with self._conn(tenant) as conn, conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT n.body FROM field.core_feed_delivery n
                   JOIN field.core_feed_delivery d ON d.id = %s
-                 WHERE n.tenant_id = %s AND n.feed = 'inventory' AND n.status = 'delivered'
+                 WHERE n.tenant_id = %s AND n.feed = %s AND n.status = 'delivered'
                    AND (n.created_at, n.id) > (d.created_at, d.id)
                 """,
-                (row_id, tenant),
+                (row_id, tenant, feed),
             )
-            return {stock_key(r) for (b,) in cur.fetchall() for r in body_rows(str(b))}
+            return {key(r) for (b,) in cur.fetchall() for r in body_rows(str(b))}
 
-    def _drop_superseded(self, tenant: str, row_id: str, body: str) -> str | None:
-        """The stock body still worth sending, or None when a newer delivered row covers every row of it."""
-        newer = self._newer_delivered_stock(tenant, row_id)
+    def _drop_superseded(self, tenant: str, row_id: str, body: str, feed: str = "inventory") -> str | None:
+        """The body still worth sending, or None when newer delivered rows cover every row of it."""
+        newer = self._newer_delivered(tenant, row_id, feed)
         if not newer:
             return body
+        key = ROW_KEY[feed]
         rows = body_rows(body)
-        keep = [r for r in rows if stock_key(r) not in newer]
+        keep = [r for r in rows if key(r) not in newer]
         if len(keep) == len(rows):
             return body
-        dropped = sorted({stock_key(r) for r in rows} - {stock_key(r) for r in keep})
+        dropped = sorted({key(r) for r in rows} - {key(r) for r in keep})
         with self._conn(tenant) as conn:
             if keep:
                 conn.execute("UPDATE field.core_feed_delivery SET body = %s, row_count = %s, updated_at = NOW()"
@@ -227,8 +242,8 @@ class CoreFeedPublisher:
             else:
                 conn.execute("UPDATE field.core_feed_delivery SET status = 'skipped', skip_reason = %s,"
                              " updated_at = NOW() WHERE id = %s", (SUPERSEDED, row_id))
-        logger.info("core_feed_stock_superseded", delivery_id=row_id, dropped=[f"{i}@{loc}" for i, loc in dropped],
-                    kept=len(keep))
+        logger.info("core_feed_stock_superseded" if feed == "inventory" else "core_feed_supply_superseded",
+                    delivery_id=row_id, dropped=[f"{i}@{loc}" for i, loc in dropped], kept=len(keep))
         return feed_body(keep) if keep else None
 
     def _record(self, tenant: str, row_id: str, status: str, http_status: int | None, error: str | None,
@@ -253,11 +268,10 @@ class CoreFeedPublisher:
             for row_id, feed, stored, attempts, max_attempts, event in claimed:
                 url, secret = self.config.target(feed)
                 body = stored if not stored.lstrip().startswith("[") else feed_body(body_rows(stored))
-                if feed == "inventory":
-                    kept = self._drop_superseded(tenant, row_id, body)
-                    if kept is None:
-                        continue
-                    body = kept
+                kept = self._drop_superseded(tenant, row_id, body, feed)
+                if kept is None:
+                    continue
+                body = kept
                 raw = body.encode("utf-8")
                 status: int | None = None
                 error: str | None = None

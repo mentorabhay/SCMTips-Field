@@ -879,3 +879,110 @@
     when the core waives it (LR_ENV=local). Partial: not run on the owner's PC kit (LAN address), his phone or glasses; the
     strict sign-in path (pairing code, TOTP step-up) not run against the real core; no Muse key here, so no model
     rewrite reached the core check.
+- id: M4-C14
+  title: >-
+    The core's drone-world export (Q9) in Field: stack seed-core-export loads the core's real erp-sim seed with the
+    core's own codes and creates the Field sites of its site pack; the real-core GR smoke needs no code map for them
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/dev_stack/core_export.py
+  - tools/dev_stack/stack.py
+  - tools/dev_stack/core_smoke.py
+  - services/field-api/src/field_api/routes/sites.py
+  - tools/dev_stack/tests/fixtures/core_export/erp-sim/purchase_orders.csv
+  - tools/dev_stack/tests/fixtures/core_export/field-site-pack/bins.csv
+  - docs/evidence/runs/2026-10-31-k2-erp-export-and-snapshot.txt
+  tests:
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c14_split_ref_takes_the_cores_po_number_as_it_is
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c14_the_cores_export_loads_with_its_own_codes_and_purchase_orders
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c14_the_site_pack_creates_field_sites_on_the_cores_plants_through_the_api
+  - tools/dev_stack/tests/test_core_link.py::test_m4_c05_export_json_envelope_and_csv_load_into_erpsim
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c14_export_mode_receives_the_cores_own_po_without_a_code_map
+  frs: []
+  verified_at: null
+  note: >-
+    K2 (31 Oct 2026, Field session in a Linux container; owner amendment A-05). The core wrote its export in core commit
+    374702a (the private SCMTIPS core repository the core's integration branch, `uv run scmtips-sample-exports write`): samples/exports/erp-sim
+    (plants, storage_locations, materials, suppliers, stock, purchase_orders CSVs + manifest.json) and
+    samples/exports/field-site-pack (sites, bins, labels). The loader now reads that layout (manifest, storage locations,
+    PO lines as ref + po_item with supplier, due date, the core's status and lane; an SAP-style 4500001234-10 ref is
+    still split; the older shapes still load) and writes erp-sim purchase orders (erpsim_0005) next to one ASN per PO.
+    The site pack's sites (PLANT-GOA plant, DC-MIL warehouse, erp_plant = the core's location code, storage location
+    0001) and bins (a GR dock and one bin per stocked item, erp_ref plant/sloc/bin) are made through field-api, by the
+    core's Org admin with FIELD_CORE_TARGET=core, else by the stack's dev admin. field-api's site erp_plant now takes 4
+    to 32 characters (an S/4 plant has 4; erp-sim keeps the core's codes such as PLANT-GOA); OpenAPI re-exported. The
+    real-core GR smoke has an export mode: when erp-sim holds the core's POs it receives the PO's seeded ASN at the site
+    pack's site with the codes as they are; FIELD_CORE_CODE_MAP is used only when erp-sim does not hold them (kept for
+    other ERPs). Results: seed-core-export into the core's tenant (2 plants, 40 materials, 40 stock rows, 10 PO lines; 2
+    sites, 6 zones, 42 bins); smoke --core (FIELD_CORE_TARGET=core, export mode, PO-26-1002 CP-204 1600) PASS: GR
+    4900000134 in erp-sim against PO-26-1002 item 10, both rows 202, the core's line received, on-hand 1680 -> 3280 =
+    erp-sim; smoke --approver PASS on the real core; the stand-in smokes --all, --home, --core and --approver PASS (log
+    docs/evidence/runs/2026-10-31-k2-erp-export-and-snapshot.txt). Done for the run: K1's code-map site CORE-1020 set
+    inactive (two ERP plants for one core location); stray test POs left at erp-sim PLANT-GOA by test runs deleted
+    (test_m4_c05 still writes RM-307 and 45xxxxxxxx POs at PLANT-GOA in client 100; the new loader test uses client
+    910). Partial: not run on the owner's PC kit, phone or glasses; the full export is proven by the run, the tests use a
+    trimmed copy (4 materials, 2 PO lines).
+- id: M4-C15
+  title: >-
+    ERP feed (Q10): the ERP's stock and open POs as a snapshot of what changed to the core's two feeds, on a worker
+    schedule, read through ErpReadPort; stack erp-feed and smoke --erp-feed
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/core_feeds/snapshot.py
+  - services/field-worker/src/field_worker/core_feeds/publisher.py
+  - services/field-worker/src/field_worker/core_feeds/config.py
+  - services/field-worker/src/field_worker/worker.py
+  - connectors/sap/src/field_sap/ports/erp_port.py
+  - connectors/sap/src/field_sap/sim/adapter.py
+  - connectors/sap/src/field_sap/s4/adapter.py
+  - services/erp-sim/src/erp_sim/services/purchase_order.py
+  - services/erp-sim/src/erp_sim/services/stock_api.py
+  - services/erp-sim/alembic/versions/erpsim_0005_m4_purchase_orders.py
+  - tools/dev_stack/erp_feed.py
+  - .env.example
+  - docs/evidence/runs/2026-10-31-k2-erp-export-and-snapshot.txt
+  tests:
+  - services/field-worker/tests/unit/test_core_feeds_snapshot.py::test_m4_c15_snapshot_sends_the_erps_stock_and_open_pos_then_only_what_changed
+  - services/field-worker/tests/unit/test_core_feeds_snapshot.py::test_m4_c15_a_received_po_line_is_sent_received_and_an_older_open_retry_never_reopens_it
+  - services/field-worker/tests/unit/test_core_feeds_snapshot.py::test_m4_c15_sandbox_plants_are_never_read_and_rows_come_in_bounded_batches
+  - services/field-worker/tests/unit/test_core_feeds_snapshot.py::test_m4_c15_nothing_without_both_feeds_or_with_interval_zero
+  - services/field-worker/tests/unit/test_core_feeds_snapshot.py::test_m4_c15_only_the_named_tenants_and_never_an_ambiguous_row
+  - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c15_purchase_order_lines_carry_what_was_received_and_reversals_reopen_them
+  - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c15_plant_stock_lists_every_material_and_storage_location_in_pages
+  - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c15_s4_adapter_refuses_the_snapshot_reads
+  - tools/dev_stack/tests/test_erp_feed.py::test_m4_c15_the_cores_on_hand_is_its_latest_count_per_item_and_location
+  - tools/dev_stack/tests/test_erp_feed.py::test_m4_c15_compare_names_each_difference_and_ignores_what_only_the_core_holds
+  - tools/dev_stack/tests/test_erp_feed.py::test_m4_c15_smoke_erp_feed_routes_to_the_erp_feed_smoke
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c10_a_stale_stock_retry_is_dropped_once_a_newer_row_is_delivered
+  frs: []
+  verified_at: null
+  note: >-
+    Design: ErpReadPort gains list_stock(plant) (A_MatlStkInAcctMod, Plant and InventoryStockType 01, paged) and
+    list_purchase_order_items(plant) (A_PurchaseOrderItem with Supplier, the schedule line's date and the simulator's
+    YY1_ received quantity, last receipt date, supply status and lane); erp-sim keeps purchase orders (erpsim_0005,
+    round trip run on a scratch database) and computes the received quantity from the 101 receipts that reference the
+    line, net of reversals. ErpSnapshotFeed (field-worker, every FIELD_CORE_SNAPSHOT_INTERVAL_S, 900 s, first at
+    start-up; 0 = off; off whenever either feed URL is unset) reads the plants of the active production sites of the
+    tenants FIELD_CORE_SNAPSHOT_TENANTS names (empty = all), never a plant a sandbox site uses, and stages only the rows
+    whose values were not already staged for the core within FIELD_CORE_SNAPSHOT_RESEND_H (24 h), in deliveries of at
+    most FIELD_CORE_SNAPSHOT_BATCH (200) rows in field.core_feed_delivery (doc_number SNAPSHOT-plant, created_at = the
+    moment the ERP was read, so receipts and snapshots share one staging order). Stock rows: on-hand per item and
+    location, as_of today. PO rows: open lines with the open quantity, the ERP's status and due date, supplier and lane;
+    a fully received line as received with the received quantity and the last receipt date. A key two plants produce
+    (e.g. a code-mapped plant next to an export-seeded one) is sent by neither (core_snapshot_conflict). Delivery is the
+    receipts' publisher (signed, {"rows": [...]}, 409 = delivered, retries, dead letters); its supersede rule now covers
+    open-supply rows too, keyed (kind, ref, item_code), so an older "open" row never reopens a line a newer receipt row
+    closed. No migration in field-api. Results (log docs/evidence/runs/2026-10-31-k2-erp-export-and-snapshot.txt): the
+    worker's start-up snapshot to the real core staged 40 stock + 10 PO rows in 3 deliveries, all 202; smoke --erp-feed
+    against the real core PASS (a full snapshot answered 409 duplicate within 10 min and counted delivered; the core's
+    on-hand for 40 item/locations and its 10 PO lines equal erp-sim's; a second snapshot staged nothing); after the GR of
+    PO-26-1002 one snapshot row (the received line with supplier SUP-S02 and lane L02, which the receipt row had left
+    empty at the core) and no stock row; smoke --erp-feed against the stand-in PASS. The snapshot made erp-sim the
+    system of record at the core: K1's earlier receipts of PO-26-1002 and PO-26-1005 (against a code-mapped erp-sim
+    plant) were reopened to open 1600 / 600. Partial: not run on the owner's PC kit; the S/4 reads are UNVERIFIED (the S/4
+    adapter refuses them; S/4 keeps the received quantity in the PO history, not on A_PurchaseOrderItem); the worker's
+    interval was proven only at start-up, not on a later tick.

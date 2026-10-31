@@ -40,7 +40,9 @@ class SiteCreate(BaseModel):
     code: str = Field(..., pattern=r"^[A-Z0-9-]{2,32}$", json_schema_extra={"example": "SAMPLE-WH-01"})
     name: str = Field(..., min_length=1, max_length=120)
     kind: str = Field(..., pattern=r"^(warehouse|tower|plant|yard|other)$")
-    erp_plant: str | None = Field(None, min_length=4, max_length=4, json_schema_extra={"example": "1010"})
+    # An S/4 plant has 4 characters; erp-sim seeded from the core's export keeps the core's location codes as its
+    # plants (PLANT-GOA, M4 Q9), so up to 32 are accepted.
+    erp_plant: str | None = Field(None, min_length=4, max_length=32, json_schema_extra={"example": "1010"})
     erp_storage_locations: list[str] = Field(default_factory=list)
     timezone: str = "UTC"
     lat: float | None = Field(None, ge=-90, le=90)

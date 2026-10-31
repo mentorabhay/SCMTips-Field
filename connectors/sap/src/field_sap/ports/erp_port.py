@@ -140,13 +140,54 @@ class MaterialDocument:
     simulated: bool = False
 
 
+@dataclass(frozen=True)
+class StockLine:
+    """Unrestricted stock of one material in one storage location (S/4 A_MatlStkInAcctMod, stock type 01)."""
+
+    material: str
+    plant: str
+    storage_location: str
+    quantity: Decimal
+    unit: str = "EA"
+
+
+@dataclass(frozen=True)
+class PurchaseOrderLine:
+    """One purchase-order line with what has been received against it (M4 Q10, the open-PO snapshot).
+
+    ``received_qty`` is the goods receipts posted against the line, net of reversals; ``open_qty`` what is still to
+    come. ``status`` and ``lane`` are the core's own attributes of the line, kept by the simulator (S/4 has neither:
+    UNVERIFIED for S/4, rule 2.4).
+    """
+
+    purchase_order: str
+    item: str
+    material: str
+    plant: str
+    storage_location: str
+    order_qty: Decimal
+    received_qty: Decimal
+    unit: str = "EA"
+    delivery_date: str = ""  # YYYY-MM-DD, the schedule line's
+    supplier: str = ""
+    status: str = "open"
+    lane: str = ""
+    last_receipt_date: str = ""  # YYYY-MM-DD, the newest goods receipt's posting date
+
+    @property
+    def open_qty(self) -> Decimal:
+        return max(Decimal("0"), self.order_qty - self.received_qty)
+
+
 @runtime_checkable
 class ErpReadPort(Protocol):
-    """ERP reads the field needs after a posting (M4 F4: the goods-receipt feed rows).
+    """ERP reads the field needs after a posting (M4 F4: the goods-receipt feed rows) and for the snapshot of stock
+    and open purchase orders it sends the core (M4 Q10).
 
     Separate from ErpPort so the posting test doubles stay unchanged. The simulator adapter implements it
     against erp-sim; the S/4 adapter raises NotImplementedError (UNVERIFIED, like its postings):
-    S/4 would read API_MATERIAL_DOCUMENT_SRV and API_MATERIAL_STOCK_SRV (A_MatlStkInAcctMod).
+    S/4 would read API_MATERIAL_DOCUMENT_SRV, API_MATERIAL_STOCK_SRV (A_MatlStkInAcctMod) and
+    API_PURCHASEORDER_PROCESS_SRV (A_PurchaseOrderItem with its schedule lines and PO history).
     """
 
     async def read_material_document(self, document_number: str, fiscal_year: str) -> MaterialDocument:
@@ -155,6 +196,14 @@ class ErpReadPort(Protocol):
 
     async def read_stock(self, material: str, plant: str, storage_location: str | None = None) -> Decimal:
         """Unrestricted on-hand of a material: the plant total, or one storage location's when given."""
+        ...
+
+    async def list_stock(self, plant: str) -> list[StockLine]:
+        """Every material's unrestricted stock at a plant, per storage location (M4 Q10)."""
+        ...
+
+    async def list_purchase_order_items(self, plant: str) -> list[PurchaseOrderLine]:
+        """Every purchase-order line of a plant with its received quantity (M4 Q10)."""
         ...
 
 

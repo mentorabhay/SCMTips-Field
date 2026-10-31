@@ -18,7 +18,12 @@
     uv run python -m tools.dev_stack.stack smoke --approver  # sign-in, spoken brief, voice approve, step-up, approved
         (both against the core FIELD_CORE_TARGET names: standin = the stand-in, via its /_standin dev helpers; core = the
          real SCMTIPS core, its own API only, tools/dev_stack/core_smoke.py, with the FIELD_CORE_SMOKE_* members)
-    uv run python -m tools.dev_stack.stack seed-core-export <dir>  # the core's erp-sim export (CSV + JSON) into erp-sim
+    uv run python -m tools.dev_stack.stack seed-core-export <dir>  # the core's erp-sim export into erp-sim, and the
+        Field sites of its site pack (field-site-pack next to it) in the core target's tenant
+    uv run python -m tools.dev_stack.stack erp-feed     # stage a snapshot of erp-sim's stock and open POs for the core's
+        feeds now (the worker also does it every FIELD_CORE_SNAPSHOT_INTERVAL_S, M4 Q10)
+    uv run python -m tools.dev_stack.stack smoke --erp-feed  # snapshot -> the core's on-hand and open POs = erp-sim's
+        (FIELD_CORE_TARGET standin or core; tools/dev_stack/erp_feed.py)
 
 Services (logs in var/log, pids in var/run):
   fake-core  :8011  dev identity provider (EdDSA tokens + JWKS) and the stand-in core (a dev double of the
@@ -1878,12 +1883,48 @@ def smoke_real_core(a: argparse.Namespace, api: str) -> int:
     return 0
 
 
+def smoke_erp_feed_cmd(a: argparse.Namespace, api: str) -> int:
+    """smoke --erp-feed: the ERP snapshot reaches the core (FIELD_CORE_TARGET standin or core); erp_feed.py."""
+    from tools.dev_stack import erp_feed
+
+    state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
+    if core_target() == "standin":
+        state = ensure_demo_site(state)
+    try:
+        erp_feed.smoke_erp_feed(api, state, a.wait)
+    except (SmokeFailure, erp_feed.SmokeFailure) as e:  # run as __main__, erp_feed sees tools.dev_stack.stack
+        print(f"FAIL: {e}")
+        return 1
+    print(f"PASS: ERP snapshot against the {'real SCMTIPS core' if core_target() == 'core' else 'stand-in core'}"
+          " (erp-sim's stock and open POs staged, delivered signed, the core's on-hand and PO lines equal erp-sim's,"
+          " a second snapshot sends nothing)")
+    return 0
+
+
+def cmd_erp_feed(a: argparse.Namespace) -> int:
+    """Stage one snapshot of erp-sim's stock and open POs for the core's feeds now; the worker delivers it."""
+    from tools.dev_stack import erp_feed
+
+    load_env()
+    apply_ports()
+    try:
+        who, counts = erp_feed.stage_now(a.tenant, full=a.full)
+    except (SmokeFailure, erp_feed.SmokeFailure) as e:
+        print(f"FAIL: {e}")
+        return 1
+    print(f"snapshot staged for tenant {who}: {', '.join(f'{k} {v}' for k, v in counts.items())} (field-worker delivers"
+          " it to FIELD_CORE_INVENTORY_FEED_URL / FIELD_CORE_SUPPLY_FEED_URL)")
+    return 0
+
+
 def cmd_smoke(a: argparse.Namespace) -> int:
     """Receive one inbound delivery by voice as the app does; with --all, every job type end to end;
     with --home, the sandbox site (M3)."""
     load_env()
     apply_ports()
     api = a.api or local("field-api")
+    if getattr(a, "erp_feed", False):
+        return smoke_erp_feed_cmd(a, api)
     if (getattr(a, "approver", False) or getattr(a, "core", False)) and core_target() == "core":
         return smoke_real_core(a, api)
     state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
@@ -2112,15 +2153,50 @@ def cmd_labels(a: argparse.Namespace) -> int:
     return 0
 
 
+def site_pack_admin(api: str) -> tuple[str, str, str]:
+    """(tenant, field.admin token, who) for creating the core's sites: with FIELD_CORE_TARGET=core the core's Org admin
+    (FIELD_CORE_SMOKE_ADMIN, core role org_admin -> field.admin) signs in at the core and exchanges at field-api, so the
+    sites land in the core's organisation; otherwise the stack's demo tenant and a fake-core dev admin."""
+    if core_target() == "core":
+        from tools.dev_stack import core_smoke
+
+        base = core_smoke.core_base()
+        signed = core_smoke.app_sign_in(base, "ADMIN", f"site-pack-admin-{uuid.uuid4().hex[:8]}", "PHONE_ONLY")
+        ex = _accepted(core_smoke.exchange(api, str(signed["access_token"])), "exchange of the core Org admin's token")
+        _expect("field.admin" in ex["roles"], f"core org_admin mapped to {ex['roles']}, expected field.admin")
+        return str(ex["tenant_id"]), str(ex["access_token"]), f"the core's Org admin ({base})"
+    state = ensure_demo_site(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
+    return str(state["tenant"]), _admin(str(state["tenant"])), "the stack's demo tenant (fake-core dev admin)"
+
+
+def _site_locations(tenant: str) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
+    import psycopg
+
+    with psycopg.connect(_admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT code, id::text FROM field.site WHERE tenant_id = %s", (tenant,))
+        sites = {str(r[0]): str(r[1]) for r in cur.fetchall()}
+        cur.execute("SELECT site_id::text, code, id::text FROM field.location WHERE tenant_id = %s", (tenant,))
+        locs: dict[str, dict[str, str]] = {}
+        for sid, code, lid in cur.fetchall():
+            locs.setdefault(str(sid), {})[str(code)] = str(lid)
+    return sites, locs
+
+
 def cmd_seed_core_export(a: argparse.Namespace) -> int:
-    """Load the core's erp-sim export (CSV + JSON) into erp-sim; see tools/dev_stack/core_export.py."""
-    from tools.dev_stack.core_export import load_into_erpsim, parse_export
+    """Load the core's erp-sim export (CSV + JSON) into erp-sim and create the Field sites of its site pack; see
+    tools/dev_stack/core_export.py."""
+    from tools.dev_stack.core_export import (
+        create_sites,
+        load_into_erpsim,
+        parse_export,
+        parse_site_pack,
+    )
 
     folder = Path(a.dir)
     if not folder.is_dir():
-        print(f"FAIL: {folder} does not exist. The SCMTIPS core session writes its SAMPLE export to "
-              "ARO\\samples\\exports\\erp-sim\\ (CSV + JSON: item codes, plants, open POs); it has not been made "
-              "yet. Copy it here when it is, and run this again.")
+        print(f"FAIL: {folder} does not exist. The SCMTIPS core writes its SAMPLE export to "
+              "samples\\exports\\erp-sim\\ (`uv run scmtips-sample-exports write` in the core: plants, materials, "
+              "stock, open POs). Point this command at that folder.")
         return 1
     load_env()
     ex = parse_export(folder)
@@ -2134,12 +2210,35 @@ def cmd_seed_core_export(a: argparse.Namespace) -> int:
     with psycopg.connect(_admin_url("erpsim")) as c, c.cursor() as cur:
         counts = load_into_erpsim(cur, ex)
         c.commit()
-    print(f"loaded into erp-sim: {', '.join(f'{k} {v}' for k, v in counts.items())}")
-    print("assumed: the core's codes are used as erp-sim's own codes (no FIELD_CORE_CODE_MAP needed); one storage "
-          "location per plant (FIELD_CORE_EXPORT_SLOC, default 0001); one ASN per open PO; bom rows ignored")
+    what = f"{ex.manifest.get('export')} v{ex.manifest.get('version')}, {ex.manifest.get('world')}" if ex.manifest else (
+        "no manifest")
+    print(f"loaded into erp-sim ({what}): {', '.join(f'{k} {v}' for k, v in counts.items())}")
+    print("assumed: the core's codes are erp-sim's own codes (no FIELD_CORE_CODE_MAP needed for them); the export's "
+          "storage locations (else FIELD_CORE_EXPORT_SLOC, default 0001); one ASN per open PO; bom rows ignored")
     for n in ex.notes:
         print(f"  note: {n}")
-    print("next: a field site per plant (erp_plant = the core's location code), then receive an ASN with the glasses")
+    pack_dir = Path(a.site_pack) if getattr(a, "site_pack", None) else folder.parent / "field-site-pack"
+    if getattr(a, "no_sites", False):
+        return 0
+    if not pack_dir.is_dir():
+        print(f"no site pack at {pack_dir}: create a Field site per plant (erp_plant = the core's location code), or "
+              "pass --site-pack <the core's samples/exports/field-site-pack>")
+        return 0
+    pack = parse_site_pack(pack_dir)
+    apply_ports()
+    api = getattr(a, "api", None) or local("field-api")
+    try:
+        tenant, token, who = site_pack_admin(api)
+        sites, locs = _site_locations(tenant)
+        made = create_sites(api, token, tenant, pack, sites, locs)
+    except (SmokeFailure, RuntimeError, httpx.HTTPError) as e:
+        print(f"FAIL: the site pack's sites were not created (is field-api up? `stack up`): {e}")
+        return 1
+    print(f"site pack {pack_dir}: tenant {tenant} via {who}: {', '.join(f'{k} {v}' for k, v in made.items())}")
+    print(f"  sites: {', '.join(f'{s['code']} (erp_plant {s['erp_plant']})' for s in pack.sites)}; "
+          f"{len(pack.labels)} labels in {pack_dir / 'labels.csv'}")
+    for n in pack.notes:
+        print(f"  note: {n}")
     return 0
 
 
@@ -2179,8 +2278,18 @@ def main(argv: list[str] | None = None) -> int:
                     help="the stand-in core: app sign-in, exchange, device status, GR 101 -> two signed feed rows")
     sm.add_argument("--approver", action="store_true",
                     help="the stand-in core: approver sign-in, spoken brief, voice approve, step-up, confirm")
-    sc = sub.add_parser("seed-core-export", help="load the core's erp-sim export folder (CSV + JSON) into erp-sim")
+    sm.add_argument("--erp-feed", action="store_true",
+                    help="erp-sim's stock and open POs as a snapshot to the core's feeds; the core then equals erp-sim")
+    ef = sub.add_parser("erp-feed", help="stage a snapshot of erp-sim's stock and open POs for the core's feeds now")
+    ef.add_argument("--tenant", help="one Field tenant (default: every tenant FIELD_CORE_SNAPSHOT_TENANTS allows)")
+    ef.add_argument("--full", action="store_true",
+                    help="every row, not only changes (after switching FIELD_CORE_TARGET or restarting the stand-in)")
+    sc = sub.add_parser("seed-core-export", help="load the core's erp-sim export folder (CSV + JSON) into erp-sim and"
+                                                 " create the Field sites of its site pack")
     sc.add_argument("dir", help=r"the export folder, e.g. <workspace>\ARO\samples\exports\erp-sim")
+    sc.add_argument("--site-pack", help="the core's Field site pack (default: field-site-pack next to the export)")
+    sc.add_argument("--no-sites", action="store_true", help="load erp-sim only")
+    sc.add_argument("--api", help="field-api URL (default: this stack's)")
     hm = sub.add_parser("home", help="sandbox site 'Home (sandbox)': bins HOME-A/B, an empty receipt, a HOME-A count")
     hm.add_argument("--simulate-differences", action="store_true",
                     help="opt-in: give two SAMPLE materials a simulated book stock in HOME-A (documents marked simulated)")
@@ -2189,7 +2298,7 @@ def main(argv: list[str] | None = None) -> int:
     return {"up": cmd_up, "down": cmd_down, "status": cmd_status, "pair": cmd_pair, "smoke": cmd_smoke,
             "delivery": cmd_delivery, "outbound": cmd_outbound, "count": cmd_count, "tower": cmd_tower,
             "labels": cmd_labels, "home": cmd_home, "assistant-check": cmd_assistant_check,
-            "seed-core-export": cmd_seed_core_export}[a.cmd](a)
+            "seed-core-export": cmd_seed_core_export, "erp-feed": cmd_erp_feed}[a.cmd](a)
 
 
 if __name__ == "__main__":

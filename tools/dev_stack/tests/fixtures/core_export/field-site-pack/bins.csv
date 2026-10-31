@@ -1,0 +1,7 @@
+site_code,zone,code,kind,erp_ref,item_code,name
+DC-MIL,GR,GR-01,position,DC-MIL/0001/GR-01,,Goods-receipt dock
+DC-MIL,FG,FG-01,position,DC-MIL/0001/FG-01,FG-100,"Finished goods: Inspection drone, standard"
+PLANT-GOA,GR,GR-01,position,PLANT-GOA/0001/GR-01,,Goods-receipt dock
+PLANT-GOA,CP,CP-04,position,PLANT-GOA/0001/CP-04,CP-204,"Components: Brushless motor, 2806"
+PLANT-GOA,CP,CP-07,position,PLANT-GOA/0001/CP-07,CP-207,"Components: Camera sensor, 12 MP"
+PLANT-GOA,RM,RM-07,position,PLANT-GOA/0001/RM-07,RM-307,Raw materials: Wiring harness

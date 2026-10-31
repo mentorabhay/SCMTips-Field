@@ -123,3 +123,23 @@ def test_m4_c13_core_target_runs_the_real_core_smokes_only(monkeypatch: pytest.M
     assert stack.cmd_smoke(ns) == 1
     src = inspect.getsource(core_smoke)
     assert "/_standin/" not in src and "_core_token(" not in src  # no stand-in helper, no fake-core token
+
+
+def test_m4_c14_export_mode_receives_the_cores_own_po_without_a_code_map(monkeypatch: pytest.MonkeyPatch) -> None:
+    """erp-sim seeded from the core's export holds the core's POs under their own refs: no mapping is involved."""
+    received = {**LINES[0], "status": "received"}
+    web = _Web({"/v1/open-supply": [received, LINES[1], {**LINES[1], "kind": "WO", "ref": "WO-26-2001"}]})
+    monkeypatch.delenv("FIELD_CORE_SMOKE_PO", raising=False)
+    assert core_smoke.export_line(web, set()) is None  # erp-sim holds none of them: code-map mode
+    m = core_smoke.export_line(web, {"PO-26-1001", "PO-26-1003"})
+    assert m is not None
+    assert (m["erp_po"], m["ref"], m["material"], m["plant"], m["item"], m["export"]) == (
+        "PO-26-1003", "PO-26-1003", "CP-208", "PLANT-GOA", "CP-208", True)  # the first line not received yet
+    monkeypatch.setenv("FIELD_CORE_SMOKE_PO", "PO-26-1001")
+    m = core_smoke.export_line(web, {"PO-26-1001", "PO-26-1003"})
+    assert m is not None and (m["ref"], m["line"]["status"]) == ("PO-26-1001", "received")
+    monkeypatch.setenv("FIELD_CORE_SMOKE_PO", "PO-26-1009")  # erp-sim holds it, the core has no such line
+    with pytest.raises(stack.SmokeFailure, match="FIELD_CORE_SMOKE_PO PO-26-1009"):
+        core_smoke.export_line(web, {"PO-26-1001", "PO-26-1003", "PO-26-1009"})
+    monkeypatch.setenv("FIELD_CORE_SMOKE_PO", "4500261003")  # a code-map PO number: code-map mode decides
+    assert core_smoke.export_line(web, {"PO-26-1001", "PO-26-1003"}) is None

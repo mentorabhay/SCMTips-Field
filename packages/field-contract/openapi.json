@@ -7624,7 +7624,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 4,
+                "maxLength": 32,
                 "minLength": 4
               },
               {

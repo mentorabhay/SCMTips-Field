@@ -170,6 +170,8 @@ def reset_database(client: str = "100") -> None:
                     erpsim.enqueue_lock,
                     erpsim.document_item,
                     erpsim.document,
+                    erpsim.purchase_order_item,
+                    erpsim.purchase_order,
                     erpsim.inbound_delivery_item,
                     erpsim.inbound_delivery,
                     erpsim.outbound_delivery_item,

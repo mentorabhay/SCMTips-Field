@@ -14,12 +14,18 @@ helpers. The real core has no such helpers, so these smokes use only the core's 
 When no decision waits for the approver, the planner opens one on the demo's sample scenarios (``POST /v1/decisions``)
 and submits it, as on the web.
 
+The GR goes against one of the core's own PO lines. When erp-sim was seeded from the core's export (``stack
+seed-core-export``, M4 Q9) it holds that PO under the core's ref, with the core's item and plant codes: the smoke then
+receives the PO's open ASN at the site pack's Field site for that plant, and no code map is used ("export mode"). Only
+when erp-sim does not hold the core's POs does it fall back to FIELD_CORE_CODE_MAP ("code-map mode", K1).
+
 Settings (git-ignored ``.env.local``; names only here, A-02): ``FIELD_CORE_BASE_URL``, ``FIELD_CORE_JWKS_URL``,
-``FIELD_CORE_DEVICE_STATUS_URL``, the feed URLs/secrets, ``FIELD_CORE_CODE_MAP`` (its ``purchase_orders`` entry names the
-erp-sim PO the GR is posted against, its ``materials`` / ``locations`` entries the erp-sim material and plant of that
-core PO line), and the core's demo members ``FIELD_CORE_SMOKE_OPERATOR`` / ``_APPROVER`` / ``_ADMIN`` / ``_PLANNER``,
+``FIELD_CORE_DEVICE_STATUS_URL``, the feed URLs/secrets, ``FIELD_CORE_CODE_MAP`` (code-map mode only: its
+``purchase_orders`` entry names the erp-sim PO the GR is posted against, its ``materials`` / ``locations`` entries the
+erp-sim material and plant of that core PO line), and the core's demo members ``FIELD_CORE_SMOKE_OPERATOR`` / ``_APPROVER`` / ``_ADMIN`` / ``_PLANNER``,
 each with ``..._PASSWORD``. Optional: ``FIELD_CORE_SMOKE_PO`` (which mapped erp-sim PO to use) and
-``FIELD_CORE_SMOKE_APPROVER_TOTP_SECRET`` (only when the core asks for a step-up: strict sign-in on).
+``FIELD_CORE_SMOKE_APPROVER_TOTP_SECRET`` (only when the core asks for a step-up: strict sign-in on). In export mode
+``FIELD_CORE_SMOKE_PO`` is the core's PO ref (e.g. ``PO-26-1002``).
 """
 
 from __future__ import annotations
@@ -167,6 +173,70 @@ def mapped_line(codes: Any, web: Reader) -> dict[str, Any]:
     _expect(len(plants) == 1, f"FIELD_CORE_CODE_MAP locations: no single erp-sim plant maps to {loc} ({plants})")
     return {"erp_po": erp_po, "ref": ref, "line": line, "item": item, "location": loc, "material": mats[0],
             "plant": plants[0]}
+
+
+def erp_holds_core_pos() -> set[str]:
+    """The PO numbers erp-sim holds as purchase orders (seeded from the core's export: the core's own refs)."""
+    import psycopg
+
+    with psycopg.connect(stack._admin_url("erpsim")) as c, c.cursor() as cur:
+        cur.execute("SELECT purchase_order FROM erpsim.purchase_order WHERE client = '100'")
+        return {str(r[0]) for r in cur.fetchall()}
+
+
+def export_line(web: Reader, erp_pos: set[str]) -> dict[str, Any] | None:
+    """Export mode: the core's PO line to receive (FIELD_CORE_SMOKE_PO, else the first core PO line erp-sim holds that
+    is not received yet), with the codes as they are: erp-sim uses the core's. None when erp-sim holds none of them, or
+    when FIELD_CORE_SMOKE_PO names a PO erp-sim does not hold under that number (a code-map PO)."""
+    lines = [x for x in _all(web, "/v1/open-supply") if str(x.get("kind", "PO")).upper() == "PO"
+             and str(x.get("ref")) in erp_pos]
+    if not lines:
+        return None
+    want = os.environ.get("FIELD_CORE_SMOKE_PO", "").strip()
+    if want and want not in erp_pos:  # an erp-sim PO of the code map (code-map mode), not one of the core's refs
+        return None
+    if want:
+        pick = [x for x in lines if x["ref"] == want]
+        _expect(len(pick) == 1, f"FIELD_CORE_SMOKE_PO {want}: the core has {len(pick)} PO lines with that ref that"
+                                " erp-sim also holds (expected one)")
+    else:
+        pick = sorted((x for x in lines if x.get("status") != "received"), key=lambda x: str(x["ref"])) or sorted(
+            lines, key=lambda x: str(x["ref"]))
+    line = pick[0]
+    item, loc = str(line["item_code"]), str(line["location_code"])
+    return {"erp_po": str(line["ref"]), "ref": str(line["ref"]), "line": line, "item": item, "location": loc,
+            "material": item, "plant": loc, "export": True}
+
+
+def export_site(tenant: str, plant: str) -> tuple[str, str]:
+    """(site id, storage location) of the tenant's production Field site on the plant (the site pack's)."""
+    import psycopg
+
+    with psycopg.connect(stack._admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT id::text, erp_storage_locations FROM field.site WHERE tenant_id = %s AND erp_plant = %s"
+                    " AND status = 'active' AND mode = 'production' ORDER BY code = %s DESC, created_at LIMIT 1",
+                    (tenant, plant, plant))
+        row = cur.fetchone()
+    _expect(row is not None, f"no production Field site on plant {plant} in tenant {tenant}: run `stack"
+                             " seed-core-export <the core's samples/exports/erp-sim>` (it creates the site pack's sites)")
+    assert row is not None
+    slocs = list(row[1] or [])
+    _expect(bool(slocs), f"the Field site on {plant} names no storage location")
+    return str(row[0]), str(slocs[0])
+
+
+def open_asn(po: str, material: str, plant: str) -> tuple[str, float] | None:
+    """An open inbound delivery of the seeded PO with an open item for the material: (delivery, its quantity)."""
+    import psycopg
+
+    with psycopg.connect(stack._admin_url("erpsim")) as c, c.cursor() as cur:
+        cur.execute("SELECT d.delivery_document, i.delivery_qty FROM erpsim.inbound_delivery d"
+                    " JOIN erpsim.inbound_delivery_item i USING (client, delivery_document)"
+                    " WHERE d.client = '100' AND d.status = 'open' AND d.plant = %s AND i.purchase_order = %s"
+                    " AND i.material_no = %s AND i.status = 'open' ORDER BY d.created_at LIMIT 1",
+                    (plant, po, material))
+        row = cur.fetchone()
+    return (str(row[0]), float(row[1])) if row else None
 
 
 def _all(web: Reader, path: str) -> list[dict[str, Any]]:
@@ -326,7 +396,9 @@ def smoke_core_real(api: str, state: dict[str, Any], wait: float) -> None:
     codes = load_code_map(os.environ.get("FIELD_CORE_CODE_MAP", ""))
     web = CoreWeb(base, "OPERATOR")
     try:
-        m = mapped_line(codes, web)
+        m = export_line(web, erp_holds_core_pos()) or mapped_line(codes, web)
+        print(f"         {'export mode: erp-sim holds the core PO under its own codes, no code map' if m.get('export')
+                          else 'code-map mode: FIELD_CORE_CODE_MAP maps erp-sim to the core'}")
         before_line, before_hand = m["line"], core_on_hand(web, m["item"], m["location"])
         run_before, plan_before = base_plan(web, m["item"])
         clock_before, clock_run = site_clock(web, m["location"], m["item"])
@@ -337,19 +409,27 @@ def smoke_core_real(api: str, state: dict[str, Any], wait: float) -> None:
         if before_line["status"] == "received":
             print(f"         note: {m['ref']} was received by an earlier run; this run receives it again (the row is"
                   " an upsert), so the check below is the line's update time and the new on-hand")
-        ensure_erp_plant(m["plant"], f"Core plant (the core's {m['location']})")
-        if before_hand is not None and align_opening_stock(m["material"], m["plant"], before_hand):
-            print(f"         erp-sim opening stock of {m['material']} at {m['plant']} set to the core's on-hand"
-                  f" {before_hand:g} (dev seed, once)")
-        site = ensure_core_site(api, base, tenant, m["plant"], m["location"])
+        if m.get("export"):
+            site, sloc = export_site(tenant, m["plant"])
+            seeded = open_asn(m["erp_po"], m["material"], m["plant"])
+        else:
+            ensure_erp_plant(m["plant"], f"Core plant (the core's {m['location']})")
+            if before_hand is not None and align_opening_stock(m["material"], m["plant"], before_hand):
+                print(f"         erp-sim opening stock of {m['material']} at {m['plant']} set to the core's on-hand"
+                      f" {before_hand:g} (dev seed, once)")
+            site, sloc, seeded = ensure_core_site(api, base, tenant, m["plant"], m["location"]), CORE_SLOC, None
         state.setdefault("core_sites", {})[tenant] = site
         stack.STATE.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
         phone = stack.Phone(api, str(signed["access_token"]))
         phone.token, phone.device_id = str(again["access_token"]), field_dev
-        qty = float(before_line["qty"])
-        deliv = stack.create_inbound_delivery(1, plant=m["plant"], sloc=CORE_SLOC, purchase_order=m["erp_po"],
-                                              materials=[m["material"]], qty=qty)
+        if seeded:
+            deliv, qty = seeded
+            print(f"         receiving the PO's seeded ASN {deliv} ({m['material']} {qty:g}) at site {site}")
+        else:
+            qty = float(before_line["qty"])
+            deliv = stack.create_inbound_delivery(1, plant=m["plant"], sloc=sloc, purchase_order=m["erp_po"],
+                                                  materials=[m["material"]], qty=qty)
         task = stack._wait_task(phone, site, "receive", lambda t: t.get("ref_doc_no") == deliv, wait)
         staged: list[tuple[str, float]] = []
         for ln in task["lines"]:

@@ -1,0 +1,156 @@
+K2, 31 Oct 2026 (container clock, UTC): the core's drone-world export loaded into erp-sim, and the ERP snapshot (stock + open POs)
+to the REAL SCMTIPS core and to the stand-in (raw output; no secrets, no tokens, no passwords printed).
+Machine: Linux cloud container (owner amendment A-05). Core: the private SCMTIPS core repository the core's integration branch 374702a (export at
+samples/exports/erp-sim + field-site-pack), API 127.0.0.1:8000 + worker :8001, LR_ENV=local, Postgres 16 :5434, the K1 demo
+organisation (tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77) and its two webhook feeds (inventory, open_supply, upsert).
+Field: slice/m4-core-integration (working tree of M4-C14/C15), field-api :8020, erp-sim :8002, Postgres :5450.
+Before the real-core runs: K1's code-map site CORE-1020 (erp_plant 1020 -> PLANT-GOA through FIELD_CORE_CODE_MAP) was set
+inactive through field-api by the core's Org admin, so no two ERP plants stand for one core location; stray test POs (not
+PO-26-*) that test runs had left at erp-sim PLANT-GOA (client 100) were deleted. FIELD_CORE_SNAPSHOT_TENANTS = the core tenant.
+
+=== core--seed-core-export
+loaded into erp-sim (erp-sim v1, SAMPLE drone OEM): plants 2, storage_locations 2, materials 40, stock_rows 40, po_lines 10, asns_created 0
+assumed: the core's codes are erp-sim's own codes (no FIELD_CORE_CODE_MAP needed for them); the export's storage locations (else FIELD_CORE_EXPORT_SLOC, default 0001); one ASN per open PO; bom rows ignored
+site pack /home/claude/scmtips/samples/exports/field-site-pack: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77 via the core's Org admin (http://127.0.0.1:8000): sites 2, sites_kept 0, zones 6, bins 42
+  sites: DC-MIL (erp_plant DC-MIL), PLANT-GOA (erp_plant PLANT-GOA); 82 labels in /home/claude/scmtips/samples/exports/field-site-pack/labels.csv
+
+=== core--erp-feed
+erp-feed erp-sim plants PLANT-GOA (10 PO lines); tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77; production sites on them; target the real SCMTIPS core http://127.0.0.1:8000
+2026-10-31 19:25:15 [info     ] core_snapshot_staged           deliveries=1 plant=DC-MIL po_rows=0 stock_rows=3 tenant_id=43ad1c4d-ee02-45a6-8eff-bacb3937ec77 unchanged=0
+2026-10-31 19:25:15 [info     ] core_snapshot_staged           deliveries=2 plant=PLANT-GOA po_rows=10 stock_rows=37 tenant_id=43ad1c4d-ee02-45a6-8eff-bacb3937ec77 unchanged=0
+         snapshot staged: 40 stock rows, 10 PO rows in 3 deliveries (batch 200); 0 unchanged
+         field-worker delivered them all, signed: [('inventory', 'delivered', 3), ('inventory', 'delivered', 37), ('open_supply', 'delivered', 10)]
+         core = erp-sim for 40 on-hand rows and 10 PO lines, e.g. CP-204@PLANT-GOA 1680; CP-207@PLANT-GOA 560; RM-307@PLANT-GOA 2600
+         e.g. PO-26-1001 CP-203 6000 in_transit due 2026-11-12; PO-26-1002 CP-204 1600 open due 2026-11-20; PO-26-1003 CP-208 150 open due 2026-12-04
+2026-10-31 19:25:33 [info     ] core_snapshot_staged           deliveries=0 plant=DC-MIL po_rows=0 stock_rows=0 tenant_id=43ad1c4d-ee02-45a6-8eff-bacb3937ec77 unchanged=3
+2026-10-31 19:25:33 [info     ] core_snapshot_staged           deliveries=0 plant=PLANT-GOA po_rows=0 stock_rows=0 tenant_id=43ad1c4d-ee02-45a6-8eff-bacb3937ec77 unchanged=47
+         second snapshot: nothing staged (50 rows unchanged)
+PASS: ERP snapshot against the real SCMTIPS core (erp-sim's stock and open POs staged, delivered signed, the core's on-hand and PO lines equal erp-sim's, a second snapshot sends nothing)
+
+=== core--reads-after-snapshot
+open-supply {'kind': 'PO', 'ref': 'PO-26-1002', 'item_code': 'CP-204', 'location_code': 'PLANT-GOA', 'qty': '1600.0000', 'due_date': '2026-11-20', 'status': 'open', 'supplier_code': 'SUP-S02', 'lane_code': 'L02', 'updated_at': '2026-10-31T19:24:53.931532Z'}
+open-supply {'kind': 'PO', 'ref': 'PO-26-1005', 'item_code': 'CP-207', 'location_code': 'PLANT-GOA', 'qty': '600.0000', 'due_date': '2026-12-18', 'status': 'open', 'supplier_code': 'SUP-S05', 'lane_code': 'L07', 'updated_at': '2026-10-31T19:24:53.931532Z'}
+on-hand CP-204 1680.0
+on-hand CP-207 560.0
+pipeline inventory {'status': 'ok', 'source': 'Field ERP stock (goods receipts) 2026-10-31 1924.json', 'rows_in': 37}
+pipeline inventory {'status': 'ok', 'source': 'Field ERP stock (goods receipts) 2026-10-31 1924.json', 'rows_in': 3}
+pipeline inventory {'status': 'ok', 'source': 'Field ERP stock (goods receipts) 2026-10-31 1757.json', 'rows_in': 1}
+pipeline open_supply {'status': 'ok', 'source': 'Field ERP open supply (goods receipts) 2026-10-31 1924.json', 'rows_in': 10}
+pipeline open_supply {'status': 'ok', 'source': 'Field ERP open supply (goods receipts) 2026-10-31 1756.json', 'rows_in': 1}
+pipeline open_supply {'status': 'rejected', 'source': 'Field ERP open supply (goods receipts) 2026-10-31 1754.json', 'rows_in': 1}
+
+=== core--core
+core     signed in procurement@scmtips.local at the core http://127.0.0.1:8000: tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77, kid ok, roles ['procurement']
+         exchanged at field-api: field.operator, field device 01a1936d-6c51-7ec6-81ac-ea0a14ff8320; core device smoke-core-9784a9cfed active
+         export mode: erp-sim holds the core PO under its own codes, no code map
+         core before: PO-26-1002 CP-204@PLANT-GOA qty 1600.0000 status open; on-hand 1680.0
+         core before: base plan run 12e30c3b-f60a-4d22-bd15-78e233ba8b82: CP-204 on_hand 1680.0, scheduled [0, 1600, 0], pab [1280, 2080, 1280], first short bucket none
+         core before: starvation clock PLANT-GOA soonest stockout 82 d; CP-204 129 d to stockout on 2027-03-09, recovery lands before (exposure run 4f730148)
+         receiving the PO's seeded ASN 1873888991 (CP-204 1600) at site 01a1936b-3142-752f-80cf-473394bf0d51
+         GR 4900000134/2026 in erp-sim: CP-204 1600 at PLANT-GOA against PO PO-26-1002 line 10 (the core's PO-26-1002); erp-sim on-hand now 3280
+         field-worker: both signed rows delivered to the core, once each [('inventory', 'delivered', 1), ('open_supply', 'delivered', 1)]
+         core after: PO-26-1002 status received qty 1600.0000 (was open 1600.0000); CP-204@PLANT-GOA on-hand 3280 (was 1680.0)
+         core pipeline inventory: last run ok from Field ERP stock (goods receipts) 2026-10-31 1926.json rows 1
+         core pipeline open_supply: last run ok from Field ERP open supply (goods receipts) 2026-10-31 1926.json rows 1
+         re-plan: base plan run 12e30c3b-f60a-4d22-bd15-78e233ba8b82 -> 47bb5114-0352-4cc7-98e1-d3c5ba2cc899; CP-204 now on_hand 3280.0, scheduled [0, 0, 0], pab [2880, 2080, 1280], first short bucket none
+         starvation clock after: PLANT-GOA soonest stockout 82 d; CP-204 129 d to stockout on 2027-03-09, recovery lands before (exposure run 50932013) (observation only)
+         core revocation (DELETE /v1/wearable/sessions/{id}): device revoked at the core, next exchange 403
+PASS: core link against the real SCMTIPS core (sign-in, exchange, device status, GR 101 -> two signed feed rows accepted, PO line received and on-hand updated at the core, revocation)
+
+=== core--snapshot-after-gr
+open-supply {'kind': 'PO', 'ref': 'PO-26-1002', 'item_code': 'CP-204', 'location_code': 'PLANT-GOA', 'qty': '1600.0000', 'due_date': '2026-10-31', 'status': 'received', 'supplier_code': None, 'lane_code': None, 'updated_at': '2026-10-31T19:26:37.441347Z'}
+on-hand CP-204 3280.0
+2026-10-31 19:26:51 [info     ] core_snapshot_staged           deliveries=0 plant=DC-MIL po_rows=0 stock_rows=0 tenant_id=43ad1c4d-ee02-45a6-8eff-bacb3937ec77 unchanged=3
+2026-10-31 19:26:51 [info     ] core_snapshot_staged           deliveries=1 plant=PLANT-GOA po_rows=1 stock_rows=0 tenant_id=43ad1c4d-ee02-45a6-8eff-bacb3937ec77 unchanged=46
+snapshot staged for tenant 43ad1c4d-ee02-45a6-8eff-bacb3937ec77: stock_rows 0, po_rows 1, deliveries 1, unchanged 49, conflicts 0 (field-worker delivers it to FIELD_CORE_INVENTORY_FEED_URL / FIELD_CORE_SUPPLY_FEED_URL)
+19:26:51|open_supply|delivered|1|202|{"rows":[{"kind":"PO","ref":"PO-26-1002","item_code":"CP-204","location_code":"PLANT-GOA","qty":1600,"due_date":"2026-10-31","status":"received","supplier_code":"SUP-S02","lane_code":"L02"}]}
+open-supply {'kind': 'PO', 'ref': 'PO-26-1002', 'item_code': 'CP-204', 'location_code': 'PLANT-GOA', 'qty': '1600.0000', 'due_date': '2026-10-31', 'status': 'received', 'supplier_code': 'SUP-S02', 'lane_code': 'L02', 'updated_at': '2026-10-31T19:26:59.045101Z'}
+on-hand CP-204 3280.0
+
+=== core--approver
+approver signed in approver1@scmtips.local at the core http://127.0.0.1:8000; field.supervisor, field device 01a1936e-1d54-7f76-82e6-699b03bb845e
+         nothing was waiting: the planner opened decision f3c99c8f-3072-4189-8823-c8667442a50b on the sample scenarios and submitted it
+decision f3c99c8f-3072-4189-8823-c8667442a50b: 1 waiting, band 'committed 0 to 100000' step-up True; brief from template (model:meta:AI_CLOUD_DISABLED)
+         Field's core check client at the real core: template accepted; a changed number refused (core:These figures are not in any tool result: "987654".)
+         'approve option two' -> read-back: Approve option B, Malacca 30 d: air expedite (sample), cost 139,923.53 US dollars, committed spend 3,600.00 US; replay same reply, reused challenge 409
+         the band asks for a step-up, and the core waives it (strict sign-in off: LR_ENV=local); the approval records the waiver
+         confirm -> Approved option B. The plan is committed. (approval cec2047f-61cf-4443-bdbd-b6b11291ac3c); the core's decision is EXECUTING
+         a decided decision refuses a new challenge (409)
+PASS: approver flow against the real SCMTIPS core (sign-in, exchange, next decision, spoken brief, core brief check, voice approve, read-back, step-up or its waiver, confirm, approved at the core)
+
+=== standin--erp-feed
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+erp-feed erp-sim plants PLANT-GOA (10 PO lines); tenant 083e3640-bce0-4c49-8655-d3f72eb66824; production sites on them; target the stand-in core (a dev double)
+2026-10-31 19:21:54 [info     ] core_snapshot_staged           deliveries=1 plant=1010 po_rows=0 stock_rows=116 tenant_id=083e3640-bce0-4c49-8655-d3f72eb66824 unchanged=0
+2026-10-31 19:21:54 [info     ] core_snapshot_staged           deliveries=1 plant=DC-MIL po_rows=0 stock_rows=3 tenant_id=083e3640-bce0-4c49-8655-d3f72eb66824 unchanged=0
+2026-10-31 19:21:54 [info     ] core_snapshot_staged           deliveries=2 plant=PLANT-GOA po_rows=10 stock_rows=37 tenant_id=083e3640-bce0-4c49-8655-d3f72eb66824 unchanged=0
+         snapshot staged: 156 stock rows, 10 PO rows in 4 deliveries (batch 200); 0 unchanged
+         field-worker delivered them all, signed: [('inventory', 'delivered', 116), ('inventory', 'delivered', 3), ('inventory', 'delivered', 37), ('open_supply', 'delivered', 10)]
+         core = erp-sim for 156 on-hand rows and 10 PO lines, e.g. CP-204@PLANT-GOA 1680; CP-207@PLANT-GOA 560; RM-307@PLANT-GOA 2600
+         e.g. PO-26-1001 CP-203 6000 in_transit due 2026-11-12; PO-26-1002 CP-204 1600 open due 2026-11-20; PO-26-1003 CP-208 150 open due 2026-12-04
+2026-10-31 19:22:12 [info     ] core_snapshot_staged           deliveries=0 plant=1010 po_rows=0 stock_rows=0 tenant_id=083e3640-bce0-4c49-8655-d3f72eb66824 unchanged=116
+2026-10-31 19:22:12 [info     ] core_snapshot_staged           deliveries=0 plant=DC-MIL po_rows=0 stock_rows=0 tenant_id=083e3640-bce0-4c49-8655-d3f72eb66824 unchanged=3
+2026-10-31 19:22:12 [info     ] core_snapshot_staged           deliveries=0 plant=PLANT-GOA po_rows=0 stock_rows=0 tenant_id=083e3640-bce0-4c49-8655-d3f72eb66824 unchanged=47
+         second snapshot: nothing staged (166 rows unchanged)
+PASS: ERP snapshot against the stand-in core (erp-sim's stock and open POs staged, delivered signed, the core's on-hand and PO lines equal erp-sim's, a second snapshot sends nothing)
+
+=== standin--core
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+core     signed in operator@demo.scmtips.test at the stand-in: kid scmtips-core-ed25519-standin-59eb620b29d7, permissions ['field.operate', 'evidence.upload']
+         exchanged at field-api: field device 01a19368-e36c-78fd-8888-43f4b0faa4de (core device smoke-core-ea0740d563 is active at the core)
+         GR 4900000133/2026 in erp-sim: SAMPLE-MAT-0019 18 against PO 4593474487 line 10
+         feeds: stock SAMPLE-MAT-0019@1010 on_hand 118 (= erp-sim) and PO 4593474487 received 18, both signed and verified by the stand-in; delivered once each
+         core revocation: the next exchange is refused (403)
+PASS: core link against the stand-in core (sign-in, exchange, device status, GR 101 -> two signed feed rows, revocation)
+
+=== standin--approver
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+approver signed in approver@demo.scmtips.test at the stand-in; field device 01a19369-4f29-7593-8db0-d35c30360410, core permissions ['voice.approve', 'decision.read', 'evidence.upload']
+decision 5a3e0d00-0000-4000-8000-000000000001: 2 waiting, step-up True; brief from template (model:meta:AI_CLOUD_DISABLED)
+         confirm before the phone step-up was held; wrong code refused; step-up accepted
+         'approve option two' -> read-back -> confirm: Approved: option B, Qualify alternate supplier. The recovery is on its way. (approval 968806d8-f0fb-4915-9d83-68409fbda7ae)
+decision 5a3e0d00-0000-4000-8000-000000000002: 1 waiting, step-up False; brief from template (model:meta:AI_CLOUD_DISABLED)
+         'approve option one' -> read-back -> confirm: Approved: option A, Raise buffer to 6 weeks. The recovery is on its way. (approval 8d9741bf-9b8b-451b-b15f-5577b1e1417d)
+         nothing waiting; a decided decision refuses a new challenge (409)
+PASS: approver flow against the stand-in core (sign-in, exchange, spoken brief, voice approve, read-back, phone step-up, confirm, both decisions committed)
+
+=== standin--all
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+paired: device 01a19366-7848-7d39-8731-036504b340d2
+receive  task 'Delivery 1834743276' (2 items · 30 pieces) with 2 lines
+         erp.posted: GR 4900000127/2026 in erp-sim, movements [('SAMPLE-MAT-0012', '101', 13.0), ('SAMPLE-MAT-0027', '101', 17.0)]
+         task.assigned: 'Put away delivery 1834743276'
+putaway  task 'Put away delivery 1834743276' (Goods receipt 4900000127 · 2 items · 30 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 03-06-01.'
+         stored: SAMPLE-MAT-0012 x13 in 03-06-01, SAMPLE-MAT-0027 x17 in 03-06-02
+pick     task 'Pick delivery 8034743503' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-02-01']
+         queued -> erp.posted: GI 4900000128 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0037', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000129 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 80.0, 70.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-10-31 19:20:08 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-10-31 19:20:09 [info     ] audit_task_generated           line_count=3 site_id=01a192de-ee69-7da2-88f1-56be1d8731e5 snapshot_version=erp-2026-10-31T19:20Z#0e24 task_id=d41425b8-21c1-4a24-bb9e-9d504a203db8
+visit    checked in (a0def8cf-9e37-46df-bc8e-178f88f7c894); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-EDE17F'), ('Sector A · slot 2', 'RRU-SN-D14269'), ('Sector A · slot 3', 'RRU-SN-F7211C')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-F7211C at Sector A · slot 3, install spare RRU-SN-FBFA05
+         erp.posted: change document 7000000006; erp-sim: RRU-SN-F7211C dismantled, RRU-SN-FBFA05 installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+
+=== standin--home
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+paired: device 01a19368-59e8-7b89-8480-f19e36a5f2f2 (home), 01a19368-566f-7bc8-83d7-cb352a6e7edd (warehouse)
+home     receipt 1934744511: barcode 2394992229088 -> new material HOME-0006
+         counted 3 (delivery said 1, soft pegging) -> GR 4900000131/2026, [('HOME-0006', '101', 3.0)], sandbox
+         production warehouse: 2394992229088 unknown, scan refused on delivery 1834744663, sandbox refused ('This is a production site. Only items the ERP already knows can be used here.')
+         count PID-20261031192118764298 of HOME-B: new box 2960307606800 -> HOME-0007, 4 counted -> 561 4900000132 [('HOME-0007', '561', 4.0)], sandbox
+PASS: home sandbox (receipt with a new barcode -> GR 101, production refusal, count -> 561)
+
+=== core: uv run scmtips-sample-exports check (SCMTips 374702a)
+naradcue         ok         NaradCue profile workbook: 27 bought materials, 8 suppliers, 10 sites, 5 sea routes; 1 file(s), 58 distinct sample codes
+erp-sim          ok         ERP-simulator seed: 2 plants, 40 materials, 40 stock rows (on-hand 313254), 10 open PO lines (qty 13250); 7 file(s), 60 distinct sample codes
+field-site-pack  ok         Field site pack: 2 sites (DC-MIL, PLANT-GOA), 42 bins, 82 labels; 4 file(s), 42 distinct sample codes
+sangamiq         not built  SangamIQ load book: not built, owner's connector lane
+heartbeat        not built  Heartbeat team CSV: not built, owner's connector lane
+consistency: 3 export(s) checked, 2 not built (SangamIQ load book, Heartbeat team CSV), 0 problem(s)

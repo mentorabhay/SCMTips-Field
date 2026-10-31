@@ -21,9 +21,11 @@ from field_sap.ports.erp_port import (
     ErpResult,
     MaterialDocument,
     MaterialPage,
+    PurchaseOrderLine,
     SandboxDelivery,
     SandboxDeliveryItem,
     SandboxMaterial,
+    StockLine,
 )
 
 logger = structlog.get_logger(__name__)
@@ -101,6 +103,12 @@ class S4ODataAdapter:
 
     async def read_stock(self, material: str, plant: str, storage_location: str | None = None) -> Decimal:
         raise NotImplementedError("S4 adapter: read_stock not implemented in F0")
+
+    async def list_stock(self, plant: str) -> list[StockLine]:
+        raise NotImplementedError("S4 adapter: list_stock not implemented (UNVERIFIED, M4 Q10)")
+
+    async def list_purchase_order_items(self, plant: str) -> list[PurchaseOrderLine]:
+        raise NotImplementedError("S4 adapter: list_purchase_order_items not implemented (UNVERIFIED, M4 Q10)")
 
     # --- ErpSandboxPort: refused, these are not SAP capabilities (M3 contract section 3) --------------
     @staticmethod

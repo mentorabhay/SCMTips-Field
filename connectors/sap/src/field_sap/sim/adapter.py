@@ -24,9 +24,11 @@ from field_sap.ports.erp_port import (
     MaterialDocumentItem,
     MaterialItem,
     MaterialPage,
+    PurchaseOrderLine,
     SandboxDelivery,
     SandboxDeliveryItem,
     SandboxMaterial,
+    StockLine,
 )
 
 logger = structlog.get_logger(__name__)
@@ -548,3 +550,47 @@ class SimAdapter:
              if str(r.get("InventoryStockType") or "01") == "01"),
             Decimal("0"),
         )
+
+    async def _pages(self, url: str, flt: str, page: int = 500) -> list[dict[str, Any]]:
+        """Every result of a paged list read ($top / $skip), in the ERP's order."""
+        out: list[dict[str, Any]] = []
+        skip = 0
+        while True:
+            d = await self._get_d(url, {"$filter": flt, "$top": str(page), "$skip": str(skip)})
+            rows = [r for r in d.get("results") or [] if isinstance(r, dict)]
+            out += rows
+            if len(rows) < page:
+                return out
+            skip += page
+
+    async def list_stock(self, plant: str) -> list[StockLine]:
+        """A_MatlStkInAcctMod, Plant and stock type 01: unrestricted stock per material and storage location."""
+        rows = await self._pages("/sap/opu/odata/sap/API_MATERIAL_STOCK_SRV/A_MatlStkInAcctMod",
+                                 f"Plant eq '{plant}' and InventoryStockType eq '01'")
+        return [
+            StockLine(material=str(r["Material"]), plant=str(r.get("Plant") or plant),
+                      storage_location=str(r.get("StorageLocation") or ""),
+                      quantity=Decimal(str(r.get("MatlWrhsStkQtyInMatlBaseUnit") or "0")),
+                      unit=str(r.get("MaterialBaseUnit") or "EA"))
+            for r in rows if str(r.get("InventoryStockType") or "01") == "01"
+        ]
+
+    async def list_purchase_order_items(self, plant: str) -> list[PurchaseOrderLine]:
+        """A_PurchaseOrderItem?$filter=Plant eq '<p>' (erp-sim: with Supplier, the schedule line's date and YY1_
+        received quantity, last receipt date, supply status and lane)."""
+        rows = await self._pages("/sap/opu/odata/sap/API_PURCHASEORDER_PROCESS_SRV/A_PurchaseOrderItem",
+                                 f"Plant eq '{plant}'")
+        return [
+            PurchaseOrderLine(
+                purchase_order=str(r["PurchaseOrder"]), item=str(r.get("PurchaseOrderItem") or ""),
+                material=str(r["Material"]), plant=str(r.get("Plant") or plant),
+                storage_location=str(r.get("StorageLocation") or ""),
+                order_qty=Decimal(str(r.get("OrderQuantity") or "0")),
+                received_qty=Decimal(str(r.get("YY1_ReceivedQuantity") or "0")),
+                unit=str(r.get("PurchaseOrderQuantityUnit") or "EA"),
+                delivery_date=str(r.get("ScheduleLineDeliveryDate") or "")[:10], supplier=str(r.get("Supplier") or ""),
+                status=str(r.get("YY1_SupplyStatus") or "open"), lane=str(r.get("YY1_LaneCode") or ""),
+                last_receipt_date=str(r.get("YY1_LastGoodsReceiptDate") or "")[:10],
+            )
+            for r in rows
+        ]

@@ -1,0 +1,5 @@
+item_code,name,kind,uom,make_or_buy,product_family,barcode
+CP-204,"Brushless motor, 2806",component,EA,buy,AIR,CP-204
+CP-207,"Camera sensor, 12 MP",component,EA,buy,AIR,CP-207
+FG-100,"Inspection drone, standard",finished,EA,make,AIR,FG-100
+RM-307,Wiring harness,raw,EA,buy,AIR,RM-307

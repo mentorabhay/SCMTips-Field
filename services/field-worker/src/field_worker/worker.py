@@ -13,6 +13,8 @@ Every FIELD_ASSISTANT_PURGE_S (3600 s):
   - clears Field Assistant heard / said text and photos older than FIELD_ASSISTANT_RETENTION_DAYS (30)
 Every tick, when FIELD_CORE_INVENTORY_FEED_URL and FIELD_CORE_SUPPLY_FEED_URL are set (M4 F4):
   - delivers posted goods receipts to the core's two feeds (field_worker.core_feeds), signed, retried
+Every FIELD_CORE_SNAPSHOT_INTERVAL_S (900 s, 0 = off; first at start-up), with the same two feeds set (M4 Q10):
+  - stages the changed rows of the ERP's stock and open POs of the production sites' plants for those feeds
 
 Connects as field_worker (NOBYPASSRLS) via FIELD_WORKER_DATABASE_URL and discovers tenants through
 SECURITY DEFINER functions (migration field_0057). The ERP adapter is chosen by FIELD_ERP_ADAPTER:
@@ -37,7 +39,7 @@ import structlog
 from field_sap.ports.erp_port import ErpPort, ErpReadPort
 from field_sap.sim.adapter import SimAdapter
 
-from field_worker.core_feeds import CoreFeedPublisher, FeedConfig
+from field_worker.core_feeds import CoreFeedPublisher, ErpSnapshotFeed, FeedConfig
 from field_worker.material_sync import MaterialCacheSynchronizer
 from field_worker.posting.equipment_queue import process_next_tower_job
 from field_worker.posting.queue import PostingQueueWorker
@@ -73,6 +75,8 @@ class FieldWorker:
         self.posting = PostingQueueWorker(erp_port=self.erp_port, db_url=db_url)
         self.materials = MaterialCacheSynchronizer(db_url=db_url, erp_port=self.erp_port)
         self.core_feeds = self._core_feeds(db_url)
+        self.erp_snapshot = self._erp_snapshot(db_url)
+        self._last_snapshot: float | None = None
         self.is_running = False
         self.jobs_processed = 0
         self.tasks_imported = 0
@@ -90,6 +94,15 @@ class FieldWorker:
             logger.error("core_feeds_disabled", reason="the ERP adapter cannot read documents and stock")
             return None
         return CoreFeedPublisher(self.erp_port, db_url, cfg)
+
+    def _erp_snapshot(self, db_url: str) -> ErpSnapshotFeed | None:
+        """The stock and open-PO snapshot (M4 Q10): only with the feeds on and a non-zero interval."""
+        if self.core_feeds is None:
+            return None
+        cfg = self.core_feeds.config
+        if not cfg.snapshot_enabled or not isinstance(self.erp_port, ErpReadPort):
+            return None
+        return ErpSnapshotFeed(self.erp_port, db_url, cfg, self.core_feeds.codes)
 
     def _query(self, sql: str) -> list[tuple[Any, ...]]:
         with psycopg.connect(self.db_url, autocommit=True) as conn, conn.cursor() as cur:
@@ -165,6 +178,10 @@ class FieldWorker:
         await self._guard("tower", asyncio.to_thread(self.process_tower_queues))
         if self.core_feeds is not None:
             await self._guard("core_feeds", self.core_feeds.run_once())
+        if self.erp_snapshot is not None and (
+                self._last_snapshot is None or now - self._last_snapshot >= self.erp_snapshot.config.snapshot_interval_s):
+            self._last_snapshot = now
+            await self._guard("core_snapshot", self.erp_snapshot.run_once())
         if now - self._last_ibd >= IBD_POLL_S:
             self._last_ibd = now
             await self._guard("ibd_import", self.poll_inbound_deliveries())

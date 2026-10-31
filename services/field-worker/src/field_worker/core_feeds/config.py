@@ -11,6 +11,15 @@
   switched on later, history is not replayed).
 - FIELD_CORE_FEED_SANDBOX (false): send receipts of sandbox (home / training) sites too.
 - FIELD_CORE_CODE_MAP: optional JSON file mapping ERP codes to the core's codes (field_worker.core_feeds.codes).
+- FIELD_CORE_SNAPSHOT_INTERVAL_S (900): every so often, the ERP's stock and open purchase orders of the production
+  sites' plants are sent to the same two feeds (field_worker.core_feeds.snapshot, M4 Q10); 0 switches it off. Off as
+  well whenever the feeds are off (both URLs needed).
+- FIELD_CORE_SNAPSHOT_BATCH (200): rows per push (one delivery row each), 1..1000.
+- FIELD_CORE_SNAPSHOT_RESEND_H (24): a row the core already has (same values sent within this many hours) is not sent
+  again; after that it is, so a core that lost or replaced it catches up.
+- FIELD_CORE_SNAPSHOT_TENANTS (empty = every tenant): comma-separated Field tenant ids whose plants the snapshot reads.
+  The two feeds belong to one core organisation; with FIELD_CORE_TARGET=core name its tenant here, so another tenant
+  of this installation (the stack's demo tenant) never reaches it.
 """
 
 from __future__ import annotations
@@ -36,6 +45,10 @@ class FeedConfig:
     lookback_h: float = 24.0
     include_sandbox: bool = False
     code_map_path: str = ""
+    snapshot_interval_s: float = 900.0
+    snapshot_batch: int = 200
+    snapshot_resend_h: float = 24.0
+    snapshot_tenants: tuple[str, ...] = ()
 
     @classmethod
     def from_env(cls) -> FeedConfig:
@@ -51,12 +64,22 @@ class FeedConfig:
             lookback_h=float(os.getenv("FIELD_CORE_FEED_LOOKBACK_H") or "24"),
             include_sandbox=_flag("FIELD_CORE_FEED_SANDBOX"),
             code_map_path=os.getenv("FIELD_CORE_CODE_MAP", "").strip(),
+            snapshot_interval_s=max(0.0, float(os.getenv("FIELD_CORE_SNAPSHOT_INTERVAL_S") or "900")),
+            snapshot_batch=min(1000, max(1, int(os.getenv("FIELD_CORE_SNAPSHOT_BATCH") or "200"))),
+            snapshot_resend_h=max(0.0, float(os.getenv("FIELD_CORE_SNAPSHOT_RESEND_H") or "24")),
+            snapshot_tenants=tuple(x.strip() for x in os.getenv("FIELD_CORE_SNAPSHOT_TENANTS", "").split(",")
+                                   if x.strip()),
         )
 
     @property
     def enabled(self) -> bool:
         """Both feed URLs set (M4 contract section 4: only then is anything delivered)."""
         return bool(self.inventory_url and self.supply_url)
+
+    @property
+    def snapshot_enabled(self) -> bool:
+        """The stock and open-PO snapshot runs only with the feeds on and a non-zero interval (M4 Q10)."""
+        return self.enabled and self.snapshot_interval_s > 0
 
     def problems(self) -> list[str]:
         """Variable names that are missing for an enabled configuration (never values)."""

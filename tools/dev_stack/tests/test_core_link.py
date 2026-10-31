@@ -144,3 +144,88 @@ def test_m4_c05_export_json_envelope_and_csv_load_into_erpsim(tmp_path: Path) ->
     [item] = asyncio.run(sim.read_material_document(res.document_number, res.fiscal_year)).items
     assert (item.purchase_order, item.purchase_order_item, item.plant) == ("4500001234", "10", "PLANT-GOA")
     assert asyncio.run(sim.read_stock("RM-307", "PLANT-GOA")) >= 1620
+
+
+# --- M4 Q9: the core's real export (samples/exports/erp-sim and field-site-pack, core commit 374702a), trimmed ------
+
+CORE_EXPORT = Path(__file__).resolve().parent / "fixtures" / "core_export"
+CLIENT = "910"
+
+
+def test_m4_c14_split_ref_takes_the_cores_po_number_as_it_is() -> None:
+    from tools.dev_stack.core_export import split_ref
+
+    assert split_ref("PO-26-1002", "10") == ("PO-26-1002", "10")
+    assert split_ref("PO-26-1002", "") == ("PO-26-1002", "10")  # no item column: the ref is the PO number
+    assert split_ref("4500001234-10", "") == ("4500001234", "10")  # the contract's SAP-style example
+    assert split_ref("4500001234", "020") == ("4500001234", "20")
+
+
+def test_m4_c14_the_cores_export_loads_with_its_own_codes_and_purchase_orders() -> None:
+    ex = parse_export(CORE_EXPORT / "erp-sim")
+    assert ex.manifest == {"export": "erp-sim", "version": 1, "world": "SAMPLE drone OEM", "dataset": "manufacturing-v1"}
+    assert ex.notes == []  # every file is one of the loader's tables (suppliers too)
+    assert set(ex.locations) == {"DC-MIL", "PLANT-GOA"}
+    assert ex.storage_locations == {("DC-MIL", "0001"): "Finished goods store", ("PLANT-GOA", "0001"): "Main store"}
+    assert ex.items["CP-204"] == {"description": "Brushless motor, 2806", "uom": "EA", "barcode": "CP-204"}
+    assert ex.stock[("CP-204", "PLANT-GOA", "0001")] == 1680 and ex.inventory[("FG-100", "DC-MIL")] == 140
+    assert ex.suppliers == {"SUP-S02": "Supplier S-02, Shenzhen", "SUP-S05": "Supplier S-05, Kumamoto"}
+    lines = {ln["po"]: ln for ln in ex.po_lines}
+    assert lines["PO-26-1002"] == {
+        "po": "PO-26-1002", "po_item": "10", "item_code": "CP-204", "location_code": "PLANT-GOA", "qty": 1600.0,
+        "due_date": "2026-11-20", "storage_location": "0001", "uom": "EA", "status": "open", "supplier": "SUP-S02",
+        "lane_code": "L02"}
+    # SAP client 910, not the dev stack's 100: the real codes (PLANT-GOA, PO-26-1002) of the stack's drone world stay as
+    # `stack seed-core-export` loaded them
+    with psycopg.connect(ERPSIM) as c, c.cursor() as cur:
+        counts = load_into_erpsim(cur, ex, client=CLIENT)
+        c.commit()
+    assert {k: counts[k] for k in ("plants", "storage_locations", "materials", "stock_rows", "po_lines")} == {
+        "plants": 2, "storage_locations": 2, "materials": 4, "stock_rows": 4, "po_lines": 2}
+    from erp_sim.app import app as erpsim_app
+    from field_sap.sim.adapter import SimAdapter
+
+    sim = SimAdapter(app=erpsim_app, sap_client=CLIENT)
+    assert asyncio.run(sim.read_stock("CP-204", "PLANT-GOA", "0001")) == 1680
+    po = {ln.purchase_order: ln for ln in asyncio.run(sim.list_purchase_order_items("PLANT-GOA"))}
+    got = po["PO-26-1005"]
+    assert (got.item, got.material, got.storage_location, float(got.order_qty), got.delivery_date, got.supplier,
+            got.status, got.lane) == ("10", "CP-207", "0001", 600.0, "2026-12-18", "SUP-S05", "open", "L07")
+    with psycopg.connect(ERPSIM) as c, c.cursor() as cur:  # the PO's ASN references the core's PO number and item
+        cur.execute("SELECT d.storage_location, d.header_data->>'Supplier', i.purchase_order, i.purchase_order_item"
+                    " FROM erpsim.inbound_delivery d JOIN erpsim.inbound_delivery_item i USING (client, delivery_document)"
+                    " WHERE d.client = %s AND d.header_data->>'PurchaseOrder' = 'PO-26-1002' ORDER BY d.created_at LIMIT 1",
+                    (CLIENT,))
+        assert cur.fetchone() == ("0001", "SUP-S02", "PO-26-1002", "10")
+    with psycopg.connect(ERPSIM) as c, c.cursor() as cur:
+        assert load_into_erpsim(cur, ex, client=CLIENT)["asns_created"] == 0  # re-running: no second ASN per PO
+        c.commit()
+
+
+def test_m4_c14_the_site_pack_creates_field_sites_on_the_cores_plants_through_the_api() -> None:
+    from fastapi.testclient import TestClient
+    from field_api.app import app
+    from field_api.auth.jwt import create_dev_token
+
+    from tools.dev_stack.core_export import create_sites, parse_site_pack
+
+    pack = parse_site_pack(CORE_EXPORT / "field-site-pack")
+    assert pack.notes == []
+    assert [(s["code"], s["kind"], s["erp_plant"], s["erp_storage_locations"], s["timezone"]) for s in pack.sites] == [
+        ("DC-MIL", "warehouse", "DC-MIL", ["0001"], "Europe/Rome"), ("PLANT-GOA", "plant", "PLANT-GOA", ["0001"],
+                                                                     "Europe/Rome")]
+    assert pack.bins["PLANT-GOA"][1] == {"zone": "CP", "code": "CP-04", "erp_ref": "PLANT-GOA/0001/CP-04"}
+    tenant = str(uuid.uuid4())
+    token = create_dev_token(principal_id="site-pack-admin", tenant_id=tenant, roles=["field.admin"], site_ids=["*"])
+    client = TestClient(app)
+    sites: dict[str, str] = {}
+    locs: dict[str, dict[str, str]] = {}
+    made = create_sites("", token, tenant, pack, sites, locs, post=client.post)
+    assert made == {"sites": 2, "sites_kept": 0, "zones": 5, "bins": 6}
+    r = client.get(f"/v1/sites/{sites['PLANT-GOA']}", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert (r.json()["erp_plant"], r.json()["erp_storage_locations"], r.json()["kind"], r.json()["mode"]) == (
+        "PLANT-GOA", ["0001"], "plant", "production")
+    assert set(locs[sites["PLANT-GOA"]]) == {"GR", "GR-01", "CP", "CP-04", "CP-07", "RM", "RM-07"}
+    again = create_sites("", token, tenant, pack, sites, locs, post=client.post)
+    assert again == {"sites": 0, "sites_kept": 2, "zones": 0, "bins": 0}

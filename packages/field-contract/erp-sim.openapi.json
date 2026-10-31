@@ -1501,6 +1501,29 @@
             }
           },
           {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 1000,
+              "title": "$Top"
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "$Skip"
+            }
+          },
+          {
             "name": "sap-client",
             "in": "header",
             "required": false,
@@ -1520,6 +1543,90 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response List Material Stock Sap Opu Odata Sap Api Material Stock Srv A Matlstkinacctmod Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sap/opu/odata/sap/API_PURCHASEORDER_PROCESS_SRV/A_PurchaseOrderItem": {
+      "get": {
+        "tags": [
+          "Purchase order"
+        ],
+        "summary": "List Purchase Order Items",
+        "operationId": "list_purchase_order_items_sap_opu_odata_sap_API_PURCHASEORDER_PROCESS_SRV_A_PurchaseOrderItem_get",
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "$Filter"
+            }
+          },
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 1000,
+              "title": "$Top"
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "$Skip"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Purchase Order Items Sap Opu Odata Sap Api Purchaseorder Process Srv A Purchaseorderitem Get"
                 }
               }
             }

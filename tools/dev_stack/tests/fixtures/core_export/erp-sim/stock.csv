@@ -1,0 +1,5 @@
+item_code,location_code,storage_location,as_of,on_hand_qty,allocated_qty,in_transit_qty
+FG-100,DC-MIL,0001,2026-10-19,140,14,0
+CP-204,PLANT-GOA,0001,2026-10-19,1680,0,0
+CP-207,PLANT-GOA,0001,2026-10-19,560,0,0
+RM-307,PLANT-GOA,0001,2026-10-19,2600,0,0

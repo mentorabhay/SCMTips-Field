@@ -1,0 +1,3 @@
+site_code,name,kind,core_location_code,erp_plant,erp_storage_locations,timezone,lat,lon
+DC-MIL,"Distribution centre D-01, Milan",warehouse,DC-MIL,DC-MIL,0001,Europe/Rome,45.464,9.19
+PLANT-GOA,"Assembly plant P-01, Genoa",plant,PLANT-GOA,PLANT-GOA,0001,Europe/Rome,44.405,8.946

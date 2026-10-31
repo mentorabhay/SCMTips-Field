@@ -1,0 +1,11 @@
+site_code,kind,code,caption
+DC-MIL,bin,GR-01,bin GR-01 (Goods-receipt dock)
+DC-MIL,bin,FG-01,"bin FG-01 (Finished goods: Inspection drone, standard)"
+DC-MIL,material,FG-100,"product FG-100: Inspection drone, standard, EA"
+PLANT-GOA,bin,GR-01,bin GR-01 (Goods-receipt dock)
+PLANT-GOA,bin,CP-04,"bin CP-04 (Components: Brushless motor, 2806)"
+PLANT-GOA,bin,CP-07,"bin CP-07 (Components: Camera sensor, 12 MP)"
+PLANT-GOA,bin,RM-07,bin RM-07 (Raw materials: Wiring harness)
+PLANT-GOA,material,CP-204,"product CP-204: Brushless motor, 2806, EA"
+PLANT-GOA,material,CP-207,"product CP-207: Camera sensor, 12 MP, EA"
+PLANT-GOA,material,RM-307,"product RM-307: Wiring harness, EA"

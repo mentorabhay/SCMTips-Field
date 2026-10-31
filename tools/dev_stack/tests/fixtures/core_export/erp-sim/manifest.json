@@ -1,0 +1,93 @@
+{
+  "export": "erp-sim",
+  "version": 1,
+  "world": "SAMPLE drone OEM",
+  "dataset": "manufacturing-v1",
+  "generated_by": "scmtips-sample-exports (lr_api.domain.exchange.sample_exports)",
+  "source_sha256": {
+    "locations.csv": "d40fecd18f0989b95e170dc238ff080ea4bb5b565ea73ece11f6fee530c3edeb",
+    "items.csv": "b015ace6be54f44ac38aba7510593c8b9ff8db948375e04c8686e691706db444",
+    "suppliers.csv": "240418af2fdd47000dbe71b9399c94ffd29b440ca2887aa34c9d518b30884c9b",
+    "inventory.csv": "91085ebff4215754eb27b1c42d40bc677162ad67139c5ce4e15fde37c99c7698",
+    "open_supply.csv": "95691bf76cf31c47910ebde76fb1e9438655d2331c29886dd5d79d2ea7304f55",
+    "sourcing.csv": "6acf63a6ac25b8f19b68a0a84051833e6b4aa7fbc62166de4a9f659b91231e55"
+  },
+  "sample": true,
+  "files": {
+    "plants.csv": {
+      "rows": null,
+      "columns": [
+        "location_code",
+        "name",
+        "kind",
+        "country_iso2",
+        "region",
+        "lat",
+        "lon"
+      ]
+    },
+    "storage_locations.csv": {
+      "rows": null,
+      "columns": [
+        "location_code",
+        "storage_location",
+        "name"
+      ]
+    },
+    "materials.csv": {
+      "rows": null,
+      "columns": [
+        "item_code",
+        "name",
+        "kind",
+        "uom",
+        "make_or_buy",
+        "product_family",
+        "barcode"
+      ]
+    },
+    "suppliers.csv": {
+      "rows": null,
+      "columns": [
+        "supplier_code",
+        "name",
+        "country_iso2"
+      ]
+    },
+    "stock.csv": {
+      "rows": null,
+      "columns": [
+        "item_code",
+        "location_code",
+        "storage_location",
+        "as_of",
+        "on_hand_qty",
+        "allocated_qty",
+        "in_transit_qty"
+      ]
+    },
+    "purchase_orders.csv": {
+      "rows": null,
+      "columns": [
+        "ref",
+        "po_item",
+        "item_code",
+        "location_code",
+        "storage_location",
+        "qty",
+        "uom",
+        "due_date",
+        "supplier_code",
+        "lane_code",
+        "status"
+      ]
+    }
+  },
+  "codes": "the core's own codes: plants are the core's location codes, materials its item codes (barcode = item code), purchase orders its open-supply refs with one item 10 each, suppliers its supplier codes",
+  "storage_location": "one per plant: 0001",
+  "not_included": [
+    "work orders (erp-sim has no production orders)",
+    "bom, lanes, supplier sites, demand (planning data, not erp-sim master data)"
+  ],
+  "trimmed_for_field_tests": "4 materials, 2 PO lines of the core's export at core commit 374702a (full export: SCMTips samples/exports/erp-sim)"
+}
