@@ -133,3 +133,31 @@
     idempotency_key) -> SandboxItemResult (raises FieldError FIELD-SBX-403-PRODUCTION on production sites). Both are
     synchronous and run the ERP call to completion also when called inside an event loop. Not wired to the
     assistant yet (the integrator does that at merge). Partial until proven on the owner's phone and glasses (A-03).
+- id: M3-S07
+  title: Dev stack home sandbox (stack home [--simulate-differences], pair --home, smoke --home, labels, assistant-check hook)
+  workstream: M3-WP1
+  role: Track S
+  status: partial
+  evidence:
+  - tools/dev_stack/stack.py
+  - scripts/dev/run-field-stack.cmd
+  - scripts/dev/run-field-stack.ps1
+  - scripts/dev/run-field-stack.sh
+  tests:
+  - tools/dev_stack/tests/test_stack.py::test_m3_home_commands_are_registered
+  - tools/dev_stack/tests/test_stack.py::test_assistant_check_says_clearly_when_track_a_is_not_in_this_build
+  - tools/dev_stack/tests/test_stack.py::test_pair_home_points_the_phone_at_the_sandbox_site
+  - tools/dev_stack/tests/test_stack.py::test_new_barcodes_are_ean13_shaped_and_fresh
+  frs: []
+  verified_at: null
+  note: '`stack home` makes plant HOME / HM01 in erp-sim, the field site "Home (sandbox)" (code HOME-SBX, mode
+    sandbox, created by field.admin through POST /v1/sites), bins HOME-A and HOME-B, one empty home receipt and one
+    count of HOME-A, and prints `stack pair --home`. `--simulate-differences` (opt-in) gives SAMPLE-MAT-0005/0006 a
+    book stock of 10 in HOME-A through a 561 marked sandbox+simulated and adds them to the count, whose PI document
+    is marked simulated (its 701/702 then carries simulated too). `smoke --home`: sandbox receipt with a never-seen
+    EAN-13 -> HOME-nnnn -> barcode product scan -> counted 3 against 1 -> GR 101 marked sandbox; the production
+    warehouse sees the code as unknown, refuses it on a real delivery line (409) and refuses sandbox actions (403
+    FIELD-SBX-403-PRODUCTION); a HOME-B count of a new box -> 561 of 4, task done. Run on a fresh stack together with
+    `smoke --all` (both PASS, 31 Oct 2026, Linux sandbox, private ports). `assistant-check` imports
+    tools.dev_stack.assistant_check at call time and calls its main(args); without it, it says the hook is not
+    installed (exit 1). Partial until proven on the owner''s phone and glasses (A-03).'

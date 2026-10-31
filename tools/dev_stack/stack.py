@@ -9,6 +9,11 @@
     uv run python -m tools.dev_stack.stack count [BIN]  # blind count task for a bin
     uv run python -m tools.dev_stack.stack tower      # SAMPLE-TWR-0001: sector A audit + swap task
     uv run python -m tools.dev_stack.stack smoke --all  # every job type over HTTP as the phone would
+    uv run python -m tools.dev_stack.stack home [--simulate-differences]  # sandbox site "Home (sandbox)" (M3)
+    uv run python -m tools.dev_stack.stack pair --home  # pair the phone to the home sandbox site
+    uv run python -m tools.dev_stack.stack smoke --home # sandbox receipt + count end to end, production refusal
+    uv run python -m tools.dev_stack.stack labels       # printable QR labels for every open job
+    uv run python -m tools.dev_stack.stack assistant-check  # one real Field Assistant model call (track A's hook)
 
 Services (logs in var/log, pids in var/run):
   fake-core  :8011  dev identity provider (EdDSA tokens + JWKS); stands in for SCMTips core
@@ -447,9 +452,13 @@ def cmd_pair(a: argparse.Namespace) -> int:
     state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
     state = ensure_demo_site(state)
     site, site_name = state["site"], state["site_name"]
+    home = bool(getattr(a, "home", False))
     if a.tower:
         state = ensure_tower_site(state)
         site, site_name = state["tower_site"], TOWER_SITE_NAME
+    elif home:
+        state = ensure_home(state)
+        site, site_name = state["home_site"], HOME_SITE_NAME
     token = _core_token(a.user, state["tenant"], site, a.hours * 3600)
     api = a.api or f"http://{lan_ip()}:{port('field-api')}"
     payload = pairing_payload(api, token, state["tenant"], site, site_name)
@@ -460,7 +469,7 @@ def cmd_pair(a: argparse.Namespace) -> int:
     qr.make(fit=True)
     from qrcode.image.svg import SvgPathImage
 
-    png = ROOT / "var" / ("pairing-qr-tower.svg" if a.tower else "pairing-qr.svg")
+    png = ROOT / "var" / ("pairing-qr-tower.svg" if a.tower else "pairing-qr-home.svg" if home else "pairing-qr.svg")
     png.parent.mkdir(parents=True, exist_ok=True)
     with png.open("wb") as fh:
         qr.make_image(image_factory=SvgPathImage).save(fh)
@@ -1043,6 +1052,195 @@ def cmd_tower(a: argparse.Namespace) -> int:
     return 0
 
 
+# --- Home (sandbox) site, M3 contract section 3 -----------------------------------------------------
+
+HOME_PLANT = "HOME"
+HOME_SLOC = "HM01"
+HOME_SITE_CODE = "HOME-SBX"
+HOME_SITE_NAME = "Home (sandbox)"
+HOME_BINS = ("HOME-A", "HOME-B")
+# --simulate-differences: these SAMPLE materials get a simulated book stock of SIMULATED_QTY in HOME-A
+SIMULATED_MATERIALS = ("SAMPLE-MAT-0005", "SAMPLE-MAT-0006")
+SIMULATED_QTY = 10
+
+
+def ensure_erp_home_plant() -> None:
+    """Plant HOME with storage location HM01 in erp-sim (the ERP side of the home site). Idempotent."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("erpsim"), autocommit=True) as c, c.cursor() as cur:
+        cur.execute("INSERT INTO erpsim.plant (client, plant, name) VALUES ('100', %s, 'Home (sandbox)')"
+                    " ON CONFLICT DO NOTHING", (HOME_PLANT,))
+        cur.execute("INSERT INTO erpsim.storage_location (client, plant, storage_location, name)"
+                    " VALUES ('100', %s, %s, 'Home shelf') ON CONFLICT DO NOTHING", (HOME_PLANT, HOME_SLOC))
+
+
+def _site_by_code(tenant: str, code: str) -> str | None:
+    import psycopg
+
+    with psycopg.connect(_admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT id FROM field.site WHERE tenant_id = %s AND code = %s", (tenant, code))
+        row = cur.fetchone()
+        return str(row[0]) if row else None
+
+
+def ensure_home_site(state: dict[str, Any]) -> dict[str, Any]:
+    """The sandbox site "Home (sandbox)" on plant HOME, created by field.admin through the real API."""
+    if state.get("home_site") and site_exists(state["home_site"]):
+        return state
+    site = _site_by_code(state["tenant"], HOME_SITE_CODE)
+    if site is None:
+        token = _admin(state["tenant"])
+        r = httpx.post(local("field-api") + "/v1/sites", json={
+            "code": HOME_SITE_CODE, "name": HOME_SITE_NAME, "kind": "warehouse", "erp_plant": HOME_PLANT,
+            "erp_storage_locations": [HOME_SLOC], "mode": "sandbox"},
+            headers={"Authorization": f"Bearer {token}", "Idempotency-Key": str(uuid.uuid4())}, timeout=10)
+        if r.status_code != 201:
+            raise SystemExit(f"could not create the home site: HTTP {r.status_code} {r.text[:300]}")
+        site = str(r.json()["id"])
+    state["home_site"] = site
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    STATE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    return state
+
+
+def ensure_home_bins(state: dict[str, Any]) -> int:
+    """Zone HOME with bins HOME-A and HOME-B through POST /v1/locations. Returns bins created."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT code, id FROM field.location WHERE site_id = %s", (state["home_site"],))
+        have = {str(r[0]): str(r[1]) for r in cur.fetchall()}
+    if all(b in have for b in HOME_BINS):
+        return 0
+    h = {"Authorization": f"Bearer {_admin(state['tenant'])}"}
+    if "HOME" not in have:
+        r = httpx.post(local("field-api") + "/v1/locations", json={"site_id": state["home_site"], "kind": "zone",
+                                                                   "code": "HOME"},
+                       headers={**h, "Idempotency-Key": str(uuid.uuid4())}, timeout=10)
+        if r.status_code != 201:
+            raise SystemExit(f"could not create the home zone: HTTP {r.status_code} {r.text[:200]}")
+        have["HOME"] = r.json()["id"]
+    made = 0
+    for b in HOME_BINS:
+        if b in have:
+            continue
+        r = httpx.post(local("field-api") + "/v1/locations", json={
+            "site_id": state["home_site"], "parent_id": have["HOME"], "kind": "position", "code": b,
+            "erp_ref": f"{HOME_PLANT}/{HOME_SLOC}/{b}", "erp_ref_type": "storage_bin"},
+            headers={**h, "Idempotency-Key": str(uuid.uuid4())}, timeout=10)
+        if r.status_code != 201:
+            raise SystemExit(f"could not create bin {b}: HTTP {r.status_code} {r.text[:200]}")
+        made += 1
+    return made
+
+
+def ensure_home(state: dict[str, Any]) -> dict[str, Any]:
+    """Tenant (demo site), plant HOME in erp-sim, the home sandbox site and its two bins."""
+    state = ensure_demo_site(state)
+    ensure_erp_home_plant()
+    state = ensure_home_site(state)
+    ensure_home_bins(state)
+    return state
+
+
+def _operator(state: dict[str, Any], site: str, principal: str = "dev-home") -> str:
+    """A field operator token for one site (fake-core token, exchanged), for the stack's own API calls."""
+    r = httpx.post(local("fake-core") + "/api/v1/auth/token", json={
+        "principal_id": principal, "tenant_id": state["tenant"], "roles": ["field.operator"], "site_ids": [site],
+        "ttl_seconds": 600}, timeout=5)
+    r.raise_for_status()
+    return _field_token(str(r.json()["access_token"]))
+
+
+def _sandbox_post(token: str, path: str, body: dict[str, Any]) -> httpx.Response:
+    return httpx.post(local("field-api") + path, json=body,
+                      headers={"Authorization": f"Bearer {token}", "Idempotency-Key": str(uuid.uuid4())}, timeout=15)
+
+
+def simulate_book_stock(state: dict[str, Any]) -> list[str]:
+    """--simulate-differences (opt-in): SIMULATED_MATERIALS get a book stock in erp-sim (561 marked sandbox and
+    simulated, through the simulator adapter) and the same quantity in field bin HOME-A, once per site."""
+    import asyncio
+
+    import psycopg
+    from field_sap.ports.erp_port import ErpPostingRequest
+    from field_sap.sim.adapter import SimAdapter
+
+    with psycopg.connect(_admin_url("field")) as c, c.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true), set_config('app.site_ids', '*', true)",
+                    (state["tenant"],))
+        cur.execute("SELECT material_no FROM field.bin_stock WHERE site_id = %s AND storage_bin = 'HOME-A'",
+                    (state["home_site"],))
+        have = {str(r[0]) for r in cur.fetchall()}
+        todo = [m for m in SIMULATED_MATERIALS if m not in have]
+        if todo:
+            asyncio.run(SimAdapter(base_url=local("erp-sim")).post_initial_stock_entry(ErpPostingRequest(
+                idempotency_key=f"stack-home-simulated:{state['home_site']}", doc_family="InitialStockEntry",
+                site_id=state["home_site"], plant=HOME_PLANT, posting_date=time.strftime("%Y-%m-%d"),
+                header_data={"StorageLocation": HOME_SLOC, "Sandbox": True, "Simulated": True},
+                items=tuple({"Material": m, "QuantityInEntryUnit": f"{SIMULATED_QTY}.000", "EntryUnit": "EA"}
+                            for m in todo))))
+            for m in todo:
+                cur.execute("INSERT INTO field.bin_stock (tenant_id, site_id, storage_bin, material_no, quantity)"
+                            " VALUES (%s, %s, 'HOME-A', %s, %s)", (state["tenant"], state["home_site"], m, SIMULATED_QTY))
+        c.commit()
+    return list(SIMULATED_MATERIALS)
+
+
+def create_home_jobs(state: dict[str, Any], simulate: bool = False) -> dict[str, Any]:
+    """One empty home receipt and one count task for HOME-A, through the sandbox API as the operator."""
+    token = _operator(state, state["home_site"])
+    r = _sandbox_post(token, "/v1/sandbox/receipts", {"site_id": state["home_site"]})
+    if r.status_code != 201:
+        raise SystemExit(f"could not create the home receipt: HTTP {r.status_code} {r.text[:300]}")
+    receipt = r.json()
+    r = _sandbox_post(token, "/v1/sandbox/counts", {"site_id": state["home_site"], "bin": "HOME-A",
+                                                     "simulated": simulate})
+    if r.status_code != 201:
+        raise SystemExit(f"could not create the home count: HTTP {r.status_code} {r.text[:300]}")
+    count = r.json()
+    simulated: list[str] = []
+    if simulate:
+        simulated = simulate_book_stock(state)
+        for m in simulated:
+            r = _sandbox_post(token, f"/v1/sandbox/tasks/{count['task_id']}/items", {"code": m, "description": m})
+            if r.status_code != 201:
+                raise SystemExit(f"could not add {m} to the count: HTTP {r.status_code} {r.text[:300]}")
+    return {"receipt": receipt, "count": count, "simulated": simulated}
+
+
+def cmd_home(a: argparse.Namespace) -> int:
+    load_env()
+    apply_ports()
+    state = ensure_home(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
+    jobs = create_home_jobs(state, a.simulate_differences)
+    print(f"site {HOME_SITE_NAME!r} ({state['home_site']}), mode sandbox, plant {HOME_PLANT}, bins {', '.join(HOME_BINS)}")
+    print(f"home receipt: delivery {jobs['receipt']['ref_doc_no']} (task {jobs['receipt']['task_id']}), no items yet;"
+          " scan any box to add it")
+    print(f"count of HOME-A: {jobs['count']['ref_doc_no']} (task {jobs['count']['task_id']}); a new box posts 561"
+          " (opening stock)")
+    if jobs["simulated"]:
+        print(f"simulated differences (opt-in): {', '.join(jobs['simulated'])} hold {SIMULATED_QTY} in HOME-A by the"
+              " books; their documents are marked simulated")
+    print("Pair the phone to it: `uv run python -m tools.dev_stack.stack pair --home`")
+    return 0
+
+
+def cmd_assistant_check(a: argparse.Namespace) -> int:
+    """Track A's hook (M3 contract section 4): tools/dev_stack/assistant_check.py, imported only when asked for."""
+    import importlib
+
+    try:
+        mod = importlib.import_module("tools.dev_stack.assistant_check")
+    except ModuleNotFoundError as e:
+        if e.name != "tools.dev_stack.assistant_check":
+            raise
+        print("assistant-check is not installed in this build (tools/dev_stack/assistant_check.py is missing)")
+        return 1
+    return int(mod.main(a))
+
+
 # --- smoke ----------------------------------------------------------------------------------------
 
 def _wait_task(phone: Phone, site: str, type_: str, pred: Any, timeout_s: float) -> dict[str, Any]:
@@ -1304,12 +1502,104 @@ def smoke_tower(phone: Phone, console: Console, state: dict[str, Any], wait: flo
           f" {tw['spare']} installed at {TOWER_FL}-A-S3")
 
 
+def new_barcode() -> str:
+    """A barcode erp-sim has never seen: EAN-13 shaped, restricted prefix 2 (in-store numbers)."""
+    return "2" + "".join(secrets.choice("0123456789") for _ in range(12))
+
+
+def smoke_home(phone: Phone, wh_phone: Phone, state: dict[str, Any], wait: float) -> None:
+    """M3 contract section 6: sandbox receipt with a never-seen barcode -> GR 101 with a HOME material; the
+    production warehouse refuses the same code; a sandbox count posts 561."""
+    home, api = state["home_site"], phone.api
+
+    def post(p: Phone, path: str, body: dict[str, Any]) -> httpx.Response:
+        return httpx.post(f"{api}{path}", json=body, headers=p._h(True), timeout=15)
+
+    def code_of(p: Phone, code: str, site: str) -> dict[str, Any]:
+        return _accepted(httpx.get(f"{api}/v1/codes/{code}", params={"site_id": site}, headers=p._h(), timeout=10),
+                         "code lookup")
+
+    rec = _accepted(post(phone, "/v1/sandbox/receipts", {"site_id": home}), "sandbox receipt", 201)
+    code = new_barcode()
+    _expect(code_of(phone, code, home)["kind"] == "unknown", f"{code} should be unknown before it is added")
+    item = _accepted(post(phone, f"/v1/sandbox/tasks/{rec['task_id']}/items",
+                          {"code": code, "description": "Smoke test box", "qty": 1}), "add item", 201)
+    _expect(item["created_material"] and item["material"].startswith("HOME-"), f"new material: {item}")
+    print(f"home     receipt {rec['ref_doc_no']}: barcode {code} -> new material {item['material']}")
+    task = phone.task(home, "receive", rec["task_id"])
+    _expect(task is not None, "the home receipt is not in the task list")
+    assert task is not None
+    line = next(ln for ln in task["lines"] if ln["id"] == item["line_id"])
+    _expect(code in line.get("barcodes", []), f"task line barcodes {line.get('barcodes')}")
+    _accepted(phone.confirm(task["id"], line["id"], "product", code), "product scan by barcode")
+    r = phone.count(line, 3)
+    _accepted(r, "count", 201)
+    out = _accepted(phone.finish(task["id"], [(line["id"], phone.counted(r, 3))]), "post (touch)", 202)
+    _expect(out["status"] == "queued", f"home receipt post {out}")
+    ev = phone.wait_event(("erp.posted",), task["id"], wait)
+    _expect(ev["kind"] == "erp.posted", f"home receipt: {ev}")
+    doc = erp_document(ev["doc_number"], ev["doc_year"])
+    moves = erp_movements(ev["doc_number"], ev["doc_year"])
+    _expect(moves == [(item["material"], "101", 3.0)], f"erp-sim GR {ev['doc_number']} has {moves}")
+    _expect(doc.get("YY1_FieldSandbox") is True, f"GR {ev['doc_number']} is not marked sandbox")
+    print(f"         counted 3 (delivery said 1, soft pegging) -> GR {ev['doc_number']}/{ev['doc_year']}, {moves},"
+          " sandbox")
+
+    wh = state["site"]
+    seen = code_of(wh_phone, code, wh)
+    _expect((seen["kind"], seen["site_mode"]) == ("unknown", "production"), f"production lookup {seen}")
+    title = _refused(post(wh_phone, "/v1/sandbox/receipts", {"site_id": wh}), "sandbox receipt on production",
+                     "FIELD-SBX-403-PRODUCTION")
+    deliv = create_inbound_delivery(1)
+    ptask = _wait_task(wh_phone, wh, "receive", lambda t: t.get("ref_doc_no") == deliv, wait)
+    pline = ptask["lines"][0]
+    _refused(wh_phone.confirm(ptask["id"], pline["id"], "product", code), "barcode on a production line",
+             "FIELD-TASK-409-WRONG-CODE")
+    _refused(post(wh_phone, f"/v1/sandbox/tasks/{ptask['id']}/items", {"code": code, "description": "box"}),
+             "sandbox item on a production receipt", "FIELD-SBX-403-PRODUCTION")
+    print(f"         production warehouse: {code} unknown, scan refused on delivery {deliv}, sandbox refused ({title!r})")
+
+    count = _accepted(post(phone, "/v1/sandbox/counts", {"site_id": home, "bin": "HOME-B"}), "sandbox count", 201)
+    code2 = new_barcode()
+    it2 = _accepted(post(phone, f"/v1/sandbox/tasks/{count['task_id']}/items",
+                         {"code": code2, "description": "Smoke count box", "qty": 4}), "add count item", 201)
+    ctask = phone.task(home, "count", count["task_id"])
+    _expect(ctask is not None and all("expected_qty" not in ln for ln in ctask["lines"]), "count is not blind")
+    assert ctask is not None
+    out = _accepted(phone.finish(ctask["id"], [(it2["line_id"], 4.0)]), "count post", 202)
+    _expect(out["status"] == "queued", f"home count post {out}")
+    ev = phone.wait_event(("erp.posted",), ctask["id"], wait)
+    _expect(ev["kind"] == "erp.posted", f"home count: {ev}")
+    moves = erp_movements(ev["doc_number"], ev["doc_year"])
+    _expect(moves == [(it2["material"], "561", 4.0)], f"erp-sim initial entry {ev['doc_number']} has {moves}")
+    _expect(erp_document(ev["doc_number"], ev["doc_year"]).get("YY1_FieldSandbox") is True, "561 is not sandbox")
+    _expect(erp_stock(it2["material"], HOME_PLANT, HOME_SLOC) == 4.0, "erp-sim stock after 561")
+    _wait_status(phone, home, "count", ctask["id"], "done", wait)
+    print(f"         count {count['ref_doc_no']} of HOME-B: new box {code2} -> {it2['material']}, 4 counted ->"
+          f" 561 {ev['doc_number']} {moves}, sandbox")
+
+
 def cmd_smoke(a: argparse.Namespace) -> int:
-    """Receive one inbound delivery by voice as the app does; with --all, every job type end to end."""
+    """Receive one inbound delivery by voice as the app does; with --all, every job type end to end;
+    with --home, the sandbox site (M3)."""
     load_env()
     apply_ports()
     state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
     api = a.api or local("field-api")
+    if getattr(a, "home", False):
+        state = ensure_home(state)
+        phone = Phone(api, _core_token("smoke-home", state["tenant"], state["home_site"], 1800)).pair(
+            f"smoke-{uuid.uuid4().hex[:8]}")
+        wh_phone = Phone(api, _core_token("smoke-op", state["tenant"], state["site"], 1800)).pair(
+            f"smoke-{uuid.uuid4().hex[:8]}")
+        print(f"paired: device {phone.device_id} (home), {wh_phone.device_id} (warehouse)")
+        try:
+            smoke_home(phone, wh_phone, state, a.wait)
+        except SmokeFailure as e:
+            print(f"FAIL: {e}")
+            return 1
+        print("PASS: home sandbox (receipt with a new barcode -> GR 101, production refusal, count -> 561)")
+        return 0
     site = state["site"]
     phone = Phone(api, _core_token("smoke-op", state["tenant"], site, 1800)).pair(f"smoke-{uuid.uuid4().hex[:8]}")
     print(f"paired: device {phone.device_id}")
@@ -1479,7 +1769,7 @@ def cmd_labels(a: argparse.Namespace) -> int:
         return 1
     api = a.api or local("field-api")
     tasks: list[dict[str, Any]] = []
-    for site in [s for s in (state.get("site"), state.get("tower_site")) if s and site_exists(s)]:
+    for site in [s for s in (state.get("site"), state.get("tower_site"), state.get("home_site")) if s and site_exists(s)]:
         phone = Phone(api, _core_token("labels", state["tenant"], site, 600)).pair(
             f"labels-{uuid.uuid4().hex[:8]}"
         )
@@ -1509,6 +1799,7 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--no-ascii", action="store_true")
     pr.add_argument("--no-open", action="store_true", help="do not open the QR image (Windows)")
     pr.add_argument("--tower", action="store_true", help="pair to the SAMPLE tower site (audit and swap jobs)")
+    pr.add_argument("--home", action="store_true", help="pair to the home sandbox site (M3)")
     dl = sub.add_parser("delivery")
     dl.add_argument("--lines", type=int, default=3)
     ob = sub.add_parser("outbound", help="outbound delivery in erp-sim -> a pick task")
@@ -1525,10 +1816,15 @@ def main(argv: list[str] | None = None) -> int:
     sm.add_argument("--api")
     sm.add_argument("--wait", type=float, default=90)
     sm.add_argument("--all", action="store_true", help="every job type: receive, putaway, pick, count, audit, swap")
+    sm.add_argument("--home", action="store_true", help="the home sandbox site: new barcode -> GR 101, count -> 561")
+    hm = sub.add_parser("home", help="sandbox site 'Home (sandbox)': bins HOME-A/B, an empty receipt, a HOME-A count")
+    hm.add_argument("--simulate-differences", action="store_true",
+                    help="opt-in: give two SAMPLE materials a simulated book stock in HOME-A (documents marked simulated)")
+    sub.add_parser("assistant-check", help="one real Field Assistant model call through the budget guard (track A)")
     a = ap.parse_args(argv)
     return {"up": cmd_up, "down": cmd_down, "status": cmd_status, "pair": cmd_pair, "smoke": cmd_smoke,
             "delivery": cmd_delivery, "outbound": cmd_outbound, "count": cmd_count, "tower": cmd_tower,
-            "labels": cmd_labels}[a.cmd](a)
+            "labels": cmd_labels, "home": cmd_home, "assistant-check": cmd_assistant_check}[a.cmd](a)
 
 
 if __name__ == "__main__":
