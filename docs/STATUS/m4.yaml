@@ -1141,3 +1141,33 @@
     or the glasses; the brief is the core's template (no Muse key here); plan beats 3 and 5 (planning, PMO) and the
     live-to-file switch of beat 7 are not driven; shellcheck and PSScriptAnalyzer not available here, the .ps1 and
     .cmd were not run.
+- id: M4-F02
+  title: >-
+    Submission drafts (core Q15, plan items M18, M19): docs/submission/WRITEUP.md, RUN_SCRIPT_3MIN.md and SHOT_LIST.md,
+    with the exact dates from git per the owner's rule T1
+  workstream: M4-F6
+  role: Integration (K5, owner amendment A-05)
+  status: partial
+  evidence:
+  - docs/submission/WRITEUP.md
+  - docs/submission/RUN_SCRIPT_3MIN.md
+  - docs/submission/SHOT_LIST.md
+  - tests/test_m4_f02_submission_docs.py
+  tests:
+  - tests/test_m4_f02_submission_docs.py::test_m4_f02_every_relative_link_resolves
+  - tests/test_m4_f02_submission_docs.py::test_m4_f02_nothing_in_the_drafts_looks_like_a_credential
+  - tests/test_m4_f02_submission_docs.py::test_m4_f02_the_ledger_counts_in_the_write_up_are_the_ledgers
+  - tests/test_m4_f02_submission_docs.py::test_m4_f02_not_proven_on_the_glasses_holds_while_the_register_says_so
+  frs: []
+  verified_at: null
+  note: >-
+    Drafts for the owner's review (M18, M19), not submitted. Dates from git (author dates, IST; bounded fetches, depth
+    2000, of origin main and build slice/m4-core-integration for Field and of origin the core's integration branch for the core):
+    Field's first commit 4fcc41a on 27 Oct 2026 03:46 IST, 6 h 16 min after the start (26 Oct 12:00 PM ET); the core's
+    first commit 1ab111f on 21 Oct 2026 06:57 IST, 219 commits up to 96ee9f0 (26 Oct 12:38 IST), then 27 P14 commits on
+    30 Oct and the core's integration branch from 31 Oct 07:28 IST. T1's wording ("built 22–26 Oct") is quoted, and the write-up
+    asks the owner to confirm two differences: the first core commit is on 21 Oct, and the core's P14 package was
+    committed on 30 Oct, inside the window. Section 5 (proven / not proven) is taken from the ledgers, META_FIELD and
+    the run logs only: nothing on the glasses, the owner's phone, his kit or a host; the tests pin the ledger counts
+    it quotes and fail when a glasses row of the register changes. Partial: the owner's review, the organisers' answer
+    to T1's question, the links (hosted URL, video, judge accounts) and the video itself (M20) are open.
