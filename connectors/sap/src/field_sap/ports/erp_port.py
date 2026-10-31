@@ -8,6 +8,7 @@ NOT_FOUND, CONFLICT and retryable flag.
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
 
@@ -110,6 +111,51 @@ class SandboxDeliveryItem:
 
 
 SANDBOX_NOT_SAP = "FIELD_SANDBOX_NOT_SAP"
+
+
+@dataclass(frozen=True)
+class MaterialDocumentItem:
+    """One item of a posted material document (S/4 A_MaterialDocumentItem)."""
+
+    item: str
+    material: str
+    plant: str
+    storage_location: str
+    quantity: Decimal
+    unit: str
+    movement_type: str
+    purchase_order: str = ""  # A_MaterialDocumentItem.PurchaseOrder; empty when the movement has no PO
+    purchase_order_item: str = ""
+
+
+@dataclass(frozen=True)
+class MaterialDocument:
+    """A posted material document read back from the ERP (S/4 A_MaterialDocumentHeader + items)."""
+
+    document_number: str
+    fiscal_year: str
+    posting_date: str  # YYYY-MM-DD
+    items: tuple[MaterialDocumentItem, ...]
+    sandbox: bool = False  # YY1_FieldSandbox (M3): a sandbox site's document
+    simulated: bool = False
+
+
+@runtime_checkable
+class ErpReadPort(Protocol):
+    """ERP reads the field needs after a posting (M4 F4: the goods-receipt feed rows).
+
+    Separate from ErpPort so the posting test doubles stay unchanged. The simulator adapter implements it
+    against erp-sim; the S/4 adapter raises NotImplementedError (UNVERIFIED, like its postings):
+    S/4 would read API_MATERIAL_DOCUMENT_SRV and API_MATERIAL_STOCK_SRV (A_MatlStkInAcctMod).
+    """
+
+    async def read_material_document(self, document_number: str, fiscal_year: str) -> MaterialDocument:
+        """The posted document with its items (material, plant, storage location, quantity, PO reference)."""
+        ...
+
+    async def read_stock(self, material: str, plant: str, storage_location: str | None = None) -> Decimal:
+        """Unrestricted on-hand of a material: the plant total, or one storage location's when given."""
+        ...
 
 
 @runtime_checkable

@@ -9,6 +9,7 @@ ErpError(BUSINESS, FIELD_SANDBOX_NOT_SAP): a sandbox site never creates material
 """
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 import structlog
 
@@ -18,6 +19,7 @@ from field_sap.ports.erp_port import (
     ErpErrorKind,
     ErpPostingRequest,
     ErpResult,
+    MaterialDocument,
     MaterialPage,
     SandboxDelivery,
     SandboxDeliveryItem,
@@ -92,6 +94,13 @@ class S4ODataAdapter:
 
     async def post_initial_stock_entry(self, req: ErpPostingRequest) -> ErpResult:
         raise NotImplementedError("S4 adapter: post_initial_stock_entry not implemented in F0")
+
+    # --- ErpReadPort (M4 F4): UNVERIFIED, no S/4 system reachable --------------------------------------
+    async def read_material_document(self, document_number: str, fiscal_year: str) -> MaterialDocument:
+        raise NotImplementedError("S4 adapter: read_material_document not implemented in F0")
+
+    async def read_stock(self, material: str, plant: str, storage_location: str | None = None) -> Decimal:
+        raise NotImplementedError("S4 adapter: read_stock not implemented in F0")
 
     # --- ErpSandboxPort: refused, these are not SAP capabilities (M3 contract section 3) --------------
     @staticmethod

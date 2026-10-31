@@ -70,3 +70,30 @@
     exchange when the core device status answers active (the app then uses the device_id the exchange returns and
     does not POST /v1/devices for it). Roles must still be field roles (unknown roles stay refused). Partial until
     proven against the real core and on the owner's phone (A-04).
+- id: M4-C03
+  title: ErpReadPort (posted material document with PO reference, ERP on-hand) in the connector; erp-sim PO references
+    on ASN items and API_MATERIAL_STOCK_SRV
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - connectors/sap/src/field_sap/ports/erp_port.py
+  - connectors/sap/src/field_sap/sim/adapter.py
+  - connectors/sap/src/field_sap/s4/adapter.py
+  - services/erp-sim/alembic/versions/erpsim_0004_m4_po_refs.py
+  - services/erp-sim/src/erp_sim/services/stock_api.py
+  - services/erp-sim/src/erp_sim/services/inbound.py
+  - services/erp-sim/src/erp_sim/services/matdoc.py
+  - packages/field-contract/erp-sim.openapi.json
+  tests:
+  - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c03_gr_document_carries_the_po_line_and_stock_is_the_erps
+  - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c03_unknown_document_and_bad_filter_are_errors
+  - connectors/sap/tests/contract/test_read_port_contract.py::test_m4_c03_s4_adapter_conforms_and_refuses_reads
+  frs: []
+  verified_at: null
+  note: The F4 feed rows are read from the ERP through the port, not computed. ErpReadPort is a separate protocol so the
+    ErpPort test doubles stay as they are. erp-sim (migration erpsim_0004) keeps the PO line of an ASN item
+    (ReferenceSDDocument/Item in S/4) and carries it into the GR item, read as A_MaterialDocumentItem.PurchaseOrder /
+    PurchaseOrderItem; on-hand is A_MatlStkInAcctMod (unrestricted, InventoryStockType 01; erp-sim has one quantity per
+    material, plant and storage location). The S/4 adapter raises NotImplementedError for both reads (UNVERIFIED, no
+    S/4 system), like its postings.
