@@ -49,7 +49,7 @@ fun MeScreen(ui: AppUi, a: Actions) {
             SettingRow("Connected to", "${ui.pairing?.siteName ?: "—"} · ${ui.person.name}", "Change", a.unpair)
             SettingRow("Scanning with", ui.scanner.label, "Change", a.cycleScanner)
             SettingRow("Smart glasses", "Ray-Ban Meta Gen 2 · ${ui.glassesAdvice.text}", ui.glassesAdvice.button, a.glassesSetUp)
-            SettingRow("Glasses microphone", if (ui.glassesSpeech) "On · the glasses listen when connected" else "Off · use Hold to talk on the phone",
+            SettingRow("Glasses microphone", if (ui.glassesSpeech) "On · the glasses listen during a work session" else "Off · a work session uses the phone's recogniser",
                 if (ui.glassesSpeech) "Turn off" else "Turn on", a.toggleGlassesMic)
             SettingRow("Language", "English · Hindi is coming", "Change", a.languageInfo)
             SettingRow("Audio-only mode", if (ui.audioOnly) "On · prompts are spoken, never shown" else "Off",

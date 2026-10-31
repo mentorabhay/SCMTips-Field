@@ -1,5 +1,100 @@
 # M3 glasses-first slice ledger (owner amendment A-03; docs/design/M3_CONTRACT.md). Every entry is at most
 # partial until proven on the owner's phone and glasses. Track P (phone + console) entries: M3-P01...
+- id: M3-P01
+  title: Work session — foreground service, continuous listening through the glasses, pause/resume with the DAT session
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/WorkSession.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/WorkSessionService.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/device/DeviceIo.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/glasses/DatGlasses.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/AndroidManifest.xml
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::listensOnlyInAnActiveUnpausedSessionAndNotWhileThePhoneSpeaks
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::glassesPauseAndResumeTheSession
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::aPhoneOnlySessionIsNotPausedByGlassesItNeverHad
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::theOperatorsPauseIsLiftedOnlyByTheOperator
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::glassesConnectingOutsideASessionOfferIt
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::wordsAndListenModeAreKeptOnlyDuringASession
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::glassesSpeechIsUsedOnlyWhenOnAndAcceptedByTheToolkit
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::recogniserRestartsAtOnceAfterSilenceAndBacksOffOnErrors
+  frs: []
+  verified_at: null
+  note: 'Start work on Today (microphone permission first) or the glasses connecting while the app is on screen
+    (once per connection) start WorkSessionService (foregroundServiceType microphone|connectedDevice, FOREGROUND_SERVICE_*
+    permissions declared; the microphone type only from Android 11). The microphone is the glasses'' own DAT speech
+    when Me → Glasses microphone is on and the toolkit accepts it (started only in a session), else Android''s
+    SpeechRecognizer restarted after every result/error with backoff, routed to the glasses as Bluetooth SCO via
+    AudioManager.setCommunicationDevice (Android 12+; else the phone microphone); prompts then play as
+    voice-communication audio. Listening is held while the phone speaks and while paused; DAT PAUSED pauses, STARTED
+    resumes, a stop after the glasses took part pauses as disconnected. Outside a session nothing listens except the
+    on-screen Hold to talk (A-03); glasses transcripts outside a session are dropped. The pure rules are JVM-tested;
+    the service, recogniser loop, SCO routing and DAT calls are type-checked only (compile_check --all) and lint has
+    not run here (no Android SDK licence). Nothing has run on the owner''s phone or glasses: whether Android''s
+    recogniser really hears through SCO on his phone, and how often it beeps on restart, is unknown.'
+- id: M3-P02
+  title: Utterance routing — grammar first in a job, Field Assistant second, actions through the job runner, no confirm action
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/Conductor.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/assistant/Assistant.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::insideAJobTheGrammarComesFirstAndTheAssistantIsNotAsked
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::wordsTheGrammarDoesNotParseGoToTheAssistantWithTheJobState
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::outsideAJobEverythingGoesToTheAssistantEvenFixedWords
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::anAssistantCommandRunsTheSameRunnerCommandAsTheGrammarWithTheOperatorsWords
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::theAssistantCanStagePostButConfirmingStaysTheOperatorsOwnYes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::aPostGuessedFromUnclearWordsIsNotStaged
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::commandsRunOnlyInAnswerToTheOperatorsWords
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::afterAQuestionTheNextWordsGoToTheAssistantEvenIfTheGrammarKnowsThem
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::yesOrNoWithNoPostWaitingAnswersTheAssistant
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::inAJobTheFixedPhrasesKeepWorkingWithOneSpokenHint
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::outsideAJobTheLocalIntentsStartWorkAndListIt
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::theGreetingIsTheSessionStartTurnWithALocalOneWhenOffline
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::pauseResumeStepDoneAndEndAreTurns
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/AssistantWireTest.kt::requestBodyHasEveryContractFieldWithNullsForTheMissingOnes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/AssistantWireTest.kt::replyParsesSayCardEveryActionTypeAiAndCost
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/AssistantWireTest.kt::confirmAndUnknownActionsAreDroppedNeverParsed
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/AssistantWireTest.kt::clientKeepsTheSessionIdStartsFreshAndForgetsItAtTheEnd
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/AssistantWireTest.kt::httpProblemsOfflineAndBadBodiesAreFailuresNotCrashes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::spokenCommandsFromTheAssistantRunLikeTheGrammarButNeverConfirm
+  frs:
+  - FR2.032
+  verified_at: null
+  note: 'Coded against contract §4 (POST /v1/assistant/turns, all nine events, actions open_task / command / refresh_task
+    / listen); the endpoint does not exist on this branch (track A), so every test uses a scripted assistant in test
+    code. The confirm rule holds three times: the parser has no confirm command, the conductor refuses any other
+    command name, and JobRunner refuses Spoken(Yes); commands run only in reply to the operator''s own words, and a
+    "post" from words below the 0.80 floor is not staged. Phone-side choices beyond the contract: words below 0.40
+    confidence are dropped as noise; "stop work" is always local; yes/no with no post waiting and everything after a
+    listen=free reply go to the assistant; assistant failure falls back to the grammar plus one spoken hint, and
+    outside a job to local "start <job type>" / "what''s next". Not run against track A''s server or the real model.'
+- id: M3-P03
+  title: Scan by looking — glasses video frames decoded on the phone, two-frame rule, no repeat within 3 s
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/scan/FrameScan.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/glasses/DatGlasses.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/device/DeviceIo.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/scan/FrameScanFilterTest.kt::aCodeInOneFrameIsNotAScanTwoConsecutiveFramesAre
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/scan/FrameScanFilterTest.kt::aFrameWithoutTheCodeBreaksTheRun
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/scan/FrameScanFilterTest.kt::theSameCodeIsNotReportedAgainWithinThreeSeconds
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/scan/FrameScanFilterTest.kt::codesAreComparedTrimmedAndCaseInsensitiveAndEachIsTrackedOnItsOwn
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/scan/FrameScanFilterTest.kt::resetNeedsTwoFreshFramesAndForgetsReports
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/scan/FrameScanFilterTest.kt::i420BecomesNv21WithVuInterleaved
+  frs: []
+  verified_at: null
+  note: 'The DAT camera stream (HIGH 720x1280, 2 fps, uncompressed) is open only during a work session or while a job
+    scans with the glasses; capturePhoto opens it on demand (waits up to 8 s for STREAMING) and closes it again.
+    Frames go to the phone only while the session is active and not paused, one decode at a time (busy frames are
+    dropped), I420 -> NV21 -> ML Kit; inside a job only scan steps take them (bestOf picks the code the step can use),
+    outside a job a scan is a `scan` turn. UNVERIFIED on the device: that DAT 1.0.1 decoded frames are tightly packed
+    I420 (a padded buffer is skipped, so a wrong guess means no scans, never wrong ones), that closing and re-adding
+    the camera capability works, decode time and battery. The capture button and "what is this" still take a full photo.'
 - id: M3-P04
   title: Barcodes on task lines and the sandbox unknown-code path
   status: partial
@@ -7,6 +102,7 @@
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobModel.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/assistant/SiteModes.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/Conductor.kt
   tests:
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::taskParserReadsLineBarcodes
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/BarcodeSandboxTest.kt::receiveAndCountMatchABarcodeLikeTheMaterialNumber
@@ -18,6 +114,9 @@
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/SiteModesTest.kt::parsesTheSiteListAndTheCodeLookup
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/SiteModesTest.kt::sandboxIsAskedOnceThenRemembered
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/assistant/SiteModesTest.kt::productionOrNoAnswerRefusesNewItems
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::anUnknownCodeGoesToTheAssistantWithAGlassesPhoto
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::theSameUnknownCodeIsAskedAboutOnceAMinute
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::openTaskAndRefreshTaskGoToTheDeskAndTheRunnersWordsQueueAfterTheAssistants
   frs: []
   verified_at: null
   note: 'TaskParser reads line `barcodes` (contract §2; absent = empty, so an older field-api still works); receive,
@@ -28,3 +127,26 @@
     1 MB, base64), once per code per minute; otherwise (production, unknown mode, no session) it is refused as before.
     refresh_task re-reads GET /v1/tasks and merges the task into the open job without losing progress, then handles
     focus_code as a scan. Track S''s endpoints and line fields do not exist on this branch; tested with doubles only.'
+- id: M3-P05
+  title: Audio first — Today's main action is Start work, session state shown, the job screen mirrors the spoken step
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/SessionViews.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/TodayScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/AppRoot.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/build.gradle.kts
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::whileHoldingTheRunnersWordsQueueBehindTheAssistantsInsteadOfCuttingThemOff
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::captureTakesAPhotoWithoutAskingTheAssistant
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::noiseIsIgnoredAndStopWorkIsAlwaysLocal
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::whatIsThisTakesAFullPhotoForTheAssistantAndFallsBackToTheLine
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::aScanOutsideAJobIsAScanTurnOrALocalLookup
+  frs: []
+  verified_at: null
+  note: 'Today starts with one big Start work card; during a session it shows Listening / Paused (why) / Speaking, Glasses
+    camera on, Assistant offline, the last words heard and said and the assistant''s card, with Pause/Resume and Stop
+    work; the notification has Stop work too. The job screen stays the mirror, with a session strip above it. The
+    assistant''s words are spoken first and the runner''s prompts are queued after them (TTS QUEUE_ADD) instead of
+    cutting them off. Job cards on Today remain the phone fallback. App version 0.4.0-m3 (versionCode 5). Compose
+    files are type-checked only; no screenshot, emulator run or device run here.'

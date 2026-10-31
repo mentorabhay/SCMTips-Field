@@ -2,6 +2,7 @@ package com.scmtips.field.app
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -9,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
@@ -43,6 +45,12 @@ class MainActivity : ComponentActivity() {
             granted[Manifest.permission.BLUETOOTH_CONNECT] == true -> controller.glasses.startMonitoring()
             else -> controller.toast("Bluetooth permission is needed for the glasses")
         }
+    }
+
+    /** Start work needs the microphone (and Bluetooth for the glasses link) before the foreground service starts. */
+    private val workPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        if (granted[Manifest.permission.RECORD_AUDIO] == true || hasPermission(Manifest.permission.RECORD_AUDIO)) controller.startWork()
+        else controller.toast("The microphone is needed for a work session. Allow it in Settings → Apps → SCMTips Field.")
     }
 
     private val locationPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
@@ -96,11 +104,33 @@ class MainActivity : ComponentActivity() {
             startPractice = controller::startPractice,
             sendFeedback = ::sendFeedback,
             dismissToast = { controller.toast(null) },
+            startWork = ::startWork,
+            stopWork = controller::stopWork,
+            pauseWork = controller::pauseWork,
+            resumeWork = controller::resumeWork,
         )
         setContent {
             val ui by controller.ui.collectAsState()
             SCMTipsFieldTheme { AppRoot(ui, actions) }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (app.crashLog.read() == null) controller.inForeground = true
+    }
+
+    override fun onPause() {
+        controller.inForeground = false
+        super.onPause()
+    }
+
+    private fun hasPermission(p: String): Boolean = ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
+
+    private fun startWork() {
+        val missing = listOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.POST_NOTIFICATIONS)
+            .filterNot(::hasPermission)
+        if (missing.isEmpty()) controller.startWork() else workPermissions.launch(missing.toTypedArray())
     }
 
     override fun onNewIntent(intent: Intent) {
