@@ -1061,3 +1061,21 @@
     run of the real core (K1, K2, Linux container; step-up waived by LR_ENV=local; Python smokes, not the Android app);
     not run on the owner's PC kit, his phone or the glasses; file uploads not run by Field. The rest of F6 (licence,
     README, example client, secret scan over the history, no-core-code check, public CI) is not in this row.
+- id: M4-F05
+  title: >-
+    F5 HUD decision player (A-04): the decision card on a display (Meta Ray-Ban Display, and a HUD simulator for
+    Ray-Ban Meta Gen 2, which has no display)
+  workstream: M4-F5
+  role: Not started (planned after the hackathon integration items)
+  status: missing
+  evidence:
+  - docs/integration/aro-wearable-README.md
+  tests: []
+  frs: []
+  verified_at: null
+  note: >-
+    Not built. Starting point, so nothing is rebuilt from scratch: the core's old app's Ray-Ban Display card
+    renderer, CardRenderer.kt with its CardRendererRobolectricTest, kept on the core repo's branch
+    archive/pre-q12-removal (cc5ffe3) under apps/wearable-android/app/src/main/java/com/scmtips/wearable/glasses/
+    and src/test; it needs mwdat-display, which is not a Field dependency yet (rule 2.4: its coordinates must come
+    from a real build). Field already formats the card text (feature-decisions CardFormatter, ported).
