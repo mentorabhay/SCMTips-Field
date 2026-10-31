@@ -93,3 +93,43 @@
     were not added - no price, and the provider's request shapes were not checked (no key or route from the build
     sandbox, no call attempted); recorded as
     META_FIELD rows 22-23 (UNVERIFIED, not built). Partial until a real call (A-04, rule 2.4).
+- id: M4-M03
+  title: >-
+    F3 brief router POST /v1/briefs/spoken {decision_id, template_text} -> {text, source, reasons}: Muse rewrite
+    (4 s deadline), local number check, then the core's check with the forwarded core token; template on any failure
+  workstream: M4-F3
+  role: Stream M
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/briefs/api.py
+  - services/field-api/src/field_api/briefs/service.py
+  - services/field-api/src/field_api/briefs/numbers.py
+  - services/field-api/src/field_api/briefs/core.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_rewrite_accepted_by_the_core_is_spoken
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_core_refusal_speaks_the_cores_template
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_local_number_check_runs_before_the_core
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_core_errors_speak_the_template
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_model_off_or_over_budget_speaks_the_template_without_calls
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_model_failures_speak_the_template
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_model_gets_the_four_second_deadline
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_missing_headers_speak_the_template_without_any_call
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_core_token_is_never_stored_or_logged
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_permission_validation_and_idempotency
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_a_rewrite_with_a_new_number_is_always_refused
+  frs: []
+  verified_at: null
+  note: >-
+    Permission field.assistant.use (operator, technician, supervisor; field_api/auth is stream C's, so no new
+    permission was added); route_auth passes; POST needs Idempotency-Key like every write. Headers X-Core-Token and
+    X-Device-Id; a missing one answers the template with missing:x_core_token / missing:x_device_id and makes no call.
+    One Muse call through the router and the budget guard (purpose brief, deadline 4 s); off, no key, over budget,
+    refused or image model, HTTP error, timeout, cut-off or empty answer, or more than 150 words -> template with
+    model:* / local:too_long. The local check reads numbers in digits and in words: every number said must be in the
+    template and none of the template's may be dropped (local:number_not_in_template:N, local:number_dropped:N); a
+    local refusal never calls the core. The core check gets Authorization Bearer <X-Core-Token> and X-Device-Id;
+    refused -> its reasons (core:*) and its template_text when given; HTTP error, timeout, transport, bad JSON ->
+    core:http_N / core:timeout / core:transport / core:bad_response. The token is never stored, logged or sent to the
+    model (test greps stdout/stderr, ops.ai_usage and field.idempotency_record). UNVERIFIED against the real core and
+    the real Muse prompt (META_FIELD rows 20, 21); partial until proven with the owner's glasses and the real core.
