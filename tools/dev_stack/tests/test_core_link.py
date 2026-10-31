@@ -10,6 +10,7 @@ import os
 import shutil
 import uuid
 from pathlib import Path
+from typing import Any
 
 import psycopg
 import pytest
@@ -98,15 +99,29 @@ def test_m4_c05_seed_core_export_missing_folder_is_a_clear_failure(tmp_path: Pat
     assert "does not exist" in out and "samples" in out and "exports" in out
 
 
+# SAP client 920, never the dev stack's 100: the exchange contract's example uses the drone world's real codes
+# (RM-307 at PLANT-GOA, PO 4500001234), and loading it or posting a GR in client 100 would change the world that
+# `stack seed-core-export` seeds from the core's export (M4-C14 uses 910 for the same reason). Its own number range,
+# so its material documents never take numbers from client 100.
+C05_CLIENT = "920"
+
+
+def _c05_client(cur: psycopg.Cursor[Any]) -> None:
+    cur.execute("INSERT INTO erpsim.number_range (client, object, current, lower, upper)"
+                " VALUES (%s, 'MATERIAL_DOCUMENT', 4920000000, 4920000000, 4929999999) ON CONFLICT DO NOTHING",
+                (C05_CLIENT,))
+
+
 def test_m4_c05_export_json_envelope_and_csv_load_into_erpsim(tmp_path: Path) -> None:
     folder = tmp_path / "erp-sim"
     folder.mkdir()
     shutil.copy(EXAMPLE, folder / "erp_extract.json")  # the exchange contract's own example (RM-307 @ PLANT-GOA)
     tag = uuid.uuid4().hex[:5].upper()
+    open_po = f"45{uuid.uuid4().int % 10**8:08d}"
     (folder / "items.csv").write_text(f"item_code,description,uom\nRM-{tag},Magnet set {tag},EA\n", encoding="utf-8")
     (folder / "purchase_orders.csv").write_text(
         "kind,ref,item_code,location_code,qty,due_date,status\n"
-        f"PO,45{uuid.uuid4().int % 10**8:08d}-10,RM-{tag},PLANT-GOA,12,2026-11-12,open\n"
+        f"PO,{open_po}-10,RM-{tag},PLANT-GOA,12,2026-11-12,open\n"
         f"PO,4599999999-20,RM-{tag},PLANT-GOA,5,2026-11-12,received\n", encoding="utf-8")
     (folder / "notes.json").write_text(json.dumps({"bom": [{"parent_code": "SA-1"}]}), encoding="utf-8")
     ex = parse_export(folder)
@@ -115,20 +130,22 @@ def test_m4_c05_export_json_envelope_and_csv_load_into_erpsim(tmp_path: Path) ->
     assert len(ex.po_lines) == 2  # RM-307 line from the envelope + the open CSV line; the received one is skipped
     assert any("bom" in n for n in ex.notes)
     with psycopg.connect(ERPSIM) as c, c.cursor() as cur:
-        cur.execute("DELETE FROM erpsim.inbound_delivery WHERE header_data->>'PurchaseOrder' = '4500001234'")
-        counts = load_into_erpsim(cur, ex)
+        _c05_client(cur)
+        cur.execute("DELETE FROM erpsim.inbound_delivery WHERE client = %s"
+                    " AND header_data->>'PurchaseOrder' = '4500001234'", (C05_CLIENT,))
+        counts = load_into_erpsim(cur, ex, client=C05_CLIENT)
         c.commit()
     assert counts["asns_created"] == 2 and counts["materials"] >= 2
     with psycopg.connect(ERPSIM) as c, c.cursor() as cur:
-        counts_again = load_into_erpsim(cur, ex)  # re-running makes no second ASN per PO
+        counts_again = load_into_erpsim(cur, ex, client=C05_CLIENT)  # re-running makes no second ASN per PO
         c.commit()
         assert counts_again["asns_created"] == 0
         cur.execute("SELECT d.delivery_document, i.material_no, i.delivery_qty, i.purchase_order, i.purchase_order_item"
                     " FROM erpsim.inbound_delivery d JOIN erpsim.inbound_delivery_item i USING (client, delivery_document)"
-                    " WHERE d.header_data->>'PurchaseOrder' = '4500001234'")
+                    " WHERE d.client = %s AND d.header_data->>'PurchaseOrder' = '4500001234'", (C05_CLIENT,))
         [(deliv, mat, qty, po, po_item)] = cur.fetchall()
-        cur.execute("SELECT quantity FROM erpsim.stock WHERE plant = 'PLANT-GOA' AND material_no = 'RM-307'"
-                    " AND storage_location = '0001'")
+        cur.execute("SELECT quantity FROM erpsim.stock WHERE client = %s AND plant = 'PLANT-GOA'"
+                    " AND material_no = 'RM-307' AND storage_location = '0001'", (C05_CLIENT,))
         stock_row = cur.fetchone()
         assert stock_row is not None and float(stock_row[0]) == 420
     assert (mat, float(qty), po, po_item) == ("RM-307", 1200.0, "4500001234", "10")
@@ -137,13 +154,20 @@ def test_m4_c05_export_json_envelope_and_csv_load_into_erpsim(tmp_path: Path) ->
     from field_sap.ports.erp_port import ErpPostingRequest
     from field_sap.sim.adapter import SimAdapter
 
-    sim = SimAdapter(app=erpsim_app)
+    sim = SimAdapter(app=erpsim_app, sap_client=C05_CLIENT)
     res = asyncio.run(sim.post_inbound_goods_receipt(ErpPostingRequest(
         idempotency_key=f"ce_{uuid.uuid4().hex[:12]}", doc_family="GoodsReceipt", site_id="CORE", plant="PLANT-GOA",
         posting_date="2026-11-03", header_data={"DeliveryDocument": deliv}, items=())))
     [item] = asyncio.run(sim.read_material_document(res.document_number, res.fiscal_year)).items
     assert (item.purchase_order, item.purchase_order_item, item.plant) == ("4500001234", "10", "PLANT-GOA")
-    assert asyncio.run(sim.read_stock("RM-307", "PLANT-GOA")) >= 1620
+    assert asyncio.run(sim.read_stock("RM-307", "PLANT-GOA")) == 1620  # its own client: exactly 420 + 1200
+    # and nothing of it reached client 100, where the stack's drone world lives
+    with psycopg.connect(ERPSIM) as c, c.cursor() as cur:
+        cur.execute("SELECT count(*) FROM erpsim.purchase_order WHERE client = '100' AND purchase_order = %s",
+                    (open_po,))
+        assert cur.fetchone() == (0,)
+        cur.execute("SELECT count(*) FROM erpsim.material WHERE client = '100' AND material_no = %s", (f"RM-{tag}",))
+        assert cur.fetchone() == (0,)
 
 
 # --- M4 Q9: the core's real export (samples/exports/erp-sim and field-site-pack, core commit 374702a), trimmed ------

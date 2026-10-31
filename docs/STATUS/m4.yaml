@@ -198,7 +198,12 @@
     codes (plants, one storage location per plant FIELD_CORE_EXPORT_SLOC=0001, materials with barcode = code,
     absolute on-hand, one ASN per open PO with items referencing the PO lines). Re-runs are safe. Missing folder ->
     exit 1 with where the core writes it. A field site per core plant is not created by it (next step printed).
-    Partial until run on the core's real export.
+    Partial until run on the core's real export. K3 (1 Nov 2026): test_m4_c05_export_json_envelope_and_csv_load_into_erpsim
+    loads the contract's example (RM-307 at PLANT-GOA, PO 4500001234) and its random 45xxxxxxxx PO into SAP client 920 with
+    its own MATERIAL_DOCUMENT number range, no longer into client 100, where the stack's drone world from the core's
+    export lives; its delivery and stock queries are filtered by that client (the unfiltered stock query had read the
+    M4-C14 fixture's client-910 row on a shared database). Same assertions, plus the receipt's on-hand is exactly 420 +
+    1200 and nothing of the test (its PO, its material) reaches client 100.
 - id: M4-C06
   title: 'Dev stack: stand-in core target, generated feed secrets, demo sign-in print, smoke --core'
   workstream: M4-C
