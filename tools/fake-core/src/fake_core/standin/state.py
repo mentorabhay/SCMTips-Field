@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fake_core.standin.decisions import Decision, sample_decisions
+from fake_core.standin.decisions import PENDING, Decision, sample_decisions
 from fake_core.standin.keys import CoreKey
 
 DEFAULT_TENANT_ID = "5a3e7e00-0000-4000-8000-000000000001"
@@ -223,7 +223,7 @@ class StandInState:
         return next((d for d in self.decisions if d.decision_id == decision_id), None)
 
     def waiting(self) -> list[Decision]:
-        return sorted((d for d in self.decisions if d.status == "open"), key=lambda d: d.created_at)
+        return sorted((d for d in self.decisions if d.status == PENDING), key=lambda d: d.created_at)
 
     def reset_decisions(self) -> None:
         self.decisions = sample_decisions()

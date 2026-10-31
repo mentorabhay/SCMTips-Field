@@ -205,10 +205,10 @@ def test_m4_c02_voice_approve_confirm_step_up_committed() -> None:
     assert c["turn"] == 1 and c["step_up_fresh"] is False and c["confidence_floor"] == 0.6
     assert {"letter", "option_id", "title", "cost_total", "committed_spend", "band", "details"} <= set(c["options"][0])
     r1 = _cmd(s, c["nonce"], "approve option two").json()
-    assert r1["outcome"] == "readback" and r1["step_up_required"] is True and r1["pending"]["option"] == "B"
+    assert r1["outcome"] == "readback" and r1["step_up_required"] is True and r1["pending"]["letter"] == "B"
     assert r1["parsed"]["intent"] == "approve" and r1["parsed"]["slots"] == {"option": "B"}
     reused = _cmd(s, c["nonce"], "approve option two")
-    assert reused.status_code == 409 and reused.json()["code"] == "challenge_expired"  # single use
+    assert reused.status_code == 409 and reused.json()["code"] == "voice_nonce_replayed"  # single use, as the core
     r2 = _cmd(s, r1["next"]["nonce"], "confirm").json()  # no step-up yet: nothing commits
     assert r2["outcome"] == "readback" and r2["step_up_required"] is True
     assert client.get("/v1/auth/step-up", headers=wh(s)).json() == {
@@ -220,12 +220,12 @@ def test_m4_c02_voice_approve_confirm_step_up_committed() -> None:
     key = str(uuid.uuid4())
     r3 = _cmd(s, r2["next"]["nonce"], "confirm", key).json()
     assert r3["outcome"] == "executed" and r3["approval_id"] and r3["next"] is None
-    assert r3["decision"]["status"] == "approved"
+    assert r3["decision"]["status"] == "APPROVED"  # the core's status names (PENDING_APPROVAL before)
     assert _cmd(s, r2["next"]["nonce"], "confirm", key).json() == r3  # Idempotency-Key replays the answer
     nxt = client.get("/v1/wearable/next", headers=wh(s)).json()["item"]
     assert nxt["decision_id"] != item["decision_id"] and nxt["waiting"] == 1
     closed = client.post("/v1/voice/challenges", json={"decision_id": item["decision_id"]}, headers=wh(s))
-    assert closed.status_code == 409 and closed.json()["code"] == "decision_closed"
+    assert closed.status_code == 409 and closed.json()["code"] == "voice_not_actionable"
 
 
 def test_m4_c02_voice_other_turns_and_backup_code() -> None:
@@ -248,6 +248,31 @@ def test_m4_c02_voice_other_turns_and_backup_code() -> None:
     ok = client.post("/v1/auth/step-up", json={"method": "backup_code", "code": DEFAULT_BACKUP_CODE.lower()},
                      headers=wh(s)).json()
     assert ok["fresh"] is True
+
+
+def test_m4_c13_voice_answers_follow_the_real_core() -> None:
+    """Shapes and answers the real core gave Field's smoke on 31 Oct (K1): the PendingOut fields, a cancel that keeps
+    the review going, 404 / 409 / 410 for an unknown, used or expired challenge, the core's decision statuses."""
+    s = sign_in()
+    item = client.get("/v1/wearable/next", headers=wh(s)).json()["item"]
+    did = item["decision_id"]
+    d = STATE.decision(did)
+    assert d is not None and d.status == "PENDING_APPROVAL"
+    c = client.post("/v1/voice/challenges", json={"decision_id": did}, headers=wh(s)).json()
+    rb = _cmd(s, c["nonce"], "approve option two").json()
+    assert set(rb["pending"]) == {"intent", "option_id", "letter", "reason", "review_at", "readback"}
+    assert rb["pending"]["letter"] == "B" and rb["pending"]["readback"] == rb["say"]
+    cancelled = _cmd(s, rb["next"]["nonce"], "cancel").json()
+    assert cancelled["outcome"] == "cancelled" and cancelled["pending"] is None and cancelled["next"]["turn"] == 3
+    unknown = _cmd(s, "n" * 32, "confirm")
+    assert unknown.status_code == 404 and unknown.json()["code"] == "voice_challenge_unknown"
+    other = sign_in()  # another device session cannot use this one's challenge
+    stolen = _cmd(other, cancelled["next"]["nonce"], "confirm")
+    assert stolen.status_code == 404 and stolen.json()["code"] == "voice_challenge_unknown"
+    ch = STATE.challenges[cancelled["next"]["nonce"]]
+    ch.expires_at = ch.expires_at.replace(year=2000)
+    gone = _cmd(s, cancelled["next"]["nonce"], "confirm")
+    assert gone.status_code == 410 and gone.json()["code"] == "voice_challenge_expired"
 
 
 def test_m4_c02_evidence_photo() -> None:

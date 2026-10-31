@@ -1816,7 +1816,7 @@ def smoke_approver(api: str, state: dict[str, Any], wait: float) -> None:
                                   json={"decision_id": did}), "voice challenge", 201)
         idem = str(uuid.uuid4())
         rb = say(ch["nonce"], spoken_choice, idem)
-        _expect(rb["outcome"] == "readback" and rb["pending"]["option"] == letter, f"read-back {rb}")
+        _expect(rb["outcome"] == "readback" and rb["pending"]["letter"] == letter, f"read-back {rb}")
         _expect(bool(rb["step_up_required"]) == step_up, f"step-up flag {rb['step_up_required']} != band {step_up}")
         _expect(say(ch["nonce"], spoken_choice, idem) == rb, "replayed command did not return the same reply")
         reuse = httpx.post(f"{core}/v1/voice/commands", timeout=10, headers={**core_h, "Idempotency-Key": "fresh"},
@@ -1825,7 +1825,7 @@ def smoke_approver(api: str, state: dict[str, Any], wait: float) -> None:
         nonce = str(rb["next"]["nonce"])
         if step_up:
             held = say(nonce, "confirm")
-            _expect(held["outcome"] == "readback" and held["decision"]["status"] == "open",
+            _expect(held["outcome"] == "readback" and held["decision"]["status"] == "PENDING_APPROVAL",
                     f"confirm before the step-up committed: {held}")
             code = os.environ.get("FAKE_CORE_STEP_UP_CODE") or STEP_UP_CODE_DEFAULT
             bad = httpx.post(f"{core}/v1/auth/step-up", headers=core_h, timeout=10,
@@ -1837,7 +1837,7 @@ def smoke_approver(api: str, state: dict[str, Any], wait: float) -> None:
             nonce = str(held["next"]["nonce"])
             print("         confirm before the phone step-up was held; wrong code refused; step-up accepted")
         out = say(nonce, "confirm")
-        _expect(out["outcome"] == "executed" and out["decision"]["status"] == "approved" and out["approval_id"],
+        _expect(out["outcome"] == "executed" and out["decision"]["status"] == "APPROVED" and out["approval_id"],
                 f"confirm: {out}")
         print(f"         {spoken_choice!r} -> read-back -> confirm: {out['say']} (approval {out['approval_id']})")
         done.append(did)

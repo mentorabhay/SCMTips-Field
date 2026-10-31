@@ -26,6 +26,7 @@
   - tools/fake-core/tests/test_standin.py::test_m4_c02_evidence_photo
   - tools/fake-core/tests/test_standin.py::test_m4_c02_feed_receiver_verifies_and_records
   - tools/fake-core/tests/test_fake_core.py::test_jwks_endpoint
+  - tools/fake-core/tests/test_standin.py::test_m4_c13_voice_answers_follow_the_real_core
   frs: []
   verified_at: null
   note: >-
@@ -39,6 +40,13 @@
     timestamp + "." + raw body, check rows against the exchange contract's inventory / open_supply columns and keep
     them (upsert view, read at /_standin/feeds/*). State is process memory. Partial until the same flows run against
     the real core and on the owner's phone and glasses (A-04).
+    K1 (31 Oct 2026), after Field's smokes ran against the real core (M4-C13): the stand-in now answers as the real core
+    did - decision statuses PENDING_APPROVAL / APPROVED / REJECTED (was open / approved / rejected; the core then moves
+    an approved decision to EXECUTING, not modelled), the read-back's pending as the core's PendingOut (intent,
+    option_id, letter, reason, review_at, readback; was option), a cancel that keeps the review going (next turn
+    issued), and 404 voice_challenge_unknown / 409 voice_nonce_replayed / 410 voice_challenge_expired / 409
+    voice_not_actionable for an unknown or another session's, a used, an expired challenge and a decided decision (was
+    409 challenge_expired / decision_closed). The app does not branch on these (CoreException), so no app change.
 - id: M4-C01
   title: 'F7: core settings, /exchange accepts core app tokens (permissions, email), JWKS re-read, device-status URL template'
   workstream: M4-C

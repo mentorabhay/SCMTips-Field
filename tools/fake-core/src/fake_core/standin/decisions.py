@@ -15,6 +15,12 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+# The core's decision statuses (lr_api.domain.decisions.service) that a voice review can see or leave; the core then
+# moves an approved decision on to EXECUTING when its plan commits, which the stand-in does not model.
+PENDING = "PENDING_APPROVAL"
+APPROVED = "APPROVED"
+REJECTED = "REJECTED"
+
 
 @dataclass(frozen=True)
 class Option:
@@ -38,7 +44,7 @@ class Decision:
     step_up: bool
     created_at: datetime
     deadline_at: datetime
-    status: str = "open"  # open | approved | rejected
+    status: str = PENDING  # the core's statuses: PENDING_APPROVAL | APPROVED | REJECTED
     version: int = 1
     chosen: str | None = None
     approvals: list[dict[str, Any]] = field(default_factory=list)

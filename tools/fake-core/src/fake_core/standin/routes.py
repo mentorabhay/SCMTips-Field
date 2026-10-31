@@ -40,7 +40,7 @@ from fastapi import APIRouter, Depends, FastAPI, Header, Query, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from fake_core.standin.decisions import check_brief, numbers_in, parse
+from fake_core.standin.decisions import APPROVED, PENDING, REJECTED, check_brief, numbers_in, parse
 from fake_core.standin.state import (
     CHALLENGE_TTL_S,
     DEFAULT_BACKUP_CODE,
@@ -304,8 +304,9 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
         d = state.decision(body.decision_id)
         if d is None:
             raise ProblemError(404, "not_found", "Decision not found")
-        if d.status != "open":
-            raise ProblemError(409, "decision_closed", "Decision already decided", d.status)
+        if d.status != PENDING:
+            raise ProblemError(409, "voice_not_actionable", "Conflict",
+                               f"A {d.status} decision cannot be reviewed by voice; only one waiting for approval.")
         return challenge_body(state.new_challenge(s, d.decision_id, 1, None, now()), s)
 
     @r.post("/v1/voice/commands", dependencies=[Depends(requested_with)])
@@ -315,13 +316,20 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
         if idempotency_key and (s.session_id, idempotency_key) in state.replies:
             return state.replies[(s.session_id, idempotency_key)]
         c = state.challenges.get(body.nonce)
-        if c is None or c.used or c.session_id != s.session_id or c.expires_at < now():
-            raise ProblemError(409, "challenge_expired", "Challenge expired", "ask for a new challenge")
+        # the core's answers (lr_api.domain.voice.service.check_challenge): unknown or another session's 404,
+        # used 409, expired 410
+        if c is None or c.session_id != s.session_id:
+            raise ProblemError(404, "voice_challenge_unknown", "Not Found", "Unknown voice challenge; start again.")
+        if c.used:
+            raise ProblemError(409, "voice_nonce_replayed", "Conflict", "This voice challenge was already used.")
+        if c.expires_at <= now():
+            raise ProblemError(410, "voice_challenge_expired", "Gone", "The voice challenge expired; start again.")
         c.used = True  # single use
         d = state.decision(c.decision_id)
         assert d is not None
-        if d.status != "open":
-            raise ProblemError(409, "decision_closed", "Decision already decided", d.status)
+        if d.status != PENDING:
+            raise ProblemError(409, "voice_not_actionable", "Conflict",
+                               f"A {d.status} decision cannot be reviewed by voice; only one waiting for approval.")
         out = _turn(state, s, c, body.transcript, now())
         if idempotency_key:
             state.replies[(s.session_id, idempotency_key)] = out
@@ -519,12 +527,15 @@ def _turn(state: StandInState, s: WearableSession, c: Challenge, transcript: str
         if opt is None:
             return reply("clarify", f"There is no option {p.letter}. Say approve option {_say_options(state, d.decision_id)}.",
                          pending)
-        want: dict[str, Any] = {"intent": "approve", "option": opt.letter, "option_id": opt.option_id}
         say = f"You chose option {opt.letter}, {opt.title}, {opt.committed}. Say confirm to approve, or cancel."
+        # the core's PendingOut: intent, option_id, letter, reason, review_at, readback
+        want: dict[str, Any] = {"intent": "approve", "option_id": opt.option_id, "letter": opt.letter, "reason": None,
+                                "review_at": None, "readback": say}
         return reply("readback", say, want)
     if p.intent == "reject":
-        return reply("readback", "You are rejecting this decision. Say confirm to reject, or cancel.",
-                     {"intent": "reject", "reason": p.reason})
+        say = "You are rejecting this decision. Say confirm to reject, or cancel."
+        return reply("readback", say, {"intent": "reject", "option_id": None, "letter": None, "reason": p.reason,
+                                       "review_at": None, "readback": say})
     if p.intent == "confirm":
         if not pending:
             return reply("clarify", f"Nothing to confirm yet. Say approve option {_say_options(state, d.decision_id)}, "
@@ -535,19 +546,19 @@ def _turn(state: StandInState, s: WearableSession, c: Challenge, transcript: str
         d.version += 1
         approval_id = str(uuid.uuid4())
         if pending["intent"] == "approve":
-            d.status, d.chosen = "approved", str(pending["option"])
+            d.status, d.chosen = APPROVED, str(pending["letter"])
             opt = d.option(d.chosen)
             say = f"Approved: option {d.chosen}, {opt.title if opt else ''}. The recovery is on its way."
         else:
-            d.status = "rejected"
+            d.status = REJECTED
             say = "Rejected. The decision goes back to the planners."
         d.approvals.append({"approval_id": approval_id, "user_id": s.user.id, "intent": pending["intent"],
-                            "option": pending.get("option"), "reason": pending.get("reason"), "at": t.isoformat()})
+                            "option": pending.get("letter"), "reason": pending.get("reason"), "at": t.isoformat()})
         out = reply("executed", say, None, more=False)
         out["approval_id"] = approval_id
         return out
     if p.intent == "cancel":
-        return reply("cancelled", "Cancelled. Nothing was changed.", None, more=False)
+        return reply("cancelled", "Cancelled. Nothing was changed.", None)  # the core issues the next turn
     if p.intent == "repeat":
         return reply("repeat", d.spoken, pending)
     if p.intent == "details":
