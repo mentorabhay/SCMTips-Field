@@ -45,7 +45,7 @@
 - `packages/field-contract`: OpenAPI 3.1 specifications and generated clients.
 - `packages/core-contract`: Pinned client contract for SCMTIPS Core P13.
 - `compat`: Compatibility suite ensuring add-on compatibility with core tags.
-- `tools/fake-core`: Lightweight core SSO, JWKS, and device token issuer for development.
+- `tools/fake-core`: dev double: core SSO, JWKS and device token issuer, plus the M4 stand-in core (never the SCMTIPS core; see `tools/fake-core/README.md`).
 - `scripts/verify-all.sh`: 12-job verification runner producing deterministic PASS/FAIL reports.
 
 ---

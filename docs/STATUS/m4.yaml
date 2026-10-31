@@ -1,0 +1,39 @@
+- id: M4-C02
+  title: Stand-in core in tools/fake-core (dev double of the core's /v1 contract) for the M4 slice
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/fake-core/src/fake_core/standin/routes.py
+  - tools/fake-core/src/fake_core/standin/state.py
+  - tools/fake-core/src/fake_core/standin/decisions.py
+  - tools/fake-core/src/fake_core/standin/keys.py
+  - tools/fake-core/src/fake_core/app.py
+  - tools/fake-core/README.md
+  tests:
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_app_sign_in_shape_and_core_claims
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_sign_in_refusals
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_pairing_code_sign_in_and_aro_pairing
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_device_status_at_the_core_path
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_wearable_guard
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_sample_decisions_next_and_briefs
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_brief_check
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_property_check_accepts_template_numbers_only
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_grammar
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_voice_approve_confirm_step_up_committed
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_voice_other_turns_and_backup_code
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_evidence_photo
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_feed_receiver_verifies_and_records
+  - tools/fake-core/tests/test_fake_core.py::test_jwks_endpoint
+  frs: []
+  verified_at: null
+  note: Against the stand-in core; the real core is not deployed. A dev double (docstrings and tools/fake-core/README.md
+    say so), never presented as the core. Serves the handover paths (01, 01a) with the ported ARO client's shapes
+    (api/Models.kt), which win where they differ; where neither gives a shape (brief bodies, sessions list, feed answer)
+    the stand-in's choice is listed in the README. Ed25519 key made at start-up, kid scmtips-core-ed25519-standin-<hash>;
+    /v1/core/jwks.json carries it and the legacy dev key, /.well-known/jwks.json keeps the legacy key only. Demo users
+    approver (voice.approve) and operator, password FAKE_CORE_DEMO_PASSWORD (dev value), step-up code
+    FAKE_CORE_STEP_UP_CODE. Feed receivers verify X-SCMTIPS-Timestamp (<= 300 s) and the HMAC-SHA256 signature over
+    timestamp + "." + raw body, check rows against the exchange contract's inventory / open_supply columns and keep
+    them (upsert view, read at /_standin/feeds/*). State is process memory. Partial until the same flows run against
+    the real core and on the owner's phone and glasses (A-04).

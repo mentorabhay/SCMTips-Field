@@ -1,10 +1,12 @@
-"""Fake Core Platform Service for Development and Tests (Task T1.035 / FR1.010).
+"""Fake Core Platform Service for Development and Tests (Task T1.035 / FR1.010; M4 stand-in core).
 
-Serves:
-- GET /.well-known/jwks.json (RFC 8037 OKP Ed25519 public keys)
-- POST /api/v1/auth/token (Core SSO session tokens & P10 device tokens)
+A dev double, never the SCMTIPS core. Serves:
+- GET /.well-known/jwks.json (RFC 8037 OKP Ed25519 public key of the legacy dev tokens)
+- POST /api/v1/auth/token (Core SSO session tokens & P10 device tokens; the dev QR pairing)
 - GET /api/v1/devices/{id}/status (Device authorization & revocation status)
 - POST /api/v1/devices/{id}/revoke (Revoke device binding)
+- the stand-in core under /v1 (M4 contract section 3, fake_core.standin): app sign-in, core JWKS and device
+  status (its JWKS carries both keys), the wearable decision / brief / voice / step-up / evidence / session endpoints and the signed feeds.
 """
 
 import base64
@@ -17,6 +19,9 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
+
+from fake_core.standin.routes import install as install_standin
+from fake_core.standin.state import StandInState
 
 # In-memory device revocation registry for fake-core
 REVOKED_DEVICES: set[str] = set()
@@ -44,10 +49,13 @@ def get_jwk() -> dict[str, Any]:
 
 
 app = FastAPI(
-    title="SCMTIPS Fake Core Service",
-    description="Mock SSO and Device Registry for local development and integration tests",
-    version="1.0.0",
+    title="SCMTIPS Fake Core Service (dev double)",
+    description="Dev SSO and device registry, plus the stand-in core for the M4 slice. Not the SCMTIPS core.",
+    version="1.1.0",
 )
+standin = StandInState.from_env()
+app.state.standin = standin
+install_standin(app, standin, lambda: [get_jwk()])
 
 
 class TokenIssueRequest(BaseModel):
@@ -65,7 +73,7 @@ class DeviceRevokeRequest(BaseModel):
 
 @app.get("/.well-known/jwks.json")
 def get_jwks() -> dict[str, Any]:
-    """Expose Ed25519 JWKS public keys."""
+    """Expose the legacy dev key (the stand-in core's JWKS at /v1/core/jwks.json carries it too)."""
     return {"keys": [get_jwk()]}
 
 
