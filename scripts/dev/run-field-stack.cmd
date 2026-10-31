@@ -6,6 +6,8 @@ rem   run-field-stack.cmd home              sandbox site "Home (sandbox)": any b
 rem   run-field-stack.cmd pair --home       pairing QR for the home sandbox site
 rem   run-field-stack.cmd smoke --home      sandbox receipt + count end to end (smoke --all: every job type)
 rem   run-field-stack.cmd labels            printable QR labels for every open job
+rem   run-field-stack.cmd smoke --core      stand-in core: sign-in, exchange, GR 101 -> two signed feed rows (M4)
+rem   run-field-stack.cmd smoke --approver  stand-in core: approver sign-in, spoken brief, voice approve, step-up (M4)
 rem Same logic as run-field-stack.ps1 / tools/dev_stack/stack.py (the .sh file is for Linux/macOS).
 setlocal
 cd /d "%~dp0..\.."
