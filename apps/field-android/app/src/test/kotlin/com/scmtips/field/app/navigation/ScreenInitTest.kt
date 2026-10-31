@@ -16,7 +16,7 @@ class ScreenInitTest {
             Screen::class.java.protectionDomain.codeSource.location,
             Unit::class.java.protectionDomain.codeSource.location, // kotlin stdlib (lazy, listOf)
         ),
-        ClassLoader.getPlatformClassLoader(),
+        null, // bootstrap only: java.* (getPlatformClassLoader is not in the Android test classpath)
     )
 
     private fun tabTitlesAfterTouching(first: String): List<String?> {
