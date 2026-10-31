@@ -44,3 +44,84 @@
     sandbox (egress proxy refused CONNECT to api.meta.ai, HTTP 403) and no MODEL_API_KEY exists there. Tested only
     against an HTTP test double (hand-written OpenAI-compatible answers, test code only). Baseten fallback is wired but
     has no priced model yet, so the guard refuses it until the owner adds one.'
+- id: M3-A03
+  title: POST /v1/assistant/turns (contract §4) - server tools, prompts with definitions of done, action safety, vision for names
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/api.py
+  - services/field-api/src/field_api/assistant/service.py
+  - services/field-api/src/field_api/assistant/tools.py
+  - services/field-api/src/field_api/assistant/actions.py
+  - services/field-api/src/field_api/assistant/prompts.py
+  - services/field-api/src/field_api/assistant/work.py
+  - services/field-api/src/field_api/auth/permissions.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_model_answer_is_sanitised_and_costed
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_count_task_never_sends_book_quantities_to_the_model
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_photo_goes_to_the_model_only_for_what_is_this
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_add_sandbox_item_needs_the_operators_explicit_yes
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_model_failure_falls_back_to_rules
+  - services/field-api/tests/assistant/test_assistant_property.py::test_no_response_ever_contains_a_confirm_action
+  - services/field-api/tests/assistant/test_assistant_property.py::test_count_tasks_never_leak_book_quantity_in_task_data
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_permissions_scope_and_idempotency
+  frs: []
+  verified_at: null
+  note: 'Depends on the UNVERIFIED Meta Model API (M3-A02): the model path is proven only against the test double.
+    Permission field.assistant.use for operator, technician, supervisor; Idempotency-Key required. Never on the
+    owner''s phone or glasses yet.'
+- id: M3-A04
+  title: Rules mode (ai rules) - fixed answers when AI is off, keyless, refused, failing or slow, incl. the sandbox unknown-code dialog
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/rules.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_greeting_lists_work_most_urgent_first
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_start_by_type_and_number_opens_the_task
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_next_and_left_on_receive_say_quantities
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_count_task_never_says_the_book_quantity
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_what_is_this_from_task_lines_when_codes_port_is_not_wired
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_sandbox_unknown_code_dialog_name_then_quantity_then_add
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_repeat_summary_pause_resume_and_end
+  - services/field-api/tests/assistant/test_assistant_property.py::test_rules_never_confirm_and_never_say_count_quantities
+  frs: []
+  verified_at: null
+  note: 'Fully tested without network on Postgres. Not yet heard through the glasses (phone track P routes utterances
+    here); the sandbox add is tested through a double of track S''s port, not the real one.'
+- id: M3-A05
+  title: Assistant records - field.assistant_session / field.assistant_turn (forced RLS), supervisor list, detail, CSV export, photo
+  workstream: WP5
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/alembic/versions/field_0061_m3_assistant.py
+  - services/field-api/src/field_api/assistant/records.py
+  - services/field-api/src/field_api/assistant/photos.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_records.py::test_list_detail_and_documents
+  - services/field-api/tests/assistant/test_assistant_records.py::test_csv_export_escapes_formulas
+  - services/field-api/tests/assistant/test_assistant_records.py::test_reads_need_review_permission_and_respect_tenancy
+  - services/field-api/tests/assistant/test_assistant_records.py::test_tables_have_forced_rls
+  - services/field-api/tests/assistant/test_assistant_records.py::test_pagination_and_session_end
+  frs: []
+  verified_at: null
+  note: 'Migration field_0061 has down_revision field_0059 on this branch; the integrator re-points it to field_0060.
+    Reads need field.assistant.review (supervisor). Console Sessions page (track P) not built against it yet.'
+- id: M3-A08
+  title: Seams to track S (contract §7) - CodeResolver and SandboxItems Protocols, injected, not wired on this branch
+  workstream: WP3
+  role: Backend
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/ports.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_sandbox_dialog_cancel_and_not_wired
+  - services/field-api/tests/assistant/test_assistant_rules.py::test_production_site_refuses_the_sandbox_dialog
+  frs: []
+  verified_at: null
+  note: 'get_ports() returns no ports here; the integrator wires field_api.codes.resolve.resolve_code and
+    field_api.sandbox.service.add_item. Tested with doubles in test code only.'
