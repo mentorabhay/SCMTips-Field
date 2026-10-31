@@ -26,8 +26,12 @@ CORE_VARS = ("FIELD_CORE_BASE_URL", "FIELD_CORE_JWKS_URL", "FIELD_CORE_DEVICE_ST
 
 @pytest.fixture
 def clean_core_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for v in (*CORE_VARS, "FIELD_CORE_TARGET", "FAKE_CORE_INVENTORY_FEED_ID", "FAKE_CORE_SUPPLY_FEED_ID"):
-        monkeypatch.delenv(v, raising=False)
+    """apply_ports writes os.environ directly: register every variable it touches with monkeypatch first, so the
+    values never leak into later tests (e.g. a device-status template would make field-api ask the core)."""
+    for v in (*CORE_VARS, "FIELD_ERP_SIM_URL", "FIELD_CORE_TARGET", "FAKE_CORE_INVENTORY_FEED_ID",
+              "FAKE_CORE_SUPPLY_FEED_ID", "FAKE_CORE_DEMO_PASSWORD"):
+        monkeypatch.setenv(v, "")
+        monkeypatch.delenv(v)
     monkeypatch.setenv("FIELD_STACK_CORE_PORT", "8211")
 
 
