@@ -24,6 +24,11 @@ class SiteModes(private val transport: JobTransport) {
 
     fun isSandbox(siteId: String): Boolean = known[siteId] == SANDBOX
 
+    /** A mode learnt elsewhere (the site list read at sign-in). */
+    fun remember(siteId: String, mode: String?) {
+        if (mode == SANDBOX || mode == PRODUCTION) known[siteId] = mode
+    }
+
     /** Reads the site list once; quietly keeps nothing when the operator may not list sites. */
     suspend fun prime(siteId: String) {
         if (siteId in known) return

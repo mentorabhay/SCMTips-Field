@@ -8,6 +8,12 @@ import androidx.security.crypto.MasterKey
 import com.scmtips.field.app.assistant.AssistantClient
 import com.scmtips.field.app.assistant.AssistantOutcome
 import com.scmtips.field.app.assistant.SiteModes
+import com.scmtips.field.app.decisions.DecisionText
+import com.scmtips.field.app.decisions.DecisionsView
+import com.scmtips.field.app.decisions.PhoneCardDisplay
+import com.scmtips.field.app.decisions.SpeechWaiter
+import com.scmtips.field.app.decisions.StepUpAsk
+import com.scmtips.field.app.decisions.TtsSignals
 import com.scmtips.field.app.device.BarcodeReader
 import com.scmtips.field.app.device.ContinuousSpeech
 import com.scmtips.field.app.device.PhoneLocation
@@ -19,6 +25,9 @@ import com.scmtips.field.app.glasses.GlassesHelp
 import com.scmtips.field.app.glasses.GlassesStatus
 import com.scmtips.field.app.home.Link
 import com.scmtips.field.app.home.Person
+import com.scmtips.field.app.home.SandboxOutcome
+import com.scmtips.field.app.home.SandboxStart
+import com.scmtips.field.app.home.SandboxStarters
 import com.scmtips.field.app.home.TodayModel
 import com.scmtips.field.app.jobs.Command
 import com.scmtips.field.app.jobs.InputSource
@@ -43,6 +52,8 @@ import com.scmtips.field.app.net.PhoneBinding
 import com.scmtips.field.app.scan.FrameScanFilter
 import com.scmtips.field.app.scan.Yuv
 import com.scmtips.field.app.session.AssistantPort
+import com.scmtips.field.app.session.AttentionWord
+import com.scmtips.field.app.session.DecisionPort
 import com.scmtips.field.app.session.Conductor
 import com.scmtips.field.app.session.JobDesk
 import com.scmtips.field.app.session.MicPlan
@@ -55,6 +66,26 @@ import com.scmtips.field.app.session.WorkSession
 import com.scmtips.field.app.session.WorkSessionService
 import com.scmtips.field.app.slice.Pairing
 import com.scmtips.field.app.slice.PairingPayload
+import com.scmtips.field.app.signin.AccountCredentials
+import com.scmtips.field.app.signin.AccountStore
+import com.scmtips.field.app.signin.CoreAccount
+import com.scmtips.field.app.signin.HomeSections
+import com.scmtips.field.app.signin.SignInDefaults
+import com.scmtips.field.app.signin.SiteChoice
+import com.scmtips.field.feature.decisions.api.CoreClient
+import com.scmtips.field.feature.decisions.api.CoreSignIn
+import com.scmtips.field.feature.decisions.api.OkHttpCoreHttp
+import com.scmtips.field.feature.decisions.api.SignInException
+import com.scmtips.field.feature.decisions.api.SignInMethod
+import com.scmtips.field.feature.decisions.api.StepUpMethod
+import com.scmtips.field.feature.decisions.brief.FieldBriefClient
+import com.scmtips.field.feature.decisions.flow.ApprovalFlow
+import com.scmtips.field.feature.decisions.flow.FlowState
+import com.scmtips.field.feature.decisions.flow.LaunchCoordinator
+import com.scmtips.field.feature.decisions.flow.Outcome
+import com.scmtips.field.feature.decisions.flow.StepUpBroker
+import com.scmtips.field.feature.decisions.flow.StepUpEntry
+import com.scmtips.field.feature.decisions.flow.UtteranceInbox
 import com.scmtips.field.core.common.UUIDv7
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +98,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -102,6 +135,29 @@ data class AppUi(
     val log: List<String> = emptyList(),
     /** The M3 work session (glasses first): listening / paused / camera, last words heard and said. */
     val work: SessionView = SessionView(),
+    /** M4 F2: signed in against the SCMTIPS core (null with a QR pairing or signed out). */
+    val signedIn: SignedIn? = null,
+    val signIn: SignInView = SignInView(),
+    /** Which homes Today shows, by the core's capabilities (a QR pairing is field work). */
+    val home: HomeSections = HomeSections(decisions = false, fieldWork = true),
+    /** M4 F1: decisions waiting, the running review, its card and step-up. */
+    val decisions: DecisionsView = DecisionsView(),
+    /** The paired site is a sandbox: Today offers a new home receipt and a shelf count. */
+    val sandbox: Boolean = false,
+    /** Me → Attention word: only words starting with "Field" are acted on (off by default). */
+    val attentionWord: Boolean = false,
+)
+
+/** Who is signed in against the core (no tokens here: AppUi is drawn and logged freely). */
+data class SignedIn(val name: String, val email: String?, val coreBaseUrl: String, val approver: Boolean, val fieldOperator: Boolean)
+
+/** The sign-in form's addresses and state. */
+data class SignInView(
+    val coreUrl: String = SignInDefaults.DEV_CORE_URL,
+    val fieldUrl: String = SignInDefaults.DEV_FIELD_URL,
+    val email: String = "",
+    val busy: Boolean = false,
+    val error: String? = null,
 )
 
 /**
@@ -139,8 +195,19 @@ class FieldController(private val context: Context, private val toolkitError: ()
             override fun remove(key: String) = prefs.edit().remove(key).apply()
         }) { UUID.randomUUID().toString() }
     }
+    private val accounts by lazy {
+        AccountStore(object : PhoneBinding.Store {
+            override fun get(key: String): String? = prefs.getString(key, null)
+            override fun put(key: String, value: String) = prefs.edit().putString(key, value).apply()
+            override fun remove(key: String) = prefs.edit().remove(key).apply()
+        })
+    }
     private val workSession = WorkSession { v -> _ui.value = _ui.value.copy(work = v) }
-    private val tts = TtsSpeaker(context, { said -> log("🔊 $said") }, { on -> scope.launch { workSession.speaking(on); applyHold() } })
+    private val ttsSignals = TtsSignals()
+    private val tts = TtsSpeaker(context, { said -> log("🔊 $said") }, { on ->
+        ttsSignals.onSpeaking(on)
+        scope.launch { workSession.speaking(on); applyHold() }
+    })
     private val speaker = TurnSpeaker(tts)
     private val barcodes = BarcodeReader()
     private val phoneSpeech = PhoneSpeech(context, { t, c -> onSpeech(t, c, "phone") }, { e -> log("mic: $e") })
@@ -213,7 +280,23 @@ class FieldController(private val context: Context, private val toolkitError: ()
         session = workSession,
         onStopWork = { stopWork() },
         log = ::log,
+        decisions = object : DecisionPort {
+            override val approver: Boolean get() = account?.approver == true
+            override val reviewing: Boolean get() = reviewJob?.isActive == true
+            override fun startReview() = this@FieldController.startReview()
+            override fun heard(text: String, confidence: Float) { reviewInbox.offer(text, confidence) }
+        },
     )
+
+    // --- M4 decisions (F1) --------------------------------------------------------------------
+    private var account: CoreAccount? = null
+    private val coreHttp = OkHttpCoreHttp()
+    private val coreCredentials = AccountCredentials({ account })
+    private val reviewInbox = UtteranceInbox { if (workSession.view.active) REVIEW_LISTEN_SESSION_MS else REVIEW_LISTEN_PHONE_MS }
+    private val reviewCard = PhoneCardDisplay { !_ui.value.audioOnly }
+    private val stepUpBroker = StepUpBroker { toast("Enter your verification code on this phone.") }
+    private var reviewJob: Job? = null
+    private var launchJob: Job? = null
 
     /** Sandbox sites only, during a work session: an unknown code goes to the assistant with a photo. */
     private val unknownCodes = UnknownCodeHandler { task, code ->
@@ -251,9 +334,20 @@ class FieldController(private val context: Context, private val toolkitError: ()
             visitId = prefs.getString(KEY_VISIT, null),
             visitSiteId = prefs.getString(KEY_VISIT_SITE, null),
             glassesAdvice = GlassesHelp.advise(GlassesStatus(), toolkitError()),
+            attentionWord = prefs.getBoolean(KEY_ATTENTION, false),
         )
-        prefs.getString(KEY_PAIRING, null)?.let { saved ->
-            runCatching { PairingPayload.parse(saved) }.onSuccess { p -> attach(p, fromScan = false) }
+        val pairedApi = prefs.getString(KEY_PAIRING, null)?.let { runCatching { PairingPayload.parse(it).apiBaseUrl }.getOrNull() }
+        val fieldUrl = SignInDefaults.fieldUrl(accounts.lastFieldUrl, pairedApi)
+        _ui.value = _ui.value.copy(signIn = SignInView(
+            coreUrl = SignInDefaults.coreUrl(accounts.lastCoreUrl, fieldUrl), fieldUrl = fieldUrl, email = accounts.lastEmail.orEmpty(),
+        ))
+        val saved = accounts.load()
+        when {
+            saved != null && !saved.accessExpired(System.currentTimeMillis()) -> attachAccount(saved, fromScan = false)
+            saved != null -> _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(error = "Your SCMTIPS sign-in has expired. Sign in again."))
+            else -> prefs.getString(KEY_PAIRING, null)?.let { qr ->
+                runCatching { PairingPayload.parse(qr) }.onSuccess { p -> attach(p, fromScan = false) }
+            }
         }
     }
 
@@ -268,17 +362,22 @@ class FieldController(private val context: Context, private val toolkitError: ()
         }
         // The device id is kept when the code is for the same PC and company (PhoneBinding).
         prefs.edit().putString(KEY_PAIRING, qrText).apply()
+        if (account != null) { accounts.clear(); account = null; stopLaunches() }
+        _ui.value = _ui.value.copy(signedIn = null, home = HomeSections.of(null, paired = true))
         attach(p, fromScan = true)
     }
 
     /** Connect screen "Try again": the saved code, registered again. */
     fun retryConnect() {
+        account?.let { return attachAccount(it, fromScan = true) }
         val p = _ui.value.pairing ?: return
         attach(p, fromScan = true)
     }
 
     fun unpair() {
         stopWork()
+        stopReview(silent = true)
+        account?.let { a -> signOutOfCore(a) }
         loops?.cancel()
         closeJob(null)
         glasses.disconnect()
@@ -288,6 +387,9 @@ class FieldController(private val context: Context, private val toolkitError: ()
         _ui.value = AppUi(
             scanner = _ui.value.scanner, audioOnly = _ui.value.audioOnly, glassesSpeech = _ui.value.glassesSpeech,
             glasses = _ui.value.glasses, glassesAdvice = _ui.value.glassesAdvice, log = _ui.value.log,
+            attentionWord = _ui.value.attentionWord,
+            signIn = _ui.value.signIn.copy(busy = false, error = null, coreUrl = accounts.lastCoreUrl ?: _ui.value.signIn.coreUrl,
+                fieldUrl = accounts.lastFieldUrl ?: _ui.value.signIn.fieldUrl),
         )
     }
 
@@ -299,16 +401,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         assistant = AssistantClient(s) { UUIDv7.generate() }
         siteModes = SiteModes(s)
         _ui.value = _ui.value.copy(pairing = p, deviceId = deviceId, person = Person.fromCoreToken(p.coreToken), connecting = true, connectError = null)
-        val api = object : PhoneBinding.Api {
-            override suspend fun exchange(deviceId: String?) = s.bind(deviceId)
-            override suspend fun register(serial: String, idempotencyKey: String) = s.registerPhone(
-                serial = serial,
-                model = "${Build.MANUFACTURER} ${Build.MODEL}",
-                osVersion = "Android ${Build.VERSION.RELEASE}",
-                appVersion = BuildConfig.VERSION_NAME,
-                idempotencyKey = idempotencyKey,
-            )
-        }
+        val api = phoneApi(s)
         scope.launch {
             try {
                 val id = binding.connect(where, fromScan, api)
@@ -324,6 +417,233 @@ class FieldController(private val context: Context, private val toolkitError: ()
                 if (e is IOException && _ui.value.deviceId != null) startLoops(s) // known phone: keep trying
             }
         }
+    }
+
+    private fun phoneApi(s: FieldSession) = object : PhoneBinding.Api {
+        override suspend fun exchange(deviceId: String?) = s.bind(deviceId)
+        override suspend fun register(serial: String, idempotencyKey: String) = s.registerPhone(
+            serial = serial,
+            model = "${Build.MANUFACTURER} ${Build.MODEL}",
+            osVersion = "Android ${Build.VERSION.RELEASE}",
+            appVersion = BuildConfig.VERSION_NAME,
+            idempotencyKey = idempotencyKey,
+        )
+    }
+
+    // --- sign in against the core (M4 F2) -------------------------------------------------------
+
+    /**
+     * Sign-in screen: e-mail + password (demo) or a pairing code, at the typed core address. The wearable
+     * token is bound to this install's id; the model is Ray-Ban Meta Gen 2 when glasses are registered.
+     */
+    fun signIn(method: SignInMethod, coreUrl: String, fieldUrl: String) {
+        val (core, coreWhy) = SignInDefaults.check(coreUrl, "SCMTIPS")
+        val (field, fieldWhy) = SignInDefaults.check(fieldUrl, "SCMTips Field server")
+        if (core == null || field == null) {
+            _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(error = coreWhy ?: fieldWhy, coreUrl = coreUrl, fieldUrl = fieldUrl))
+            return
+        }
+        accounts.rememberServers(core, field)
+        val email = (method as? SignInMethod.Password)?.email?.trim()
+        _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = true, error = null, coreUrl = core, fieldUrl = field, email = email ?: _ui.value.signIn.email))
+        scope.launch {
+            try {
+                val model = SignInDefaults.deviceModel(glassesRegistered())
+                val a = try {
+                    CoreAccount.from(CoreSignIn(core, coreHttp).signIn(method, binding.installId(), model), core, field, System.currentTimeMillis())
+                } catch (e: SignInException) {
+                    // A core without the app sign-in route: its wearable app's own pairing (decisions only).
+                    if (method !is SignInMethod.PairingCode || e.status !in NO_APP_SIGN_IN) throw e
+                    val (w, name) = CoreSignIn.pairWearable(core, coreHttp, method.code, binding.installId(), model)
+                    CoreAccount.paired(w, name, core, field)
+                }
+                accounts.save(a)
+                prefs.edit().remove(KEY_PAIRING).apply() // one link to field-api at a time: the sign-in replaces a QR pairing
+                log("Signed in to SCMTIPS as ${a.displayName} (${model.wire}); approve decisions: ${a.approver}, field work: ${a.fieldOperator}")
+                _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = false, error = null))
+                attachAccount(a, fromScan = true)
+            } catch (e: SignInException) {
+                _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = false, error = e.message))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = false, error = describe(e)))
+            }
+        }
+    }
+
+    /** Uses a signed-in account: field-api through the core token (as a QR pairing), decisions through the wearable token. */
+    private fun attachAccount(a: CoreAccount, fromScan: Boolean) {
+        account = a
+        val person = Person.fromName(a.displayName) ?: Person.UNKNOWN
+        _ui.value = _ui.value.copy(signedIn = signedIn(a), person = person, home = HomeSections.of(a, paired = false), deviceId = null,
+            connecting = a.fieldOperator && a.hasFieldAccess, connectError = null)
+        if (a.approver) { refreshDecisions(); startLaunches() }
+        if (!a.hasFieldAccess) return // the core app's pairing: decisions only (the spoken brief then falls back to the template)
+        // A core-signed-in phone is not registered with POST /v1/devices (409): the exchange itself registers or
+        // links the field device (serial_no = the core device id) and answers its id (stream C, M4-C01).
+        val s = FieldSession(a.fieldBaseUrl, a.accessToken, null)
+        session = s
+        assistant = AssistantClient(s) { UUIDv7.generate() }
+        siteModes = SiteModes(s)
+        scope.launch {
+            try {
+                s.bind(null)
+                val id = s.exchangedDeviceId ?: throw HttpError(0, null, null, null, "field-api did not say which device this phone is")
+                s.deviceId = id // later exchanges name it; field-api checks it against the core device id
+                val granted = a.withPermissions(s.corePermissions)
+                if (granted !== a && account === a) {
+                    account = granted
+                    accounts.save(granted)
+                    _ui.value = _ui.value.copy(signedIn = signedIn(granted), home = HomeSections.of(granted, paired = false))
+                    if (granted.approver && !a.approver) { refreshDecisions(); startLaunches() }
+                }
+                _ui.value = _ui.value.copy(deviceId = id, connecting = false, link = Link.ONLINE)
+                val sites = (s.send(SiteModes.sites()) as? com.scmtips.field.app.jobs.ApiResult.Ok)?.body ?: JsonObject(emptyMap())
+                val site = SiteChoice.pick(a.sites, sites)
+                if (site == null) {
+                    log("Signed in; field-api lists no site for ${a.displayName}")
+                    _ui.value = _ui.value.copy(pairing = null)
+                } else {
+                    siteModes?.remember(site.id, site.mode)
+                    _ui.value = _ui.value.copy(pairing = a.pairing(site.id, site.name), sandbox = site.mode == SiteModes.SANDBOX)
+                    log("Connected to ${site.name}; phone device $id")
+                }
+                startLoops(s)
+                refreshTasks()
+            } catch (e: Exception) {
+                val why = describe(e)
+                log("⚠ field-api: $why")
+                _ui.value = _ui.value.copy(connecting = false, connectError = why, link = if (e is IOException) Link.OFFLINE else _ui.value.link)
+            }
+        }
+    }
+
+    private fun signedIn(a: CoreAccount) = SignedIn(a.displayName, a.email, a.coreBaseUrl, a.approver, a.fieldOperator && a.hasFieldAccess)
+
+    /** Me → Sign out: the core forgets this device session (best effort), the phone forgets every token. */
+    private fun signOutOfCore(a: CoreAccount) {
+        val api = CoreClient(a.coreBaseUrl, coreCredentials, coreHttp)
+        val sid = a.wearable.sessionId
+        scope.launch { runCatching { api.revoke(sid) }.onFailure { log("sign-out: the core was not told (${it.javaClass.simpleName})") } }
+        stopLaunches()
+        accounts.clear()
+        account = null
+    }
+
+    // --- decisions (M4 F1) ------------------------------------------------------------------------
+
+    /** How many decisions wait for this approver (GET /v1/wearable/next); null when it could not be asked. */
+    private suspend fun waitingDecisions(): Int? {
+        val a = account?.takeIf { it.approver } ?: return null
+        return try {
+            val item = CoreClient(a.coreBaseUrl, coreCredentials, coreHttp).next()
+            if (item == null) 0 else maxOf(item.waiting, 1)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log("decisions: ${e.message ?: e.javaClass.simpleName}")
+            null
+        }
+    }
+
+    fun refreshDecisions() {
+        scope.launch { waitingDecisions()?.let { n -> _ui.value = _ui.value.copy(decisions = _ui.value.decisions.copy(waiting = n)) } }
+    }
+
+    /** Decisions card "Review now", the session's "decisions", or a launch from the glasses. */
+    fun startReview() {
+        val a = account ?: return toast("Sign in to SCMTIPS first.")
+        if (!a.approver) return toast("Your SCMTIPS role does not approve decisions.")
+        if (reviewJob?.isActive == true) return
+        val flow = ApprovalFlow(
+            api = CoreClient(a.coreBaseUrl, coreCredentials, coreHttp),
+            briefs = FieldBriefClient({ account?.fieldBaseUrl }, { coreCredentials.token }, { coreCredentials.deviceId }, { session?.bearer() }, coreHttp, log = ::log),
+            display = reviewCard,
+            voice = SpeechWaiter(speaker, ttsSignals),
+            ear = reviewInbox,
+            stepUp = stepUpBroker,
+            onUnauthorized = {
+                accounts.clear()
+                account = null
+                _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(error = "Your SCMTIPS sign-in has ended. Sign in again."))
+            },
+        )
+        reviewJob = scope.launch {
+            _ui.value = _ui.value.copy(decisions = _ui.value.decisions.copy(reviewing = true, last = null))
+            val mirror = launch {
+                combine(flow.state, reviewCard.card, reviewInbox.waiting, stepUpBroker.pending) { st, card, listening, pending ->
+                    _ui.value.decisions.copy(
+                        state = DecisionText.state(st), card = card, listening = listening,
+                        briefSource = (st as? FlowState.Presenting)?.briefSource ?: _ui.value.decisions.briefSource,
+                        stepUp = pending?.let { StepUpAsk(it.retryMessage) },
+                    )
+                }.collect { v -> _ui.value = _ui.value.copy(decisions = v.copy(reviewing = true)) }
+            }
+            try {
+                val end = try {
+                    flow.run()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) { // never crash the app over a review
+                    log("⚠ decision review: ${e.message ?: e.javaClass.simpleName}")
+                    FlowState.Failed(e.message ?: e.javaClass.simpleName)
+                }
+                log("decision review: ${DecisionText.state(end)}")
+                _ui.value = _ui.value.copy(decisions = _ui.value.decisions.copy(last = DecisionText.state(end)))
+                if (end is FlowState.NeedsSignIn) scope.launch { unpair() } // after this review has ended
+                if (end is FlowState.Finished && end.outcome == Outcome.EXECUTED && workSession.view.active) {
+                    waitingDecisions()?.let { n -> conductor.decisionsWaiting(n) }
+                }
+            } finally {
+                mirror.cancel()
+                _ui.value = _ui.value.copy(decisions = _ui.value.decisions.copy(reviewing = false, card = null, listening = false, stepUp = null))
+                refreshDecisions()
+            }
+        }
+    }
+
+    /** The review screen's Stop: nothing is sent after it; a read-back that was not confirmed changes nothing. */
+    fun stopReview(silent: Boolean = false) {
+        val j = reviewJob ?: return
+        if (!j.isActive) return
+        stepUpBroker.pending.value?.let { stepUpBroker.answer(it, null) }
+        j.cancel()
+        if (!silent) speaker.say("Stopped. Nothing more was sent.")
+    }
+
+    fun decisionButton(id: String) {
+        if (!reviewCard.press(id)) toast("That card is no longer open.")
+    }
+
+    /** The step-up dialog's answer: a code (never logged) or null for Cancel. */
+    fun answerStepUp(method: StepUpMethod, code: String?) {
+        val p = stepUpBroker.pending.value ?: return
+        stepUpBroker.answer(p, code?.trim()?.takeIf { it.isNotEmpty() }?.let { StepUpEntry(method, it) })
+    }
+
+    /** Meta AI launched the app from the glasses ("Hey Meta, start SCMTips Field"). */
+    fun onVoiceLaunch() {
+        if (account?.approver == true) startReview()
+    }
+
+    private fun startLaunches() {
+        if (launchJob?.isActive == true || !glassesRegistered()) return
+        launchJob = LaunchCoordinator(
+            // A toolkit that refuses the voice-invocation stream ends it here, never in the app's scope.
+            launches = glasses.launches.catch { e -> log("glasses launches: ${e.message ?: e.javaClass.simpleName}") },
+            scope = scope,
+            canReview = { account?.approver == true },
+            startReview = ::startReview,
+        ).start()
+    }
+
+    /** The toolkit may have failed to start (FieldApplication.datInitError): then there are no glasses. */
+    private fun glassesRegistered(): Boolean = toolkitError() == null && runCatching { glasses.isRegistered }.getOrDefault(false)
+
+    private fun stopLaunches() {
+        launchJob?.cancel()
+        launchJob = null
     }
 
     // --- Today ---------------------------------------------------------------------------------
@@ -342,6 +662,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         _ui.value = _ui.value.copy(loading = true)
         try {
             _ui.value = _ui.value.copy(tasks = s.tasks(site), link = Link.ONLINE)
+            siteModes?.let { m -> m.prime(site); _ui.value = _ui.value.copy(sandbox = m.isSandbox(site)) }
         } catch (e: Exception) {
             log("⚠ tasks: ${describe(e)}")
             _ui.value = _ui.value.copy(link = if (e is IOException) Link.OFFLINE else _ui.value.link,
@@ -366,6 +687,22 @@ class FieldController(private val context: Context, private val toolkitError: ()
     fun openStarter(type: JobType) {
         val id = TodayModel.starters(_ui.value.tasks).firstOrNull { it.type == type }?.taskId
         if (id == null) toast(TodayModel.noneOpen(type)) else openTask(id)
+    }
+
+    /** Today on a sandbox site: a new home receipt, or a count of one shelf (field-api's sandbox routes). */
+    fun startSandbox(what: SandboxStart, bin: String? = null) {
+        val s = session ?: return toast("Connect this phone to the PC first.")
+        val site = _ui.value.pairing?.siteId ?: return toast("No site is linked to this phone.")
+        scope.launch {
+            when (val r = SandboxStarters.start(s, site, what, bin)) {
+                is SandboxOutcome.Created -> {
+                    log("sandbox ${what.name.lowercase()}: task ${r.taskId}${r.refDocNo?.let { " ($it)" } ?: ""}")
+                    refreshTasksNow()
+                    if (_ui.value.tasks.any { it.id == r.taskId }) openTask(r.taskId) else toast("${what.label} is ready on Today.")
+                }
+                is SandboxOutcome.Refused -> toast(r.text)
+            }
+        }
     }
 
     fun startPractice() {
@@ -495,12 +832,18 @@ class FieldController(private val context: Context, private val toolkitError: ()
         val w = workSession.view
         if (w.active) {
             if (!w.listening) return // paused, or our own prompt heard back: never acted on
-            log("🎤 [$source ${"%.2f".format(java.util.Locale.ROOT, confidence)}] $text")
-            scope.launch { log("→ ${conductor.heard(text, confidence).name.lowercase()}") }
+            // Me → Attention word: the open microphone acts only on words that start with "Field" (hold-to-talk is exempt).
+            val words = if (source == "phone") text else AttentionWord.filter(text, _ui.value.attentionWord) ?: run {
+                log("🎤 [$source] ignored, no attention word: $text")
+                return
+            }
+            log("🎤 [$source ${"%.2f".format(java.util.Locale.ROOT, confidence)}] $words")
+            scope.launch { log("→ ${conductor.heard(words, confidence).name.lowercase()}") }
             return
         }
         if (source != "phone") return // no session: only the operator's own hold-to-talk is heard (A-03)
         log("🎤 [$source ${"%.2f".format(java.util.Locale.ROOT, confidence)}] $text")
+        if (reviewJob?.isActive == true) { reviewInbox.offer(text, confidence); return }
         if (JobGrammar.parse(text, confidence) == Command.Capture) requestScan()
         if (runner != null) runnerAct(JobAction.Heard(text, confidence))
     }
@@ -509,7 +852,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
 
     /** "Start work" on Today (MainActivity asks for the microphone first), or the glasses connecting. */
     fun startWork() {
-        if (_ui.value.pairing == null || _ui.value.deviceId == null) return toast("Connect this phone to the PC first.")
+        val approver = account?.approver == true
+        if ((_ui.value.pairing == null || _ui.value.deviceId == null) && !approver) return toast("Connect this phone to the PC first.")
         if (workSession.start(MicSource.NONE, glasses.status.value.session == "STARTED") == null) return
         WorkSessionService.start(context)
         log("work session started")
@@ -517,14 +861,15 @@ class FieldController(private val context: Context, private val toolkitError: ()
         applyMic()
         applyStreaming()
         val site = _ui.value.pairing?.siteId
-        scope.launch {
-            if (site != null) siteModes?.prime(site)
-            conductor.start()
-        }
+        // The greeting is spoken at once from the phone's own task list; nothing waits on the server first.
+        scope.launch { conductor.start() }
+        if (site != null) scope.launch { siteModes?.prime(site) }
+        if (approver) scope.launch { waitingDecisions()?.let { n -> conductor.decisionsWaiting(n) } }
     }
 
     fun stopWork() {
         if (workSession.stop() == null) return
+        stopReview(silent = true)
         log("work session stopped")
         continuous.stop()
         glasses.setListening(false)
@@ -557,6 +902,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
     private fun onGlassesStatus(g: com.scmtips.field.app.glasses.GlassesStatus) {
         val was = lastGlassesSession
         lastGlassesSession = g.session
+        // Registered with the Meta AI app while signed in as an approver: answer "Hey Meta, start SCMTips Field".
+        if (g.registration == "REGISTERED" && account?.approver == true && launchJob?.isActive != true) startLaunches()
         workSession.camera(g.cameraOn)
         if (g.session != was) {
             if (g.session == "STOPPED" || g.session == "none" || g.session == "IDLE") autoStarted = false
@@ -660,6 +1007,13 @@ class FieldController(private val context: Context, private val toolkitError: ()
         applyMic()
     }
 
+    fun toggleAttentionWord() {
+        val on = !_ui.value.attentionWord
+        prefs.edit().putBoolean(KEY_ATTENTION, on).apply()
+        _ui.value = _ui.value.copy(attentionWord = on)
+        toast(if (on) "Start what you say with “Field”, like “Field, next”." else "Attention word off: everything said in a work session is heard.")
+    }
+
     fun glassesSetUp(activity: Activity) {
         glasses.startMonitoring()
         when (_ui.value.glassesAdvice.action) {
@@ -680,6 +1034,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
             appendLine("SCMTips Field ${BuildConfig.VERSION_NAME} feedback")
             appendLine("Phone: ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}")
             appendLine("Connected to: ${u.pairing?.siteName ?: "not connected"} (${u.pairing?.apiBaseUrl ?: "-"})")
+            appendLine("SCMTIPS sign-in: ${u.signedIn?.let { "${it.coreBaseUrl}; approver ${it.approver}; field work ${it.fieldOperator}" } ?: "none"}")
             appendLine("Scanner: ${u.scanner.label}; audio-only: ${u.audioOnly}")
             appendLine("Glasses: ${u.glassesAdvice.text} [${u.glasses}]")
             appendLine("Work session: ${u.work.stateText}; assistant ${u.work.assistantOnline ?: "not asked yet"}")
@@ -757,7 +1112,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
 
     private fun describe(e: Throwable): String = when (e) {
         is HttpError -> when (e.status) {
-            401 -> "The pairing code expired or the PC restarted. Make a new code on the PC and scan it."
+            401 -> if (account != null) "Your SCMTIPS sign-in expired or the PC restarted. Sign out in Me and sign in again."
+            else "The pairing code expired or the PC restarted. Make a new code on the PC and scan it."
             403 -> "This phone is not allowed (${e.code ?: "403"}). Make a new code on the PC and scan it."
             else -> e.title?.takeIf { it != "HTTP Error" } ?: "The server said ${e.message}"
         }
@@ -772,6 +1128,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
 
     fun shutdown() {
         stopWork()
+        stopReview(silent = true)
+        stopLaunches()
         loops?.cancel()
         location.stop()
         glasses.disconnect()
@@ -790,6 +1148,12 @@ class FieldController(private val context: Context, private val toolkitError: ()
         private const val KEY_VISIT = "visit_id"
         private const val KEY_VISIT_SITE = "visit_site_id"
         private const val KEY_CLIMB_SEQ = "climb_seq"
+        private const val KEY_ATTENTION = "attention_word"
+
+        /** Answers meaning "this core has no POST /v1/auth/app/token" (then the wearable pairing is tried). */
+        private val NO_APP_SIGN_IN = setOf(404, 405, 501)
+        private const val REVIEW_LISTEN_SESSION_MS = 15_000L
+        private const val REVIEW_LISTEN_PHONE_MS = 25_000L
         private const val HEARTBEAT_MS = 5 * 60_000L
     }
 }

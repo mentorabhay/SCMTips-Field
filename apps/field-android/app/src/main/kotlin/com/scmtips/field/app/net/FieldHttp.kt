@@ -48,6 +48,14 @@ class FieldSession(
     private var accessToken: String? = null
     private var expiresAtMs: Long = 0
 
+    /** The field device id the last exchange answered (M4: for a core-signed-in phone the exchange registers it). */
+    @Volatile var exchangedDeviceId: String? = null
+        private set
+
+    /** `core_permissions` of the last exchange: the core's permission keys, echoed by field-api (M4). */
+    @Volatile var corePermissions: List<String> = emptyList()
+        private set
+
     private suspend fun token(): String = mutex.withLock {
         val t = accessToken
         if (t != null && clock() < expiresAtMs - 60_000) return t
@@ -58,8 +66,20 @@ class FieldSession(
         val res = call("POST", "/v1/auth/exchange", body, bearer = null).jsonObject
         val access = res.str("access_token")
         accessToken = access
+        exchangedDeviceId = res.opt("device_id")
+        corePermissions = (res["core_permissions"] as? kotlinx.serialization.json.JsonArray).orEmpty()
+            .mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
         expiresAtMs = clock() + ((res["expires_in"] as? JsonPrimitive)?.intOrNull ?: 600) * 1000L
         access
+    }
+
+    /** The current field token for another field-api call (the spoken brief, M4), or null when there is none. */
+    suspend fun bearer(): String? = if (deviceId == null) null else try {
+        token()
+    } catch (e: HttpError) {
+        null
+    } catch (e: IOException) {
+        null
     }
 
     /** Exchange the core token again, bound to [id] (or unbound when null). Throws [HttpError] if refused. */

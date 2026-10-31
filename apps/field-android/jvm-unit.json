@@ -37,6 +37,7 @@
     "app/src/main/kotlin/com/scmtips/field/app/ui/Components.kt": "androidx.compose",
     "app/src/main/kotlin/com/scmtips/field/app/ui/ConnectScreen.kt": "androidx.compose",
     "app/src/main/kotlin/com/scmtips/field/app/ui/CrashScreen.kt": "androidx.compose, android.content",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/DecisionScreen.kt": "androidx.compose",
     "app/src/main/kotlin/com/scmtips/field/app/ui/JobScreen.kt": "androidx.compose",
     "app/src/main/kotlin/com/scmtips/field/app/ui/MeScreen.kt": "androidx.compose",
     "app/src/main/kotlin/com/scmtips/field/app/ui/ScanScreen.kt": "androidx.compose",

@@ -28,6 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.AppUi
+import com.scmtips.field.app.home.SandboxStart
+import com.scmtips.field.feature.decisions.api.SignInMethod
+import com.scmtips.field.feature.decisions.api.StepUpMethod
 import com.scmtips.field.app.jobs.JobAction
 import com.scmtips.field.app.jobs.JobType
 import com.scmtips.field.app.navigation.Screen
@@ -69,14 +72,32 @@ class Actions(
     val stopWork: () -> Unit = {},
     val pauseWork: () -> Unit = {},
     val resumeWork: () -> Unit = {},
+    /** M4 F2: sign in against the SCMTIPS core (method, core address, field server address). */
+    val signIn: (SignInMethod, String, String) -> Unit = { _, _, _ -> },
+    /** M4 F1: the approver flow. */
+    val startReview: () -> Unit = {},
+    val stopReview: () -> Unit = {},
+    val refreshDecisions: () -> Unit = {},
+    val decisionButton: (String) -> Unit = {},
+    val answerStepUp: (StepUpMethod, String?) -> Unit = { _, _ -> },
+    /** M3 fix: Today's sandbox starters (a home receipt; a shelf count with its bin). */
+    val startSandbox: (SandboxStart, String?) -> Unit = { _, _ -> },
+    val toggleAttentionWord: () -> Unit = {},
 )
 
 @Composable
 fun AppRoot(ui: AppUi, a: Actions) {
     Box(Modifier.fillMaxSize().background(Background).safeDrawingPadding()) {
         val job = ui.job
+        val signed = ui.signedIn
         when {
-            ui.pairing == null || ui.deviceId == null -> ConnectScreen(ui, a)
+            // Signed in as an approver: the app is usable at once (field work joins when field-api answers).
+            signed == null && (ui.pairing == null || ui.deviceId == null) -> ConnectScreen(ui, a)
+            signed != null && !signed.approver && ui.deviceId == null -> ConnectScreen(ui, a)
+            ui.decisions.reviewing -> Column(Modifier.fillMaxSize()) {
+                if (ui.work.active) SessionStrip(ui.work, a)
+                Box(Modifier.weight(1f)) { DecisionScreen(ui, a) }
+            }
             job != null -> Column(Modifier.fillMaxSize()) {
                 if (ui.work.active) SessionStrip(ui.work, a)
                 Box(Modifier.weight(1f)) { JobScreen(job, ui.audioOnly, a) }
@@ -92,6 +113,7 @@ fun AppRoot(ui: AppUi, a: Actions) {
                 TabBar(ui.tab, a)
             }
         }
+        ui.decisions.stepUp?.let { ask -> StepUpDialog(ask.retryMessage, a) }
         ui.toast?.let { text ->
             LaunchedEffect(text) { delay(4_000); a.dismissToast() }
             Text(

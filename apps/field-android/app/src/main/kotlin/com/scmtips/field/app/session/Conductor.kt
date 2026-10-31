@@ -46,7 +46,25 @@ fun interface AssistantPort {
 }
 
 /** How one utterance was handled (logged, and pinned by ConductorTest). */
-enum class Route { GRAMMAR, ASSISTANT, LOCAL, FALLBACK, IGNORED }
+enum class Route { GRAMMAR, ASSISTANT, LOCAL, FALLBACK, IGNORED, DECISIONS }
+
+/**
+ * The approver flow as the work session sees it (M4, F1; FieldController implements it over
+ * feature-decisions). The app never decides permission: [approver] is the core's capability.
+ */
+interface DecisionPort {
+    /** The signed-in person may approve decisions (capability `approve_decisions` from the core). */
+    val approver: Boolean
+
+    /** A review is running: the session's words go to it, not to the grammar or the assistant. */
+    val reviewing: Boolean
+
+    /** Starts a review of the next waiting decision (returns at once; the review runs on its own). */
+    fun startReview()
+
+    /** Words for the running review. */
+    fun heard(text: String, confidence: Float)
+}
 
 /**
  * Phrases the phone always understands itself, and the small set it answers when the assistant cannot
@@ -57,10 +75,17 @@ object LocalIntents {
         data object StopWork : Intent
         data object ListWork : Intent
         data class Start(val type: JobType) : Intent
+
+        /** "decisions", "next decision": the approver flow (only for approvers, M4). */
+        data object Decisions : Intent
     }
 
     private val STOP = setOf("stop work", "end work", "finish work", "stop listening", "end session", "stop the session")
     private val LIST = setOf("whats next", "what is next", "my work", "list work", "list my work", "what do i have", "what work do i have")
+    private val DECISIONS = setOf(
+        "decisions", "decision", "next decision", "the next decision", "my decisions", "review decisions", "open decisions",
+        "approvals", "my approvals", "decisions waiting", "hear the decision", "hear decisions",
+    )
     private val TYPES = listOf(
         JobType.RECEIVE to listOf("receive", "receiving", "the delivery", "delivery", "a delivery"),
         JobType.PUTAWAY to listOf("put away", "putaway", "the put away"),
@@ -74,6 +99,7 @@ object LocalIntents {
         val t = JobGrammar.normalise(text)
         if (t in STOP) return Intent.StopWork
         if (t in LIST) return Intent.ListWork
+        if (t in DECISIONS) return Intent.Decisions
         val rest = listOf("start ", "open ", "begin ", "lets do ", "do ").firstOrNull { t.startsWith(it) }?.let { t.removePrefix(it).trim() } ?: return null
         return TYPES.firstOrNull { (_, words) -> rest in words }?.let { Intent.Start(it.first) }
     }
@@ -86,6 +112,10 @@ object LocalIntents {
         return "You have ${tasks.size} ${JobRunner.plural(tasks.size, "job")}: ${names.joinToString(", ")}" +
             (if (more > 0) ", and $more more." else ".")
     }
+
+    /** Spoken by the phone the moment a work session starts, before any server answer (owner test, 31 Oct). */
+    fun greeting(tasks: List<JobTask>): String =
+        "Work session started. ${workList(tasks)}" + if (tasks.isNotEmpty()) " Say start and the job." else ""
 }
 
 /**
@@ -108,15 +138,38 @@ class Conductor(
     private val onStopWork: () -> Unit,
     private val log: (String) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
+    private val decisions: DecisionPort? = null,
 ) {
     private val mutex = Mutex()
     private var hinted = false
+
+    /** Utterances handled since the session started (a late session_start reply is not spoken over them). */
+    private var handled = 0
     private val askedAbout = mutableMapOf<String, Long>()
 
-    suspend fun start() = mutex.withLock {
-        val reply = send(AssistantEvent.SESSION_START)
-        if (reply != null) perform(reply, words = null)
-        else speaker.say("Work session started. The assistant is offline, so use the fixed words. ${LocalIntents.workList(desk.tasks())} Say start and the job.")
+    /**
+     * The greeting is local and immediate (job count from the task list on the phone); the server's
+     * session_start turn follows when it arrives. Its reply is spoken and acted on only if the operator
+     * has not spoken meanwhile: the lock is not held while waiting, so words are never kept waiting.
+     */
+    suspend fun start() {
+        mutex.withLock {
+            handled = 0
+            val g = LocalIntents.greeting(desk.tasks())
+            session.said(g)
+            speaker.say(g)
+        }
+        val reply = send(AssistantEvent.SESSION_START) ?: return
+        mutex.withLock {
+            if (handled > 0) log("assistant session_start reply not spoken: the operator already spoke")
+            else if (session.view.active) perform(reply, words = null)
+        }
+    }
+
+    /** "1 decision is waiting for you. Say decisions to hear it." after the greeting (approvers only). */
+    suspend fun decisionsWaiting(n: Int) = mutex.withLock {
+        if (decisions?.approver != true || decisions.reviewing) return@withLock
+        com.scmtips.field.app.decisions.DecisionText.waiting(n)?.let(speaker::queue)
     }
 
     suspend fun end() = mutex.withLock { send(AssistantEvent.SESSION_END) }
@@ -137,10 +190,21 @@ class Conductor(
         val words = text.trim()
         if (words.isEmpty() || confidence < NOISE_FLOOR) return@withLock Route.IGNORED
         session.heard(words)
-        if (LocalIntents.parse(words) == LocalIntents.Intent.StopWork) {
+        handled += 1
+        val local = LocalIntents.parse(words)
+        if (local == LocalIntents.Intent.StopWork) {
             speaker.say("Stopping work. The microphone is off.")
             onStopWork()
             return@withLock Route.LOCAL
+        }
+        val d = decisions
+        if (d != null && d.reviewing) {
+            d.heard(words, confidence)
+            return@withLock Route.DECISIONS
+        }
+        if (d != null && d.approver && local == LocalIntents.Intent.Decisions) {
+            d.startReview()
+            return@withLock Route.DECISIONS
         }
         val cmd = JobGrammar.parse(words, confidence)
         val free = session.view.listenMode == "free"

@@ -18,7 +18,9 @@ import com.scmtips.field.app.jobs.Tasks
 import com.scmtips.field.app.jobs.num
 import com.scmtips.field.app.jobs.obj
 import com.scmtips.field.app.jobs.str
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -67,7 +69,7 @@ class DeskRig(task: JobTask?, var tasks: List<JobTask> = listOf(Tasks.receive, T
 }
 
 class ConductorTest {
-    private class Setup(task: JobTask? = Tasks.receive, tasks: List<JobTask> = listOf(Tasks.receive, Tasks.count)) {
+    private class Setup(task: JobTask? = Tasks.receive, tasks: List<JobTask> = listOf(Tasks.receive, Tasks.count), decisions: DecisionPort? = null) {
         val d = DeskRig(task, tasks)
         val ai = ScriptedAssistant()
         val voice = RecordingSpeaker()
@@ -75,7 +77,7 @@ class ConductorTest {
         var stopped = 0
         val log = mutableListOf<String>()
         var now = 1_000_000L
-        val c = Conductor({ "site-1" }, d.desk, ai, TurnSpeaker(voice), session, { stopped += 1 }, { log += it }, { now })
+        val c = Conductor({ "site-1" }, d.desk, ai, TurnSpeaker(voice), session, { stopped += 1 }, { log += it }, { now }, decisions)
         val runnerSaid: List<String> get() = d.rig!!.speaker.said
         val sent get() = d.rig!!.transport
     }
@@ -347,5 +349,103 @@ class ConductorTest {
         off.c.resumed()
         assertEquals(listOf("Listening again."), off.voice.said)
         assertNull("count needs a value", Conductor.command(AssistantAction.Command("count", null)))
+    }
+
+    // --- M4: the immediate greeting and the approver flow in the session -------------------------
+
+    /** The assistant's session_start answer held back until [gate] opens (a slow PC); other turns fail fast. */
+    private class SlowStart : AssistantPort {
+        val gate = kotlinx.coroutines.CompletableDeferred<AssistantOutcome>()
+        val turns = mutableListOf<AssistantTurn>()
+        override suspend fun turn(t: AssistantTurn): AssistantOutcome {
+            turns += t
+            return if (t.event == AssistantEvent.SESSION_START) gate.await() else AssistantOutcome.Failed("offline: timeout")
+        }
+    }
+
+    private class Approver(override var approver: Boolean = true) : DecisionPort {
+        override var reviewing = false
+        var started = 0
+        val words = mutableListOf<String>()
+        override fun startReview() { started += 1; reviewing = true }
+        override fun heard(text: String, confidence: Float) { words += text }
+    }
+
+    @Test
+    fun startWorkSpeaksALocalGreetingAtOnce_andTheServersReplyFollowsWhenItArrives() = runBlocking {
+        val voice = RecordingSpeaker()
+        val session = WorkSession().also { it.start(MicSource.GLASSES, glassesStarted = true) }
+        val ai = SlowStart()
+        val d = DeskRig(null)
+        val c = Conductor({ "site-1" }, d.desk, ai, TurnSpeaker(voice), session, {}, {})
+        val start = launch { c.start() }
+        kotlinx.coroutines.withTimeout(5_000) { while (voice.said.isEmpty()) yield() }
+        // Spoken before any server answer: the job count comes from the phone's own task list.
+        assertEquals(listOf("Work session started. You have 2 jobs: Receive Delivery 1800 0000 22, Count bin 03-05-02. Say start and the job."), voice.said)
+        assertEquals(AssistantEvent.SESSION_START, ai.turns.single().event)
+        assertFalse(start.isCompleted)
+        ai.gate.complete(AssistantOutcome.Ok(AssistantReply("sess-1", "Good morning. The delivery is first.", null, listOf(AssistantAction.OpenTask("t-rcv")), "rules", 0.0)))
+        start.join()
+        assertEquals("Good morning. The delivery is first.", voice.said.last())
+        assertEquals(listOf("t-rcv"), d.opened)
+    }
+
+    @Test
+    fun wordsSaidWhileTheServerIsSlowAreHandledAtOnce_andTheLateReplyIsNotSpokenOverThem() = runBlocking {
+        val voice = RecordingSpeaker()
+        val session = WorkSession().also { it.start(MicSource.GLASSES, glassesStarted = true) }
+        val ai = SlowStart()
+        val d = DeskRig(null)
+        val log = mutableListOf<String>()
+        val c = Conductor({ "site-1" }, d.desk, ai, TurnSpeaker(voice), session, {}, { log += it })
+        val start = launch { c.start() }
+        kotlinx.coroutines.withTimeout(5_000) { while (voice.said.isEmpty()) yield() }
+        assertEquals(Route.FALLBACK, c.heard("start count", 0.9f)) // not kept waiting behind session_start
+        assertEquals(listOf("t-ct"), d.opened)
+        ai.gate.complete(AssistantOutcome.Ok(AssistantReply("sess-1", "Good morning.", null, listOf(AssistantAction.OpenTask("t-rcv")), "rules", 0.0)))
+        start.join()
+        assertFalse(voice.said.contains("Good morning."))
+        assertEquals(listOf("t-ct"), d.opened)
+        assertTrue(log.any { "not spoken" in it })
+    }
+
+    @Test
+    fun anApproverHearsHowManyDecisionsWait_andSayingDecisionsStartsTheReview() = runBlocking {
+        val port = Approver()
+        val s = Setup(task = null, decisions = port)
+        s.c.decisionsWaiting(1)
+        assertEquals("1 decision is waiting for you. Say decisions to hear it.", s.voice.said.last())
+        s.c.decisionsWaiting(0)
+        assertEquals(1, s.voice.said.size)
+        assertEquals(Route.DECISIONS, s.c.heard("next decision", 0.9f))
+        assertEquals(1, port.started)
+        assertTrue(s.ai.turns.isEmpty())
+    }
+
+    @Test
+    fun whileAReviewRunsTheSessionsWordsGoToIt_butStopWorkStillStops() = runBlocking {
+        val port = Approver().apply { reviewing = true }
+        val s = Setup(decisions = port)
+        assertEquals(Route.DECISIONS, s.c.heard("approve option two", 0.91f))
+        assertEquals(Route.DECISIONS, s.c.heard("next", 0.92f)) // not the job's "next" while a decision is open
+        assertEquals(listOf("approve option two", "next"), port.words)
+        assertTrue(s.ai.turns.isEmpty())
+        assertEquals("intro", s.d.rig!!.runner.state.step)
+        assertEquals(Route.LOCAL, s.c.heard("stop work", 0.9f))
+        assertEquals(1, s.stopped)
+        // No announcement over a running review.
+        s.c.decisionsWaiting(2)
+        assertFalse(s.voice.said.any { "waiting for you" in it })
+    }
+
+    @Test
+    fun withoutTheApproveCapabilityDecisionsAreNotTheAppsToOpen() = runBlocking {
+        val port = Approver(approver = false)
+        val s = Setup(task = null, decisions = port)
+        s.ai.answer("You have no decisions to make here.")
+        assertEquals(Route.ASSISTANT, s.c.heard("decisions", 0.9f))
+        assertEquals(0, port.started)
+        s.c.decisionsWaiting(3)
+        assertFalse(s.voice.said.any { "waiting for you" in it })
     }
 }

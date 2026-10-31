@@ -20,8 +20,8 @@ android {
         applicationId = "com.scmtips.field"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 5
-        versionName = "0.4.0-m3"
+        versionCode = 6
+        versionName = "0.5.0-m4"
         // Meta Wearables DAT, as Meta's CameraAccess sample: in Developer Mode attestation is off and the
         // values may be empty; a released app needs its Wearables Developer Center ids in local.properties.
         // (Was the literal "0": Android stores a numeric meta-data value as an Integer, and DAT logged
@@ -77,6 +77,7 @@ dependencies {
     implementation(project(":core-wearables"))
     implementation(project(":core-safety")) // HarnessCheck: phrase + tap within 10 s before climb-safe prompts (FR4.041)
     implementation(project(":core-outbox")) // legacy phase-2 managers (auth, consent, pairing) still compile against it
+    implementation(project(":feature-decisions")) // M4: core sign-in wire and the approver flow (A-04)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
