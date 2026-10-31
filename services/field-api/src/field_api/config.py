@@ -5,12 +5,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     FIELD_ENV: str = "development"
-    FIELD_PORT: int = 8000
+    FIELD_PORT: int = 8020  # dev default; the SCMTIPS core API keeps 8000 (its reply TO_FIELD, 31 Oct)
     FIELD_DATABASE_URL: str = "postgresql://field_app:devpassword@localhost:5450/field"
     # SCMTIPS core (M4 F7). Read at call time by field_api.auth.core; listed here for documentation only.
     FIELD_CORE_BASE_URL: str = "http://127.0.0.1:8011"
     FIELD_CORE_JWKS_URL: str = "http://127.0.0.1:8011/v1/core/jwks.json"
     FIELD_CORE_DEVICE_STATUS_URL: str = ""
+    FIELD_CORE_ROLE_MAP: str = ""  # core role key -> Field role(s); empty = field_api.auth.core_roles default
     FIELD_ERP_SIM_URL: str = "http://localhost:8002"
     FIELD_JWKS_MAX_STALE_S: int = 3600
     FIELD_IDEMPOTENCY_TTL_S: int = 86400  # 24 hours

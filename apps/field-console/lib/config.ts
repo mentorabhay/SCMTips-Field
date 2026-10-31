@@ -5,7 +5,7 @@
  * same-origin paths that next.config.mjs rewrites to these URLs (`/v1/*` -> field-api,
  * `/dev-core/auth/token` -> fake-core). The URLs below are the rewrite targets.
  */
-export const DEFAULT_FIELD_API_URL = "http://127.0.0.1:8000";
+export const DEFAULT_FIELD_API_URL = "http://127.0.0.1:8020"; // the SCMTIPS core API keeps 8000
 export const DEFAULT_FAKE_CORE_URL = "http://127.0.0.1:8011";
 
 /** How often live views refresh (contract §7: polling, no WebSocket). */

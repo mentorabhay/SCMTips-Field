@@ -103,6 +103,7 @@ def test_rewrite_accepted_by_the_core_is_spoken(site: dict[str, Any], recorded_a
     req = core.requests[0]
     assert (req.method, req.url.path) == ("POST", "/v1/briefs/decision/DEC-RE-001/check")
     assert req.headers["authorization"] == f"Bearer {CORE_TOKEN}" and req.headers["x-device-id"] == DEVICE
+    assert req.headers["x-requested-with"] == "lr"  # the core answers 403 without it (core reply TO_FIELD §1 item 6)
     assert json.loads(req.content) == {"text": REWRITE}
     assert CORE_TOKEN not in recorded_api.sent_text()  # the model never sees the core token
     with psycopg.connect(os.environ["FIELD_ADMIN_DATABASE_URL"]) as c, c.cursor() as cur:

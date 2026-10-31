@@ -18,7 +18,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.FIELD_API_URL || "http://127.0.0.1:8000";
+const BASE_URL = __ENV.FIELD_API_URL || "http://127.0.0.1:8020";
 const DUMMY_CROP_BYTES = "A".repeat(40 * 1024); // 40 KB crop
 
 export default function () {

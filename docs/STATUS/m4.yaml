@@ -72,9 +72,11 @@
     permissions echoed as core_permissions, e-mail never stored). The core's device id (app install id) is not a
     field.device id; the field device for it is the field.device whose id or serial_no equals it, registered by the
     exchange when the core device status answers active (the app then uses the device_id the exchange returns and
-    does not POST /v1/devices for it). Roles must still be field roles (unknown roles stay refused); the stand-in
-    approver carries field.supervisor, which holds field.assistant.use (stream M's POST /v1/briefs/spoken). Partial until
-    proven against the real core and on the owner's phone (A-04).
+    does not POST /v1/devices for it). Roles: since M4-C08 (the core's reply TO_FIELD, 31 Oct) the token's core role keys
+    are mapped to Field roles by FIELD_CORE_ROLE_MAP, Field role names keep working, and a token with no mappable role is
+    403 FIELD-AUTH-403-NO-FIELD-ROLE; the stand-in approver carries the core key approver, mapped to field.supervisor,
+    which holds field.assistant.use (stream M's POST /v1/briefs/spoken). Partial until proven against the real core and
+    on the owner's phone (A-04).
 - id: M4-C03
   title: >-
     ErpReadPort (posted material document with PO reference, ERP on-hand) in the connector; erp-sim PO references
@@ -137,9 +139,11 @@
     X-SCMTIPS-Timestamp / X-SCMTIPS-Signature (HMAC-SHA256 of timestamp + "." + body), Idempotency-Key
     <event_id>:<feed>; 400/413/415/422 dead at once, other failures retried with exponential backoff (+-20 % jitter)
     up to FIELD_CORE_FEED_MAX_ATTEMPTS (8), then dead. Nothing is staged or sent unless both feed URLs are set; a URL
-    without its secret is refused. Assumptions (handover gives one example row each): as_of = due_date = posting
-    date, qty = quantity received on that PO line, PO ref <PO>-<item without leading zeros>, several items aggregated
-    per row key, a receipt without a PO reference sends the stock row only, sandbox receipts skipped unless
+    without its secret is refused. Assumptions (handover gives one example row each), confirmed or corrected by the
+    core's reply (TO_FIELD section 4, applied in M4-C10): as_of = due_date = posting date, qty = quantity received
+    (confirmed); the PO ref is the core's PO number exactly, mapped by FIELD_CORE_CODE_MAP purchase_orders (corrected:
+    no longer <PO>-<item>); body {"rows": [...]}, 409 = delivered, stale stock retries dropped (M4-C10); several items
+    aggregated per row key, a receipt without a PO reference sends the stock row only, sandbox receipts skipped unless
     FIELD_CORE_FEED_SANDBOX, history older than FIELD_CORE_FEED_LOOKBACK_H (24 h) not replayed. Codes as erp-sim has
     them (upper-cased) or mapped by FIELD_CORE_CODE_MAP (JSON: materials, locations by plant or plant/sloc). Reversals
     (102) are not sent. Partial until delivered to the real core's feeds (A-04).
@@ -568,6 +572,183 @@
     wrong code is refused, the step-up is accepted and "confirm" commits; the second decision (no step-up)
     commits directly; nothing is left waiting. Done needs the same run against the real core and on the
     owner's phone and glasses.
+- id: M4-C08
+  title: >-
+    Core reply section 2 (b): core role keys mapped to Field roles at /v1/auth/exchange (FIELD_CORE_ROLE_MAP), a clear
+    403 FIELD-AUTH-403-NO-FIELD-ROLE when nothing maps; stand-in demo users carry core role keys
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/auth/core_roles.py
+  - services/field-api/src/field_api/routes/auth.py
+  - services/field-api/src/field_api/errors.py
+  - services/field-api/src/field_api/config.py
+  - tools/fake-core/src/fake_core/standin/state.py
+  - packages/field-contract/openapi.json
+  - .env.example
+  tests:
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c08_default_table_is_the_cores
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c08_setting_is_json_or_a_file_laid_over_the_default
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c08_map_roles_keeps_field_roles_maps_core_keys_ignores_the_rest
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c08_stand_in_approver_and_operator_exchange_with_core_role_keys
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c08_field_role_names_keep_working
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c08_nothing_maps_is_a_clear_403_not_a_bare_401
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c08_the_owner_can_map_another_core_role
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c08_a_broken_setting_refuses_every_core_sign_in
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c08_roles_must_still_be_a_list_of_strings
+  - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_tc1_050_unknown_role_and_non_uuid_tenant_rejected
+  - tools/fake-core/tests/test_standin.py::test_m4_c08_demo_users_carry_core_role_keys
+  frs: []
+  verified_at: null
+  note: >-
+    Against the stand-in; real core not deployed. The core's reply (TO_FIELD, 31 Oct, section 2) chose (b): its token
+    carries core role keys. Default table: approver -> field.supervisor, procurement -> field.operator, ops_lead and
+    team_lead -> field.supervisor, org_admin -> field.admin, integration -> field.integration, planner and analyst (the
+    other known core roles) -> field.viewer. FIELD_CORE_ROLE_MAP (JSON object or the path of a JSON file) is laid over
+    the default: a key given replaces its entry, [] removes it; values must be Field roles, a broken setting answers
+    500 FIELD-AUTH-500-ROLE-MAP-INVALID (fail closed). Field role names in roles keep working (fake-core dev tokens);
+    other roles are ignored; when nothing maps the exchange answers 403 FIELD-AUTH-403-NO-FIELD-ROLE whose detail names
+    the roles and asks for the approver or procurement role (shown on the app's sign-in screen, M4-B08). The mapped core
+    keys are echoed as core_roles (OpenAPI regenerated). Changed test, owner-decided contract: test_tc1_050's unknown
+    role ["root"] was 401 and is now the distinct 403 FIELD-AUTH-403-NO-FIELD-ROLE (still refused, stricter code
+    check; TC1.050 itself is the alg-none case and is unchanged). Stand-in demo users now carry approver and
+    procurement (operator@demo stays the e-mail); the approver keeps field.assistant.use through field.supervisor.
+- id: M4-C09
+  title: >-
+    Core reply sections 1(6) and 3: X-Requested-With lr on every call Field makes to the core; the stand-in enforces it
+    on every state-changing route and checks decision.read on the brief routes
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/auth/core.py
+  - services/field-api/src/field_api/auth/jwks.py
+  - services/field-api/src/field_api/routes/auth.py
+  - services/field-api/src/field_api/briefs/core.py
+  - services/field-worker/src/field_worker/core_feeds/signing.py
+  - tools/fake-core/src/fake_core/standin/routes.py
+  - tools/dev_stack/stack.py
+  tests:
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c09_device_status_and_jwks_calls_carry_requested_with
+  - services/field-api/tests/unit/test_m4_core_reply.py::test_m4_c09_brief_check_against_the_stand_in_needs_the_header_and_decision_read
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_rewrite_accepted_by_the_core_is_spoken
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c10_body_is_a_rows_object_signed_with_requested_with
+  - tools/fake-core/tests/test_standin.py::test_m4_c09_every_state_changing_route_needs_requested_with
+  - tools/fake-core/tests/test_standin.py::test_m4_c09_brief_routes_need_decision_read
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::briefDocument_isGetByDecisionId
+  frs: []
+  verified_at: null
+  note: >-
+    Against the stand-in; real core not deployed. field-api sends X-Requested-With lr on the brief check, the device
+    status call and the JWKS fetch; field-worker on both feeds; the app on every CoreClient call, on sign-in and on the
+    ARO pairing (it already did; the tests assert it). The stand-in answers 403 missing_requested_with without it on
+    every POST and DELETE (sign-in, pairing, session revoke, brief check, voice challenge and command, step-up, photo,
+    feeds); GET routes do not need it. The stand-in approver's permission is now decision.read (the core's name;
+    decisions.read was only asserted in tests, nothing relied on it), checked on GET /v1/briefs/... and the check
+    route; the procurement operator has none and gets 403. The core reports its own test proves the brief check with
+    the wearable token (TO_FIELD section 1 item 6); META_FIELD row 21 stays UNVERIFIED until Field calls it.
+- id: M4-C10
+  title: >-
+    Core reply section 4: open-supply ref = the core's PO number (FIELD_CORE_CODE_MAP purchase_orders), body
+    {"rows"}, 409 duplicate = delivered, stale stock retries dropped; the stand-in dedupes by body hash for 10 minutes
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/core_feeds/codes.py
+  - services/field-worker/src/field_worker/core_feeds/rows.py
+  - services/field-worker/src/field_worker/core_feeds/publisher.py
+  - services/field-worker/src/field_worker/core_feeds/signing.py
+  - tools/fake-core/src/fake_core/standin/routes.py
+  - tools/dev_stack/stack.py
+  tests:
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c10_signature_is_pinned_to_the_cores_format
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c10_po_ref_is_the_cores_po_number_through_the_mapping
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c10_body_is_a_rows_object_signed_with_requested_with
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c10_a_409_duplicate_is_delivered_and_never_retried
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c10_the_stand_in_answers_409_for_a_resent_body_and_field_counts_it_delivered
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c10_a_stale_stock_retry_is_dropped_once_a_newer_row_is_delivered
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c10_only_the_superseded_rows_of_a_stock_retry_are_dropped_and_old_bodies_are_wrapped
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_gr_101_delivers_two_signed_rows_read_from_the_erp
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c04_rows_aggregate_and_storage_location_mapping
+  - tools/fake-core/tests/test_standin.py::test_m4_c10_feed_dedupes_by_body_hash_for_10_minutes_and_ignores_idempotency_key
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_feed_receiver_verifies_and_records
+  frs: []
+  verified_at: null
+  note: >-
+    Against the stand-in; real core not deployed. ref is the PO number exactly as the core knows it (e.g. PO-26-1001),
+    the item in item_code; the open-supply row key is now (ref, item_code), matching the core's line key (kind, ref,
+    item_code). erp-sim PO numbers map through the new FIELD_CORE_CODE_MAP section purchase_orders. Choice when
+    unmapped: the erp-sim PO number is sent unchanged without the item suffix and logged (core_feed_po_unmapped); that
+    is right after stack seed-core-export (its POs carry the core's refs) and visible otherwise. The body was a bare JSON
+    array (01a's example) and is now {"rows": [...]} as TO_FIELD states; rows staged earlier are wrapped at delivery.
+    Signature unchanged, pinned by a fixed test vector (sha256= + hex HMAC-SHA256 of "<timestamp>.<body>"). 409 is
+    delivered (last_status 409), never retried. Stock rows are upserts: deliveries are claimed and sent in staging order
+    (the order the on-hand was read from erp-sim); before a stock delivery is sent, rows for which a newer stock
+    delivery of the same item and location was already delivered are dropped, and a delivery left empty is skipped with
+    skip_reason superseded (existing status and column: no migration, the head stays field_0062). The stand-in now
+    takes only {"rows": [...]}, answers 409 duplicate for the same body hash within 10 minutes per feed, ignores
+    Idempotency-Key, and keys open supply by (kind, ref, item_code). Changed tests, owner-decided contract: the
+    expected ref in test_m4_c04_* is now the PO number (was <PO>-<item>) and bodies are read from {"rows"}.
+- id: M4-C11
+  title: >-
+    Core reply section 1(1): field-api's dev port pinned at 8020 (the core keeps 8000, 8001, 8790, 3100); QR, app,
+    console, compose and docs follow; real core base URL = the PC's LAN address on 8000
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/dev_stack/stack.py
+  - .env.example
+  - docs/SETUP/FIELD_TEST_GUIDE.md
+  - services/field-api/src/field_api/config.py
+  - docker-compose.dev.yml
+  - apps/field-console/lib/config.ts
+  - apps/field-console/next.config.mjs
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/CoreAccount.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/config/EffectiveConfig.kt
+  tests:
+  - tools/dev_stack/tests/test_stack.py::test_m4_c11_field_api_is_pinned_at_8020_beside_the_core_on_8000
+  - tools/dev_stack/tests/test_stack.py::test_busy_default_ports_move_to_the_next_free_one
+  - tools/dev_stack/tests/test_stack.py::test_pairing_payload_is_the_contract_the_app_parses
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::fieldApiIsOn8020BesideTheCoreOn8000_m4b08
+  frs: []
+  verified_at: null
+  note: >-
+    Not yet run on the owner's PC. field-api's dev default is 8020 (FIELD_STACK_API_PORT still overrides; when 8020 is
+    taken up moves to the next free port, prints it and saves it, as before). The pairing QR takes the port from the
+    stack, so it carries 8020. The app's default field address (sign-in screen and emulator default) is 8020, the
+    console's default field-api URL is 8020, docker-compose maps host 8020 to the container, k6 defaults follow. The
+    stand-in core stays on 8011 and erp-sim on 8002. With FIELD_CORE_TARGET=core the core base URL is the PC's LAN
+    address on port 8000 (documented in .env.example with placeholders only, no real values).
+- id: M4-C12
+  title: >-
+    Core reply section 3: the stand-in serves the core's brief document GET /v1/briefs/{kind}/{subject_id}?format and
+    the sessions list as an array of the core's rows; device_model is a free label
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - tools/fake-core/src/fake_core/standin/routes.py
+  - tools/fake-core/src/fake_core/standin/state.py
+  - tools/fake-core/src/fake_core/standin/decisions.py
+  - tools/fake-core/README.md
+  tests:
+  - tools/fake-core/tests/test_standin.py::test_m4_c12_brief_document_has_the_cores_shape
+  - tools/fake-core/tests/test_standin.py::test_m4_c12_sessions_list_is_the_cores_array
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_wearable_guard
+  - tools/fake-core/tests/test_standin.py::test_m4_c02_sign_in_refusals
+  frs: []
+  verified_at: null
+  note: >-
+    Against the stand-in; real core not deployed. Brief: {kind, subject_id, format, text, template_text, source,
+    facts{}, check{}, characters, words, seconds, simulated} for kind decision or signal, format spoken or card (422
+    otherwise); the stand-in has templates only (source template, simulated true); what facts{} and check{} hold inside
+    and the seconds estimate are the stand-in's choice (the core gave only the keys). Sessions: an array of {id,
+    device_id, device_model, display_capable, current, created_at, expires_at, last_seen_at|null, revoked_at|null},
+    revoked sessions listed with their time (was {items: [...]}). device_model is accepted as ^[A-Z0-9_]+$ up to 40
+    characters on sign-in and pairing (was a fixed list).
 - id: M4-B08
   title: >-
     App side of the core reply: brief and sessions parsed in the core's shapes, X-Requested-With on every core call,

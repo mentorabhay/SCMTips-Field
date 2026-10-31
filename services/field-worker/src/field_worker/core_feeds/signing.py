@@ -1,7 +1,9 @@
 """Signing of the core's webhook feeds (handover 01a; exchange contract README "Signing live pushes").
 
 ``X-SCMTIPS-Signature: sha256=<hex HMAC-SHA256(feed_secret, timestamp + "." + raw_body)>`` with
-``X-SCMTIPS-Timestamp: <unix seconds>``; the core accepts timestamps within 5 minutes of its clock.
+``X-SCMTIPS-Timestamp: <unix seconds>``; the core accepts timestamps within 5 minutes of its clock (confirmed by the
+core's reply TO_FIELD section 4). ``X-Requested-With: lr`` goes with every call Field makes to the core (section 3).
+The core ignores ``Idempotency-Key`` (it dedupes by body hash); Field still sends it, for its own logs.
 """
 
 from __future__ import annotations
@@ -30,5 +32,6 @@ def signed_headers(secret: str, body: bytes, idempotency_key: str, now: float | 
         "X-SCMTIPS-Timestamp": str(ts),
         "X-SCMTIPS-Signature": sign(secret, ts, body),
         "Idempotency-Key": idempotency_key,
+        "X-Requested-With": "lr",
         "User-Agent": "scmtips-field-worker",
     }

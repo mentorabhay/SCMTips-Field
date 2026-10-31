@@ -6263,6 +6263,14 @@
             "type": "array",
             "title": "Core Permissions",
             "description": "the core token's permissions claim (M4 F7); field decides nothing on them"
+          },
+          "core_roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Core Roles",
+            "description": "the core role keys of the token that FIELD_CORE_ROLE_MAP mapped to `roles`"
           }
         },
         "type": "object",

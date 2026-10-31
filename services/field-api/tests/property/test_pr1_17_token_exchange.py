@@ -82,7 +82,11 @@ def test_tc1_050_field_token_cannot_be_exchanged() -> None:
 
 
 def test_tc1_050_unknown_role_and_non_uuid_tenant_rejected() -> None:
-    assert _exchange(_core_token(principal_id="u", tenant_id=str(uuid.uuid4()), roles=["root"])).status_code == 401
+    # M4 (core reply TO_FIELD section 2): a role that maps to no Field role is still refused, now with the distinct
+    # 403 FIELD-AUTH-403-NO-FIELD-ROLE and a sentence for the sign-in screen instead of the bare 401.
+    r = _exchange(_core_token(principal_id="u", tenant_id=str(uuid.uuid4()), roles=["root"]))
+    assert r.status_code == 403 and r.json()["code"] == "FIELD-AUTH-403-NO-FIELD-ROLE"
+    assert "root" in r.json()["detail"]
     assert _exchange(_core_token(principal_id="u", tenant_id="tenant-1", roles=["field.operator"])).status_code == 401
 
 

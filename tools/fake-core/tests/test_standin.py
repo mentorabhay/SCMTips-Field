@@ -73,7 +73,8 @@ def test_m4_c02_app_sign_in_shape_and_core_claims() -> None:
     key = next(k for k in jwks if k["kid"] == head["kid"])
     pub: Any = Ed25519PublicKey.from_public_bytes(base64.urlsafe_b64decode(key["x"] + "=="))  # stubs: RSA only
     claims = jwt.decode(s["access_token"], pub, algorithms=["EdDSA"], audience="scmtips-core", issuer="scmtips-core")
-    assert claims["permissions"] == ["voice.approve", "decisions.read", "evidence.upload"]
+    assert claims["permissions"] == ["voice.approve", "decision.read", "evidence.upload"]
+    assert claims["roles"] == ["approver"]  # core role keys, like the real core (TO_FIELD section 2)
     assert claims["email"] == APPROVER and claims["device_id"] == s["wearable"]["device_id"]
     assert {"sub", "tenant_id", "roles", "sites", "iat", "exp", "jti", "device_binding"} <= set(claims)
     # the core JWKS also carries the legacy dev key, so dev QR tokens keep exchanging against the core path
@@ -88,7 +89,7 @@ def test_m4_c02_sign_in_refusals() -> None:
     r = client.post("/v1/auth/app/token", json=base, headers=LR)
     assert r.status_code == 401 and r.json()["code"] == "invalid_credentials"
     assert client.post("/v1/auth/app/token", json={**base, "device_id": "short"}, headers=LR).status_code == 422
-    assert client.post("/v1/auth/app/token", json={**base, "device_model": "X"}, headers=LR).status_code == 422
+    assert client.post("/v1/auth/app/token", json={**base, "device_model": "phone only"}, headers=LR).status_code == 422
     for _ in range(4):
         client.post("/v1/auth/app/token", json=base, headers=LR)
     r = client.post("/v1/auth/app/token", json={**base, "password": STATE.password}, headers=LR)
@@ -132,10 +133,10 @@ def test_m4_c02_wearable_guard() -> None:
     bad = {**wh(s), "X-Device-Id": "another-device"}
     r = client.get("/v1/wearable/next", headers=bad)
     assert r.status_code == 401 and r.json()["code"] == "device_mismatch"
-    sessions = client.get("/v1/wearable/sessions", headers=wh(s)).json()["items"]
+    sessions = client.get("/v1/wearable/sessions", headers=wh(s)).json()
     mine = next(x for x in sessions if x["current"])
-    assert mine["session_id"] == s["wearable"]["session_id"]
-    assert client.delete(f"/v1/wearable/sessions/{mine['session_id']}", headers=wh(s)).status_code == 204
+    assert mine["id"] == s["wearable"]["session_id"]
+    assert client.delete(f"/v1/wearable/sessions/{mine['id']}", headers=wh(s)).status_code == 204
     r = client.get("/v1/wearable/next", headers=wh(s))
     assert r.status_code == 401 and r.json()["code"] == "unauthorized"
 
@@ -266,27 +267,28 @@ def test_m4_c02_evidence_photo() -> None:
 def _signed(secret: str, body: bytes, ts: int | None = None) -> dict[str, str]:
     t = int(time.time()) if ts is None else ts
     sig = hmac.new(secret.encode(), f"{t}.".encode() + body, hashlib.sha256).hexdigest()
-    return {"Content-Type": "application/json", "X-SCMTIPS-Timestamp": str(t), "X-SCMTIPS-Signature": f"sha256={sig}"}
+    return {"Content-Type": "application/json", "X-SCMTIPS-Timestamp": str(t), "X-SCMTIPS-Signature": f"sha256={sig}",
+            **LR}
 
 
 def test_m4_c02_feed_receiver_verifies_and_records(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(STATE.feeds, "t-inv", ("inventory", "s3cret-inv"))
     monkeypatch.setitem(STATE.feeds, "t-sup", ("open_supply", "s3cret-sup"))
     item = f"RM-{uuid.uuid4().hex[:5].upper()}"
-    inv = json.dumps([{"item_code": item, "location_code": "PLANT-GOA", "as_of": "2026-11-03",
-                       "on_hand_qty": 420}]).encode()
+    inv = json.dumps({"rows": [{"item_code": item, "location_code": "PLANT-GOA", "as_of": "2026-11-03",
+                                "on_hand_qty": 420}]}).encode()
     r = client.post("/v1/inbound/feeds/t-inv", content=inv, headers=_signed("s3cret-inv", inv))
     assert r.status_code == 200 and r.json() == {"accepted": True, "rows": 1, "duplicate": False}
     again = client.post("/v1/inbound/feeds/t-inv", content=inv, headers=_signed("s3cret-inv", inv))
-    assert again.json()["duplicate"] is True
-    sup = json.dumps([{"kind": "PO", "ref": "4500001234-10", "item_code": item, "location_code": "PLANT-GOA",
-                       "qty": 120, "due_date": "2026-11-03", "status": "received"}]).encode()
+    assert again.status_code == 409 and again.json()["code"] == "duplicate"  # TO_FIELD section 4
+    sup = json.dumps({"rows": [{"kind": "PO", "ref": "PO-26-1001", "item_code": item, "location_code": "PLANT-GOA",
+                                "qty": 120, "due_date": "2026-11-03", "status": "received"}]}).encode()
     assert client.post("/v1/inbound/feeds/t-sup", content=sup, headers=_signed("s3cret-sup", sup)).status_code == 200
     pushes = client.get("/_standin/feeds/pushes", params={"feed_id": "t-inv"}).json()["items"]
     assert pushes[-1]["rows"][0]["item_code"] == item and pushes[-1]["signature"] == "verified"
     state = client.get("/_standin/feeds/state").json()
     assert any(r["item_code"] == item and r["on_hand_qty"] == 420 for r in state["inventory"])
-    assert any(r["ref"] == "4500001234-10" and r["status"] == "received" for r in state["open_supply"])
+    assert any(r["ref"] == "PO-26-1001" and r["status"] == "received" for r in state["open_supply"])
     # refusals: wrong secret, stale or missing timestamp, unknown feed, bad rows
     r = client.post("/v1/inbound/feeds/t-inv", content=inv, headers=_signed("wrong", inv))
     assert r.status_code == 401 and r.json()["code"] == "bad_signature"
@@ -298,6 +300,118 @@ def test_m4_c02_feed_receiver_verifies_and_records(monkeypatch: pytest.MonkeyPat
     assert client.post("/v1/inbound/feeds/nope", content=inv, headers=_signed("x", inv)).status_code == 404
     tampered = inv.replace(b"420", b"999")
     assert client.post("/v1/inbound/feeds/t-inv", content=tampered, headers=_signed("s3cret-inv", inv)).status_code == 401
-    rows = json.dumps([{"item_code": item, "location_code": "PLANT-GOA", "on_hand_qty": -1}]).encode()
+    rows = json.dumps({"rows": [{"item_code": item, "location_code": "PLANT-GOA", "on_hand_qty": -1}]}).encode()
     r = client.post("/v1/inbound/feeds/t-inv", content=rows, headers=_signed("s3cret-inv", rows))
     assert r.status_code == 422 and r.json()["code"] == "invalid_rows"
+
+
+# --- behaving like the real core where its reply (TO_FIELD, 31 Oct) says so -------------------------------------
+
+def test_m4_c08_demo_users_carry_core_role_keys() -> None:
+    for email, roles in ((APPROVER, ["approver"]), (OPERATOR, ["procurement"])):
+        claims = sign_in(email)["claims"]
+        assert claims["roles"] == roles and claims["sites"] == ["*"] and uuid.UUID(claims["tenant_id"])
+    info = client.get("/_standin/info").json()
+    assert {u["email"] for u in info["users"]} == {APPROVER, OPERATOR}
+
+
+def test_m4_c09_every_state_changing_route_needs_requested_with() -> None:
+    s = sign_in()
+    did = client.get("/v1/wearable/next", headers=wh(s)).json()["item"]["decision_id"]
+    bare = {k: v for k, v in wh(s).items() if k != "X-Requested-With"}
+    refused = [
+        client.post(f"/v1/briefs/decision/{did}/check", json={"text": spoken(did)}, headers=bare),
+        client.post("/v1/voice/challenges", json={"decision_id": did}, headers=bare),
+        client.post("/v1/voice/commands", json={"nonce": "n", "transcript": "repeat"}, headers=bare),
+        client.post("/v1/auth/step-up", json={"method": "totp", "code": STATE.step_up_code}, headers=bare),
+        client.post("/v1/evidence/photos", files={"image": ("e.jpg", b"\xff\xd8\xff\x01", "image/jpeg")},
+                    data={"subject_kind": "action", "subject_id": "x", "label": "l", "consent": "true"}, headers=bare),
+        client.delete(f"/v1/wearable/sessions/{s['wearable']['session_id']}", headers=bare),
+        client.post("/v1/wearable/sessions", headers=bare, json={
+            "pairing_code": "ABCDEFGH", "device_id": "dev-pair-0001", "device_model": "PHONE_ONLY"}),
+        client.post("/v1/inbound/feeds/standin-inventory", content=b'{"rows":[]}', headers=bare),
+    ]
+    for r in refused:
+        assert r.status_code == 403 and r.json()["code"] == "missing_requested_with", (r.request.url, r.text)
+    # the reads do not need it
+    for path in ("/v1/wearable/next", "/v1/wearable/sessions", f"/v1/briefs/decision/{did}"):
+        assert client.get(path, headers=bare).status_code == 200, path
+    ok = client.post(f"/v1/briefs/decision/{did}/check", json={"text": spoken(did)}, headers=wh(s))
+    assert ok.status_code == 200 and ok.json()["accepted"] is True  # the core's own test: token + device + lr -> 200
+
+
+def test_m4_c09_brief_routes_need_decision_read() -> None:
+    op = sign_in(OPERATOR)  # a procurement member without decision.read
+    did = sample_decisions()[0].decision_id
+    r = client.post(f"/v1/briefs/decision/{did}/check", json={"text": "x"}, headers=wh(op))
+    assert r.status_code == 403 and "decision.read" in r.json()["detail"]
+    assert client.get(f"/v1/briefs/decision/{did}", headers=wh(op)).status_code == 403
+    assert client.get(f"/v1/briefs/decision/{did}", headers=wh(sign_in())).status_code == 200
+
+
+def test_m4_c12_brief_document_has_the_cores_shape() -> None:
+    s = sign_in()
+    item = client.get("/v1/wearable/next", headers=wh(s)).json()["item"]
+    keys = {"kind", "subject_id", "format", "text", "template_text", "source", "facts", "check", "characters",
+            "words", "seconds", "simulated"}
+    sp = client.get(f"/v1/briefs/decision/{item['decision_id']}", headers=wh(s)).json()
+    assert set(sp) == keys and (sp["kind"], sp["subject_id"], sp["format"]) == ("decision", item["decision_id"], "spoken")
+    assert sp["text"] == sp["template_text"] == item["spoken"] and sp["source"] == "template" and sp["simulated"] is True
+    assert sp["characters"] == len(sp["text"]) and sp["words"] == len(sp["text"].split()) and sp["seconds"] > 0
+    assert isinstance(sp["facts"], dict) and isinstance(sp["check"], dict)
+    card = client.get(f"/v1/briefs/decision/{item['decision_id']}", params={"format": "card"}, headers=wh(s)).json()
+    assert set(card) == keys and card["format"] == "card" and card["text"] == item["card"]
+    assert client.get(f"/v1/briefs/decision/{item['decision_id']}", params={"format": "x"},
+                      headers=wh(s)).status_code == 422
+    sig = client.get("/v1/briefs/signal/5a3e05a0-0000-4000-8000-000000000001", headers=wh(s)).json()
+    assert set(sig) == keys and sig["kind"] == "signal"
+    assert client.get("/v1/briefs/plan/x", headers=wh(s)).status_code == 404
+
+
+def test_m4_c12_sessions_list_is_the_cores_array() -> None:
+    dev = f"dev-{uuid.uuid4().hex[:12]}"
+    a = sign_in(device=dev, display_capable=True)
+    b = sign_in(device=dev)
+    rows = client.get("/v1/wearable/sessions", headers=wh(b)).json()
+    assert isinstance(rows, list)
+    keys = {"id", "device_id", "device_model", "display_capable", "current", "created_at", "expires_at",
+            "last_seen_at", "revoked_at"}
+    assert all(set(r) == keys for r in rows)
+    by_id = {r["id"]: r for r in rows}
+    assert by_id[b["wearable"]["session_id"]]["current"] is True and by_id[b["wearable"]["session_id"]]["last_seen_at"]
+    assert by_id[a["wearable"]["session_id"]]["display_capable"] is True
+    assert client.delete(f"/v1/wearable/sessions/{a['wearable']['session_id']}", headers=wh(b)).status_code == 204
+    after = {r["id"]: r for r in client.get("/v1/wearable/sessions", headers=wh(b)).json()}
+    assert after[a["wearable"]["session_id"]]["revoked_at"] is not None  # revoked ones stay listed, with the time
+    assert after[b["wearable"]["session_id"]]["revoked_at"] is None
+
+
+def test_m4_c10_feed_dedupes_by_body_hash_for_10_minutes_and_ignores_idempotency_key(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(STATE.feeds, "t-dup", ("inventory", "s3cret-dup"))
+    item = f"RM-{uuid.uuid4().hex[:5].upper()}"
+
+    def body(qty: int) -> bytes:
+        return json.dumps({"rows": [{"item_code": item, "location_code": "PLANT-GOA", "as_of": "2026-11-03",
+                                     "on_hand_qty": qty}]}).encode()
+
+    one = body(5)
+    h = {**_signed("s3cret-dup", one), "Idempotency-Key": "k-1"}
+    assert client.post("/v1/inbound/feeds/t-dup", content=one, headers=h).status_code == 200
+    # same body, another key: still a duplicate (the key is ignored); a fresh timestamp does not matter either
+    r = client.post("/v1/inbound/feeds/t-dup", content=one, headers={**_signed("s3cret-dup", one), "Idempotency-Key": "k-2"})
+    assert r.status_code == 409 and r.json()["code"] == "duplicate"
+    # another body under the same key is taken
+    two = body(6)
+    assert client.post("/v1/inbound/feeds/t-dup", content=two,
+                       headers={**_signed("s3cret-dup", two), "Idempotency-Key": "k-1"}).status_code == 200
+    assert STATE.inventory[(item, "PLANT-GOA")]["on_hand_qty"] == 6
+    # 10 minutes later the same body is taken again
+    for p in STATE.pushes:
+        if p.feed_id == "t-dup":
+            p.received_at = "2000-01-01T00:00:00+00:00"
+    assert client.post("/v1/inbound/feeds/t-dup", content=one, headers=_signed("s3cret-dup", one)).status_code == 200
+    assert STATE.inventory[(item, "PLANT-GOA")]["on_hand_qty"] == 5
+    bare = json.dumps([{"item_code": item, "location_code": "PLANT-GOA", "as_of": "2026-11-03", "on_hand_qty": 1}])
+    r = client.post("/v1/inbound/feeds/t-dup", content=bare.encode(), headers=_signed("s3cret-dup", bare.encode()))
+    assert r.status_code == 422 and r.json()["code"] == "invalid_body"  # {"rows": [...]} only

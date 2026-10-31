@@ -63,14 +63,6 @@ class Decision:
                  "band": {"label": self.band_label, "step_up": self.step_up}, "details": o.details}
                 for o in self.options]
 
-    def brief(self) -> dict[str, Any]:
-        """GET /v1/briefs/decision/{id}: the template brief (shape assumed, see README)."""
-        return {"decision_id": self.decision_id, "title": self.title, "card": self.card,
-                "template_text": self.spoken, "spoken": self.spoken, "status": self.status,
-                "options": [{"letter": o.letter, "option_id": o.option_id, "title": o.title} for o in self.options],
-                "band": {"label": self.band_label, "step_up": self.step_up, "approvers": 1},
-                "deadline_at": self.deadline_at.isoformat()}
-
 
 def sample_decisions(now: datetime | None = None) -> list[Decision]:
     t = now or datetime.now(UTC)
@@ -128,6 +120,11 @@ def _numbers(text: str) -> set[str]:
         n = m.replace(",", "")
         out.add(n.rstrip("0").rstrip(".") if "." in n else n)
     return out
+
+
+def numbers_in(text: str) -> set[str]:
+    """The numbers of a text as the check compares them (``1,200`` -> ``1200``)."""
+    return _numbers(text)
 
 
 def _words(text: str) -> set[str]:

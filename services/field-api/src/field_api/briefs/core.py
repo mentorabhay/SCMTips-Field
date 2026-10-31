@@ -1,10 +1,12 @@
 """The core's brief number check: ``POST {FIELD_CORE_BASE_URL}/v1/briefs/decision/{id}/check {"text": ...}`` with
-``Authorization: Bearer <the app's core wearable token>`` and ``X-Device-Id`` -> ``{accepted, reasons[],
-template_text}`` (core handover 01a). The token is forwarded for this one call and never stored or logged; no
-error or reason carries it.
+``Authorization: Bearer <the app's core wearable token>``, ``X-Device-Id`` and ``X-Requested-With: lr`` ->
+``{accepted, reasons[], template_text}`` (core handover 01a). The token is forwarded for this one call and never
+stored or logged; no error or reason carries it.
 
-UNVERIFIED against the real core (docs/META_FIELD.md row 21): the route is being added there; CI checks this
-client against the stand-in core's shape with an httpx test transport that lives in test code only.
+The core's reply (TO_FIELD, 31 Oct, section 1 item 6): its own test proves the route accepts the wearable token,
+answers 403 without ``X-Requested-With: lr``, and needs the member's ``decision.read``. Still UNVERIFIED by Field
+(docs/META_FIELD.md row 21) until Field calls the real core; CI checks this client against the stand-in core with
+an httpx test transport that lives in test code only.
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from urllib.parse import quote
 
 import httpx
 
-from field_api.auth.core import core_base_url
+from field_api.auth.core import CORE_HEADERS, core_base_url
 
 CHECK_TIMEOUT_S = 2.5
 
@@ -39,7 +41,7 @@ class CoreBriefCheck:
     def check(self, decision_id: str, text: str, *, core_token: str, device_id: str) -> CheckResult:
         """The core's verdict. A failure to get one is a refusal with a reason (core:timeout, core:http_401, ...)."""
         path = f"/v1/briefs/decision/{quote(decision_id, safe='')}/check"
-        headers = {"Authorization": f"Bearer {core_token}", "X-Device-Id": device_id}
+        headers = {"Authorization": f"Bearer {core_token}", "X-Device-Id": device_id, **dict(CORE_HEADERS)}
         try:
             with httpx.Client(base_url=self.base_url, timeout=self.timeout_s, transport=self._transport) as client:
                 r = client.post(path, json={"text": text}, headers=headers)

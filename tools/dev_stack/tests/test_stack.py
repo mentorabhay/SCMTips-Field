@@ -37,8 +37,8 @@ def test_owner_values_survive(tmp_path: Path) -> None:
 
 
 def test_pairing_payload_is_the_contract_the_app_parses() -> None:
-    p = json.loads(pairing_payload("http://192.168.1.23:8000/", "tok", "t", "s", "Site"))
-    assert p == {"v": 1, "api": "http://192.168.1.23:8000", "token": "tok", "tenant": "t", "site": "s", "site_name": "Site"}
+    p = json.loads(pairing_payload("http://192.168.1.23:8020/", "tok", "t", "s", "Site"))
+    assert p == {"v": 1, "api": "http://192.168.1.23:8020", "token": "tok", "tenant": "t", "site": "s", "site_name": "Site"}
 
 
 def test_parse_env_ignores_comments_and_quotes() -> None:
@@ -139,14 +139,34 @@ def test_busy_default_ports_move_to_the_next_free_one(monkeypatch: pytest.Monkey
     monkeypatch.setattr(stack, "PORTS_FILE", tmp_path / "ports.json")
     monkeypatch.setattr(stack, "running", lambda name: None)
     monkeypatch.setattr(stack, "owner_of_port", lambda p: "pid 1 (other.exe)")
-    busy = {8000, 8001, 8011}
+    busy = {8000, 8001, 8011, 8020}  # the core's 8000/8001, and something on field-api's 8020 too
     monkeypatch.setattr(stack, "port_in_use", lambda p: p in busy)
     chosen = stack.choose_ports()
-    # 8000/8001 busy, 8002 already given to erp-sim -> field-api gets 8003; fake-core 8011 busy -> 8012
-    assert chosen == {"fake-core": 8012, "erp-sim": 8002, "field-api": 8003}
-    assert stack.port("field-api") == 8003
+    # field-api's 8020 busy -> 8021; fake-core 8011 busy -> 8012; erp-sim keeps 8002
+    assert chosen == {"fake-core": 8012, "erp-sim": 8002, "field-api": 8021}
+    assert stack.port("field-api") == 8021
     assert json.loads((tmp_path / "ports.json").read_text(encoding="utf-8")) == chosen
     assert stack.local("fake-core") == "http://127.0.0.1:8012"
+
+
+def test_m4_c11_field_api_is_pinned_at_8020_beside_the_core_on_8000(monkeypatch: pytest.MonkeyPatch,
+                                                                     tmp_path: Path) -> None:
+    """The core's reply (TO_FIELD, 31 Oct): the core keeps 8000 (and 8001, 8790, 3100 on the owner's PC), so
+    field-api's dev default is 8020; FIELD_STACK_API_PORT still overrides it, and the QR code carries the port."""
+    from tools.dev_stack import stack
+
+    for var, _ in stack.PORTS.values():
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(stack, "PORTS_FILE", tmp_path / "ports.json")
+    monkeypatch.setattr(stack, "running", lambda name: None)
+    monkeypatch.setattr(stack, "port_in_use", lambda p: p in {8000, 8001, 8790, 3100})
+    assert stack.PORTS["field-api"] == ("FIELD_STACK_API_PORT", 8020)
+    assert stack.choose_ports() == {"fake-core": 8011, "erp-sim": 8002, "field-api": 8020}
+    payload = json.loads(stack.pairing_payload(f"http://192.168.1.23:{stack.port('field-api')}/", "tok", "t", "s", "S"))
+    assert payload["api"] == "http://192.168.1.23:8020"
+    monkeypatch.setenv("FIELD_STACK_API_PORT", "8320")
+    assert stack.port("field-api") == 8320 and stack.local("field-api") == "http://127.0.0.1:8320"
+    assert "8020" in (stack.__doc__ or "") and "8000" in (stack.__doc__ or "")
 
 
 def test_pair_survives_a_console_without_block_characters(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
@@ -288,7 +308,7 @@ def test_pair_tower_points_the_phone_at_the_tower_site(monkeypatch: pytest.Monke
         return f"{api}|{site}"
 
     monkeypatch.setattr(stack, "pairing_payload", payload)
-    args = argparse.Namespace(user="tech-1", hours=1, api="http://10.0.0.2:8000", no_ascii=True, no_open=True, tower=True)
+    args = argparse.Namespace(user="tech-1", hours=1, api="http://10.0.0.2:8020", no_ascii=True, no_open=True, tower=True)
     assert stack.cmd_pair(args) == 0
     assert seen == {"token_site": "tw", "site": "tw", "name": stack.TOWER_SITE_NAME}
     assert (tmp_path / "var" / "pairing-qr-tower.svg").exists() and not (tmp_path / "var" / "pairing-qr.svg").exists()
@@ -359,7 +379,7 @@ def test_pair_home_points_the_phone_at_the_sandbox_site(monkeypatch: pytest.Monk
     monkeypatch.setattr(stack, "_core_token", lambda user, tenant, site, ttl: seen.setdefault("token_site", site) and "tok")
     monkeypatch.setattr(stack, "pairing_payload", lambda api, token, tenant, site, name: seen.update(site=site, name=name)
                         or f"{api}|{site}")
-    args = argparse.Namespace(user="op-1", hours=1, api="http://10.0.0.2:8000", no_ascii=True, no_open=True, tower=False,
+    args = argparse.Namespace(user="op-1", hours=1, api="http://10.0.0.2:8020", no_ascii=True, no_open=True, tower=False,
                               home=True)
     assert stack.cmd_pair(args) == 0
     assert seen == {"token_site": "hm", "site": "hm", "name": stack.HOME_SITE_NAME}

@@ -78,6 +78,29 @@ ERR_DEVICE_REVOKED = FieldError(
     detail="The requested device registration has been revoked by core or supervisor.",
 )
 
+NO_FIELD_ROLE_CODE = "FIELD-AUTH-403-NO-FIELD-ROLE"
+
+
+def err_no_field_role(roles: list[str]) -> FieldError:
+    """M4 F7 (core reply TO_FIELD section 2): a valid core token whose roles map to no Field role. The detail is
+    the sentence the app shows on its sign-in screen; role keys are not secrets, so it names them."""
+    named = ", ".join(roles[:8]) if roles else "none"
+    return FieldError(
+        code=NO_FIELD_ROLE_CODE,
+        status=403,
+        title="No SCMTips Field role",
+        detail=(f"Your SCMTIPS account has no role that SCMTips Field can use (your roles: {named}). Ask your "
+                "SCMTIPS administrator for the approver or procurement role, then sign in again."),
+    )
+
+
+ERR_CORE_ROLE_MAP_INVALID = FieldError(
+    code="FIELD-AUTH-500-ROLE-MAP-INVALID",
+    status=500,
+    title="Role mapping misconfigured",
+    detail="SCMTips Field cannot read its core role mapping (FIELD_CORE_ROLE_MAP). Ask the owner to fix the setting.",
+)
+
 ERR_FLAG_DISABLED = FieldError(
     code="FIELD-FLAG-403-DISABLED",
     status=403,

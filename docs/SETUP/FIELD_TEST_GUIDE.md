@@ -12,7 +12,7 @@
 ```
  Ray-Ban Meta Gen 2            Android phone (SCMTips Field)             Your Windows PC (same Wi-Fi)
  ──────────────────            ─────────────────────────────            ──────────────────────────────
- camera  ── photo ──────────►  reads the barcode / QR on the phone  ─┐   field-api  :8000  (the real product API)
+ camera  ── photo ──────────►  reads the barcode / QR on the phone  ─┐   field-api  :8020  (the real product API)
  button  ── "capture" ──────►  (nothing is sent to the cloud)        │      │  every scan is checked here: wrong bin,
  mic     ── your voice ─────►  speech → commands ("post", "12")     ├─►    │  wrong product, wrong serial → refused
  speaker ◄── spoken prompts ── text-to-speech over Bluetooth         │   field-worker      (posts to "SAP" in order)
@@ -64,6 +64,8 @@ Double-click **`<workspace>\field-test\START FIELD TEST.cmd`**. It:
 7. Shows the **pairing QR** for the warehouse.
 
 Everything is logged to `<workspace>\field-test\field-test.log` and `stack-output.log`. If Windows Firewall asks about Python, allow **Private networks** only.
+
+**Ports (31 Oct, agreed with the SCMTIPS core session):** the SCMTIPS core API keeps **8000** on your PC (its kit also uses 8001 and 8790, its web 3100), so **field-api now listens on 8020**; the stand-in core stays on **8011** and erp-sim on **8002**. The pairing QR and the app's default field address use 8020. `FIELD_STACK_API_PORT` in `.env.local` still overrides it, and if a port is taken anyway `up` moves that service to the next free port, prints it and saves it in `var\dev_stack_ports.json`. When you switch to the real core (`FIELD_CORE_TARGET=core`), its base URL is **your PC's LAN address on port 8000** (e.g. `http://192.168.x.y:8000`), so the phone on the same Wi-Fi reaches it too; see `.env.example`.
 
 The same commands, one by one, in PowerShell at `<repo>`:
 ```powershell

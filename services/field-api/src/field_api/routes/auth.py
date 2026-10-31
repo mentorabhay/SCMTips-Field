@@ -20,6 +20,12 @@ M4 F7 (handover 01 / 01a, M4 contract section 4):
   about the core-bound device id; an unbound token (dev QR pairing) has no core device and is not asked there.
   Legacy CORE_API_URL (fake-core's /api/v1/devices/{id}/status) keeps today's behaviour: it is asked about the
   device id in use. Unreachable or malformed answers count as not active (fail closed).
+- Roles (the core's reply TO_FIELD section 2, decision (b)): the core's token carries core role keys
+  (``approver``, ``procurement``, ...). They are mapped to Field roles by FIELD_CORE_ROLE_MAP (default table in
+  field_api.auth.core_roles); Field role names keep working as they are. A token whose roles map to nothing is
+  refused with 403 FIELD-AUTH-403-NO-FIELD-ROLE and a sentence the app shows on its sign-in screen (not a bare
+  401). The mapped core keys are echoed as ``core_roles``.
+- Every call to the core carries ``X-Requested-With: lr`` (TO_FIELD section 3: the core checks it).
 """
 
 import os
@@ -32,12 +38,18 @@ import structlog
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from field_api.auth.core import device_status_template, render_device_status_url
+from field_api.auth.core import CORE_HEADERS, device_status_template, render_device_status_url
+from field_api.auth.core_roles import RoleMapError, core_role_map, map_roles
 from field_api.auth.jwks import verify_core_jwt
 from field_api.auth.jwt import create_dev_token
-from field_api.auth.permissions import ROLE_PERMISSIONS, expand_permissions
+from field_api.auth.permissions import expand_permissions
 from field_api.db import tenant_tx
-from field_api.errors import ERR_AUTH_UNAUTHORIZED, ERR_DEVICE_REVOKED
+from field_api.errors import (
+    ERR_AUTH_UNAUTHORIZED,
+    ERR_CORE_ROLE_MAP_INVALID,
+    ERR_DEVICE_REVOKED,
+    err_no_field_role,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -65,6 +77,8 @@ class ExchangeResponse(BaseModel):
     device_id: str | None = None
     core_permissions: list[str] = Field(default_factory=list,
                                         description="the core token's permissions claim (M4 F7); field decides nothing on them")
+    core_roles: list[str] = Field(default_factory=list,
+                                  description="the core role keys of the token that FIELD_CORE_ROLE_MAP mapped to `roles`")
 
 
 def _field_device(tenant_id: str, ref: str) -> tuple[str, str, str] | None:
@@ -96,7 +110,7 @@ async def _core_device_active(url: str) -> bool:
     try:
         async with httpx.AsyncClient(timeout=float(os.getenv("FIELD_CORE_TIMEOUT_S", "2.0")),
                                      transport=CORE_TRANSPORT) as client:
-            res = await client.get(url)
+            res = await client.get(url, headers=dict(CORE_HEADERS))
         return res.status_code == 200 and res.json().get("status") == "active"
     except (httpx.HTTPError, ValueError, AttributeError):
         logger.warning("core_device_status_unavailable")
@@ -143,8 +157,19 @@ async def exchange_token(request: ExchangeRequest) -> ExchangeResponse:
         uuid.UUID(tenant_id)
     except ValueError:
         raise ERR_AUTH_UNAUTHORIZED from None
-    if not principal_id or not isinstance(roles, list) or not roles or any(r not in ROLE_PERMISSIONS for r in roles):
+    if not principal_id or not isinstance(roles, list) or not all(isinstance(r, str) for r in roles):
         raise ERR_AUTH_UNAUTHORIZED
+    try:
+        mapped = map_roles([str(r) for r in roles], core_role_map())
+    except RoleMapError as e:
+        logger.error("core_role_map_invalid", problem=str(e))
+        raise ERR_CORE_ROLE_MAP_INVALID from None
+    if not mapped.field_roles:
+        logger.warning("exchange_no_field_role", roles=[str(r) for r in roles][:8])
+        raise err_no_field_role([str(r) for r in roles])
+    if mapped.ignored:
+        logger.info("exchange_roles_ignored", roles=mapped.ignored[:8])
+    field_roles = mapped.field_roles
     sites = claims.get("sites", ["*"])
     site_ids = [str(s) for s in sites] if isinstance(sites, list) else ["*"]
 
@@ -189,7 +214,7 @@ async def exchange_token(request: ExchangeRequest) -> ExchangeResponse:
     access_token = create_dev_token(
         principal_id=principal_id,
         tenant_id=tenant_id,
-        roles=[str(r) for r in roles],
+        roles=field_roles,
         site_ids=site_ids,
         device_id=device_id,
         exp_seconds=field_ttl,
@@ -197,10 +222,11 @@ async def exchange_token(request: ExchangeRequest) -> ExchangeResponse:
     return ExchangeResponse(
         access_token=access_token,
         expires_in=field_ttl,
-        roles=[str(r) for r in roles],
-        permissions=expand_permissions([str(r) for r in roles]),
+        roles=field_roles,
+        permissions=expand_permissions(field_roles),
         tenant_id=tenant_id,
         site_ids=site_ids,
         device_id=device_id,
         core_permissions=core_permissions,
+        core_roles=mapped.core_roles,
     )

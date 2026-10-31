@@ -134,7 +134,7 @@ describe("uuid7 (contract §1 Idempotency-Key)", () => {
 
 describe("config", () => {
   test("defaults and trimming", () => {
-    expect(readConfig({})).toEqual({ fieldApiUrl: "http://127.0.0.1:8000", fakeCoreUrl: "http://127.0.0.1:8011", devSignIn: false });
+    expect(readConfig({})).toEqual({ fieldApiUrl: "http://127.0.0.1:8020", fakeCoreUrl: "http://127.0.0.1:8011", devSignIn: false });
     expect(readConfig({ NEXT_PUBLIC_FIELD_API_URL: " http://10.0.0.5:8100/ ", NEXT_PUBLIC_DEV_SIGNIN: "1" })).toMatchObject({
       fieldApiUrl: "http://10.0.0.5:8100",
       devSignIn: true,

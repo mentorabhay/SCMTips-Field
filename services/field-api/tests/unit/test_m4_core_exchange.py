@@ -72,7 +72,7 @@ def test_m4_c01_core_app_token_exchanges_and_registers_the_core_device() -> None
     r = exchange(s["access_token"])
     assert r.status_code == 200, r.text
     data = r.json()
-    assert data["core_permissions"] == ["voice.approve", "decisions.read", "evidence.upload"]
+    assert data["core_permissions"] == ["voice.approve", "decision.read", "evidence.upload"]
     assert data["roles"] == ["field.supervisor"] and data["tenant_id"] == tenant
     field_dev = data["device_id"]
     assert uuid.UUID(field_dev) and field_devices(tenant, core_dev) == [(field_dev, "active")]
@@ -175,8 +175,9 @@ def test_m4_c01_core_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_m4_c01_exchanged_approver_may_use_the_spoken_brief() -> None:
     """Integration note (stream M): POST /v1/briefs/spoken needs field.assistant.use. The stand-in approver's core
-    token carries roles ["field.supervisor"], which holds it (approvers are never mapped to field.viewer only). Once
-    stream M's route is merged into the app, the exchanged approver token calls it: 200, template or model."""
+    token carries the core role key ["approver"] (like the real core, TO_FIELD section 2), which FIELD_CORE_ROLE_MAP
+    maps to field.supervisor, which holds it (approvers are never mapped to field.viewer only). Once stream M's route
+    is merged into the app, the exchanged approver token calls it: 200, template or model."""
     s = sign_in("approver@demo.scmtips.test")
     data = exchange(s["access_token"]).json()
     assert data["roles"] == ["field.supervisor"] and "field.assistant.use" in data["permissions"]

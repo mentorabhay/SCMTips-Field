@@ -79,7 +79,7 @@ services:
       - FIELD_ERP_SIM_URL=http://erp-sim:8002
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
     ports:
-      - "8000:8000"
+      - "8020:8000"  # host 8020: the SCMTIPS core API keeps 8000 on the owner's PC (TO_FIELD, 31 Oct)
     depends_on:
       postgres:
         condition: service_healthy

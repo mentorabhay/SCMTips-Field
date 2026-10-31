@@ -36,6 +36,7 @@ CHALLENGE_TTL_S = 120
 PAIRING_TTL = timedelta(minutes=10)
 MAX_FAILED_SIGN_INS = 5
 FAILED_WINDOW = timedelta(minutes=5)
+FEED_DUPLICATE_WINDOW = timedelta(minutes=10)  # the core dedupes feed pushes by body hash for 10 minutes
 
 
 @dataclass(frozen=True)
@@ -49,12 +50,16 @@ class DemoUser:
     field_operator: bool
 
 
+# Like the real core (its reply TO_FIELD section 2): ``roles`` carries core role keys, never Field role names; field-api
+# maps them (FIELD_CORE_ROLE_MAP: approver -> field.supervisor, procurement -> field.operator). The core has no
+# "warehouse operator" role: its demo operator is a ``procurement`` member. ``decision.read`` is the core's name of
+# the permission its brief routes check (TO_FIELD section 1 item 6).
 DEMO_USERS = (
     DemoUser("5a3e0a00-0000-4000-8000-000000000001", "approver@demo.scmtips.test",
-             "SAMPLE Approver", ("field.supervisor",), ("voice.approve", "decisions.read", "evidence.upload"),
+             "SAMPLE Approver", ("approver",), ("voice.approve", "decision.read", "evidence.upload"),
              approve_decisions=True, field_operator=False),
     DemoUser("5a3e0a00-0000-4000-8000-000000000002", "operator@demo.scmtips.test", "SAMPLE Operator",
-             ("field.operator",), ("field.operate", "evidence.upload"), approve_decisions=False, field_operator=True),
+             ("procurement",), ("field.operate", "evidence.upload"), approve_decisions=False, field_operator=True),
 )
 
 
@@ -85,6 +90,13 @@ class WearableSession:
     revoked: bool = False
     step_up_at: datetime | None = None
     step_up_method: str | None = None
+    display_capable: bool = False
+    last_seen_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+    def revoke(self, now: datetime) -> None:
+        if not self.revoked:
+            self.revoked, self.revoked_at = True, now
 
     def step_up_fresh(self, now: datetime) -> bool:
         return self.step_up_at is not None and now - self.step_up_at <= STEP_UP_FRESH
@@ -133,7 +145,7 @@ class StandInState:
     evidence: list[dict[str, Any]] = field(default_factory=list)
     pushes: list[FeedPush] = field(default_factory=list)
     inventory: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)  # upsert view
-    open_supply: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
+    open_supply: dict[tuple[str, str, str], dict[str, Any]] = field(default_factory=dict)  # (kind, ref, item_code)
 
     @classmethod
     def from_env(cls) -> StandInState:
@@ -176,14 +188,15 @@ class StandInState:
             return None
         return self.user_by_email(entry[0])
 
-    def open_session(self, user: DemoUser, device_id: str, device_model: str, now: datetime) -> WearableSession:
+    def open_session(self, user: DemoUser, device_id: str, device_model: str, now: datetime,
+                     display_capable: bool = False) -> WearableSession:
         dev = self.devices.get(device_id)
         if dev is None or dev.tenant_id != self.tenant_id:
             dev = Device(device_id, self.tenant_id, user.id, device_model)
             self.devices[device_id] = dev
         dev.last_seen_at = now
         s = WearableSession(str(uuid.uuid4()), "scmw_" + secrets.token_urlsafe(32), user, self.tenant_id, device_id,
-                            device_model, now, now + WEARABLE_TTL)
+                            device_model, now, now + WEARABLE_TTL, display_capable=display_capable)
         self.sessions[s.token] = s
         return s
 
@@ -199,9 +212,10 @@ class StandInState:
         if dev is None:
             return False
         dev.status = "revoked"
+        t = datetime.now(UTC)
         for s in self.sessions.values():
             if s.device_id == device_id:
-                s.revoked = True
+                s.revoke(t)
         return True
 
     # -- decisions -----------------------------------------------------------------------------------------

@@ -5,10 +5,18 @@ The core expects its own item codes (e.g. ``RM-307``) and location codes (e.g. `
 already uses the core's codes and no mapping is needed. Until then, FIELD_CORE_CODE_MAP names a JSON file:
 
     {"materials": {"SAMPLE-MAT-0001": "RM-307"},
-     "locations": {"1010": "PLANT-GOA", "1010/101A": "PLANT-GOA-RM"}}
+     "locations": {"1010": "PLANT-GOA", "1010/101A": "PLANT-GOA-RM"},
+     "purchase_orders": {"4500001234": "PO-26-1001"}}
 
 A location key ``<plant>/<storage location>`` wins over ``<plant>``; with a storage-location key the on-hand sent is
 that storage location's, otherwise the plant total. Codes without an entry are sent as the ERP has them, upper-cased.
+
+``purchase_orders`` (the core's reply TO_FIELD section 4): the open-supply row's ``ref`` must be the PO number exactly
+as the core knows it (e.g. ``PO-26-1001``), because the core identifies a PO line by (kind, ref, item_code); any
+other ref opens a second line and counts the supply twice. An erp-sim PO number with an entry is sent as the core's
+ref, unchanged (not upper-cased). Without an entry the erp-sim PO number is sent as it is, without an item suffix,
+and the publisher logs it (``core_feed_po_unmapped``): that is right when erp-sim was seeded from the core's export
+(``stack seed-core-export``, its POs carry the core's refs) and visible in the log when it is not.
 """
 
 from __future__ import annotations
@@ -24,6 +32,13 @@ from typing import Any
 class CodeMap:
     materials: MappingProxyType[str, str] = field(default_factory=lambda: MappingProxyType({}))
     locations: MappingProxyType[str, str] = field(default_factory=lambda: MappingProxyType({}))
+    purchase_orders: MappingProxyType[str, str] = field(default_factory=lambda: MappingProxyType({}))
+
+    def purchase_order(self, po: str) -> tuple[str, bool]:
+        """(the core's ref for an erp-sim PO number, True when the mapping named it)."""
+        if po in self.purchase_orders:
+            return self.purchase_orders[po], True
+        return po, False
 
     def item(self, material: str) -> str:
         return self.materials.get(material, material).upper()
@@ -52,4 +67,5 @@ def load_code_map(path: str) -> CodeMap:
     if not isinstance(data, dict):
         raise ValueError("FIELD_CORE_CODE_MAP must hold a JSON object")
     return CodeMap(MappingProxyType(_str_map(data.get("materials"), "materials")),
-                   MappingProxyType(_str_map(data.get("locations"), "locations")))
+                   MappingProxyType(_str_map(data.get("locations"), "locations")),
+                   MappingProxyType(_str_map(data.get("purchase_orders"), "purchase_orders")))

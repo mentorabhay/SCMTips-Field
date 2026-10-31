@@ -1,16 +1,22 @@
 """HTTP surface of the stand-in core (dev double; M4 contract section 3). Not the SCMTIPS core.
 
-Core paths (shapes from handover 01/01a and the ported ARO client api/Models.kt, which wins where they differ):
-  POST /v1/auth/app/token                     e-mail + password, or pairing_code (header X-Requested-With: lr)
+Core paths (shapes from handover 01/01a, the ported ARO client api/Models.kt, and the core's reply TO_FIELD of
+31 Oct, which states the real core's behaviour and wins over both where it speaks):
+  POST /v1/auth/app/token                     e-mail + password, or pairing_code
   GET  /v1/core/jwks.json                     Ed25519 keys (the stand-in's and fake-core's legacy dev key)
   GET  /v1/core/devices/{device_id}/status?tenant_id=   unknown device or other tenant -> revoked
   POST /v1/wearable/sessions                  ARO pairing: one-time code -> device token (no auth)
   With Authorization: Bearer <wearable token> + X-Device-Id (the wearable-token guard):
-  GET  /v1/wearable/next | GET /v1/wearable/sessions | DELETE /v1/wearable/sessions/{id}
-  GET  /v1/briefs/decision/{id} | GET /v1/briefs/signal/{id} | POST /v1/briefs/decision/{id}/check
+  GET  /v1/wearable/next | GET /v1/wearable/sessions (an array) | DELETE /v1/wearable/sessions/{id}
+  GET  /v1/briefs/{kind}/{subject_id}?format=spoken|card (kind decision | signal; decision.read)
+  POST /v1/briefs/decision/{id}/check (decision.read)
   POST /v1/voice/challenges | POST /v1/voice/commands (Idempotency-Key)
   GET|POST /v1/auth/step-up | POST /v1/evidence/photos (multipart)
-  POST /v1/inbound/feeds/{feed_id}            signed webhook feeds (X-SCMTIPS-Timestamp, X-SCMTIPS-Signature)
+  POST /v1/inbound/feeds/{feed_id}            signed webhook feeds (X-SCMTIPS-Timestamp, X-SCMTIPS-Signature),
+                                              body {"rows": [...]}; the same body within 10 minutes is 409 duplicate
+                                              (by body hash; Idempotency-Key is ignored, as the core does)
+Every state-changing route (each POST and DELETE above) answers 403 ``missing_requested_with`` without the header
+``X-Requested-With: lr``, as the real core does (TO_FIELD section 3); GET routes do not need it.
 Dev-only (no core equivalent; for tests, smoke and the console):
   POST /_standin/pairing-codes | POST /_standin/devices/{id}/revoke | POST /_standin/decisions/reset
   GET  /_standin/feeds/pushes | GET /_standin/feeds/state | GET /_standin/info
@@ -34,10 +40,11 @@ from fastapi import APIRouter, Depends, FastAPI, Header, Query, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from fake_core.standin.decisions import check_brief, parse
+from fake_core.standin.decisions import check_brief, numbers_in, parse
 from fake_core.standin.state import (
     CHALLENGE_TTL_S,
     DEFAULT_BACKUP_CODE,
+    FEED_DUPLICATE_WINDOW,
     Challenge,
     FeedPush,
     StandInState,
@@ -45,7 +52,9 @@ from fake_core.standin.state import (
 )
 
 DEVICE_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{8,64}$")
-APP_DEVICE_MODELS = ("RAYBAN_META_GEN2", "PHONE_ONLY")
+DEVICE_MODEL_RE = re.compile(r"^[A-Z0-9_]{1,40}$")  # the core: free text label, ^[A-Z0-9_]+$, at most 40 (TO_FIELD §3)
+DECISION_READ = "decision.read"
+SPEAKING_WORDS_PER_S = 2.5
 MAX_SKEW_S = 300
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
 SIGNAL_ID = "5a3e05a0-0000-4000-8000-000000000001"
@@ -77,6 +86,12 @@ class PairIn(BaseModel):
     device_id: str
     device_model: str = Field(min_length=1, max_length=64)
     display_capable: bool = False
+
+
+def requested_with(x_requested_with: str | None = Header(None)) -> None:
+    """The core's check on every state-changing route (TO_FIELD section 3): ``X-Requested-With: lr``."""
+    if x_requested_with != "lr":
+        raise ProblemError(403, "missing_requested_with", "Forbidden", "header X-Requested-With: lr is required")
 
 
 class PairingCodeIn(BaseModel):
@@ -134,18 +149,16 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
         dev = state.devices.get(s.device_id)
         if dev is None or dev.status != "active":
             raise ProblemError(401, "device_revoked", "Unauthorized", "device revoked")
-        dev.last_seen_at = now()
+        dev.last_seen_at = s.last_seen_at = now()
         return s
 
     # -- sign-in and identity ------------------------------------------------------------------------------
-    @r.post("/v1/auth/app/token")
-    def app_token(body: AppTokenIn, x_requested_with: str | None = Header(None)) -> dict[str, Any]:
-        if x_requested_with != "lr":
-            raise ProblemError(403, "missing_requested_with", "Forbidden", "header X-Requested-With: lr is required")
+    @r.post("/v1/auth/app/token", dependencies=[Depends(requested_with)])
+    def app_token(body: AppTokenIn) -> dict[str, Any]:
         if not DEVICE_ID_RE.match(body.device_id):
             raise ProblemError(422, "invalid_device_id", "Invalid device id", "8-64 chars [A-Za-z0-9._:-]")
-        if body.device_model not in APP_DEVICE_MODELS:
-            raise ProblemError(422, "invalid_device_model", "Invalid device model", " | ".join(APP_DEVICE_MODELS))
+        if not DEVICE_MODEL_RE.match(body.device_model):
+            raise ProblemError(422, "invalid_device_model", "Invalid device model", "^[A-Z0-9_]+$, at most 40")
         t = now()
         if body.pairing_code:
             user = state.redeem_pairing_code(body.pairing_code, t)
@@ -162,7 +175,7 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
                 state.record_failure(email, t)
                 raise ProblemError(401, "invalid_credentials", "Invalid credentials")
             user = found
-        session = state.open_session(user, body.device_id, body.device_model, t)
+        session = state.open_session(user, body.device_id, body.device_model, t, body.display_capable)
         ttl = state.token_minutes * 60
         token, claims = state.key.issue({
             "sub": user.id, "tenant_id": state.tenant_id, "roles": list(user.roles), "sites": ["*"],
@@ -185,33 +198,36 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
     def device_status(device_id: str, tenant_id: str = Query(...)) -> dict[str, Any]:
         return state.device_status(device_id, tenant_id)
 
-    @r.post("/v1/wearable/sessions", status_code=201)
-    def pair(body: PairIn, x_requested_with: str | None = Header(None)) -> dict[str, Any]:
-        if x_requested_with != "lr":
-            raise ProblemError(403, "missing_requested_with", "Forbidden", "header X-Requested-With: lr is required")
+    @r.post("/v1/wearable/sessions", status_code=201, dependencies=[Depends(requested_with)])
+    def pair(body: PairIn) -> dict[str, Any]:
         if not DEVICE_ID_RE.match(body.device_id):
             raise ProblemError(422, "invalid_device_id", "Invalid device id")
+        if not DEVICE_MODEL_RE.match(body.device_model):
+            raise ProblemError(422, "invalid_device_model", "Invalid device model", "^[A-Z0-9_]+$, at most 40")
         user = state.redeem_pairing_code(body.pairing_code, now())
         if user is None:
             raise ProblemError(401, "invalid_code", "Invalid pairing code")
-        s = state.open_session(user, body.device_id, body.device_model, now())
+        s = state.open_session(user, body.device_id, body.device_model, now(), body.display_capable)
         return {"session_id": s.session_id, "token": s.token, "expires_at": s.expires_at.isoformat(),
                 "device_id": s.device_id, "user_display_name": user.display_name}
 
     @r.get("/v1/wearable/sessions")
-    def sessions(s: WearableSession = Depends(wearable)) -> dict[str, Any]:
-        mine = [x for x in state.sessions.values() if x.user.id == s.user.id and not x.revoked]
-        return {"items": [{"session_id": x.session_id, "device_id": x.device_id, "device_model": x.device_model,
-                           "created_at": x.created_at.isoformat(), "expires_at": x.expires_at.isoformat(),
-                           "current": x.session_id == s.session_id} for x in mine]}
+    def sessions(s: WearableSession = Depends(wearable)) -> list[dict[str, Any]]:
+        """The core's shape (TO_FIELD section 3): an array; every field always present, revoked ones included."""
+        mine = sorted((x for x in state.sessions.values() if x.user.id == s.user.id), key=lambda x: x.created_at)
+        return [{"id": x.session_id, "device_id": x.device_id, "device_model": x.device_model,
+                 "display_capable": x.display_capable, "current": x.session_id == s.session_id,
+                 "created_at": x.created_at.isoformat(), "expires_at": x.expires_at.isoformat(),
+                 "last_seen_at": x.last_seen_at.isoformat() if x.last_seen_at else None,
+                 "revoked_at": x.revoked_at.isoformat() if x.revoked_at else None} for x in mine]
 
-    @r.delete("/v1/wearable/sessions/{session_id}", status_code=204)
+    @r.delete("/v1/wearable/sessions/{session_id}", status_code=204, dependencies=[Depends(requested_with)])
     def revoke_session(session_id: str, s: WearableSession = Depends(wearable)) -> Response:
         target = next((x for x in state.sessions.values() if x.session_id == session_id and x.user.id == s.user.id),
                       None)
         if target is None:
             raise ProblemError(404, "not_found", "Session not found")
-        target.revoked = True
+        target.revoke(now())
         return Response(status_code=204)
 
     # -- decisions and briefs ------------------------------------------------------------------------------
@@ -226,24 +242,47 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
         waiting = state.waiting()
         return {"item": waiting[0].next_item(len(waiting)) if waiting else None}
 
-    @r.get("/v1/briefs/decision/{decision_id}")
-    def decision_brief(decision_id: str, s: WearableSession = Depends(wearable)) -> dict[str, Any]:
-        d = state.decision(decision_id)
-        if d is None:
-            raise ProblemError(404, "not_found", "Decision not found")
-        return d.brief()
+    def can_read_decisions(s: WearableSession) -> None:
+        if DECISION_READ not in s.user.permissions:
+            raise ProblemError(403, "forbidden", "Forbidden", f"{DECISION_READ} is required")
 
-    @r.get("/v1/briefs/signal/{signal_id}")
-    def signal_brief(signal_id: str, s: WearableSession = Depends(wearable)) -> dict[str, Any]:
-        if signal_id != SIGNAL_ID:
-            raise ProblemError(404, "not_found", "Signal not found")
-        text = ("Sample signal. New export curbs on rare-earth magnets take effect in 9 days; "
-                "RM-307 at PLANT-GOA is exposed.")
-        return {"signal_id": SIGNAL_ID, "title": "SAMPLE: rare-earth magnet export curbs", "template_text": text,
-                "spoken": text}
+    @r.get("/v1/briefs/{kind}/{subject_id}")
+    def brief(kind: str, subject_id: str, format: str = Query("spoken"),
+              s: WearableSession = Depends(wearable)) -> dict[str, Any]:
+        """The core's brief document (TO_FIELD section 3): {kind, subject_id, format, text, template_text, source,
+        facts{}, check{}, characters, words, seconds, simulated}. The stand-in serves templates only (source
+        "template"); what facts{} and check{} hold inside is the stand-in's choice (the core gave only the keys)."""
+        can_read_decisions(s)
+        if format not in ("spoken", "card"):
+            raise ProblemError(422, "invalid_format", "format is spoken or card")
+        if kind == "decision":
+            d = state.decision(subject_id)
+            if d is None:
+                raise ProblemError(404, "not_found", "Decision not found")
+            text = d.spoken if format == "spoken" else d.card
+            facts: dict[str, Any] = {"title": d.title, "status": d.status, "deadline_at": d.deadline_at.isoformat(),
+                                     "band": {"label": d.band_label, "step_up": d.step_up},
+                                     "options": [{"letter": o.letter, "option_id": o.option_id, "title": o.title,
+                                                  "committed": o.committed} for o in d.options]}
+            check_route = f"/v1/briefs/decision/{d.decision_id}/check"
+        elif kind == "signal" and subject_id == SIGNAL_ID:
+            text = ("Sample signal. New export curbs on rare-earth magnets take effect in 9 days; "
+                    "RM-307 at PLANT-GOA is exposed.")
+            facts = {"title": "SAMPLE: rare-earth magnet export curbs", "item_code": "RM-307",
+                     "location_code": "PLANT-GOA"}
+            check_route = ""
+        else:
+            raise ProblemError(404, "not_found", "Brief not found")
+        words = len(text.split())
+        return {"kind": kind, "subject_id": subject_id, "format": format, "text": text, "template_text": text,
+                "source": "template", "facts": facts,
+                "check": {"numbers": sorted(numbers_in(text)), "route": check_route},
+                "characters": len(text), "words": words, "seconds": round(words / SPEAKING_WORDS_PER_S, 1),
+                "simulated": True}
 
-    @r.post("/v1/briefs/decision/{decision_id}/check")
+    @r.post("/v1/briefs/decision/{decision_id}/check", dependencies=[Depends(requested_with)])
     def check(decision_id: str, body: CheckIn, s: WearableSession = Depends(wearable)) -> dict[str, Any]:
+        can_read_decisions(s)
         d = state.decision(decision_id)
         if d is None:
             raise ProblemError(404, "not_found", "Decision not found")
@@ -259,7 +298,7 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
                 "options": d.challenge_options(), "step_up_fresh": s.step_up_fresh(now()), "step_up_waived": False,
                 "confidence_floor": 0.6}
 
-    @r.post("/v1/voice/challenges", status_code=201)
+    @r.post("/v1/voice/challenges", status_code=201, dependencies=[Depends(requested_with)])
     def new_challenge(body: ChallengeIn, s: WearableSession = Depends(wearable)) -> dict[str, Any]:
         approver(s)
         d = state.decision(body.decision_id)
@@ -269,7 +308,7 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
             raise ProblemError(409, "decision_closed", "Decision already decided", d.status)
         return challenge_body(state.new_challenge(s, d.decision_id, 1, None, now()), s)
 
-    @r.post("/v1/voice/commands")
+    @r.post("/v1/voice/commands", dependencies=[Depends(requested_with)])
     def command(body: CommandIn, s: WearableSession = Depends(wearable),
                 idempotency_key: str | None = Header(None)) -> dict[str, Any]:
         approver(s)
@@ -298,7 +337,7 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
     def get_step_up(s: WearableSession = Depends(wearable)) -> dict[str, Any]:
         return step_up_status(s)
 
-    @r.post("/v1/auth/step-up")
+    @r.post("/v1/auth/step-up", dependencies=[Depends(requested_with)])
     def post_step_up(body: StepUpIn, s: WearableSession = Depends(wearable)) -> dict[str, Any]:
         if body.method not in ("totp", "backup_code"):
             raise ProblemError(422, "invalid_method", "Invalid step-up method")
@@ -309,7 +348,7 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
         return step_up_status(s)
 
     # -- evidence ------------------------------------------------------------------------------------------
-    @r.post("/v1/evidence/photos", status_code=201)
+    @r.post("/v1/evidence/photos", status_code=201, dependencies=[Depends(requested_with)])
     async def photo(request: Request, s: WearableSession = Depends(wearable)) -> dict[str, Any]:
         form = await request.form()
         image = form.get("image")
@@ -336,7 +375,7 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
         return rec
 
     # -- signed feeds --------------------------------------------------------------------------------------
-    @r.post("/v1/inbound/feeds/{feed_id}")
+    @r.post("/v1/inbound/feeds/{feed_id}", dependencies=[Depends(requested_with)])
     async def feed(feed_id: str, request: Request, x_scmtips_timestamp: str | None = Header(None),
                    x_scmtips_signature: str | None = Header(None),
                    idempotency_key: str | None = Header(None)) -> dict[str, Any]:
@@ -355,21 +394,29 @@ def build_router(state: StandInState, legacy_jwks: Callable[[], list[dict[str, A
         if not hmac.compare_digest((x_scmtips_signature or "").encode(), want.encode()):
             raise ProblemError(401, "bad_signature", "Signature does not match")
         try:
-            rows = json.loads(raw)
+            doc = json.loads(raw)
         except ValueError:
             raise ProblemError(422, "invalid_json", "Body is not JSON") from None
+        if not isinstance(doc, dict) or "rows" not in doc:
+            raise ProblemError(422, "invalid_body", "Body must be {\"rows\": [...]}")
+        rows = doc["rows"]
         errors = validate_rows(kind, rows)
         if errors:
             raise ProblemError(422, "invalid_rows", "Rows rejected", "; ".join(errors[:10]))
         digest = hashlib.sha256(raw).hexdigest()
-        dup = any(p.feed_id == feed_id and p.body_sha256 == digest for p in state.pushes)
-        state.pushes.append(FeedPush(feed_id, kind, now().isoformat(), ts, digest, rows, dup, idempotency_key))
-        for row in rows:  # upsert mode: only the rows sent change
+        t = now()
+        # The core dedupes by body hash within 10 minutes and ignores Idempotency-Key (TO_FIELD section 4).
+        dup = any(p.feed_id == feed_id and p.body_sha256 == digest and not p.duplicate
+                  and t - datetime.fromisoformat(p.received_at) <= FEED_DUPLICATE_WINDOW for p in state.pushes)
+        state.pushes.append(FeedPush(feed_id, kind, t.isoformat(), ts, digest, rows, dup, idempotency_key))
+        if dup:
+            raise ProblemError(409, "duplicate", "Duplicate push", "the same body was received within 10 minutes")
+        for row in rows:  # upsert mode: only the rows sent change; an open-supply line is (kind, ref, item_code)
             if kind == "inventory":
                 state.inventory[(row["item_code"].upper(), row["location_code"].upper())] = row
             else:
-                state.open_supply[(row["kind"].upper(), row["ref"])] = row
-        return {"accepted": True, "rows": len(rows), "duplicate": dup}
+                state.open_supply[(row["kind"].upper(), row["ref"], row["item_code"].upper())] = row
+        return {"accepted": True, "rows": len(rows), "duplicate": False}
 
     # -- dev-only helpers ----------------------------------------------------------------------------------
     @r.post("/_standin/pairing-codes", status_code=201)
@@ -423,7 +470,7 @@ _CODE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._/#&+()-]{0,63}$")
 def validate_rows(kind: str, rows: Any) -> list[str]:
     """The erp_extract table rules of the exchange contract (inventory / open_supply) the feeds apply."""
     if not isinstance(rows, list) or not rows:
-        return ["body must be a non-empty JSON array of rows"]
+        return ["rows must be a non-empty JSON array"]
     req = INVENTORY_REQUIRED if kind == "inventory" else SUPPLY_REQUIRED
     errs: list[str] = []
     for i, row in enumerate(rows):

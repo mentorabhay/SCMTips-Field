@@ -24,12 +24,15 @@ Services (logs in var/log, pids in var/run):
                     so the phone on the same Wi-Fi can sign in against it
                     (not 8001: SCMTips core itself often runs there; FIELD_STACK_CORE_PORT overrides)
   erp-sim    :8002  S/4-shaped OData simulator with SAMPLE master data (FIELD_STACK_ERPSIM_PORT)
-  field-api  :8000  bound to 0.0.0.0 so the phone on the same Wi-Fi can reach it (FIELD_STACK_API_PORT)
+  field-api  :8020  bound to 0.0.0.0 so the phone on the same Wi-Fi can reach it (FIELD_STACK_API_PORT). Not 8000:
+                    the SCMTIPS core API keeps 8000 on the owner's PC (and its kit 8001, 8790, web 3100), per the
+                    core's reply TO_FIELD of 31 Oct; the QR code and the phone's default address use 8020.
 
 The stack owns these ports: before starting it checks that each is free (or already ours), and a
 service only counts as up when its own process is alive AND its port answers. (On the owner's PC
 another program held 8001; fake-core died on bind while the health probe got an answer from the
-other program.)
+other program.) If a default port is taken anyway, `up` moves that service to the next free port, prints it and
+saves the choice in var/dev_stack_ports.json, which pair / smoke / the QR code then use.
   field-worker      posts confirmed documents to erp-sim, imports inbound deliveries
 
 Secrets (A-02): .env.local is created from .env.example on first run with freshly generated signing
@@ -40,7 +43,7 @@ Core target (FIELD_CORE_TARGET in .env.local, M4 contract section 2):
   standin  (the generated default) every FIELD_CORE_* URL points at this stack's stand-in core, incl. the two feed
            URLs; the feed secrets are generated into .env.local.
   core     the owner's FIELD_CORE_BASE_URL / _JWKS_URL / _DEVICE_STATUS_URL / feed URLs and secrets are used as set
-           (the real core; e.g. http://127.0.0.1:8000).
+           (the real core: http://<the PC's LAN address>:8000, so the phone on the same Wi-Fi reaches it too).
   unset    the pre-M4 behaviour: fake-core's /.well-known/jwks.json, no core device check, no feeds.
 """
 
@@ -74,7 +77,8 @@ GENERATED_SECRETS = ("FIELD_JWT_SECRET", "FIELD_CURSOR_HMAC_SECRET", "FIELD_P13F
 ENV_DEFAULTS = (("FIELD_CORE_TARGET", "standin"),)
 STANDIN_FEEDS = {"FIELD_CORE_INVENTORY_FEED_URL": ("FAKE_CORE_INVENTORY_FEED_ID", "standin-inventory"),
                  "FIELD_CORE_SUPPLY_FEED_URL": ("FAKE_CORE_SUPPLY_FEED_ID", "standin-open-supply")}
-DEMO_USERS = (("approver@demo.scmtips.test", "approves decisions"), ("operator@demo.scmtips.test", "warehouse operator"))
+DEMO_USERS = (("approver@demo.scmtips.test", "core role approver: approves decisions"),
+              ("operator@demo.scmtips.test", "core role procurement: field operator"))
 DEMO_PASSWORD_DEFAULT = "field-demo-2026"  # = fake_core.standin.state.DEFAULT_DEMO_PASSWORD (dev value)
 STEP_UP_CODE_DEFAULT = "246810"  # = fake_core.standin.state.DEFAULT_STEP_UP_CODE (dev value)
 PAIRING_ROLES = ("field.operator", "field.supervisor")
@@ -122,7 +126,7 @@ def load_env() -> dict[str, str]:
 
 
 PORTS = {"fake-core": ("FIELD_STACK_CORE_PORT", 8011), "erp-sim": ("FIELD_STACK_ERPSIM_PORT", 8002),
-         "field-api": ("FIELD_STACK_API_PORT", 8000)}
+         "field-api": ("FIELD_STACK_API_PORT", 8020)}  # 8000 is the SCMTIPS core's (TO_FIELD §1)
 HEALTH = {"fake-core": "/.well-known/jwks.json", "erp-sim": "/_sim/health", "field-api": "/v1/health"}
 
 
@@ -427,7 +431,8 @@ def print_core_target() -> None:
         print(f"  sign in: {email}  ({what})")
     print(f"  password: {pw}\n  phone step-up code: {code}")
     print("  goods-receipt feeds: inventory + open supply -> the stand-in (secrets in .env.local, never printed)")
-    print("  real core later: FIELD_CORE_TARGET=core plus the FIELD_CORE_* values in .env.local (see .env.example)")
+    print("  real core later: FIELD_CORE_TARGET=core plus the FIELD_CORE_* values in .env.local (see .env.example);"
+          " the core API is on this PC's LAN address, port 8000")
 
 
 STACK_PROCESS = r"fake_core\.app:app|erp_sim\.app:app|field_api\.app:app|-m field_worker"
@@ -1698,6 +1703,8 @@ def smoke_core(api: str, state: dict[str, Any], wait: float) -> None:
 
     ex = _accepted(httpx.post(f"{api}/v1/auth/exchange", json={"device_token": signed["access_token"]}, timeout=10),
                    "exchange of the core token")
+    _expect(claims["roles"] == ["procurement"] and ex["roles"] == ["field.operator"]
+            and ex.get("core_roles") == ["procurement"], f"core roles {claims['roles']} -> field roles {ex['roles']}")
     field_dev = str(ex["device_id"])
     status = _accepted(httpx.get(f"{core}/v1/core/devices/{device}/status", params={"tenant_id": state["tenant"]},
                                  timeout=10), "core device status")
@@ -1722,12 +1729,12 @@ def smoke_core(api: str, state: dict[str, Any], wait: float) -> None:
     _expect(ev["kind"] == "erp.posted", f"GR: {ev}")
     [(material, mvt, qty)] = erp_movements(ev["doc_number"], ev["doc_year"])
     _expect(mvt == "101", f"movement {mvt}")
-    print(f"         GR {ev['doc_number']}/{ev['doc_year']} in erp-sim: {material} {qty:g} against PO {po}-10")
+    print(f"         GR {ev['doc_number']}/{ev['doc_year']} in erp-sim: {material} {qty:g} against PO {po} line 10")
 
     codes = load_code_map(os.environ.get("FIELD_CORE_CODE_MAP", ""))
     item, loc = codes.item(material), codes.location(SAMPLE_PLANT, "101A")[0]
     on_hand = erp_plant_stock(material, SAMPLE_PLANT)
-    ref = f"{po}-10"
+    ref = codes.purchase_order(po)[0]  # the core's PO number exactly, no item suffix (TO_FIELD section 4)
     deadline = time.monotonic() + wait
     inv: dict[str, Any] | None = None
     sup: dict[str, Any] | None = None
@@ -1736,7 +1743,7 @@ def smoke_core(api: str, state: dict[str, Any], wait: float) -> None:
             for row in p["rows"]:
                 if p["kind"] == "inventory" and row["item_code"] == item and row["on_hand_qty"] == on_hand:
                     inv = row
-                if p["kind"] == "open_supply" and row["ref"] == ref:
+                if p["kind"] == "open_supply" and row["ref"] == ref and row["item_code"] == item:
                     sup = row
         time.sleep(1)
     _expect(inv is not None, f"no stock row for {item} at {loc} with on-hand {on_hand:g} reached the stand-in")
@@ -1772,11 +1779,13 @@ def smoke_approver(api: str, state: dict[str, Any], wait: float) -> None:
     ex = _accepted(httpx.post(f"{api}/v1/auth/exchange", json={"device_token": signed["access_token"]}, timeout=10),
                    "exchange of the approver's core token")
     _expect("voice.approve" in ex.get("core_permissions", []), f"core_permissions {ex.get('core_permissions')}")
+    _expect(ex["roles"] == ["field.supervisor"] and ex.get("core_roles") == ["approver"],
+            f"approver core role mapped to {ex['roles']}")
     field_token = str(ex["access_token"])
     print(f"approver signed in {DEMO_USERS[0][0]} at the stand-in; field device {ex['device_id']},"
           f" core permissions {ex['core_permissions']}")
 
-    core_h = {"Authorization": f"Bearer {wtoken}", "X-Device-Id": wdevice}
+    core_h = {"Authorization": f"Bearer {wtoken}", "X-Device-Id": wdevice, "X-Requested-With": "lr"}
 
     def next_item() -> dict[str, Any] | None:
         item = _accepted(httpx.get(f"{core}/v1/wearable/next", headers=core_h, timeout=10), "next decision")["item"]

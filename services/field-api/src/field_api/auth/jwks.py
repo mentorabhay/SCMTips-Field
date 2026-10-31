@@ -17,7 +17,7 @@ import jwt
 import structlog
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from field_api.auth.core import core_jwks_url
+from field_api.auth.core import CORE_HEADERS, core_jwks_url
 
 logger = structlog.get_logger(__name__)
 
@@ -78,7 +78,7 @@ class JwksCache:
         try:
             timeout_s = float(os.getenv("FIELD_JWKS_TIMEOUT_S", "2.0"))
             async with httpx.AsyncClient(timeout=timeout_s, transport=self._transport) as client:
-                resp = await client.get(self.jwks_url)
+                resp = await client.get(self.jwks_url, headers=dict(CORE_HEADERS))
                 resp.raise_for_status()
                 data = resp.json()
 

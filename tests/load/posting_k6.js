@@ -27,7 +27,7 @@ export default function () {
     },
   };
 
-  const res = http.post('http://localhost:8000/v1/warehouse/outbound/picks', payload, params);
+  const res = http.post('http://localhost:8020/v1/warehouse/outbound/picks', payload, params);
   check(res, {
     'status is 200 or 201': (r) => r.status === 200 || r.status === 201,
   });
