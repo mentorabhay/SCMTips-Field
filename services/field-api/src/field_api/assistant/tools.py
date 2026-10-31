@@ -1,11 +1,17 @@
 """Server-side tools of the Field Assistant (M3 contract §4): list_work, task_detail, lookup_code,
-add_sandbox_item, session_summary. Both the model (as function tools) and the rules mode use them.
+add_sandbox_item, session_summary, and (M4) new sandbox receipts and counts.
+
+The model is offered list_work, task_detail, lookup_code and session_summary. Since M4 (rules first, owner's field
+test of 31 Oct 2026) every effect is rules-only: the unknown-code dialog that adds an item and the new receipt or
+count are answered by rules and never reach the model, so add_sandbox_item is no longer a model tool and a model
+that calls it anyway gets "unknown tool".
 
 Guarantees that do not depend on the model:
 - task data comes through ``work.project_task``: count tasks never carry book, expected or counted quantities;
 - add_sandbox_item runs only on a sandbox site, only through the injected port, only for the code the operator
-  scanned in this dialog, and only after the operator's explicit yes in this turn (or, in rules mode, after the
-  operator answered "What is it?" and "How many?");
+  scanned in this dialog, and only after the operator answered "What is it?" and "How many?" (or said an explicit
+  yes in this turn);
+- new receipts and counts are created only on a sandbox site, only through the injected ports;
 - tool calls are recorded per turn (name, arguments, ok) for the session record.
 """
 
@@ -84,6 +90,41 @@ class AssistantTools:
     @property
     def can_add(self) -> bool:
         return self.ctx.ports.add_item is not None
+
+    @property
+    def can_create(self) -> bool:
+        return self.ctx.ports.create_receipt is not None and self.ctx.ports.create_count is not None
+
+    def site_bins(self) -> list[str]:
+        return work.site_bins(self.ctx.principal, self.ctx.site_id)
+
+    def _created(self, name: str, args: dict[str, Any], fn: Callable[[], Any]) -> dict[str, Any]:
+        if self.ctx.site_mode != "sandbox":
+            result: dict[str, Any] = {"ok": False, "error": "This is a production site.", "code": "production"}
+        else:
+            try:
+                r = fn()
+                result = {"ok": True, "task_id": r["task_id"], "ref_doc_no": r["ref_doc_no"]}
+                self._work = None  # the work list changed
+            except FieldError as e:
+                result = {"ok": False, "error": e.title, "code": e.code}
+        self.calls.append({"name": name, "args": args, "ok": bool(result.get("ok"))})
+        return result
+
+    def new_receipt(self) -> dict[str, Any]:
+        """A new, empty home receipt on this sandbox site (rules only)."""
+        port = self.ctx.ports.create_receipt
+        if port is None:
+            return {"ok": False, "error": "Creating receipts is not available in this build.", "code": "not_wired"}
+        return self._created("new_receipt", {}, lambda: port(self.ctx.principal, self.ctx.site_id))
+
+    def new_count(self, storage_bin: str) -> dict[str, Any]:
+        """A new, empty blind count of one bin of this sandbox site (rules only)."""
+        port = self.ctx.ports.create_count
+        if port is None:
+            return {"ok": False, "error": "Creating counts is not available in this build.", "code": "not_wired"}
+        return self._created("new_count", {"bin": storage_bin},
+                             lambda: port(self.ctx.principal, self.ctx.site_id, storage_bin))
 
     def lookup_code(self, code: str) -> dict[str, Any]:
         code = (code or "").strip()
@@ -171,8 +212,6 @@ class AssistantTools:
                 "task_detail": lambda: ({"ok": True, "task": t} if (t := self.task_detail(str(a.get("task_id") or "")))
                                         else {"ok": False, "error": "no such task at this site"}),
                 "lookup_code": lambda: {"ok": True, **self.lookup_code(str(a.get("code") or ""))},
-                "add_sandbox_item": lambda: self.add_sandbox_item(str(a.get("code") or ""),
-                                                                  str(a.get("description") or ""), a.get("qty")),
                 "session_summary": lambda: {"ok": True, **self.session_summary()},
             }.get(name)
             if fn is None:
@@ -188,7 +227,7 @@ class AssistantTools:
 
 
 def tool_specs() -> list[dict[str, Any]]:
-    """OpenAI-compatible function tools offered to the model."""
+    """OpenAI-compatible function tools offered to the model: reads only (every effect is rules-only, M4)."""
 
     def fn(name: str, description: str, props: dict[str, Any], required: list[str]) -> dict[str, Any]:
         return {"type": "function", "function": {"name": name, "description": description, "parameters": {
@@ -200,9 +239,5 @@ def tool_specs() -> list[dict[str, Any]]:
            {"task_id": {"type": "string"}}, ["task_id"]),
         fn("lookup_code", "What a scanned code is (material, bin, serial or unknown) and which job lines have it.",
            {"code": {"type": "string"}}, ["code"]),
-        fn("add_sandbox_item", "Sandbox sites only: add the unknown scanned item to the open receipt or count. "
-           "Call only after the operator said yes to name and quantity.",
-           {"code": {"type": "string"}, "description": {"type": "string", "description": "the item's name"},
-            "qty": {"type": ["number", "null"]}}, ["code", "description"]),
         fn("session_summary", "What this work session did so far: turns, jobs, SAP documents.", {}, []),
     ]

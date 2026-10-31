@@ -141,3 +141,11 @@ def match_code(tasks: Iterable[Mapping[str, Any]], code: str) -> list[dict[str, 
                              "material": ln.get("material"), "description": ln.get("description"),
                              "uom": ln.get("uom"), "bin": ln.get("bin")})
     return hits
+
+
+def site_bins(principal: Principal, site_id: str, limit: int = 200) -> list[str]:
+    """Active storage bins of one site (field.location rows mapped to an ERP storage bin), by code."""
+    with principal_tx(principal) as cur:
+        cur.execute("SELECT code FROM field.location WHERE site_id::text = %s AND erp_ref_type = 'storage_bin'"
+                    " AND status = 'active' ORDER BY code LIMIT %s", (site_id, limit))
+        return [str(r[0]) for r in cur.fetchall()]

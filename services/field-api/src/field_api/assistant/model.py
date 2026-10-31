@@ -5,7 +5,8 @@ Fallback: Baseten (OpenAI-compatible; BASETEN_BASE_URL, BASETEN_MODEL_ID, key fr
 only when all three are set and the model has a price in config/ai_pricing.yaml.
 
 Every call: AI_CLOUD_ENABLED must be true, the key must be present, then the budget guard reserves the worst
-case (prompt estimate + max_tokens at list price), the call is made with a timeout of at most 6 s, and the
+case (prompt estimate + max_tokens at list price), the call is made with a timeout of at most 6 s (an assistant
+turn gives the model ASSISTANT_MODEL_DEADLINE_S, default 3.5 s, in all; the brief router 4 s), and the
 reservation is settled with the provider's own usage counts (prompt, cached prompt, completion tokens). A call
 whose outcome is unknown (transport error, timeout) is closed at the reserved worst case; an HTTP error answer
 is closed at 0; a success without usage is closed at the reserved worst case.
@@ -18,6 +19,7 @@ exercises this client against a test double of the HTTP API that lives in test c
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 from collections.abc import Sequence
@@ -51,6 +53,26 @@ def max_output_tokens() -> int:
     if not raw.isdigit():
         return MAX_OUTPUT_TOKENS
     return max(64, min(4096, int(raw)))
+
+
+# The whole model part of one assistant turn (owner's field test, 31 Oct 2026: 6 s timeouts made Start Work wait
+# 6-7 s). ASSISTANT_MODEL_DEADLINE_S overrides it within 1.5..6 s.
+MODEL_DEADLINE_S = 3.5
+MODEL_DEADLINE_ENV = "ASSISTANT_MODEL_DEADLINE_S"
+
+
+def model_deadline_s() -> float:
+    """Seconds the model may take in one assistant turn: ASSISTANT_MODEL_DEADLINE_S within 1.5..6, else 3.5."""
+    raw = os.getenv(MODEL_DEADLINE_ENV, "").strip()
+    try:
+        v = float(raw)
+    except ValueError:
+        return MODEL_DEADLINE_S
+    if not math.isfinite(v):
+        return MODEL_DEADLINE_S
+    return max(1.5, min(CALL_TIMEOUT_S, v))
+
+
 IMAGE_TOKEN_ESTIMATE = 1600  # reservation per image; settled by the provider's real count
 
 
@@ -250,15 +272,16 @@ class ModelRouter:
         self.models = list(models)
 
     def chat(self, messages: Sequence[dict[str, Any]], *, tools: Sequence[dict[str, Any]] | None, deadline: float,
-             tenant_id: str | None, request_id: str | None, log: CallLog, errors: list[str]) -> ChatResult:
+             tenant_id: str | None, request_id: str | None, log: CallLog, errors: list[str],
+             purpose: str = "assistant", max_tokens: int | None = None) -> ChatResult:
         for m in self.models:
             remaining = deadline - time.monotonic()
             if remaining < 0.3:
                 errors.append("AI_DEADLINE")
                 break
             try:
-                return m.chat(messages, tools=tools, timeout_s=remaining, tenant_id=tenant_id,
-                              request_id=request_id, log=log)
+                return m.chat(messages, tools=tools, timeout_s=remaining, max_tokens=max_tokens, purpose=purpose,
+                              tenant_id=tenant_id, request_id=request_id, log=log)
             except ModelError as e:
                 errors.append(f"{m.provider}:{e.code}")
         raise ModelError("AI_UNAVAILABLE", ", ".join(errors) or "no provider configured")

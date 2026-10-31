@@ -1,0 +1,70 @@
+- id: M4-M01
+  title: >-
+    Field Assistant rules first (no model call for what rules classify), per-turn model deadline 3.5 s
+    (ASSISTANT_MODEL_DEADLINE_S, 1.5..6), every effect rules-only
+  workstream: M4-F3
+  role: Stream M
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/service.py
+  - services/field-api/src/field_api/assistant/model.py
+  - services/field-api/src/field_api/assistant/rules.py
+  - services/field-api/src/field_api/assistant/tools.py
+  - services/field-api/src/field_api/assistant/prompts.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_rules_first_turns_make_zero_model_calls_and_answer_at_once
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_needs_model_only_for_what_rules_cannot_answer
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_sandbox_dialog_is_rules_only_with_ai_on
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_model_deadline_is_a_setting_within_bounds
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_unclassified_turn_gives_the_model_only_the_deadline
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_slow_model_falls_back_within_the_deadline
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_sandbox_items_are_added_only_by_the_rules_dialog
+  - services/field-api/tests/assistant/test_assistant_model_turns.py::test_model_failure_falls_back_to_rules
+  frs: []
+  verified_at: null
+  note: >-
+    Owner's field-api log of 31 Oct 2026 (every turn tried Muse first, AI_TIMEOUT after 6 s, once AI_TRANSPORT, then
+    rules; Start Work answered 6-7 s late). needs_model() sends to the model only an utterance the rules cannot classify
+    (outside a dialog) and "what is this" about a photo without a code; session start/end, pause, resume, step done,
+    scan, unknown code, every open dialog and every classified utterance are answered by rules with zero model calls
+    (test with the AI on and a model double that would answer, plus the budget ledger). Measured on the build machine
+    through TestClient + Postgres, 21 rules-first turns: median 53 ms, max 149 ms. A model that does not answer costs
+    at most the deadline (real local HTTP server, deadline 1.5 s: answered by rules after about 1.7 s). The model is no
+    longer offered add_sandbox_item (it could add after an explicit yes); adds happen only in the rules dialog, a model
+    that calls it gets "unknown tool". Model-turn tests that used rules-classified turns now use unclassified utterances
+    (docstrings say why; behaviour change asked for by the owner, not a weakening). Partial until proven on the
+    owner's phone and glasses and with the real Meta API (A-04).
+- id: M4-M02
+  title: >-
+    Sandbox voice intents "new home receipt" and "count shelf <bin>" / "count a shelf" create and open the task;
+    "nothing assigned" offers both on sandbox sites
+  workstream: M4-F3
+  role: Stream M
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/rules.py
+  - services/field-api/src/field_api/assistant/ports.py
+  - services/field-api/src/field_api/assistant/tools.py
+  - services/field-api/src/field_api/assistant/work.py
+  tests:
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_new_work_intents
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_bins_match_as_spoken
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_new_home_receipt_creates_and_opens_it
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_production_site_refuses_new_work_politely
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_count_a_shelf_asks_which_then_creates
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_count_shelf_through_the_real_sandbox_service
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_nothing_assigned_offers_new_work_on_sandbox_sites
+  - services/field-api/tests/assistant/test_assistant_rules_first.py::test_new_work_failures_are_spoken
+  - tests/e2e/test_m3_sandbox_e2e.py::test_assistant_starts_new_home_work_through_the_real_sandbox_service
+  frs: []
+  verified_at: null
+  note: >-
+    Owner's field test of 31 Oct 2026 (after the home receipt and count the site had no open jobs and the app said
+    "nothing assigned" with no way to start new work). Two new seams in assistant/ports.py (create_receipt,
+    create_count, like section 7 of M3_CONTRACT) wired in get_ports to field_api.sandbox.service.create_receipt /
+    create_count; rules answer them (no model call) and return open_task for the new task. "count a shelf" asks
+    "Which shelf? Say HOME-A or HOME-B." (one shelf - no question) and takes the next utterance or a scanned shelf label;
+    spoken bins match after digit words and separators are dropped, or by a unique ending ("shelf b" -> HOME-B).
+    Production sites refuse politely and nothing is created. Greeting, what's next, most urgent, how many left and help
+    offer both on sandbox sites when nothing is open. e2e against in-process erp-sim (real delivery, real count).
+    Partial until proven on the owner's phone and glasses (A-04).

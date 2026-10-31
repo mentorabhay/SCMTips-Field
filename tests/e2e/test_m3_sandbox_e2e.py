@@ -457,3 +457,41 @@ def test_assistant_adds_an_unknown_box_through_the_real_sandbox_service(home: di
     prod_sid = turn(h["prod"], "session_start", None)["session_id"]
     refused = turn(h["prod"], "unknown_code", prod_sid, code=_code(), client_state={})
     assert not refused["actions"] and "What is it" not in refused["say"]
+
+
+def test_assistant_starts_new_home_work_through_the_real_sandbox_service(home: dict[str, Any]) -> None:
+    """M4 (owner's field test, 31 Oct 2026: after the home receipt and count nothing offered new work): on the
+    sandbox site "new home receipt" creates an empty erp-sim delivery and its task, and "count shelf b" an empty
+    count of HOME-B, both opened at once by rules; the production site refuses both and creates nothing (M4-M02)."""
+    h = home
+
+    def turn(site: str, sid: str | None, **extra: Any) -> dict[str, Any]:
+        body = {"site_id": site, "event": "utterance", "session_id": sid, **extra}
+        res = api.post("/v1/assistant/turns", json=body, headers=_h(h["op"]))
+        assert res.status_code == 200, res.text
+        out = dict(res.json())
+        assert out["ai"] == "rules"
+        return out
+
+    r = turn(h["sbx"], None, text="new home receipt")
+    sid = r["session_id"]
+    assert r["actions"][0]["type"] == "open_task"
+    task_id = r["actions"][0]["task_id"]
+    task = _task(h, h["sbx"], task_id)
+    assert task["type"] == "receive" and task["lines"] == []
+    deliv = _erp("SELECT count(*) FROM erpsim.inbound_delivery WHERE delivery_document = %s",
+                 (task["ref_doc_no"],))
+    assert deliv == [(1,)]
+    code = _code()
+    body = {"client_state": {"task_id": task_id}}
+    api.post("/v1/assistant/turns", json={"site_id": h["sbx"], "event": "unknown_code", "session_id": sid,
+                                          "code": code, **body}, headers=_h(h["op"]))
+    turn(h["sbx"], sid, text="tea tin", **body)
+    assert turn(h["sbx"], sid, text="one", **body)["say"].startswith("Added tea tin")
+    r = turn(h["sbx"], sid, text="count shelf b")
+    count = _task(h, h["sbx"], r["actions"][0]["task_id"])
+    assert count["type"] == "count" and count["lines"] == []
+    for text in ("new home receipt", "count shelf b"):
+        refused = turn(h["prod"], None, text=text)
+        assert refused["say"].startswith("This is a production site") and refused["actions"] == [
+            {"type": "listen", "mode": "command"}]
