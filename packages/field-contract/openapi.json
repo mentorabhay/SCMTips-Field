@@ -6096,7 +6096,7 @@
           "device_token": {
             "type": "string",
             "title": "Device Token",
-            "description": "Core P10 device token or SSO session token"
+            "description": "Core P10 device token, SSO session token or core app token"
           },
           "device_id": {
             "anyOf": [
@@ -6108,7 +6108,7 @@
               }
             ],
             "title": "Device Id",
-            "description": "Field device id (from POST /v1/devices)"
+            "description": "Field device id (from POST /v1/devices or a previous exchange)"
           },
           "client_id": {
             "anyOf": [
@@ -6178,6 +6178,14 @@
               }
             ],
             "title": "Device Id"
+          },
+          "core_permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Core Permissions",
+            "description": "the core token's permissions claim (M4 F7); field decides nothing on them"
           }
         },
         "type": "object",

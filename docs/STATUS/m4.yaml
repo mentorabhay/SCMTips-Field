@@ -37,3 +37,36 @@
     timestamp + "." + raw body, check rows against the exchange contract's inventory / open_supply columns and keep
     them (upsert view, read at /_standin/feeds/*). State is process memory. Partial until the same flows run against
     the real core and on the owner's phone and glasses (A-04).
+- id: M4-C01
+  title: 'F7: core settings, /exchange accepts core app tokens (permissions, email), JWKS re-read, device-status URL template'
+  workstream: M4-C
+  role: Stream C (core link)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/auth/core.py
+  - services/field-api/src/field_api/auth/jwks.py
+  - services/field-api/src/field_api/routes/auth.py
+  - services/field-api/src/field_api/config.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_core_app_token_exchanges_and_registers_the_core_device
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_core_revocation_and_field_revocation_both_refuse
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_unknown_core_device_without_a_core_check_stays_refused
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_binding_mismatch_is_401
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_malformed_extra_claims_are_refused
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_unbound_dev_token_is_not_asked_at_the_core_path
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_jwks_reread_on_new_key_same_kid_and_on_unknown_kid
+  - services/field-api/tests/unit/test_m4_core_exchange.py::test_m4_c01_core_settings
+  - services/field-api/tests/property/test_pr1_17_token_exchange.py::test_t1_038_device_exchange_requires_active_device_row
+  frs: []
+  verified_at: null
+  note: Against the stand-in core; the real core is not deployed. Settings FIELD_CORE_BASE_URL (default
+    http://127.0.0.1:8011, the stand-in), FIELD_CORE_JWKS_URL (default {BASE}/v1/core/jwks.json),
+    FIELD_CORE_DEVICE_STATUS_URL (template {device_id}, {tenant_id} from the token; unset keeps today's behaviour,
+    fake-core /api/v1/devices/{id}/status when CORE_API_URL is set). JWKS re-read once on an unknown kid or a failed
+    signature, at most every FIELD_JWKS_FORCED_REFRESH_MIN_S (5 s). permissions / email claims accepted (validated,
+    permissions echoed as core_permissions, e-mail never stored). The core's device id (app install id) is not a
+    field.device id; the field device for it is the field.device whose id or serial_no equals it, registered by the
+    exchange when the core device status answers active (the app then uses the device_id the exchange returns and
+    does not POST /v1/devices for it). Roles must still be field roles (unknown roles stay refused). Partial until
+    proven against the real core and on the owner's phone (A-04).
