@@ -12,13 +12,13 @@ Injects deterministic or probabilistic faults:
 import asyncio
 import os
 import random
-from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
 import structlog
 from fastapi import HTTPException
 
+from erp_sim.db import DATABASE_URL
 from erp_sim.faults.warehouse import evaluate_warehouse_fault_header
 
 logger = structlog.get_logger(__name__)
@@ -34,116 +34,116 @@ async def evaluate_faults(
     operation: str,
     doc_key: str | None = None,
 ) -> None:
-    """Evaluate active fault rules matching service and operation."""
+    """Evaluate active fault rules matching service and operation.
+
+    The rule bookkeeping (expiry, count) runs on its own autocommit connection, not on the caller's
+    cursor: an injected fault makes the caller roll back, which used to roll back the count too, so a
+    rule armed for one failure failed every call until its TTL ran out (PR1.14). ``cur`` is kept for
+    the call sites and is not written to.
+    """
     if not FAULTS_ENABLED:
         return
+    del cur
 
-    now = datetime.now(UTC)
-
-    cur.execute(
-        """
-        SELECT id, kind, probability, count, ttl_s, seed, created_at
-        FROM erpsim.fault_rule
-        WHERE client = %s AND active = true
-          AND (service IS NULL OR service = %s)
-          AND (operation IS NULL OR operation = %s)
-          AND (doc_key IS NULL OR doc_key = %s)
-        FOR UPDATE;
-    """,
-        (client, service, operation, doc_key),
+    with psycopg.connect(DATABASE_URL, autocommit=True) as conn, conn.cursor() as fc:
+        fc.execute(
+            """
+            UPDATE erpsim.fault_rule SET active = false
+            WHERE client = %s AND active = true
+              AND (count <= 0 OR created_at + ttl_s * interval '1 second' < now());
+            """,
+            (client,),
+        )
+        fc.execute(
+            """
+            SELECT id, kind, probability, seed
+            FROM erpsim.fault_rule
+            WHERE client = %s AND active = true
+              AND (service IS NULL OR service = %s)
+              AND (operation IS NULL OR operation = %s)
+              AND (doc_key IS NULL OR doc_key = %s)
+            ORDER BY created_at;
+            """,
+            (client, service, operation, doc_key),
+        )
+        rules = fc.fetchall()
+        fired: tuple[Any, str] | None = None
+        for rule_id, kind, prob, seed in rules:
+            rnd = random.Random(seed).random() if seed is not None else random.random()
+            if rnd > float(prob):
+                continue
+            # Consume one count atomically; a concurrent call may have used the last one.
+            fc.execute(
+                """
+                UPDATE erpsim.fault_rule SET count = count - 1, active = (count - 1 > 0)
+                WHERE id = %s AND active = true AND count > 0
+                RETURNING count;
+                """,
+                (rule_id,),
+            )
+            if fc.fetchone() is not None:
+                fired = (rule_id, str(kind))
+                break
+    if fired is None:
+        return
+    rule_id, kind = fired
+    logger.info(
+        "fault_rule_triggered",
+        rule_id=str(rule_id),
+        kind=kind,
+        service=service,
+        operation=operation,
     )
-    rows = cur.fetchall()
 
-    for r in rows:
-        rule_id, kind, prob, count, ttl_s, seed, created_at = (
-            r[0],
-            r[1],
-            float(r[2]),
-            r[3],
-            r[4],
-            r[5],
-            r[6],
+    if kind == "latency":
+        await asyncio.sleep(1.5)
+    elif kind == "http_5xx":
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": "ZSIM/HTTP500",
+                    "message": {"lang": "en", "value": "Injected synthetic SAP 500 error"},
+                }
+            },
         )
-
-        # Check TTL
-        age_s = (now - created_at).total_seconds()
-        if age_s > ttl_s:
-            cur.execute("UPDATE erpsim.fault_rule SET active = false WHERE id = %s;", (rule_id,))
-            continue
-
-        if count <= 0:
-            cur.execute("UPDATE erpsim.fault_rule SET active = false WHERE id = %s;", (rule_id,))
-            continue
-
-        # Probability check
-        rnd = random.Random(seed).random() if seed is not None else random.random()
-        if rnd > prob:
-            continue
-
-        # Consume 1 count
-        new_count = count - 1
-        cur.execute(
-            "UPDATE erpsim.fault_rule SET count = %s, active = (%s > 0) WHERE id = %s;",
-            (new_count, new_count, rule_id),
+    elif kind == "lock":
+        raise HTTPException(
+            status_code=423,
+            detail={
+                "error": {
+                    "code": "ZSIM/LOCKED",
+                    "message": {
+                        "lang": "en",
+                        "value": f"Object {doc_key or operation} locked by another transaction [SYNTHETIC]",
+                    },
+                }
+            },
         )
-
-        logger.info(
-            "fault_rule_triggered",
-            rule_id=str(rule_id),
-            kind=kind,
-            service=service,
-            operation=operation,
+    elif kind == "timeout":
+        await asyncio.sleep(3.0)
+        raise HTTPException(
+            status_code=504,
+            detail={
+                "error": {
+                    "code": "ZSIM/TIMEOUT",
+                    "message": {"lang": "en", "value": "Gateway Timeout [SYNTHETIC]"},
+                }
+            },
         )
-
-        if kind == "latency":
-            await asyncio.sleep(1.5)
-        elif kind == "http_5xx":
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error": {
-                        "code": "ZSIM/HTTP500",
-                        "message": {"lang": "en", "value": "Injected synthetic SAP 500 error"},
-                    }
-                },
-            )
-        elif kind == "lock":
-            raise HTTPException(
-                status_code=423,
-                detail={
-                    "error": {
-                        "code": "ZSIM/LOCKED",
-                        "message": {
-                            "lang": "en",
-                            "value": f"Object {doc_key or operation} locked by another transaction [SYNTHETIC]",
-                        },
-                    }
-                },
-            )
-        elif kind == "timeout":
-            await asyncio.sleep(3.0)
-            raise HTTPException(
-                status_code=504,
-                detail={
-                    "error": {
-                        "code": "ZSIM/TIMEOUT",
-                        "message": {"lang": "en", "value": "Gateway Timeout [SYNTHETIC]"},
-                    }
-                },
-            )
-        elif kind == "partial":
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "error": {
-                        "code": "ZSIM/PARTIAL",
-                        "message": {
-                            "lang": "en",
-                            "value": "Network connection reset during transmission [SYNTHETIC]",
-                        },
-                    }
-                },
-            )
+    elif kind == "partial":
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": {
+                    "code": "ZSIM/PARTIAL",
+                    "message": {
+                        "lang": "en",
+                        "value": "Network connection reset during transmission [SYNTHETIC]",
+                    },
+                }
+            },
+        )
 
 
 __all__ = ["evaluate_faults", "evaluate_warehouse_fault_header", "FAULTS_ENABLED", "SIM_ADMIN_TOKEN"]

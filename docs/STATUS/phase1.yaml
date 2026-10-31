@@ -720,13 +720,16 @@
   evidence:
   - services/erp-sim/src/erp_sim/faults/warehouse.py
   - services/erp-sim/src/erp_sim/routes/fault_admin.py
+  - services/erp-sim/src/erp_sim/faults/__init__.py
   tests:
   - compat/sap_parity/test_sap_parity.py::test_t3_009_warehouse_fault_injection_and_prod_rejection
+  - services/erp-sim/tests/test_admin_ui_and_faults.py::test_pr1_14_fault_rule_count_depletes_even_though_the_failed_call_rolls_back
+  - services/erp-sim/tests/test_admin_ui_and_faults.py::test_pr1_14_expired_rule_never_fires
   frs:
   - FR1.046
   - FR1.047
   verified_at: null
-  note: Fault injection exists (phase-3 parity test), but PR1.14 and TC1.140-TC1.142 have no tests.
+  note: 'Fault injection exists (phase-3 parity test). Fixed 2026-10-31: a rule''s count was decremented in the failing request''s transaction and rolled back with it, so a rule armed for N failures failed every call until its TTL; bookkeeping now runs on its own autocommit connection. PR1.14 is now a Hypothesis property (count depletion despite rollback) plus an expiry test. TC1.140-TC1.142 still have no tests.'
 - id: T1.053
   title: Seed SAMPLE master and transactional data
   workstream: WS1.5
@@ -746,11 +749,15 @@
   status: partial
   evidence:
   - services/erp-sim/src/erp_sim/admin_ui.py
-  tests: []
+  tests:
+  - services/erp-sim/tests/test_admin_ui_and_faults.py::test_every_nav_page_answers
+  - services/erp-sim/tests/test_admin_ui_and_faults.py::test_document_page_shows_items_and_reversal_chain_escaped
+  - services/erp-sim/tests/test_admin_ui_and_faults.py::test_fault_form_arms_a_rule_and_switches_it_off
+  - services/erp-sim/tests/test_admin_ui_and_faults.py::test_actions_only_from_this_pc_and_this_page
   frs:
   - FR1.049
   verified_at: null
-  note: Admin UI pages exist; TC1.144/TC1.145 have no tests.
+  note: 'Correction 2026-10-31 (owner report): only Overview and Stock existed; Documents, document detail, Locks & Ranges and Fault Rules were linked but returned 404. All six pages now exist on live erpsim tables, values are HTML-escaped, and the fault form and reset accept only requests from this PC (loopback, same Origin). TC1.144/TC1.145 not checked against the spec text yet.'
 - id: T1.055
   title: Write erp-sim property and concurrency tests
   workstream: WS1.5
