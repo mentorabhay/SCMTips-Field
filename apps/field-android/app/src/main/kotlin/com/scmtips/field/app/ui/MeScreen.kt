@@ -46,14 +46,29 @@ fun MeScreen(ui: AppUi, a: Actions) {
     ) {
         Text("Me and this phone", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Ink, lineHeight = 32.sp)
         Column(Modifier.fillMaxWidth().background(CardBg, Corner).border(1.dp, Line, Corner)) {
-            SettingRow("Connected to", "${ui.pairing?.siteName ?: "—"} · ${ui.person.name}", "Change", a.unpair)
+            val signed = ui.signedIn
+            if (signed != null) {
+                SettingRow("Signed in to SCMTIPS", listOfNotNull(signed.name, signed.email, ui.pairing?.siteName).joinToString(" · ") +
+                    "\n" + listOfNotNull("decisions".takeIf { signed.approver }, "field work".takeIf { signed.fieldOperator }).ifEmpty { listOf("no app roles") }
+                        .joinToString(" and ").replaceFirstChar { it.uppercase() }, "Sign out", a.unpair)
+            } else {
+                SettingRow("Connected to", "${ui.pairing?.siteName ?: "—"} · ${ui.person.name}", "Change", a.unpair)
+            }
             SettingRow("Scanning with", ui.scanner.label, "Change", a.cycleScanner)
             SettingRow("Smart glasses", "Ray-Ban Meta Gen 2 · ${ui.glassesAdvice.text}", ui.glassesAdvice.button, a.glassesSetUp)
             SettingRow("Glasses microphone", if (ui.glassesSpeech) "On · the glasses listen during a work session" else "Off · a work session uses the phone's recogniser",
                 if (ui.glassesSpeech) "Turn off" else "Turn on", a.toggleGlassesMic)
+            SettingRow("Attention word", if (ui.attentionWord) "On · only what starts with “Field” is acted on, like “Field, next”"
+                else "Off · everything said in a work session is heard", if (ui.attentionWord) "Turn off" else "Turn on", a.toggleAttentionWord)
             SettingRow("Language", "English · Hindi is coming", "Change", a.languageInfo)
             SettingRow("Audio-only mode", if (ui.audioOnly) "On · prompts are spoken, never shown" else "Off",
                 if (ui.audioOnly) "Turn off" else "Turn on", a.toggleAudioOnly, last = true)
+        }
+        CardBox {
+            Text("Talking to the glasses", fontWeight = FontWeight.Bold, color = Ink)
+            Text("During a work session the glasses' microphone hears you; just speak (or start with “Field” when the attention word is on). " +
+                "“Hey Meta” is Meta's own wake word: the glasses hand it to Meta AI before this app hears anything, so it cannot be used for " +
+                "SCMTips Field commands. Where Meta AI supports it, “Hey Meta, start SCMTips Field” opens this app at your decisions.", color = Muted, fontSize = 14.sp)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Tile("Practice task", "Nothing goes to SAP", a.startPractice, Modifier.weight(1f))

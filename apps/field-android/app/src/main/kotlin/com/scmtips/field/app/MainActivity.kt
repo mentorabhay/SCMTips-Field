@@ -18,6 +18,7 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.types.Permission
 import com.meta.wearable.dat.core.types.PermissionStatus
+import com.scmtips.field.app.glasses.DatGlasses
 import com.scmtips.field.app.glasses.GlassesAdvice
 import com.scmtips.field.app.jobs.InputSource
 import com.scmtips.field.app.scan.WedgeBuffer
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
+        if (app.datInitError == null && DatGlasses.isVoiceLaunch(intent)) controller.onVoiceLaunch()
         androidPermissions.launch(
             arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS),
         )
@@ -108,6 +110,14 @@ class MainActivity : ComponentActivity() {
             stopWork = controller::stopWork,
             pauseWork = controller::pauseWork,
             resumeWork = controller::resumeWork,
+            signIn = controller::signIn,
+            startReview = controller::startReview,
+            stopReview = { controller.stopReview() },
+            refreshDecisions = controller::refreshDecisions,
+            decisionButton = controller::decisionButton,
+            answerStepUp = controller::answerStepUp,
+            startSandbox = controller::startSandbox,
+            toggleAttentionWord = controller::toggleAttentionWord,
         )
         setContent {
             val ui by controller.ui.collectAsState()
@@ -137,6 +147,8 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         // Registration callback from the Meta AI app (scmtipsfield://...)
         if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
+        // "Hey Meta, start SCMTips Field" from the glasses (M4): straight to the next decision for an approver.
+        if (app.datInitError == null && DatGlasses.isVoiceLaunch(intent)) controller.onVoiceLaunch()
     }
 
     /**

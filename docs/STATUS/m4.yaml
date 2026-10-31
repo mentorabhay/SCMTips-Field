@@ -328,3 +328,220 @@
     core:http_N / core:timeout / core:transport / core:bad_response. The token is never stored, logged or sent to the
     model (test greps stdout/stderr, ops.ai_usage and field.idempotency_record). UNVERIFIED against the real core and
     the real Muse prompt (META_FIELD rows 20, 21); partial until proven with the owner's glasses and the real core.
+- id: M4-B01
+  title: feature-decisions core client — wearable /v1 calls, app sign-in wire, spoken brief from field-api (F1, F2)
+  workstream: M4-F1
+  role: Stream B
+  status: partial
+  evidence:
+  - apps/field-android/feature-decisions/build.gradle.kts
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreHttp.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/OkHttpCoreHttp.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreModels.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreClient.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreSignIn.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/brief/SpokenBriefs.kt
+  - apps/field-android/settings.gradle.kts
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::next_sendsDeviceHeaders_andParsesNullItem
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::next_parsesItem_andIgnoresUnknownFields
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::challenge_and_command_sendIdempotencyKeyOnCommandsOnly
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::stepUp_wrongCode_isInvalidStepUpCode_notUnauthorized
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::photo_isMultipart_withConsentAndAllFields
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::revoke_isDeleteWithBearer_204
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreClientTest.kt::secretsNeverAppearInACallsText
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInTest.kt::passwordSignIn_postsTheHandoverBody_withTheLrHeader_andReadsTheAnswer
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInTest.kt::pairingCodeSignIn_sendsTheCodeInsteadOfEmailAndPassword_phoneOnly
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInTest.kt::refusalsBecomeWordsThePersonCanActOn
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/brief/SpokenBriefsTest.kt::postsDecisionAndTemplate_withTheWearableTokenAsXCoreToken_andReadsTheModelText
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/brief/SpokenBriefsTest.kt::anyTrouble_speaksTheTemplate
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/OkHttpCoreHttpTest.kt::jsonPost_carriesHeadersAndBody_andTheAnswerIsReturnedAsText
+  frs: []
+  verified_at: null
+  note: >-
+    Ported from the core's wearable app api/{Models,ScmtipsApi,OkHttpScmtipsApi}.kt. The client logic (paths under
+    {core}/v1, Bearer wearable token + X-Device-Id + X-Requested-With lr, Idempotency-Key on commands only, invalid_code vs
+    401, problem documents, multipart photo fields) is pure Kotlin over a CoreHttp port and JVM-tested with a scripted
+    transport; OkHttpCoreHttp is the only network code. MockWebServer is not in gradle/libs.versions.toml and was not added
+    (rule 2.4); OkHttpCoreHttpTest pins the OkHttp layer with a scripted interceptor and runs in the Gradle unit tests (it was
+    also compiled and run once here on the plain JVM against okhttp 4.12.0, 4/4 passed; that is not a gate). Models are read
+    by hand from JsonObject (the JVM gate has no serialization plugin). Pairing (POST /v1/wearable/sessions) and server
+    transcription are not ported: F2 sign-in replaces pairing, and speech is recognised on the glasses or phone. Sign-in
+    (POST /v1/auth/app/token) follows handover 01 exactly; a missing claims object falls back to the token's payload. The
+    spoken brief calls field-api POST /v1/briefs/spoken as stream M built it (Authorization field token, Idempotency-Key,
+    X-Core-Token, X-Device-Id; decision_id ^[A-Za-z0-9._:-]{1,128}$, template_text 1-4000, else nothing is sent) and speaks the
+    template on any 4xx/5xx, transport error, blank text or after 8 s. A wrong pairing code and 429 too_many_attempts get their own
+    words. The core app's own pairing (POST /v1/wearable/sessions, 8-character code, user_display_name) is ported as a fallback
+    for a core that does not serve /v1/auth/app/token (404/405/501): decisions only. Voice transcription is not used (the stand-in
+    does not serve it). Nothing has been called against the real core or the stand-in core (stream C), and
+    nothing ran on the owner's phone or glasses.
+- id: M4-B02
+  title: Approval flow ported onto Field's ports — next decision, spoken brief, voice turns, confirm turn, phone step-up, audio confirmation (F1)
+  workstream: M4-F1
+  role: Stream B
+  status: partial
+  evidence:
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlow.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/CardFormatter.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/Ports.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/StepUp.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/flow/LaunchCoordinator.kt
+  tests:
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::audioOnly_approveWithStepUp_thenConfirm_executes
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::phoneCard_buttons_approveA_stepUp_confirm_executes
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::spokenApproveOptionTwo_isPassedToTheCoreVerbatim
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::theModelBriefIsSpokenWhenFieldApiHasOne_andTheTemplateIsWhatItIsMadeFrom
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::repeat_isTheCoresTurn_andSpeaksWhatItSays
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::wrongStepUpCode_isRetried_onThePhone
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::lowConfidence_asksAgain_andSendsNothing
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/ApprovalFlowTest.kt::stoppingTheReview_clearsTheCard_andSendsNothingMore
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/CardFormatterTest.kt::decisionCard_truncatesBody_andHasOneApprovePerOptionPlusReject
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/LaunchCoordinatorTest.kt::aLaunchFromTheGlasses_isAcknowledged_andStartsTheReview
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/UtteranceInboxTest.kt::wordsHeardWhileListeningAreTaken_andWordsHeardBeforeAreDropped
+  frs: []
+  verified_at: null
+  note: >-
+    Ported from the core's wearable app flow/{ApprovalFlow,CardFormatter,LaunchCoordinator,StepUpPrompter}.kt and
+    ui/StepUpBroker.kt with their tests (runBlocking instead of kotlinx-coroutines-test, which is not a dependency). Rebuilt on
+    Field's modules, no second glasses wrapper - speech out is core-wearables AudioOut (the app plays it through its TTS,
+    which reaches the glasses' speakers over Bluetooth), speech in is a core-voice AsrCandidate from a DecisionEar the app
+    feeds (glasses mic in a work session, hold-to-talk otherwise), the card is a phone card (Ray-Ban Meta Gen 2 has no display;
+    the core app's CardRenderer used mwdat-display, which is not a Field dependency, so it is not ported). Changes - the brief
+    is fetched before the challenge so the nonce's life is not spent on the model; committed and errors are confirmed by an
+    earcon plus the core's words; a stopped review clears the card. The core's grammar decides every intent; the app never
+    decides an approval, a permission or whether step-up is needed. The server-transcriber below_floor case of the original
+    test is gone with server transcription. Not run on the glasses, the stand-in core or the real core.
+- id: M4-B03
+  title: Sign-in screen against the core (e-mail + password or pairing code), tokens in EncryptedSharedPreferences, home by capabilities (F2)
+  workstream: M4-F2
+  role: Stream B
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/CoreAccount.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/ConnectScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/AppRoot.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/TodayScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/MeScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/net/FieldHttp.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/net/PhoneBinding.kt
+  - apps/field-android/app/build.gradle.kts
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::anAccountIsSavedAndLoadedWhole_andItsTextNeverShowsATokenOrTheStoreKeysValuesInLogs
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::signOutRemovesEverySecret_butKeepsTheServerAddressesAndTheEmail
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::theCoreCallsHaveNoTokenOnceTheWearableSessionHasExpired
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::homesFollowTheCoresCapabilities_andAQrPairingIsFieldWork
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::theCoresPermissionsAlsoGrantTheHomes_asTheStandInsDemoUsersHaveThem
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::theSignInScreensAddressesDefaultFromWhatIsKnown
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::plainHttpIsOnlyForTheOwnersNetwork_asWithTheQrCode
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::theSiteIsTheFirstOfTheTokensSitesThatFieldApiLists
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::theInstallIdIsMadeOnceAndIsAValidCoreDeviceId
+  frs: []
+  verified_at: null
+  note: >-
+    The Connect screen signs in with SCMTIPS first (e-mail + password, or a pairing code, at an editable core address, default
+    http://127.0.0.1:8011, and field server address, default http://127.0.0.1:8000, both kept once typed; a LAN field address
+    known from a QR pairing gives the core default on the same host, port 8011); the M3 QR pairing stays below it. device_id is
+    PhoneBinding's install id, device_model RAYBAN_META_GEN2 when the glasses are registered with the Meta AI app, else PHONE_ONLY.
+    The access token is exchanged at field-api /v1/auth/exchange; as stream C built it, the exchange itself registers or links the
+    field device of a core-signed-in phone and answers its device_id (no POST /v1/devices, which answers 409), and its
+    core_permissions are merged into the account. Tokens and the wearable session live in the app's EncryptedSharedPreferences
+    (scmtips-field-slice) and no class that holds them prints them; sign-out (Me) revokes the wearable session at the core (best
+    effort) and removes every secret. Homes - Decisions when the core grants approve_decisions or voice.approve, field work when it
+    grants field_operator or field.operate; the site is the first of the token's sites field-api lists, else the first listed (the
+    stand-in sends sites ["*"]). Version 6 / 0.5.0-m4. Only type-checked (compile_check --all) and JVM-tested; no Gradle build or
+    lint here (no Android SDK licence), never run on a phone, never called against the stand-in or the real core.
+- id: M4-B04
+  title: Decisions on the phone and in the work session — review screen, phone step-up, "N decisions waiting", "decisions" routing, Hey Meta launch (F1)
+  workstream: M4-F1
+  role: Stream B
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/decisions/DecisionsBridge.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/DecisionScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/Conductor.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/glasses/DatGlasses.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/decisions/DecisionsBridgeTest.kt::speakingWaitsUntilTheTtsHasSaidIt_soTheFlowListensOnlyAfterwards
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/decisions/DecisionsBridgeTest.kt::thePhoneCardIsShownUnlessAudioOnly_andOnlyItsOwnButtonsCount
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/decisions/DecisionsBridgeTest.kt::theWorkSessionAnnouncesWaitingDecisions_andTheScreenNamesEachState
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::anApproverHearsHowManyDecisionsWait_andSayingDecisionsStartsTheReview
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::whileAReviewRunsTheSessionsWordsGoToIt_butStopWorkStillStops
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::withoutTheApproveCapabilityDecisionsAreNotTheAppsToOpen
+  frs: []
+  verified_at: null
+  note: >-
+    Today shows a Decisions card for approvers (count from GET /v1/wearable/next, Review now). The review runs feature-decisions'
+    ApprovalFlow with the app's TTS as AudioOut (it returns when the TTS went quiet, so listening starts after the words), the
+    phone card (none in audio-only mode), the work session's microphone (glasses) or hold-to-talk outside a session, and a phone
+    step-up dialog (authenticator or backup code, masked, never logged). In a work session an approver hears "N decisions are
+    waiting" after the greeting and again after a commit; "decisions" / "next decision" starts the review and, while it runs, every
+    utterance except "stop work" goes to it. The Meta toolkit's voice-invocation stream (Field's own DatGlasses, no second wrapper)
+    and the launch intent start a review on "Hey Meta, start SCMTips Field" - this needs Voice Invocation approval in the Wearables
+    Developer Center and is UNVERIFIED. The waiting count assumes the core's item.waiting includes the item itself (not confirmed).
+    Nothing ran on the owner's phone or glasses or against a core.
+- id: M4-B05
+  title: M3 fix — Start Work speaks a local greeting at once; the server's session_start reply follows and never holds the operator's words
+  workstream: M4-M3FIX
+  role: Stream B
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/Conductor.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::startWorkSpeaksALocalGreetingAtOnce_andTheServersReplyFollowsWhenItArrives
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::wordsSaidWhileTheServerIsSlowAreHandledAtOnce_andTheLateReplyIsNotSpokenOverThem
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::theGreetingIsTheSessionStartTurnWithALocalOneWhenOffline
+  frs: []
+  verified_at: null
+  note: >-
+    Owner test 31 Oct - Start Work stayed silent for 6-7 s. Now the greeting ("Work session started. You have N jobs ... Say start
+    and the job.") comes from the phone's task list before anything is sent, and startWork no longer waits for GET /v1/sites before
+    the conductor starts. The session_start turn is sent without holding the conductor's lock; its reply is spoken and its actions
+    run only if the operator has not spoken meanwhile (else it is logged and dropped). Known gap - a turn sent while session_start is
+    still in flight carries no assistant session id. Not run on the phone or glasses.
+- id: M4-B06
+  title: M3 fix — Today on a sandbox site offers New home receipt and Count a shelf
+  workstream: M4-M3FIX
+  role: Stream B
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/home/SandboxStarters.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/TodayScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/DecisionScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/assistant/SiteModes.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/home/SandboxStartersTest.kt::onlyASandboxSiteOffersAHomeReceiptAndAShelfCount
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/home/SandboxStartersTest.kt::aHomeReceiptPostsTheSiteToTheSandboxReceiptsRoute
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/home/SandboxStartersTest.kt::aShelfCountPostsSiteAndBin_andNeedsABin
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/home/SandboxStartersTest.kt::aProductionSiteOrNoAnswerIsSaidPlainly
+  frs: []
+  verified_at: null
+  note: >-
+    On a site field-api reports as sandbox (GET /v1/sites mode, learnt on every task refresh or at sign-in) Today shows a Sandbox
+    chip, and both in the empty "Nothing assigned" card and under "Start something else" offers New home receipt (POST
+    /v1/sandbox/receipts {site_id}) and Count a shelf (a dialog for the bin, then POST /v1/sandbox/counts {site_id, bin}); the
+    created task is opened. FIELD-SBX-403-PRODUCTION and offline answers are said plainly. The assistant's own open_task replies
+    for "new home receipt" / "count shelf" (stream M) were already opened by the conductor. Not run on the phone.
+- id: M4-B07
+  title: M3 fix — optional attention word "Field" (Me, off by default); "Hey Meta" explained as Meta's
+  workstream: M4-M3FIX
+  role: Stream B
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/AttentionWord.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/MeScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/AttentionWordTest.kt::offByDefault_everyUtteranceIsActedOnAsHeard
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/AttentionWordTest.kt::whenOn_onlyWordsStartingWithFieldAreActedOn_withoutTheWord
+  frs: []
+  verified_at: null
+  note: >-
+    When on, the work session's open microphone (glasses speech or the Bluetooth/phone recogniser) acts only on utterances that
+    start with "Field" (also heard as "feild" / "fields"), with the word removed; everything else is logged as ignored. Words said
+    while holding the phone's talk button are not filtered (the press is the attention). The Me screen explains that "Hey Meta" is
+    handed to Meta AI by the glasses before any app hears it. How the recogniser writes "Field" on the owner's phone is unknown.

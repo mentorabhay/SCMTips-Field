@@ -15,14 +15,23 @@ import com.meta.wearable.dat.core.selectors.AutoDeviceSelector
 import com.meta.wearable.dat.core.session.DeviceSession
 import com.meta.wearable.dat.core.session.DeviceSessionState
 import com.meta.wearable.dat.core.types.RegistrationState
+import com.meta.wearable.dat.core.voiceinvocations.isVoiceInvocationsIntent
+import com.meta.wearable.dat.core.voiceinvocations.startVoiceInvocationsStream
+import com.meta.wearable.dat.core.voiceinvocations.types.actions.LaunchApp
 import com.meta.wearable.dat.inputs.addInputs
 import com.meta.wearable.dat.inputs.types.CapturePressType
 import com.meta.wearable.dat.inputs.types.InputEvent
 import com.meta.wearable.dat.speech.Speech
 import com.meta.wearable.dat.speech.addSpeech
+import com.scmtips.field.feature.decisions.flow.LaunchRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -229,6 +238,28 @@ class DatGlasses(
         return out
     }
 
+    /**
+     * App launches said to Meta AI on the glasses ("Hey Meta, start SCMTips Field"; M4, ported from the
+     * core's wearable app). Collecting starts the toolkit's voice-invocation stream; it closes with the
+     * collector. "Hey Meta" itself is Meta's: the app never hears or intercepts it. UNVERIFIED on the
+     * owner's glasses; a stream the toolkit refuses ends the flow and is reported in [status].
+     */
+    val launches: Flow<LaunchRequest> = flow {
+        val stream = Wearables.startVoiceInvocationsStream(AutoDeviceSelector())
+        try {
+            emitAll(
+                stream.invocations.filterIsInstance<LaunchApp>().map { launch ->
+                    LaunchRequest(
+                        success = { msg -> launch.responseHandle.sendSuccess(msg) },
+                        failure = { msg -> launch.responseHandle.sendFailure(msg) },
+                    )
+                },
+            )
+        } finally {
+            stream.close()
+        }
+    }
+
     fun disconnect() {
         session?.stop()
         release()
@@ -257,6 +288,9 @@ class DatGlasses(
 
     companion object {
         private const val TAG = "DatGlasses"
+
+        /** True when the launcher intent came from a voice invocation on the glasses. */
+        fun isVoiceLaunch(intent: android.content.Intent): Boolean = runCatching { isVoiceInvocationsIntent(intent) }.getOrDefault(false)
 
         /**
          * Used only when the glasses report no confidence (-1): exactly the 0.80 floor, never above, so

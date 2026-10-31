@@ -19,6 +19,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -28,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.AppUi
 import com.scmtips.field.app.home.Link
+import com.scmtips.field.app.home.SandboxStart
+import com.scmtips.field.app.home.SandboxStarters
 import com.scmtips.field.app.home.TaskCard
 import com.scmtips.field.app.home.TodayModel
 import com.scmtips.field.app.ui.theme.CardBg
@@ -52,6 +58,9 @@ import com.scmtips.field.app.ui.theme.WarnText
 @Composable
 fun TodayScreen(ui: AppUi, a: Actions) {
     val cards = ui.tasks.map(TodayModel::card)
+    var askShelf by remember { mutableStateOf(false) }
+    if (askShelf) CountShelfDialog(onStart = { bin -> askShelf = false; a.startSandbox(SandboxStart.COUNT_SHELF, bin) }, onDismiss = { askShelf = false })
+    val sandbox = SandboxStarters.offered(ui.sandbox && ui.home.fieldWork && ui.pairing != null)
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 16.dp),
@@ -62,7 +71,7 @@ fun TodayScreen(ui: AppUi, a: Actions) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Avatar(ui.person.initials)
                     Column(Modifier.weight(1f)) {
-                        Text("${ui.person.name} · ${ui.pairing?.siteName ?: ""}", color = Muted, fontSize = 14.sp,
+                        Text(listOfNotNull(ui.person.name, ui.pairing?.siteName).joinToString(" · "), color = Muted, fontSize = 14.sp,
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text("Your work today", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ink, lineHeight = 30.sp)
                     }
@@ -76,30 +85,65 @@ fun TodayScreen(ui: AppUi, a: Actions) {
                     Chip("Scanning with: ${ui.scanner.label}", CardBg, Ink2, line = Line)
                     if (ui.visitId != null) Chip("On site · checked in", InfoBg, Primary)
                     if (ui.glassesAdvice.ready) Chip("Glasses ready", InfoBg, Primary)
+                    if (ui.sandbox) Chip("Sandbox site", WarnBg, WarnInk)
                 }
             }
         }
+        if (ui.home.decisions) item { DecisionsCard(ui.decisions, ui.work.active, a) }
         item { WorkCard(ui.work, ui.glasses.session == "STARTED", a) }
-        item {
+        if (ui.home.fieldWork && ui.pairing == null) {
+            item {
+                CardBox {
+                    Text(if (ui.connecting) "Connecting to the SCMTips Field server…" else "No field site linked", fontWeight = FontWeight.Bold, color = Ink)
+                    Text(ui.connectError ?: "Your jobs appear here once the field server knows your site.", color = Muted, fontSize = 14.sp)
+                }
+            }
+        }
+        if (ui.home.fieldWork && ui.pairing != null) item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Assigned to you", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Muted, modifier = Modifier.weight(1f))
                 if (ui.loading) CircularProgressIndicator(Modifier.size(20.dp), color = Primary, strokeWidth = 2.dp)
                 else SmallButton("Refresh", a.refresh)
             }
         }
-        if (cards.isEmpty()) {
+        if (ui.home.fieldWork && ui.pairing != null && cards.isEmpty()) {
             item {
                 CardBox {
                     Text("Nothing assigned to you right now.", fontWeight = FontWeight.Bold, color = Ink)
-                    Text("New jobs appear here by themselves. You can also start a practice task in Me.", color = Muted, fontSize = 14.sp)
+                    Text(
+                        if (sandbox.isNotEmpty()) "This is a sandbox site: start a new home receipt or count a shelf right here."
+                        else "New jobs appear here by themselves. You can also start a practice task in Me.",
+                        color = Muted, fontSize = 14.sp,
+                    )
+                    if (sandbox.isNotEmpty()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 6.dp)) {
+                            PrimaryButton(SandboxStart.HOME_RECEIPT.label, { a.startSandbox(SandboxStart.HOME_RECEIPT, null) }, Modifier.weight(1f), height = 52.dp)
+                            SecondaryButton(SandboxStart.COUNT_SHELF.label, { askShelf = true }, Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }
-        items(cards, key = { it.taskId }) { c -> TaskCardRow(c) { a.openTask(c.taskId) } }
-        item {
+        if (ui.home.fieldWork && ui.pairing != null) items(cards, key = { it.taskId }) { c -> TaskCardRow(c) { a.openTask(c.taskId) } }
+        if (ui.home.fieldWork && ui.pairing != null) item {
             Text("Start something else", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Muted, modifier = Modifier.padding(top = 8.dp))
         }
-        item {
+        if (sandbox.isNotEmpty()) item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                sandbox.forEach { st ->
+                    Column(
+                        Modifier.weight(1f).heightIn(min = 64.dp).background(WarnBg, Corner).border(1.dp, Line, Corner)
+                            .clickable(role = Role.Button) {
+                                if (st == SandboxStart.COUNT_SHELF) askShelf = true else a.startSandbox(st, null)
+                            }.padding(14.dp),
+                    ) {
+                        Text(st.label, fontWeight = FontWeight.Bold, color = Ink)
+                        Text(st.sub, fontSize = 13.sp, color = Muted)
+                    }
+                }
+            }
+        }
+        if (ui.home.fieldWork && ui.pairing != null) item {
             val starters = TodayModel.starters(ui.tasks)
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 starters.chunked(2).forEach { pair ->

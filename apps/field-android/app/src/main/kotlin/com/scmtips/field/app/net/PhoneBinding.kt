@@ -65,6 +65,12 @@ class PhoneBinding(private val store: Store, private val newId: () -> String) {
 
     private fun serial(): String = store.get(KEY_SERIAL) ?: newId().also { store.put(KEY_SERIAL, it) }
 
+    /**
+     * This install's id (the serial field-api knows the phone by), made once. M4: also the `device_id`
+     * the core's sign-in binds the wearable token to (a UUID: 36 of [A-Za-z0-9._:-]).
+     */
+    fun installId(): String = serial()
+
     private fun regKey(): String = store.get(KEY_REG_KEY) ?: newId().also { store.put(KEY_REG_KEY, it) }
 
     private fun newInstall() {
