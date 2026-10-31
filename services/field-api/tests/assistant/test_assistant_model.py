@@ -88,7 +88,7 @@ def test_success_settles_with_the_providers_usage_incl_cached(
     assert recorded_api.hosts == ["api.meta.ai/v1/chat/completions"]
     assert recorded_api.auth_headers == [f"Bearer {h.FAKE_KEY}"]
     sent = recorded_api.requests[0]
-    assert sent["model"] == "muse-spark-1.2" and sent["max_tokens"] == 300 and sent["messages"] == MSGS
+    assert sent["model"] == "muse-spark-1.2" and sent["max_tokens"] == 1024 and sent["messages"] == MSGS
 
 
 def test_usage_row_records_tokens_and_cost(ai_on: None, recorded_api: Any, make_router: Callable[..., ModelRouter],
@@ -201,3 +201,35 @@ def test_estimate_counts_images_generously() -> None:
                                           {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AAAA"}}]}]
     assert estimate_tokens(text, None) >= 100
     assert estimate_tokens(image, None) >= 1600
+
+
+def test_reply_cut_off_by_reasoning_falls_back_and_is_still_billed(
+        ai_on: None, recorded_api: Any, make_router: Callable[..., ModelRouter]) -> None:
+    """Owner's live call, 31 Oct 2026 (India, HTTP 200): with max_tokens 20 Muse spent 18 on reasoning and
+    answered content null, finish_reason length. That is no answer: the turn must fall back, and the tokens count."""
+    rid = "t-trunc-" + os.urandom(3).hex()
+    recorded_api.script = [{"choices": [{"finish_reason": "length", "index": 0,
+                                         "message": {"content": None, "refusal": None, "role": "assistant"}}],
+                            "model": "muse-spark-1.2",
+                            "usage": {"completion_tokens": 20, "prompt_tokens": 13, "total_tokens": 33,
+                                      "completion_tokens_details": {"reasoning_tokens": 18},
+                                      "prompt_tokens_details": {"cached_tokens": 0}}}]
+    errs: list[str] = []
+    with pytest.raises(ModelError) as e:
+        _call(make_router(), rid, errors=errs)
+    assert e.value.code == "AI_UNAVAILABLE" and errs == ["meta:AI_TRUNCATED"]  # the router tried every model
+    _p, _m, _status, _reserved, cost, inp, out, _cached = _usage_row(rid)
+    assert (inp, out) == (13, 20)
+    exact = (Decimal(13) * Decimal("1.25") + Decimal(20) * Decimal("4.25")) / 10**6  # 0.00010125
+    assert abs(Decimal(cost) - exact) < Decimal("0.000001")  # stored at six decimals
+
+
+def test_output_cap_is_a_setting_within_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
+    from field_api.assistant.model import MAX_OUTPUT_TOKENS, max_output_tokens
+
+    monkeypatch.delenv("ASSISTANT_MAX_OUTPUT_TOKENS", raising=False)
+    assert max_output_tokens() == MAX_OUTPUT_TOKENS == 1024
+    for raw, want in (("2048", 2048), ("10", 64), ("99999", 4096), ("lots", 1024)):
+        monkeypatch.setenv("ASSISTANT_MAX_OUTPUT_TOKENS", raw)
+        assert max_output_tokens() == want
+

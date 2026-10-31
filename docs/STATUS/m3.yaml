@@ -19,19 +19,19 @@
   - connectors/sap/tests/contract/test_sandbox_port_contract.py::test_both_adapters_implement_the_sandbox_port
   frs: []
   verified_at: null
-  note: erpsim.material_barcode (PK client+barcode) with barcode = material number for every SAMPLE material
-    (migration and seed, so reset keeps them); read S/4-style as A_ProductUnitsOfMeasureEAN and as $expand on
-    A_ProductPlant (the sim flattens S/4's A_Product/to_ProductUnitsOfMeasure/to_InternationalArticleNumber). Sandbox
-    admin routes /_sim/sandbox/* (X-Sim-Admin-Token) create HOME-nnnn materials of one plant, empty sandbox
-    deliveries (numbers 19xxxxxxxx from the clock, so a simulator reset never reuses one the field still holds)
-    and their items; the S/4 adapter refuses them (FIELD_SANDBOX_NOT_SAP). 561 through the
-    material-document deep insert, now idempotent per Idempotency-Key. Documents of sandbox sites carry
-    header_data.sandbox (GR from the delivery header, 561 and PI differences from YY1_FieldSandbox) and show a badge
-    on the simulator pages. Soft pegging is OriginalDeliveryQuantity on the item PATCH, accepted only on sandbox
-    deliveries (S/4 has no such write; the sim models the outcome). The S/4 adapter's 561 is NotImplementedError like
-    its other postings (UNVERIFIED). Partial until proven on the owner's phone and glasses (A-03).
+  note: erpsim.material_barcode (PK client+barcode) with barcode = material number for every SAMPLE material (migration and
+    seed, so reset keeps them); read S/4-style as A_ProductUnitsOfMeasureEAN and as $expand on A_ProductPlant (the sim flattens
+    S/4's A_Product/to_ProductUnitsOfMeasure/to_InternationalArticleNumber). Sandbox admin routes /_sim/sandbox/* (X-Sim-Admin-Token)
+    create HOME-nnnn materials of one plant, empty sandbox deliveries (numbers 19xxxxxxxx from the clock, so a simulator reset
+    never reuses one the field still holds) and their items; the S/4 adapter refuses them (FIELD_SANDBOX_NOT_SAP). 561 through
+    the material-document deep insert, now idempotent per Idempotency-Key. Documents of sandbox sites carry header_data.sandbox
+    (GR from the delivery header, 561 and PI differences from YY1_FieldSandbox) and show a badge on the simulator pages. Soft
+    pegging is OriginalDeliveryQuantity on the item PATCH, accepted only on sandbox deliveries (S/4 has no such write; the
+    sim models the outcome). The S/4 adapter's 561 is NotImplementedError like its other postings (UNVERIFIED). Partial until
+    proven on the owner's phone and glasses (A-03).
 - id: M3-S02
-  title: field.material_barcode synced by the worker, site mode, GET /v1/codes/{code}, barcodes on task lines and in product confirmations
+  title: field.material_barcode synced by the worker, site mode, GET /v1/codes/{code}, barcodes on task lines and in product
+    confirmations
   workstream: M3-WP1
   role: Track S
   status: partial
@@ -49,13 +49,13 @@
   - tests/e2e/test_m3_sandbox_e2e.py::test_sandbox_receipt_new_barcode_soft_pegging_gr_101
   frs: []
   verified_at: null
-  note: field.material_barcode (forced RLS, tenant_isolation + permissive base like field.material) is written by
-    the worker's material sync from MaterialItem.barcodes and, for a new sandbox item, by field-api at once.
-    field.site.mode production|sandbox (CHECK, default production); POST/PATCH /v1/sites accept mode only from
-    field.admin (field.site.edit is not enough), each change audited in field.outbox as site.mode_changed. GET
-    /v1/codes/{code}?site_id= (field.task.read) answers material (number, GTIN or barcode of the site plant's active
-    materials) / bin / serial / unknown with site_mode. Task-list lines carry barcodes; product confirmations match
-    the material number, GTIN or any barcode. Partial until proven on the owner's phone and glasses (A-03).
+  note: field.material_barcode (forced RLS, tenant_isolation + permissive base like field.material) is written by the worker's
+    material sync from MaterialItem.barcodes and, for a new sandbox item, by field-api at once. field.site.mode production|sandbox
+    (CHECK, default production); POST/PATCH /v1/sites accept mode only from field.admin (field.site.edit is not enough), each
+    change audited in field.outbox as site.mode_changed. GET /v1/codes/{code}?site_id= (field.task.read) answers material
+    (number, GTIN or barcode of the site plant's active materials) / bin / serial / unknown with site_mode. Task-list lines
+    carry barcodes; product confirmations match the material number, GTIN or any barcode. Partial until proven on the owner's
+    phone and glasses (A-03).
 - id: M3-S03
   title: Sandbox receipts and items (POST /v1/sandbox/receipts, POST /v1/sandbox/tasks/{task_id}/items), FIELD-SBX-403-PRODUCTION
   workstream: M3-WP1
@@ -70,13 +70,12 @@
   - tests/e2e/test_m3_sandbox_e2e.py::test_sandbox_receipt_new_barcode_soft_pegging_gr_101
   frs: []
   verified_at: null
-  note: A receipt opens an empty sandbox delivery in erp-sim through the adapter chosen by FIELD_ERP_ADAPTER and
-    creates its receive task in the same request; the worker's delivery import skips new sandbox deliveries so
-    there is never a second task. An unknown code becomes HOME-nnnn (erp-sim) plus field.material and
-    field.material_barcode, then a delivery item and a task line; the same Idempotency-Key, or the same material
-    again, returns the first line. Production sites answer 403 FIELD-SBX-403-PRODUCTION; an S/4 tenant 409
-    FIELD-SBX-409-NOT-SUPPORTED. Permission field.task.execute (operator, technician; admin by wildcard), no new
-    permission. Partial until proven on the owner's phone and glasses (A-03).
+  note: A receipt opens an empty sandbox delivery in erp-sim through the adapter chosen by FIELD_ERP_ADAPTER and creates its
+    receive task in the same request; the worker's delivery import skips new sandbox deliveries so there is never a second
+    task. An unknown code becomes HOME-nnnn (erp-sim) plus field.material and field.material_barcode, then a delivery item
+    and a task line; the same Idempotency-Key, or the same material again, returns the first line. Production sites answer
+    403 FIELD-SBX-403-PRODUCTION; an S/4 tenant 409 FIELD-SBX-409-NOT-SUPPORTED. Permission field.task.execute (operator,
+    technician; admin by wildcard), no new permission. Partial until proven on the owner's phone and glasses (A-03).
 - id: M3-S04
   title: Soft pegging at receive post (delivery quantity = counted, then GR 101 marked sandbox)
   workstream: M3-WP1
@@ -90,10 +89,10 @@
   - tests/e2e/test_m3_sandbox_e2e.py::test_sandbox_receipt_new_barcode_soft_pegging_gr_101
   frs: []
   verified_at: null
-  note: On a sandbox site the receive post sets each line's expected quantity to the counted one (no tolerance
-    stop), and each item PATCH carries SoftPegging so the erp-sim delivery quantity becomes the counted quantity
-    before PostGoodsReceipt; the GR document carries header_data.sandbox. The put-away task follows as on any
-    site. Partial until proven on the owner's phone and glasses (A-03).
+  note: On a sandbox site the receive post sets each line's expected quantity to the counted one (no tolerance stop), and
+    each item PATCH carries SoftPegging so the erp-sim delivery quantity becomes the counted quantity before PostGoodsReceipt;
+    the GR document carries header_data.sandbox. The put-away task follows as on any site. Partial until proven on the owner's
+    phone and glasses (A-03).
 - id: M3-S05
   title: Sandbox counts (POST /v1/sandbox/counts) and movement 561 for opening stock
   workstream: M3-WP1
@@ -110,13 +109,12 @@
   - tests/e2e/test_m3_sandbox_e2e.py::test_production_count_never_posts_561
   frs: []
   verified_at: null
-  note: POST /v1/sandbox/counts {site_id, bin, simulated?} is not in the contract text; it is how `stack home` makes
-    the empty HOME-A count, and items are added to it with the section-3 items route (a count item's qty is its
-    blind count). At finish on a sandbox site, items with book 0 and a count > 0 post 561 (INIT_STOCK, queue
-    PID:<doc>, Sandbox flag) instead of a PI difference; the other items follow tolerance / approval as before and
-    their PI difference excludes the 561 items (a recount too). Production never posts 561. Sandbox counts have no
-    posting block (the same bin is received into at home). Partial until proven on the owner's phone and glasses
-    (A-03).
+  note: POST /v1/sandbox/counts {site_id, bin, simulated?} is not in the contract text; it is how `stack home` makes the empty
+    HOME-A count, and items are added to it with the section-3 items route (a count item's qty is its blind count). At finish
+    on a sandbox site, items with book 0 and a count > 0 post 561 (INIT_STOCK, queue PID:<doc>, Sandbox flag) instead of a
+    PI difference; the other items follow tolerance / approval as before and their PI difference excludes the 561 items (a
+    recount too). Production never posts 561. Sandbox counts have no posting block (the same bin is received into at home).
+    Partial until proven on the owner's phone and glasses (A-03).
 - id: M3-S06
   title: Section-7 seams for track A (resolve_code, add_item) with the exact signatures
   workstream: M3-WP1
@@ -129,10 +127,10 @@
   - tests/e2e/test_m3_sandbox_e2e.py::test_section_7_seams_have_the_contract_signatures
   frs: []
   verified_at: null
-  note: resolve_code(principal, site_id, code) -> CodeLookup and add_item(principal, task_id, code, description, qty,
-    idempotency_key) -> SandboxItemResult (raises FieldError FIELD-SBX-403-PRODUCTION on production sites). Both are
-    synchronous and run the ERP call to completion also when called inside an event loop. Not wired to the
-    assistant yet (the integrator does that at merge). Partial until proven on the owner's phone and glasses (A-03).
+  note: resolve_code(principal, site_id, code) -> CodeLookup and add_item(principal, task_id, code, description, qty, idempotency_key)
+    -> SandboxItemResult (raises FieldError FIELD-SBX-403-PRODUCTION on production sites). Both are synchronous and run the
+    ERP call to completion also when called inside an event loop. Not wired to the assistant yet (the integrator does that
+    at merge). Partial until proven on the owner's phone and glasses (A-03).
 - id: M3-S07
   title: Dev stack home sandbox (stack home [--simulate-differences], pair --home, smoke --home, labels, assistant-check hook)
   workstream: M3-WP1
@@ -150,20 +148,16 @@
   - tools/dev_stack/tests/test_stack.py::test_new_barcodes_are_ean13_shaped_and_fresh
   frs: []
   verified_at: null
-  note: '`stack home` makes plant HOME / HM01 in erp-sim, the field site "Home (sandbox)" (code HOME-SBX, mode
-    sandbox, created by field.admin through POST /v1/sites), bins HOME-A and HOME-B, one empty home receipt and one
-    count of HOME-A, and prints `stack pair --home`. `--simulate-differences` (opt-in) gives SAMPLE-MAT-0005/0006 a
-    book stock of 10 in HOME-A through a 561 marked sandbox+simulated and adds them to the count, whose PI document
-    is marked simulated (its 701/702 then carries simulated too). `smoke --home`: sandbox receipt with a never-seen
-    EAN-13 -> HOME-nnnn -> barcode product scan -> counted 3 against 1 -> GR 101 marked sandbox; the production
-    warehouse sees the code as unknown, refuses it on a real delivery line (409) and refuses sandbox actions (403
-    FIELD-SBX-403-PRODUCTION); a HOME-B count of a new box -> 561 of 4, task done. Run on a fresh stack together with
-    `smoke --all` (both PASS, 31 Oct 2026, Linux sandbox, private ports). `assistant-check` imports
-    tools.dev_stack.assistant_check at call time and calls its main(args); without it, it says the hook is not
-    installed (exit 1). Partial until proven on the owner''s phone and glasses (A-03).'
-# M3 glasses-first slice ledger (owner amendment A-03; docs/design/M3_CONTRACT.md §1). Same fields as the phase
-# ledgers. Every M3 entry stays at most `partial` until proven on the owner's phone and glasses.
-# Track A (Field Assistant + records) entries: M3-A01..M3-A08.
+  note: '`stack home` makes plant HOME / HM01 in erp-sim, the field site "Home (sandbox)" (code HOME-SBX, mode sandbox, created
+    by field.admin through POST /v1/sites), bins HOME-A and HOME-B, one empty home receipt and one count of HOME-A, and prints
+    `stack pair --home`. `--simulate-differences` (opt-in) gives SAMPLE-MAT-0005/0006 a book stock of 10 in HOME-A through
+    a 561 marked sandbox+simulated and adds them to the count, whose PI document is marked simulated (its 701/702 then carries
+    simulated too). `smoke --home`: sandbox receipt with a never-seen EAN-13 -> HOME-nnnn -> barcode product scan -> counted
+    3 against 1 -> GR 101 marked sandbox; the production warehouse sees the code as unknown, refuses it on a real delivery
+    line (409) and refuses sandbox actions (403 FIELD-SBX-403-PRODUCTION); a HOME-B count of a new box -> 561 of 4, task done.
+    Run on a fresh stack together with `smoke --all` (both PASS, 31 Oct 2026, Linux sandbox, private ports). `assistant-check`
+    imports tools.dev_stack.assistant_check at call time and calls its main(args); without it, it says the hook is not installed
+    (exit 1). Partial until proven on the owner''s phone and glasses (A-03).'
 - id: M3-A01
   title: Budget guard provider meta (AI_BUDGET_META_USD) with cached-input pricing; muse-spark-1.2 in config/ai_pricing.yaml
   workstream: WP3
@@ -181,18 +175,19 @@
   - services/field-api/tests/unit/test_ai_budget.py::test_pricing_file_loads_with_non_negative_prices
   frs: []
   verified_at: null
-  note: 'Guard tested on Postgres (reserve worst case without cache, settle with prompt/cached/completion tokens,
-    ops.ai_usage.cached_input_tokens, provider check allows meta). The prices (input 1.25, cached 0.15, output 4.25
-    USD per million) are the M3 contract figures, not checked against the provider by this build: owner to confirm.
-    llama and baseten unchanged; their tests stay green.'
+  note: 'Guard tested on Postgres (reserve worst case without cache, settle with prompt/cached/completion tokens, ops.ai_usage.cached_input_tokens,
+    provider check allows meta). The prices (input 1.25, cached 0.15, output 4.25 USD per million) are the M3 contract figures,
+    not checked against the provider by this build: owner to confirm. llama and baseten unchanged; their tests stay green.'
 - id: M3-A02
-  title: Field Assistant model client - Meta Model API (muse-spark-1.2) with Baseten fallback, every call through the budget guard
+  title: Field Assistant model client - Meta Model API (muse-spark-1.2) with Baseten fallback, every call through the budget
+    guard
   workstream: WP3
   role: Backend
   status: partial
   evidence:
   - services/field-api/src/field_api/assistant/model.py
   - docs/META_FIELD.md
+  - docs/evidence/2026-10-31-muse-model-api-india.txt
   tests:
   - services/field-api/tests/assistant/test_assistant_model.py::test_success_settles_with_the_providers_usage_incl_cached
   - services/field-api/tests/assistant/test_assistant_model.py::test_failures_close_the_reservation
@@ -201,14 +196,19 @@
   - services/field-api/tests/assistant/test_assistant_model.py::test_no_key_and_ai_off_make_no_call_and_no_reservation
   - services/field-api/tests/assistant/test_assistant_model.py::test_budget_refusal_makes_no_call
   - services/field-api/tests/assistant/test_assistant_model.py::test_timeout_is_at_most_six_seconds
+  - services/field-api/tests/assistant/test_assistant_model.py::test_reply_cut_off_by_reasoning_falls_back_and_is_still_billed
   frs: []
   verified_at: null
-  note: 'UNVERIFIED dependency (docs/META_FIELD.md row 19): the live Meta Model API was not reachable from the build
-    sandbox (egress proxy refused CONNECT to api.meta.ai, HTTP 403) and no MODEL_API_KEY exists there. Tested only
-    against an HTTP test double (hand-written OpenAI-compatible answers, test code only). Baseten fallback is wired but
-    has no priced model yet, so the guard refuses it until the owner adds one.'
+  note: 'UNVERIFIED dependency (docs/META_FIELD.md row 19): the live Meta Model API was not reachable from the build sandbox
+    (egress proxy refused CONNECT to api.meta.ai, HTTP 403) and no MODEL_API_KEY exists there. Tested only against an HTTP
+    test double (hand-written OpenAI-compatible answers, test code only). Baseten fallback is wired but has no priced model
+    yet, so the guard refuses it until the owner adds one. 2026-10-31 update: access from India VERIFIED by the owner (HTTP
+    200, muse-spark-1.3 and 1.2; docs/evidence/2026-10-31-muse-model-api-india.txt). The call showed reasoning tokens use
+    the output cap, so the cap is now 1024 (ASSISTANT_MAX_OUTPUT_TOKENS) and an empty cut-off reply falls back to rules. Tool
+    calls, images and a full turn through the guard stay unverified (META_FIELD row 20).'
 - id: M3-A03
-  title: POST /v1/assistant/turns (contract §4) - server tools, prompts with definitions of done, action safety, vision for names
+  title: POST /v1/assistant/turns (contract §4) - server tools, prompts with definitions of done, action safety, vision for
+    names
   workstream: WP3
   role: Backend
   status: partial
@@ -232,11 +232,12 @@
   - services/field-api/tests/assistant/test_assistant_rules.py::test_permissions_scope_and_idempotency
   frs: []
   verified_at: null
-  note: 'Depends on the UNVERIFIED Meta Model API (M3-A02): the model path is proven only against the test double.
-    Permission field.assistant.use for operator, technician, supervisor; Idempotency-Key required. Never on the
-    owner''s phone or glasses yet.'
+  note: 'Depends on the UNVERIFIED Meta Model API (M3-A02): the model path is proven only against the test double. Permission
+    field.assistant.use for operator, technician, supervisor; Idempotency-Key required. Never on the owner''s phone or glasses
+    yet.'
 - id: M3-A04
-  title: Rules mode (ai rules) - fixed answers when AI is off, keyless, refused, failing or slow, incl. the sandbox unknown-code dialog
+  title: Rules mode (ai rules) - fixed answers when AI is off, keyless, refused, failing or slow, incl. the sandbox unknown-code
+    dialog
   workstream: WP3
   role: Backend
   status: partial
@@ -253,10 +254,11 @@
   - services/field-api/tests/assistant/test_assistant_property.py::test_rules_never_confirm_and_never_say_count_quantities
   frs: []
   verified_at: null
-  note: 'Fully tested without network on Postgres. Not yet heard through the glasses (phone track P routes utterances
-    here); the sandbox add is tested through a double of track S''s port, not the real one.'
+  note: Fully tested without network on Postgres. Not yet heard through the glasses (phone track P routes utterances here);
+    the sandbox add is tested through a double of track S's port, not the real one.
 - id: M3-A05
-  title: Assistant records - field.assistant_session / field.assistant_turn (forced RLS), supervisor list, detail, CSV export, photo
+  title: Assistant records - field.assistant_session / field.assistant_turn (forced RLS), supervisor list, detail, CSV export,
+    photo
   workstream: WP5
   role: Backend
   status: partial
@@ -272,8 +274,8 @@
   - services/field-api/tests/assistant/test_assistant_records.py::test_pagination_and_session_end
   frs: []
   verified_at: null
-  note: 'Migration field_0061 has down_revision field_0059 on this branch; the integrator re-points it to field_0060.
-    Reads need field.assistant.review (supervisor). Console Sessions page (track P) not built against it yet.'
+  note: Migration field_0061 has down_revision field_0059 on this branch; the integrator re-points it to field_0060. Reads
+    need field.assistant.review (supervisor). Console Sessions page (track P) not built against it yet.
 - id: M3-A06
   title: Worker retention - assistant heard / said text and photos purged after 30 days
   workstream: WP5
@@ -288,8 +290,8 @@
   - services/field-worker/tests/unit/test_assistant_retention.py::test_retention_days_default_and_validation
   frs: []
   verified_at: null
-  note: 'Runs as field_worker through the SECURITY DEFINER field.worker_purge_assistant_content; tested on Postgres.
-    Not yet run on the owner''s PC stack.'
+  note: Runs as field_worker through the SECURITY DEFINER field.worker_purge_assistant_content; tested on Postgres. Not yet
+    run on the owner's PC stack.
 - id: M3-A07
   title: stack assistant-check - one real model call through the budget guard, prints OK or BLOCKED, never the key
   workstream: WP3
@@ -303,9 +305,8 @@
   - tools/dev_stack/tests/test_assistant_check.py::test_run_prints_one_line_and_exit_code
   frs: []
   verified_at: null
-  note: 'In the build sandbox it prints BLOCKED (AI_CLOUD_DISABLED, or meta:AI_NO_KEY with AI on): the live call was
-    never made. Track S registers the stack subcommand (lazy import of run()); on this branch it runs as
-    python -m tools.dev_stack.assistant_check.'
+  note: 'In the build sandbox it prints BLOCKED (AI_CLOUD_DISABLED, or meta:AI_NO_KEY with AI on): the live call was never
+    made. Track S registers the stack subcommand (lazy import of run()); on this branch it runs as python -m tools.dev_stack.assistant_check.'
 - id: M3-A08
   title: Seams to track S (contract §7) - CodeResolver and SandboxItems Protocols, injected, not wired on this branch
   workstream: WP3
@@ -318,10 +319,8 @@
   - services/field-api/tests/assistant/test_assistant_rules.py::test_production_site_refuses_the_sandbox_dialog
   frs: []
   verified_at: null
-  note: 'get_ports() returns no ports here; the integrator wires field_api.codes.resolve.resolve_code and
-    field_api.sandbox.service.add_item. Tested with doubles in test code only.'
-# M3 glasses-first slice ledger (owner amendment A-03; docs/design/M3_CONTRACT.md). Every entry is at most
-# partial until proven on the owner's phone and glasses. Track P (phone + console) entries: M3-P01...
+  note: get_ports() returns no ports here; the integrator wires field_api.codes.resolve.resolve_code and field_api.sandbox.service.add_item.
+    Tested with doubles in test code only.
 - id: M3-P01
   title: Work session — foreground service, continuous listening through the glasses, pause/resume with the DAT session
   status: partial
@@ -343,17 +342,16 @@
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/WorkSessionTest.kt::recogniserRestartsAtOnceAfterSilenceAndBacksOffOnErrors
   frs: []
   verified_at: null
-  note: 'Start work on Today (microphone permission first) or the glasses connecting while the app is on screen
-    (once per connection) start WorkSessionService (foregroundServiceType microphone|connectedDevice, FOREGROUND_SERVICE_*
-    permissions declared; the microphone type only from Android 11). The microphone is the glasses'' own DAT speech
-    when Me → Glasses microphone is on and the toolkit accepts it (started only in a session), else Android''s
-    SpeechRecognizer restarted after every result/error with backoff, routed to the glasses as Bluetooth SCO via
-    AudioManager.setCommunicationDevice (Android 12+; else the phone microphone); prompts then play as
-    voice-communication audio. Listening is held while the phone speaks and while paused; DAT PAUSED pauses, STARTED
-    resumes, a stop after the glasses took part pauses as disconnected. Outside a session nothing listens except the
-    on-screen Hold to talk (A-03); glasses transcripts outside a session are dropped. The pure rules are JVM-tested;
-    the service, recogniser loop, SCO routing and DAT calls are type-checked only (compile_check --all) and lint has
-    not run here (no Android SDK licence). Nothing has run on the owner''s phone or glasses: whether Android''s
+  note: 'Start work on Today (microphone permission first) or the glasses connecting while the app is on screen (once per
+    connection) start WorkSessionService (foregroundServiceType microphone|connectedDevice, FOREGROUND_SERVICE_* permissions
+    declared; the microphone type only from Android 11). The microphone is the glasses'' own DAT speech when Me → Glasses
+    microphone is on and the toolkit accepts it (started only in a session), else Android''s SpeechRecognizer restarted after
+    every result/error with backoff, routed to the glasses as Bluetooth SCO via AudioManager.setCommunicationDevice (Android
+    12+; else the phone microphone); prompts then play as voice-communication audio. Listening is held while the phone speaks
+    and while paused; DAT PAUSED pauses, STARTED resumes, a stop after the glasses took part pauses as disconnected. Outside
+    a session nothing listens except the on-screen Hold to talk (A-03); glasses transcripts outside a session are dropped.
+    The pure rules are JVM-tested; the service, recogniser loop, SCO routing and DAT calls are type-checked only (compile_check
+    --all) and lint has not run here (no Android SDK licence). Nothing has run on the owner''s phone or glasses: whether Android''s
     recogniser really hears through SCO on his phone, and how often it beeps on restart, is unknown.'
 - id: M3-P02
   title: Utterance routing — grammar first in a job, Field Assistant second, actions through the job runner, no confirm action
@@ -386,13 +384,13 @@
   - FR2.032
   verified_at: null
   note: 'Coded against contract §4 (POST /v1/assistant/turns, all nine events, actions open_task / command / refresh_task
-    / listen); the endpoint does not exist on this branch (track A), so every test uses a scripted assistant in test
-    code. The confirm rule holds three times: the parser has no confirm command, the conductor refuses any other
-    command name, and JobRunner refuses Spoken(Yes); commands run only in reply to the operator''s own words, and a
-    "post" from words below the 0.80 floor is not staged. Phone-side choices beyond the contract: words below 0.40
-    confidence are dropped as noise; "stop work" is always local; yes/no with no post waiting and everything after a
-    listen=free reply go to the assistant; assistant failure falls back to the grammar plus one spoken hint, and
-    outside a job to local "start <job type>" / "what''s next". Not run against track A''s server or the real model.'
+    / listen); the endpoint does not exist on this branch (track A), so every test uses a scripted assistant in test code.
+    The confirm rule holds three times: the parser has no confirm command, the conductor refuses any other command name, and
+    JobRunner refuses Spoken(Yes); commands run only in reply to the operator''s own words, and a "post" from words below
+    the 0.80 floor is not staged. Phone-side choices beyond the contract: words below 0.40 confidence are dropped as noise;
+    "stop work" is always local; yes/no with no post waiting and everything after a listen=free reply go to the assistant;
+    assistant failure falls back to the grammar plus one spoken hint, and outside a job to local "start <job type>" / "what''s
+    next". Not run against track A''s server or the real model.'
 - id: M3-P03
   title: Scan by looking — glasses video frames decoded on the phone, two-frame rule, no repeat within 3 s
   status: partial
@@ -410,13 +408,13 @@
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/scan/FrameScanFilterTest.kt::i420BecomesNv21WithVuInterleaved
   frs: []
   verified_at: null
-  note: 'The DAT camera stream (HIGH 720x1280, 2 fps, uncompressed) is open only during a work session or while a job
-    scans with the glasses; capturePhoto opens it on demand (waits up to 8 s for STREAMING) and closes it again.
-    Frames go to the phone only while the session is active and not paused, one decode at a time (busy frames are
-    dropped), I420 -> NV21 -> ML Kit; inside a job only scan steps take them (bestOf picks the code the step can use),
-    outside a job a scan is a `scan` turn. UNVERIFIED on the device: that DAT 1.0.1 decoded frames are tightly packed
-    I420 (a padded buffer is skipped, so a wrong guess means no scans, never wrong ones), that closing and re-adding
-    the camera capability works, decode time and battery. The capture button and "what is this" still take a full photo.'
+  note: 'The DAT camera stream (HIGH 720x1280, 2 fps, uncompressed) is open only during a work session or while a job scans
+    with the glasses; capturePhoto opens it on demand (waits up to 8 s for STREAMING) and closes it again. Frames go to the
+    phone only while the session is active and not paused, one decode at a time (busy frames are dropped), I420 -> NV21 ->
+    ML Kit; inside a job only scan steps take them (bestOf picks the code the step can use), outside a job a scan is a `scan`
+    turn. UNVERIFIED on the device: that DAT 1.0.1 decoded frames are tightly packed I420 (a padded buffer is skipped, so
+    a wrong guess means no scans, never wrong ones), that closing and re-adding the camera capability works, decode time and
+    battery. The capture button and "what is this" still take a full photo.'
 - id: M3-P04
   title: Barcodes on task lines and the sandbox unknown-code path
   status: partial
@@ -441,14 +439,14 @@
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::openTaskAndRefreshTaskGoToTheDeskAndTheRunnersWordsQueueAfterTheAssistants
   frs: []
   verified_at: null
-  note: 'TaskParser reads line `barcodes` (contract §2; absent = empty, so an older field-api still works); receive,
-    count, put-away and pick product scans match the material OR any barcode, and the pick product confirmation sends
-    the scanned code as is (the server matches either). A code on no line of a receive/count job goes to the sandbox
-    handler: during a work session on a site whose mode (GET /v1/sites `mode`, else `site_mode` of
-    GET /v1/codes/{code}) is sandbox it becomes an `unknown_code` turn with a glasses JPEG (scaled to 1280 px, at most
-    1 MB, base64), once per code per minute; otherwise (production, unknown mode, no session) it is refused as before.
-    refresh_task re-reads GET /v1/tasks and merges the task into the open job without losing progress, then handles
-    focus_code as a scan. Track S''s endpoints and line fields do not exist on this branch; tested with doubles only.'
+  note: 'TaskParser reads line `barcodes` (contract §2; absent = empty, so an older field-api still works); receive, count,
+    put-away and pick product scans match the material OR any barcode, and the pick product confirmation sends the scanned
+    code as is (the server matches either). A code on no line of a receive/count job goes to the sandbox handler: during a
+    work session on a site whose mode (GET /v1/sites `mode`, else `site_mode` of GET /v1/codes/{code}) is sandbox it becomes
+    an `unknown_code` turn with a glasses JPEG (scaled to 1280 px, at most 1 MB, base64), once per code per minute; otherwise
+    (production, unknown mode, no session) it is refused as before. refresh_task re-reads GET /v1/tasks and merges the task
+    into the open job without losing progress, then handles focus_code as a scan. Track S''s endpoints and line fields do
+    not exist on this branch; tested with doubles only.'
 - id: M3-P05
   title: Audio first — Today's main action is Start work, session state shown, the job screen mirrors the spoken step
   status: partial
@@ -466,12 +464,12 @@
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorTest.kt::aScanOutsideAJobIsAScanTurnOrALocalLookup
   frs: []
   verified_at: null
-  note: 'Today starts with one big Start work card; during a session it shows Listening / Paused (why) / Speaking, Glasses
-    camera on, Assistant offline, the last words heard and said and the assistant''s card, with Pause/Resume and Stop
-    work; the notification has Stop work too. The job screen stays the mirror, with a session strip above it. The
-    assistant''s words are spoken first and the runner''s prompts are queued after them (TTS QUEUE_ADD) instead of
-    cutting them off. Job cards on Today remain the phone fallback. App version 0.4.0-m3 (versionCode 5). Compose
-    files are type-checked only; no screenshot, emulator run or device run here.'
+  note: Today starts with one big Start work card; during a session it shows Listening / Paused (why) / Speaking, Glasses
+    camera on, Assistant offline, the last words heard and said and the assistant's card, with Pause/Resume and Stop work;
+    the notification has Stop work too. The job screen stays the mirror, with a session strip above it. The assistant's words
+    are spoken first and the runner's prompts are queued after them (TTS QUEUE_ADD) instead of cutting them off. Job cards
+    on Today remain the phone fallback. App version 0.4.0-m3 (versionCode 5). Compose files are type-checked only; no screenshot,
+    emulator run or device run here.
 - id: M3-P06
   title: Console — Assistant sessions page on live data, sandbox badges on sites and work
   status: partial
@@ -485,20 +483,22 @@
   - apps/field-console/components/ConsoleShell.tsx
   - apps/field-console/app/(console)/sites/page.tsx
   tests:
-  - "apps/field-console/tests/views-sessions.test.ts::only mode sandbox is a sandbox; an older field-api without mode is production"
-  - "apps/field-console/tests/views-sessions.test.ts::work board cards at a sandbox site carry the badge flag"
-  - "apps/field-console/tests/views-sessions.test.ts::rows: newest first, site label, sandbox, running, documents, cost and CSV path"
-  - "apps/field-console/tests/views-sessions.test.ts::turns in time order with event labels, AI or rules, actions in words, photos and purge notes"
-  - "apps/field-console/tests/views-sessions.test.ts::detail view: title, sandbox, documents, AI/rules counts, cost"
-  - "apps/field-console/tests/views-sessions.test.ts::list and detail: paths, query, shapes"
-  - "apps/field-console/tests/views-sessions.test.ts::CSV export is fetched with the bearer token; errors keep the plain-English title"
+  - apps/field-console/tests/views-sessions.test.ts::only mode sandbox is a sandbox; an older field-api without mode is production
+  - apps/field-console/tests/views-sessions.test.ts::work board cards at a sandbox site carry the badge flag
+  - 'apps/field-console/tests/views-sessions.test.ts::rows: newest first, site label, sandbox, running, documents, cost and
+    CSV path'
+  - apps/field-console/tests/views-sessions.test.ts::turns in time order with event labels, AI or rules, actions in words,
+    photos and purge notes
+  - 'apps/field-console/tests/views-sessions.test.ts::detail view: title, sandbox, documents, AI/rules counts, cost'
+  - 'apps/field-console/tests/views-sessions.test.ts::list and detail: paths, query, shapes'
+  - apps/field-console/tests/views-sessions.test.ts::CSV export is fetched with the bearer token; errors keep the plain-English
+    title
   frs: []
   verified_at: null
-  note: 'New nav entry Assistant sessions: list from GET /v1/assistant/sessions (site filter, polled), detail from
-    GET /v1/assistant/sessions/{id} with turns (event, heard, said, phone actions, AI or rules, cost, latency, code,
-    photo), SAP documents, and Download CSV (export.csv fetched with the bearer token, saved as a file; a plain link
-    would carry no token). A photo_ref that is a /v1/ path is fetched the same way; any other ref is shown as text
-    (the contract does not fix photo_ref''s form). A 404 from an older field-api shows "no assistant records yet".
-    Sites (with `mode`) are polled into the live data; sandbox badges on the Sites list and on work-board cards
-    (Live work and the warehouse pages that use it). Track A''s endpoints do not exist on this branch; vitest uses a
-    scripted fetch. tsc, vitest and next build pass; no browser run against a live field-api.'
+  note: 'New nav entry Assistant sessions: list from GET /v1/assistant/sessions (site filter, polled), detail from GET /v1/assistant/sessions/{id}
+    with turns (event, heard, said, phone actions, AI or rules, cost, latency, code, photo), SAP documents, and Download CSV
+    (export.csv fetched with the bearer token, saved as a file; a plain link would carry no token). A photo_ref that is a
+    /v1/ path is fetched the same way; any other ref is shown as text (the contract does not fix photo_ref''s form). A 404
+    from an older field-api shows "no assistant records yet". Sites (with `mode`) are polled into the live data; sandbox badges
+    on the Sites list and on work-board cards (Live work and the warehouse pages that use it). Track A''s endpoints do not
+    exist on this branch; vitest uses a scripted fetch. tsc, vitest and next build pass; no browser run against a live field-api.'

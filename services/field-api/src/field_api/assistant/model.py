@@ -11,7 +11,7 @@ whose outcome is unknown (transport error, timeout) is closed at the reserved wo
 is closed at 0; a success without usage is closed at the reserved worst case.
 
 Keys are read from the environment by NAME at call time and are never logged, stored or put in an error.
-UNVERIFIED (docs/META_FIELD.md row 19): the live Meta Model API was not reachable from the build sandbox; CI
+UNVERIFIED beyond access (docs/META_FIELD.md rows 19-20): access from India is verified, tool calls and images are not; CI
 exercises this client against a test double of the HTTP API that lives in test code only.
 """
 
@@ -37,7 +37,19 @@ META_MODEL = "muse-spark-1.2"
 META_KEY_ENV = "MODEL_API_KEY"
 BASETEN_KEY_ENV = "BASETEN_API_KEY"
 CALL_TIMEOUT_S = 6.0
-MAX_OUTPUT_TOKENS = 300
+# Muse Spark reasons before it answers and the reasoning counts as output: on 31 Oct 2026 the owner's call from
+# India (HTTP 200, muse-spark-1.2 and 1.3) spent 18 of 20 tokens on reasoning and returned no text. 1024 leaves
+# room for a two-sentence answer; ASSISTANT_MAX_OUTPUT_TOKENS (64..4096) overrides it.
+MAX_OUTPUT_TOKENS = 1024
+MAX_OUTPUT_ENV = "ASSISTANT_MAX_OUTPUT_TOKENS"
+
+
+def max_output_tokens() -> int:
+    """The output cap per call: ASSISTANT_MAX_OUTPUT_TOKENS within 64..4096, else MAX_OUTPUT_TOKENS."""
+    raw = os.getenv(MAX_OUTPUT_ENV, "").strip()
+    if not raw.isdigit():
+        return MAX_OUTPUT_TOKENS
+    return max(64, min(4096, int(raw)))
 IMAGE_TOKEN_ESTIMATE = 1600  # reservation per image; settled by the provider's real count
 
 
@@ -156,7 +168,7 @@ class ChatModel:
         return bool(os.environ.get(self.cfg.key_env, "").strip())
 
     def chat(self, messages: Sequence[dict[str, Any]], *, tools: Sequence[dict[str, Any]] | None = None,
-             timeout_s: float = CALL_TIMEOUT_S, max_tokens: int = MAX_OUTPUT_TOKENS, purpose: str = "assistant",
+             timeout_s: float = CALL_TIMEOUT_S, max_tokens: int | None = None, purpose: str = "assistant",
              tenant_id: str | None = None, request_id: str | None = None, log: CallLog | None = None) -> ChatResult:
         if os.getenv("AI_CLOUD_ENABLED", "false").strip().lower() != "true":
             raise ModelError("AI_CLOUD_DISABLED")
@@ -164,6 +176,8 @@ class ChatModel:
         if not key:
             raise ModelError("AI_NO_KEY", f"{self.cfg.key_env} is not set")
         timeout = min(max(timeout_s, 0.1), CALL_TIMEOUT_S)
+        if max_tokens is None:
+            max_tokens = max_output_tokens()
         body: dict[str, Any] = {"model": self.cfg.model, "messages": list(messages), "max_tokens": max_tokens,
                                 "temperature": 0.2}
         if tools:
@@ -211,6 +225,12 @@ class ChatModel:
             raise ModelError("AI_BAD_RESPONSE", "no choices[0].message") from None
         if not isinstance(message, dict):
             raise ModelError("AI_BAD_RESPONSE", "message is not an object")
+        finish = data["choices"][0].get("finish_reason") if isinstance(data["choices"][0], dict) else None
+        if finish == "length" and not message.get("content") and not message.get("tool_calls"):
+            # Billed (settled above), but nothing to say: the cap was spent on reasoning. The turn falls back.
+            logger.warning("assistant_model_truncated", provider=self.cfg.provider, model=self.cfg.model,
+                           completion_tokens=completion, max_tokens=max_tokens)
+            raise ModelError("AI_TRUNCATED", f"no answer within {max_tokens} output tokens")
         return ChatResult(message, self.cfg.provider, self.cfg.model, cost, latency, prompt, cached, completion)
 
     def _close_failed(self, billed: Decimal, res: Any, log: CallLog | None, code: str) -> None:
