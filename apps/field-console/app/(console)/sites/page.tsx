@@ -8,6 +8,8 @@ import { buildSiteRows, type TagTone } from "@/lib/views/sites";
 import { safetyBanners } from "@/lib/views/safety";
 import { NEEDS, useLive, useSession } from "@/components/session";
 import { SafetyBannerView } from "@/components/SafetyBannerView";
+import { SandboxBadge } from "@/components/LiveBoardView";
+import { isSandbox } from "@/lib/views/sessions";
 import { dataOf, useNow, usePoll } from "@/components/usePoll";
 import { cx, EmptyState, ErrorState, Freshness, PageHeader, Pill, PollView, type PillTone } from "@/components/ui";
 
@@ -88,6 +90,7 @@ export default function SitesPage() {
                     <Link href={`/sites/${encodeURIComponent(s.siteId)}/towers`} className="font-mono font-bold">
                       {s.code}
                     </Link>
+                    {isSandbox(list.find((x) => x.id === s.siteId)) ? <SandboxBadge /> : null}
                     {s.name && s.name !== s.code ? <div className="text-sm">{s.name}</div> : null}
                     <div className="text-sm text-muted">{s.who}</div>
                   </div>

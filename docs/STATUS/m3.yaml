@@ -150,3 +150,33 @@
     assistant''s words are spoken first and the runner''s prompts are queued after them (TTS QUEUE_ADD) instead of
     cutting them off. Job cards on Today remain the phone fallback. App version 0.4.0-m3 (versionCode 5). Compose
     files are type-checked only; no screenshot, emulator run or device run here.'
+- id: M3-P06
+  title: Console — Assistant sessions page on live data, sandbox badges on sites and work
+  status: partial
+  evidence:
+  - apps/field-console/app/(console)/sessions/page.tsx
+  - apps/field-console/lib/views/sessions.ts
+  - apps/field-console/lib/api.ts
+  - apps/field-console/lib/views/board.ts
+  - apps/field-console/components/LiveBoardView.tsx
+  - apps/field-console/components/session.tsx
+  - apps/field-console/components/ConsoleShell.tsx
+  - apps/field-console/app/(console)/sites/page.tsx
+  tests:
+  - "apps/field-console/tests/views-sessions.test.ts::only mode sandbox is a sandbox; an older field-api without mode is production"
+  - "apps/field-console/tests/views-sessions.test.ts::work board cards at a sandbox site carry the badge flag"
+  - "apps/field-console/tests/views-sessions.test.ts::rows: newest first, site label, sandbox, running, documents, cost and CSV path"
+  - "apps/field-console/tests/views-sessions.test.ts::turns in time order with event labels, AI or rules, actions in words, photos and purge notes"
+  - "apps/field-console/tests/views-sessions.test.ts::detail view: title, sandbox, documents, AI/rules counts, cost"
+  - "apps/field-console/tests/views-sessions.test.ts::list and detail: paths, query, shapes"
+  - "apps/field-console/tests/views-sessions.test.ts::CSV export is fetched with the bearer token; errors keep the plain-English title"
+  frs: []
+  verified_at: null
+  note: 'New nav entry Assistant sessions: list from GET /v1/assistant/sessions (site filter, polled), detail from
+    GET /v1/assistant/sessions/{id} with turns (event, heard, said, phone actions, AI or rules, cost, latency, code,
+    photo), SAP documents, and Download CSV (export.csv fetched with the bearer token, saved as a file; a plain link
+    would carry no token). A photo_ref that is a /v1/ path is fetched the same way; any other ref is shown as text
+    (the contract does not fix photo_ref''s form). A 404 from an older field-api shows "no assistant records yet".
+    Sites (with `mode`) are polled into the live data; sandbox badges on the Sites list and on work-board cards
+    (Live work and the warehouse pages that use it). Track A''s endpoints do not exist on this branch; vitest uses a
+    scripted fetch. tsc, vitest and next build pass; no browser run against a live field-api.'

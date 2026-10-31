@@ -161,7 +161,9 @@ export interface AuditProgress {
   towers: AuditTower[];
 }
 
-/** SiteRecord (openapi). */
+/** SiteRecord (openapi). `mode` is new in M3 (docs/design/M3_CONTRACT.md §2); absent on an older field-api. */
+export type SiteMode = "production" | "sandbox";
+
 export interface Site {
   id: string;
   code: string;
@@ -169,7 +171,46 @@ export interface Site {
   kind: string;
   status?: string;
   erp_plant?: string | null;
+  mode?: SiteMode | string | null;
 }
+
+// ------------------------------------------------------------------ Field Assistant records (M3 contract §4)
+
+/** GET /v1/assistant/sessions item. */
+export interface AssistantSession {
+  id: string;
+  site_id: string;
+  principal_id: string;
+  mode?: string | null;
+  started_at: string;
+  ended_at?: string | null;
+  turns: number;
+  documents?: string[] | null;
+  cost_usd?: number | string | null;
+}
+
+/** One turn of GET /v1/assistant/sessions/{id} (field.assistant_turn). Heard/said/photos are purged after 30 days. */
+export interface AssistantTurnRecord {
+  id: string;
+  session_id?: string;
+  at: string;
+  event: string;
+  heard?: string | null;
+  said?: string | null;
+  actions?: unknown;
+  tool_calls?: unknown;
+  code?: string | null;
+  photo_ref?: string | null;
+  ai?: string | null;
+  cost_usd?: number | string | null;
+  latency_ms?: number | null;
+}
+
+/** GET /v1/assistant/sessions/{id}: the session fields plus `turns[]`. */
+export type AssistantSessionWithTurns = Omit<AssistantSession, "turns"> & {
+  device_id?: string | null;
+  turns: AssistantTurnRecord[];
+};
 
 /** QueueSummary (openapi). */
 export interface QueueSummary {
@@ -427,6 +468,31 @@ export function createApiClient(deps: ClientDeps) {
     return body as T;
   }
 
+  /** Non-JSON downloads (CSV export, photos) with the same auth and error handling as [request]. */
+  async function download(path: string): Promise<Blob> {
+    const headers: Record<string, string> = {};
+    const token = deps.getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    let res: Response;
+    try {
+      res = await deps.fetch(`${deps.baseUrl}${path}`, { method: "GET", headers, cache: "no-store" });
+    } catch (e) {
+      throw new ApiError("network", null, null, MSG.network, e instanceof Error ? e.message : null);
+    }
+    if (!res.ok) {
+      let body: unknown = null;
+      try {
+        body = JSON.parse(await res.text());
+      } catch {
+        body = null;
+      }
+      const err = errorFromResponse(res.status, body);
+      if (err.kind === "unauthorized") deps.onUnauthorized?.();
+      throw err;
+    }
+    return res.blob();
+  }
+
   const api = (path: string) => `${deps.baseUrl}${path}`;
   const enc = encodeURIComponent;
   const get = <T>(path: string) => request<T>("GET", api(path));
@@ -501,6 +567,26 @@ export function createApiClient(deps: ClientDeps) {
     // --- devices
     listDevices: () => get<Device[]>("/v1/devices?limit=200"),
     revokeDevice: (id: string, reason: string) => post<Device>(`/v1/devices/${enc(id)}/revoke`, { reason }),
+
+    // --- Field Assistant records (supervisor reads, M3 contract §4)
+    listAssistantSessions: async (q: { site_id?: string; limit?: number } = {}) => {
+      const p = new URLSearchParams();
+      if (q.site_id) p.set("site_id", q.site_id);
+      p.set("limit", String(q.limit ?? 100));
+      const body = await get<Page<AssistantSession> | AssistantSession[]>(`/v1/assistant/sessions?${p.toString()}`);
+      const items = Array.isArray(body) ? body : body?.items;
+      if (!Array.isArray(items)) throw new ApiError("unexpected", 200, null, "field-api sent assistant sessions in an unexpected shape.", null);
+      return items;
+    },
+    getAssistantSession: async (id: string) => {
+      const body = await get<AssistantSessionWithTurns>(`/v1/assistant/sessions/${enc(id)}`);
+      if (!body || !Array.isArray(body.turns)) throw new ApiError("unexpected", 200, null, "field-api sent the session in an unexpected shape.", null);
+      return body;
+    },
+    /** CSV of one session (needs the bearer token, so it is fetched, not linked). */
+    exportAssistantSessionCsv: (id: string) => download(`/v1/assistant/sessions/${enc(id)}/export.csv`),
+    /** A turn's photo when its photo_ref is a field-api path (e.g. /v1/assistant/photos/...). */
+    downloadPath: (path: string) => download(path),
 
     // --- system
     getSystemStatus: () => get<SystemStatus>("/v1/system/status"),
