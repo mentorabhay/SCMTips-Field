@@ -1,119 +1,176 @@
 # Field-test guide: Ray-Ban Meta Gen 2, Android phone, your PC
 
-**For:** the owner (owner). **Goal:** receive an inbound delivery hands-free with your glasses. You look at a carton label, the glasses take a photo, the phone reads the barcode, you count by voice, and you post with "post" … "confirm". You then hear the ERP document number. The backend (field-api, worker, ERP simulator) runs on your Windows PC on the same Wi-Fi.
+**For:** the owner (owner). **Branch:** `slice/m2-integration` in **the private build mirror**.
+**What you can test:** six jobs end to end against a simulated SAP on your PC: receive, put away, pick, count (with recount and approval), tower audit, and equipment swap.
 
 **Secrets rule (A-02):** real credentials go only in git-ignored files on your PC (`.env.local`, `apps\field-android\local.properties`) or in GitHub Actions secrets. Never paste a key into chat; if you do, revoke it.
 
-**What changed on 2026-10-30:** Meta's glasses toolkit (DAT 1.0.1) is now on **Maven Central**, so **no GitHub token is needed** (the old Step 1 is gone).
+---
+
+## How it fits together
+
+```
+ Ray-Ban Meta Gen 2            Android phone (SCMTips Field)             Your Windows PC (same Wi-Fi)
+ ──────────────────            ─────────────────────────────            ──────────────────────────────
+ camera  ── photo ──────────►  reads the barcode / QR on the phone  ─┐   field-api  :8000  (the real product API)
+ button  ── "capture" ──────►  (nothing is sent to the cloud)        │      │  every scan is checked here: wrong bin,
+ mic     ── your voice ─────►  speech → commands ("post", "12")     ├─►    │  wrong product, wrong serial → refused
+ speaker ◄── spoken prompts ── text-to-speech over Bluetooth         │   field-worker      (posts to "SAP" in order)
+                               shows the same step on screen         │      │
+                                                                     │   erp-sim   :8002  (the simulated SAP)
+                                                                     │      stock, deliveries, documents 101/601/701/702,
+                                                                     │      towers, equipment, change documents
+                                                                     └─► fake-core :8011  (sign-in tokens for the dev PC)
+                                                                         console   :3000  (supervisor web pages, optional)
+```
+
+**The glasses are the hands-free scanner and headset.** Meta's toolkit (DAT 1.0.1, through the Meta AI app) gives the phone the glasses camera, button and microphone:
+- You look at a label and **press the capture button on the glasses**. The phone gets the photo and reads the barcode or QR code on the phone itself.
+- The phone **speaks every step into the glasses** ("Go to bin 02-01-01", "Pick 3"). You answer by voice ("all here", "twelve", "post", "confirm").
+- Without glasses, the same jobs work with the phone camera, a handheld scanner, or by typing the code. **Me → Scanning with → Change** switches between them.
+
+**The ERP is simulated, not mocked.** `erp-sim` is a separate service with its own database. It behaves like SAP S/4 for what we use: inbound and outbound deliveries, stock per material, material documents, physical-inventory documents, functional locations and equipment. field-api never writes to it directly. Each finished job becomes a posting request, and the worker sends it through the same `ErpPort` adapter that will later talk to real SAP. That is why you see "Waiting for SAP" for a moment and then a document number. You can watch it happen at **http://127.0.0.1:8002/_sim/ui** on the PC: documents, stock, and a **faults** page that makes SAP fail on purpose.
+
+| Job | What you do on the phone | What "SAP" gets |
+|---|---|---|
+| Receive | scan each product label on the delivery, say the count, "post" + "confirm" | goods receipt **101**, then a **put-away job** appears |
+| Put away | scan the product, walk to the bin shown, scan the bin label | field-side only (SAP stock has no bins) |
+| Pick | per stop: scan bin, scan product, say "all here" or the number | goods issue **601** |
+| Count | scan the bin, scan a product, say what you see (you are never shown the book quantity) | **701/702** if the difference is small; otherwise an approval in the console |
+| Tower audit | check in (permit + GPS), harness check, scan each unit's serial label | mismatches go to the console's Decisions page |
+| Swap | scan the old unit, scan the new unit from store | SAP change document (install/dismantle) |
 
 ---
 
 ## Step 0: Get the APK
+1. Open **SCMTips-build** on GitHub → **Actions**, then the newest **ci** run on `slice/m2-integration` with a green **android** job.
+2. Under **Artifacts**, download **field-debug-apk** and unzip it. You get `app-debug.apk`.
 
-CI builds it on every push to `slice/m1-field-test` in **the private build mirror** (GitHub Actions, workflow `ci`, job `android`: `./gradlew assembleDebug testDebugUnitTest lintDebug` with a checksum-pinned Gradle 8.14.3). First green build: run 41100125774, commit `f1b164a`.
+The same run also starts the app on an Android 14 emulator and fails if it crashes (job **android-launch**). Every step's log is on the `ci-logs` branch, so the agent can diagnose a build without you.
 
-1. Open SCMTips-build → **Actions**, then the newest run whose **android** job is green.
-2. Under **Artifacts**, download **field-debug-apk** (about 40 MB) and unzip it. You get `app-debug.apk`.
-
-Every step's log is also on the `ci-logs` branch (`runs/<job>/<run>-<attempt>/`), so the agent can diagnose a build without you.
-
-## Step 1: Glasses and the Meta AI app (10 min)
+## Step 1: Glasses and the Meta AI app (once, 10 min)
 1. On the phone, install or update **Meta AI** and pair your Ray-Ban Meta Gen 2.
-2. Firmware must be **v20 or newer**. To check: Meta AI → Devices → your glasses → gear icon → General → About.
-3. **Developer Mode:**
-   1. Go to Meta AI → Settings → App info.
-   2. Tap the **App version** number **5 times**.
-   3. Turn **Developer Mode** on.
+2. Firmware must be **v20 or newer**: Meta AI → Devices → your glasses → gear icon → General → About.
+3. **Developer Mode:** Meta AI → Settings → App info → tap **App version** 5 times → turn **Developer Mode** on. This lets our unpublished app connect.
 
-   This lets our unpublished app connect, with Meta's developer value `APPLICATION_ID = 0`.
-4. Send the agent: phone model, Android version, Meta AI app version, glasses firmware.
+## Step 2: Start everything on your PC (one double-click)
+Double-click **`<workspace>\field-test\START FIELD TEST.cmd`**. It:
+1. Fetches `slice/m2-integration` from SCMTips-build and switches to it. Untracked files that would block it are moved to `field-test\untracked-backup`.
+2. Stops only our own leftover stack processes (other Python programs are left alone).
+3. Starts fake-core, erp-sim, field-api and the worker, and applies database migrations.
+4. Runs **`smoke --all`**: a robot phone does all six jobs over HTTP. It must end with **`PASS: 6 job types end to end`**.
+5. Creates fresh jobs for you: a delivery, an outbound pick, a count and the tower jobs.
+6. Opens **`labels.html`**, a page of QR labels for those jobs (see Step 4).
+7. Shows the **pairing QR** for the warehouse.
 
-## Step 2: Start the backend on your PC (15 min the first time)
+Everything is logged to `<workspace>\field-test\field-test.log` and `stack-output.log`. If Windows Firewall asks about Python, allow **Private networks** only.
 
-You need **uv** and PostgreSQL 16 on port **5450**. For Postgres, either run Docker Desktop with `docker compose -f docker-compose.dev.yml up -d postgres`, or use your existing local Postgres.
-
-**Easiest:** double-click `<repo>\scripts\dev\run-field-stack.cmd`. It starts everything, runs the smoke test, creates a delivery and shows the pairing QR. (`run-field-stack.sh` is the Linux/macOS version and does not run on Windows.) Busy ports are skipped automatically; the QR code always carries the right one.
-
-Or in PowerShell at `<repo>`:
+The same commands, one by one, in PowerShell at `<repo>`:
 ```powershell
-.\scripts\dev\run-field-stack.ps1            # first run creates .env.local with fresh signing keys
-.\scripts\dev\run-field-stack.ps1 smoke      # proves phone -> ERP without a phone; must end with "PASS: ERP material document 49…"
-.\scripts\dev\run-field-stack.ps1 delivery   # creates a new inbound delivery to receive
-.\scripts\dev\run-field-stack.ps1 pair       # shows the QR code for the phone (also saved as var\pairing-qr.svg)
-.\scripts\dev\run-field-stack.ps1 down       # stops everything
+.\scripts\dev\run-field-stack.ps1 up                 # start (first run creates .env.local with fresh signing keys)
+.\scripts\dev\run-field-stack.ps1 smoke --all        # all six jobs without a phone
+.\scripts\dev\run-field-stack.ps1 delivery           # new inbound delivery   -> Receive job
+.\scripts\dev\run-field-stack.ps1 outbound           # new outbound delivery  -> Pick job
+.\scripts\dev\run-field-stack.ps1 count              # new blind count        -> Count job (or: count 03-05-02)
+.\scripts\dev\run-field-stack.ps1 tower              # tower audit + swap jobs on SAMPLE-TWR-0001
+.\scripts\dev\run-field-stack.ps1 labels             # QR labels for the newest open jobs (var\labels.html)
+.\scripts\dev\run-field-stack.ps1 pair               # pairing QR, warehouse
+.\scripts\dev\run-field-stack.ps1 pair --tower       # pairing QR, tower site
+.\scripts\dev\run-field-stack.ps1 down               # stop everything
 ```
-- If PostgreSQL is not reachable, the script says so. `docker-compose.dev.yml` and `.env.example` both use `dev-postgres-password`. A Docker volume created before 2026-10-30 keeps its old password `devpassword`; in that case, change `FIELD_ADMIN_DATABASE_URL` / `ERPSIM_DATABASE_URL` in `.env.local` to match.
-- When Windows Firewall asks about Python, allow it on **Private networks** only. The phone reaches `http://<your-PC-IP>:8000`.
-- Logs are in `var\log\*.log`.
 
 ## Step 3: Install the app and pair (5 min)
-1. Install the APK. Two ways:
-   - **USB:** turn on USB debugging (Settings → About phone → tap Build number 7 times → Developer options → USB debugging), then run `adb install -r app-debug.apk`.
-   - **No cable:** copy the APK to Drive and open it on the phone.
-2. Open **SCMTips Field** and allow Bluetooth, microphone and notifications.
-3. Tap **Scan pairing QR** and scan the QR from `run-field-stack.ps1 pair`. The app registers the phone, then lists the open inbound deliveries.
+1. Install `app-debug.apk`: copy it to the phone (Drive, USB or a cable with `adb install -r app-debug.apk`) and open it. If Android says "App not installed", uninstall the old SCMTips Field first (the signing key changed once, on 2026-10-30).
+2. Open **SCMTips Field** and allow camera, microphone, Bluetooth, location and notifications.
+3. On **Connect this phone**, tap **Scan the code** and scan the QR the launcher opened (`var\pairing-qr.svg`), holding the phone 20–30 cm from the screen. The phone must be on the **same Wi-Fi** as the PC.
+4. **Today** lists your jobs. New jobs appear by themselves within a few seconds.
 
-## Step 4: Connect the glasses (5 min)
-1. Tap **Register**. The Meta AI app opens; approve SCMTips Field.
-2. Tap **Connect**. Meta AI asks for **camera** and **microphone** access to the glasses; allow both.
-3. The status should read: session **STARTED**, camera **STREAMING**. The phone's **Capture** button stays disabled until the glasses camera is streaming. Without glasses you can still walk the lines with **Next** and count by voice. The capture button and glasses speech are experimental. If either shows "unavailable" or "refused", use the phone buttons and **Hold to talk**.
+**Connect the glasses:** **Me → Smart glasses**. The Meta AI app opens; approve SCMTips Field, then allow camera and microphone. **Put the glasses on and wake them**: "No eligible device" means they are asleep, folded or in the case. Then set **Me → Scanning with** to **Glasses**.
 
-## Step 5: Receive a delivery
-1. Tap a delivery. You hear: *"Receiving 1800 0002 2. 2 lines. Scan a label or say next."*
-2. Look at a label and **press the glasses capture button** (or tap Capture, or say "capture"). The phone reads the barcode and says the line, the material and the expected quantity.
-3. Say **"count twelve"**. You hear *"Line 10: 12."*
-4. When all lines are counted, say **"post"**. You hear: *"Post 2 lines, 36 items? Say confirm or cancel."* Then, within **10 seconds**, say **"confirm"**.
-5. After a few seconds you hear: *"Posted. Document 4900 0000 25."* The goods receipt is now in the ERP simulator.
+## Step 4: Labels to scan
+The launcher opens **labels.html** in your browser. It holds a QR label for every code the newest jobs ask for (products, bins, tower serials, the spare unit). Dashed labels are **wrong on purpose**, so you can see the app refuse them. Print the page, or show it on a laptop or second screen and look at it with the glasses.
 
-Other phrases: **next** (next uncounted line, no scan needed), **repeat**, **what is this**, **cancel**.
+If a code will not scan, tap **Type the code instead** under the scan box and type the text under the QR.
 
-**Test labels:** SAMPLE materials are named `SAMPLE-MAT-0001`…`0050`. Any Code 128 or QR barcode that contains exactly that text works. You can print one from a free online barcode generator, or show it on a second screen.
+## Step 5: The warehouse jobs
+Start each from **Today**. Every step is spoken in the glasses and shown on the phone. Say **"repeat"** at any time to hear the step again.
 
-**Safety rules built in:**
-- Nothing posts on speech alone. "post" must be followed by "confirm" within 10 s.
-- Low-confidence or unknown speech changes nothing.
-- The server re-checks the post/confirm pair and a hash of exactly the counted lines.
+**Receive** (*"Check in this delivery"*)
+1. Look at a product label from the delivery's section and press the glasses button. You hear the product and expected quantity.
+2. Say the number you counted, e.g. **"twelve"** (or **"all here"**). Repeat for each product.
+3. Say **"post"**. You hear the total. Within **10 seconds** say **"confirm"** (or tap the button).
+4. You hear *"Posted. Document 4900…"*. A **Put away** job appears on Today.
+- Try the dashed `SAMPLE-MAT-9999`: *"Not on this delivery."*
 
-## Step 6: AI credits (optional; the slice does not use them)
-Barcodes, speech and voice prompts run on the phone and glasses for free. Cloud AI is off (`AI_CLOUD_ENABLED=false`). If you later want the cloud fallback:
-1. Find out which product the "$150 Meta credits" belong to. If **llama.developer.meta.com** shows API keys and a balance, they are Llama API credits.
-2. Put `LLAMA_API_KEY=` / `BASETEN_API_KEY=` in `.env.local`. Also add prices to `config\ai_pricing.yaml` from your provider console; unpriced models are refused.
-3. Caps are enforced in Postgres: `AI_BUDGET_LLAMA_USD=40`, `AI_BUDGET_BASETEN_USD=25`, `AI_DAILY_CAP_USD=3`. Spend is shown at `GET /v1/system/ai-usage`.
-4. Don't deploy dedicated Baseten models; they bill while idle.
+**Put away**
+1. Scan a product from the receipt. The app tells you the bin.
+2. Scan that **bin label**. A dashed wrong bin is refused with *"That is bin … Go to …"*.
+3. *"Stored"*. When the last pallet is stored, finish the job.
 
-## Step 7: Watch from the PC: the supervisor console (optional)
+**Pick** (stops in walking order)
+1. *"Stop 1 of 2. Bin 02-01-01."* Scan the bin, then the product.
+2. Say **"all here"**, or a smaller number to record a short pick.
+3. After the last stop, post and confirm. You hear the goods-issue number (601).
 
-The web console shows live work, decisions, postings to SAP, phones and glasses, and who is on a tower. It runs on the same PC as the backend (Step 2 must be running).
+**Count** (blind: you never see the system quantity)
+1. *"Go to bin 03-05-02."* Scan the bin, then each product in it.
+2. Say what you see. A small difference posts 701/702 by itself (*"Posted"*). A large one goes to a supervisor (*"Count saved. The office reviews the difference."*).
+3. **Recount:** in the console (Step 7), open **Decisions** and choose **Ask for a recount**. A recount must be done by **a different person**. With one phone, run `run-field-stack.ps1 pair --user op-2`, then on the phone go to **Me → Connected to → Change** and scan the new QR. The recount job appears on Today. After it, approve the difference in the console and you see a 702 document in erp-sim.
 
-**Once:** install **Node.js 22 LTS** from nodejs.org, then in PowerShell run `corepack enable` (this gives you `pnpm`). Then, in `<repo>`:
-```powershell
-pnpm install
-```
+## Step 6: The tower jobs
+The tower jobs live on a separate site, **SAMPLE tower 0001**, with a real geofence (150 m) for check-in. To test where you stand:
+1. In Google Maps on the phone, long-press your blue dot and copy the coordinates (e.g. `19.0760, 72.8777`).
+2. On the PC: `.\scripts\dev\run-field-stack.ps1 tower --at "19.0760, 72.8777"`. This moves the test tower to that point; the geofence is not switched off.
+3. `.\scripts\dev\run-field-stack.ps1 pair --tower` and `.\scripts\dev\run-field-stack.ps1 labels`. On the phone: **Me → Connected to → Change**, then scan `var\pairing-qr-tower.svg`.
 
-**Each time**, in PowerShell at `<repo>`:
-```powershell
-$env:NEXT_PUBLIC_DEV_SIGNIN = "1"
-pnpm --dir apps\field-console dev
-```
-Open **http://localhost:3000** in your browser. To skip the first line every time, create `apps\field-console\.env.local` with the single line `NEXT_PUBLIC_DEV_SIGNIN=1` (the file is git-ignored).
+**Tower audit** (*"Sector A audit"*)
+1. **Check in:** type any permit number (4+ characters) and wait for a GPS fix (accuracy 50 m or better), then tap **Check in**.
+2. **Harness:** say **"harness clipped"** **and** tap **I am clipped in** within 10 seconds. Both are required before any climb prompt.
+3. At each slot, look at the serial label and press the glasses button. *"Matches."* or *"Different serial. Recorded."* Use the dashed `RRU-SN-TEST01` once to create a finding.
+4. Climb down: say **"clipped"** at each rest platform. Then check out.
+5. In the console, **Decisions** now lists the mismatch with the SAP serial against the one you scanned.
 
-**Sign in:** the page says **Development sign-in**. Pick **Supervisor** (or Inventory controller / Administrator). Keep the suggested id `dev-supervisor`: it must differ from the phone user, or separation of duties stops you approving their counts. For **Tenant id**, open `<repo>\var\dev_stack.json` in Notepad and copy the value of `"tenant"` (a long id with dashes). Sign-in lasts until you close the tab.
+**Swap** (*"Swap RRU at Sector A · slot 3"*)
+1. Scan the **old unit** (a dashed wrong unit is refused), then the **new unit from store**.
+2. Post and confirm. You hear the SAP change-document number; erp-sim shows the old unit dismantled and the new one installed.
 
-**If the stack is not on the default ports** (the stack skips busy ports; `var\dev_stack_ports.json` shows what it chose), set the addresses before `pnpm … dev`, for example:
-```powershell
-$env:NEXT_PUBLIC_FIELD_API_URL = "http://127.0.0.1:8000"
-$env:NEXT_PUBLIC_FAKE_CORE_URL = "http://127.0.0.1:8011"
-```
-The browser only talks to `localhost:3000`; the console forwards the calls to field-api and fake-core. After changing these values, stop the console (Ctrl+C) and start it again.
+## Step 7: Watch from the PC
+**The simulated SAP:** open **http://127.0.0.1:8002/_sim/ui** (Documents, Stock, Faults, Locks). After each job you see the new document and the stock change. On **Faults** you can make the next posting fail and watch the job turn **Blocked** in the console, then retry it from **Postings to SAP**.
 
-**What works today:** pages refresh every 5 seconds. Count differences (Decisions) and **Ask for a recount** need the M2 backend (`GET /v1/approval-requests`, `POST /v1/tasks/{id}/recount`); until it is deployed, Decisions says the list is not offered yet and still shows tower findings. Recalls and Industry packs are placeholders for later phases.
+**The supervisor console:**
+- **Once:** install **Node.js 22 LTS**, then in PowerShell run `corepack enable`, and in `<repo>` run `pnpm install`.
+- **Each time:** in `<repo>` run:
+  ```powershell
+  $env:NEXT_PUBLIC_DEV_SIGNIN = "1"
+  pnpm --dir apps\field-console dev
+  ```
+  To skip the first line, put `NEXT_PUBLIC_DEV_SIGNIN=1` in `apps\field-console\.env.local`.
+- **Sign in:** open **http://localhost:3000**, choose **Development sign-in → Supervisor**, and keep the id `dev-supervisor`. It must differ from the phone user, or separation of duties stops you approving their counts. For **Tenant id**, copy `"tenant"` from `var\dev_stack.json`.
+- **Busy ports:** if the stack moved to other ports (see `var\dev_stack_ports.json`), set `NEXT_PUBLIC_FIELD_API_URL` and `NEXT_PUBLIC_FAKE_CORE_URL` before starting.
+- **Pages** (all refresh every 5 seconds from field-api):
+  - **Live work**
+  - **Warehouse**: board, receiving, counts, discrepancies, accuracy, posting queues
+  - **Decisions**: count approvals and tower findings
+  - **Sites and towers**: who is on a tower, audit progress
+  - **Postings to SAP**
+  - **Phones and glasses**
+  - Recalls and Industry packs are placeholders for later phases.
+
+## Step 8: AI credits (optional; nothing here uses them)
+Barcodes, speech and spoken prompts run on the phone and glasses for free. Cloud AI is off (`AI_CLOUD_ENABLED=false`). If you enable it later, keys go in `.env.local` only. Hard caps are enforced in Postgres (`AI_BUDGET_LLAMA_USD=40`, `AI_BUDGET_BASETEN_USD=25`, `AI_DAILY_CAP_USD=3`), and spend shows at `GET /v1/system/ai-usage`. Don't deploy dedicated Baseten models; they bill while idle.
 
 ---
+
+## Known limits of this build
+- **Put away** stores stock on the field side only, with no SAP posting. Pick order is bin-code order (there is no site graph for the sample site).
+- **Short picks** are recorded but don't open an exception case. Batch and serial capture on picks is not built.
+- **Count approval:** after the console approves or asks for a recount, the phone sees it in the job list; there is no spoken alert.
+- **Glasses:** the camera, button and microphone come from Meta's toolkit (DAT 1.0.1) and are marked experimental. If one says "unavailable", use the phone camera and **Hold to talk**.
+- **Real SAP (S/4 adapter)** is still UNVERIFIED. Everything here runs against erp-sim.
 
 ## What to send the agent (no secrets)
 | After | Send |
 |---|---|
-| Step 1 | phone model + Android version, Meta AI version, glasses firmware |
-| Step 2 | the last 5 lines of `run-field-stack.ps1 smoke` |
-| Steps 3–5 | what you heard and saw, and the app's log card (screenshot is fine) |
-| Step 7 | a screenshot of each console page, and any red error box text |
+| Step 2 | the last 10 lines of `stack-output.log` (or just "launcher finished") |
+| Steps 3–6 | what you heard and saw per job, and the app's error card or the text of `Me → Send feedback` |
+| Step 7 | a screenshot of any console page that looks wrong, and any red error text |
