@@ -3,6 +3,9 @@
 Implements ErpPort signatures, CSRF token handling and error parsing skeleton;
 operations raise NotImplementedError('S4 adapter: <op> not implemented in F0').
 Config schema for base URL, client, auth method documented.
+
+M3: the sandbox operations (ErpSandboxPort) are not SAP capabilities. This adapter refuses them with
+ErpError(BUSINESS, FIELD_SANDBOX_NOT_SAP): a sandbox site never creates materials or deliveries in S/4.
 """
 
 from dataclasses import dataclass
@@ -10,9 +13,15 @@ from dataclasses import dataclass
 import structlog
 
 from field_sap.ports.erp_port import (
+    SANDBOX_NOT_SAP,
+    ErpError,
+    ErpErrorKind,
     ErpPostingRequest,
     ErpResult,
     MaterialPage,
+    SandboxDelivery,
+    SandboxDeliveryItem,
+    SandboxMaterial,
 )
 
 logger = structlog.get_logger(__name__)
@@ -80,3 +89,24 @@ class S4ODataAdapter:
 
     async def post_transfer_posting(self, req: ErpPostingRequest) -> ErpResult:
         raise NotImplementedError("S4 adapter: post_transfer_posting not implemented in F0")
+
+    async def post_initial_stock_entry(self, req: ErpPostingRequest) -> ErpResult:
+        raise NotImplementedError("S4 adapter: post_initial_stock_entry not implemented in F0")
+
+    # --- ErpSandboxPort: refused, these are not SAP capabilities (M3 contract section 3) --------------
+    @staticmethod
+    def _not_sap(op: str) -> ErpError:
+        return ErpError(kind=ErpErrorKind.BUSINESS, code=SANDBOX_NOT_SAP, retryable=False,
+                        message=f"{op} is a sandbox (simulator) operation, not an SAP capability")
+
+    async def create_sandbox_material(self, plant: str, description: str, base_uom: str,
+                                      barcode: str) -> SandboxMaterial:
+        raise self._not_sap("create_sandbox_material")
+
+    async def create_sandbox_inbound_delivery(self, plant: str, storage_location: str, supplier: str,
+                                              simulated: bool = False) -> SandboxDelivery:
+        raise self._not_sap("create_sandbox_inbound_delivery")
+
+    async def add_sandbox_inbound_delivery_item(self, delivery_document: str, material: str, quantity: str,
+                                                uom: str, idempotency_key: str) -> SandboxDeliveryItem:
+        raise self._not_sap("add_sandbox_inbound_delivery_item")

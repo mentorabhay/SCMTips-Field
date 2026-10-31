@@ -24,6 +24,7 @@ from erp_sim.locks import LockContentionError
 from erp_sim.routes.equipment import router as equipment_router
 from erp_sim.routes.fault_admin import router as faults_router
 from erp_sim.routes.maintenance import router as maint_router
+from erp_sim.routes.sandbox import router as sandbox_router
 from erp_sim.seed import reset_database
 from erp_sim.services.fl import router as fl_router
 from erp_sim.services.inbound import router as ibd_router
@@ -99,6 +100,7 @@ app.include_router(pi_router)
 app.include_router(equipment_router)
 app.include_router(maint_router)
 app.include_router(faults_router)
+app.include_router(sandbox_router)
 app.include_router(fl_router)
 app.include_router(ui_router)
 

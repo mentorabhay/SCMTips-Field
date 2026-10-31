@@ -64,6 +64,8 @@ def apply_movement(
         "701": Decimal("1.0"),
         "702": Decimal("-1.0"),
         "321": Decimal("0.0"),  # Internal status shift
+        "561": Decimal("1.0"),  # initial entry of stock balances (M3 sandbox opening stock)
+        "562": Decimal("-1.0"),  # reversal of 561
     }
 
     factor = deltas.get(movement_type, Decimal("1.0"))

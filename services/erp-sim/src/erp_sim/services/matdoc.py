@@ -33,9 +33,10 @@ REVERSAL_MAP = {
     "702": "701",
     "261": "262",
     "321": "322",
+    "561": "562",
 }
 
-DISALLOWED_REVERSAL_TYPES = {"102", "602", "262", "322"}
+DISALLOWED_REVERSAL_TYPES = {"102", "602", "262", "322", "562"}
 
 
 class MaterialDocumentItemIn(BaseModel):
@@ -51,7 +52,23 @@ class MaterialDocumentCreateIn(BaseModel):
     GoodsMovementCode: str = "01"
     DocumentDate: str | None = None
     PostingDate: str | None = None
+    MaterialDocumentHeaderText: str | None = None
+    # Key-user extension fields (the S/4 YY1_ convention): set by the field app for sandbox sites (M3).
+    YY1_FieldSandbox: bool = False  # noqa: N815
+    YY1_FieldSimulated: bool = False  # noqa: N815
     to_MaterialDocumentItem: dict[str, list[MaterialDocumentItemIn]] | list[MaterialDocumentItemIn] | None = None  # noqa: N815
+
+
+def document_header(doc_in: MaterialDocumentCreateIn) -> dict[str, Any]:
+    """header_data of a created material document; ``sandbox`` / ``simulated`` only when set (M3)."""
+    head: dict[str, Any] = {"GoodsMovementCode": doc_in.GoodsMovementCode}
+    if doc_in.MaterialDocumentHeaderText:
+        head["MaterialDocumentHeaderText"] = doc_in.MaterialDocumentHeaderText
+    if doc_in.YY1_FieldSandbox:
+        head["sandbox"] = True
+    if doc_in.YY1_FieldSimulated:
+        head["simulated"] = True
+    return head
 
 
 HEADER_TEXT_FILTER = "MaterialDocumentHeaderText eq 'FIELD:"
@@ -111,14 +128,18 @@ async def get_material_document(
         row = cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Material document not found")
+        head = row[4] if isinstance(row[4], dict) else json.loads(row[4] or "{}")
 
         d_data: dict[str, Any] = {
             "MaterialDocument": doc_number,
             "MaterialDocumentYear": fiscal_year,
             "DocumentDate": row[5].date().isoformat(),
             "PostingDate": row[5].date().isoformat(),
-            "GoodsMovementCode": "01",
+            "GoodsMovementCode": head.get("GoodsMovementCode", "01"),
             "Status": row[3],
+            "MaterialDocumentHeaderText": head.get("MaterialDocumentHeaderText", ""),
+            "YY1_FieldSandbox": bool(head.get("sandbox")),
+            "YY1_FieldSimulated": bool(head.get("simulated")),
         }
 
         if expand and "to_MaterialDocumentItem" in expand:
@@ -151,19 +172,40 @@ async def get_material_document(
 
 @router.post("/A_MaterialDocumentHeader")
 async def create_material_document(
+    request: Request,
+    response: Response,
     doc_in: MaterialDocumentCreateIn,
     sap_client: str = Header("100", alias="sap-client"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
+    """Deep insert of a material document (e.g. 561 initial entry, GoodsMovementCode 05; 321 transfer).
+
+    With an Idempotency-Key the same request returns the first document (header text FIELD:<key> finds it).
+    """
+    req_hash = compute_request_hash(await request.body())
     with get_conn() as conn, conn.cursor() as cur:
-        mat_doc, doc_year = allocate_material_document_number(cur, sap_client)
+        await evaluate_faults(cur, sap_client, "API_MATERIAL_DOCUMENT_SRV", "Create", "*")
+        if idempotency_key:
+            is_dup, dup_doc, dup_year = check_dedupe(cur, sap_client, idempotency_key, req_hash)
+            if is_dup:
+                response.headers["sap-message"] = "ZSIM/DUP"
+                return {"d": {"MaterialDocument": dup_doc, "MaterialDocumentYear": dup_year}}
         items_raw = doc_in.to_MaterialDocumentItem
         items_list: list[MaterialDocumentItemIn] = []
         if isinstance(items_raw, dict) and "results" in items_raw:
             items_list = [i if isinstance(i, MaterialDocumentItemIn) else MaterialDocumentItemIn(**i) for i in items_raw["results"]]
         elif isinstance(items_raw, list):
             items_list = items_raw
-
-        primary_mvt = items_list[0].GoodsMovementType if items_list else "101"
+        if not items_list:
+            raise HTTPException(status_code=400, detail={"error": {"code": "ZSIM/NO-ITEMS", "message": {
+                "lang": "en", "value": "A material document needs at least one item"}}})
+        for it in items_list:
+            cur.execute("SELECT 1 FROM erpsim.material WHERE client = %s AND material_no = %s", (sap_client, it.Material))
+            if cur.fetchone() is None:
+                raise HTTPException(status_code=404, detail={"error": {"code": "ZSIM/NOT-FOUND", "message": {
+                    "lang": "en", "value": f"Material {it.Material} does not exist"}}})
+        mat_doc, doc_year = allocate_material_document_number(cur, sap_client)
+        primary_mvt = items_list[0].GoodsMovementType
 
         cur.execute(
             """
@@ -173,7 +215,7 @@ async def create_material_document(
             )
             VALUES (%s, %s, %s, 'WA', %s, NULL, %s, 'posted');
         """,
-            (sap_client, mat_doc, doc_year, primary_mvt, json.dumps(doc_in.model_dump())),
+            (sap_client, mat_doc, doc_year, primary_mvt, json.dumps(document_header(doc_in))),
         )
 
         line_no = 1
@@ -206,6 +248,8 @@ async def create_material_document(
             )
             line_no += 1
 
+        if idempotency_key:
+            record_dedupe(cur, sap_client, idempotency_key, req_hash, mat_doc, doc_year)
         conn.commit()
         return {
             "d": {

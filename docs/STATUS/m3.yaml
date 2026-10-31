@@ -1,0 +1,31 @@
+- id: M3-S01
+  title: erp-sim barcodes (MEAN), sandbox materials and deliveries, movement 561; ErpPort / ErpSandboxPort in the connector
+  workstream: M3-WP1
+  role: Track S
+  status: partial
+  evidence:
+  - services/erp-sim/alembic/versions/erpsim_0003_m3_barcodes.py
+  - services/erp-sim/src/erp_sim/services/product.py
+  - services/erp-sim/src/erp_sim/routes/sandbox.py
+  - services/erp-sim/src/erp_sim/services/matdoc.py
+  - services/erp-sim/src/erp_sim/services/inbound.py
+  - services/erp-sim/src/erp_sim/admin_ui.py
+  - connectors/sap/src/field_sap/ports/erp_port.py
+  - connectors/sap/src/field_sap/sim/adapter.py
+  - connectors/sap/src/field_sap/s4/adapter.py
+  tests:
+  - connectors/sap/tests/contract/test_sandbox_port_contract.py::test_s4_adapter_refuses_sandbox_operations
+  - connectors/sap/tests/contract/test_sandbox_port_contract.py::test_sim_sandbox_material_delivery_and_561
+  - connectors/sap/tests/contract/test_sandbox_port_contract.py::test_both_adapters_implement_the_sandbox_port
+  frs: []
+  verified_at: null
+  note: erpsim.material_barcode (PK client+barcode) with barcode = material number for every SAMPLE material
+    (migration and seed, so reset keeps them); read S/4-style as A_ProductUnitsOfMeasureEAN and as $expand on
+    A_ProductPlant (the sim flattens S/4's A_Product/to_ProductUnitsOfMeasure/to_InternationalArticleNumber). Sandbox
+    admin routes /_sim/sandbox/* (X-Sim-Admin-Token) create HOME-nnnn materials of one plant, empty sandbox
+    deliveries and their items; the S/4 adapter refuses them (FIELD_SANDBOX_NOT_SAP). 561 through the
+    material-document deep insert, now idempotent per Idempotency-Key. Documents of sandbox sites carry
+    header_data.sandbox (GR from the delivery header, 561 and PI differences from YY1_FieldSandbox) and show a badge
+    on the simulator pages. Soft pegging is OriginalDeliveryQuantity on the item PATCH, accepted only on sandbox
+    deliveries (S/4 has no such write; the sim models the outcome). The S/4 adapter's 561 is NotImplementedError like
+    its other postings (UNVERIFIED). Partial until proven on the owner's phone and glasses (A-03).
