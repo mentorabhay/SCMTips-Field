@@ -165,7 +165,8 @@ def test_pair_survives_a_console_without_block_characters(monkeypatch: pytest.Mo
         raise UnicodeEncodeError("charmap", "█", 0, 1, "character maps to <undefined>")
 
     monkeypatch.setattr(qrcode.QRCode, "print_ascii", no_blocks)
-    args = argparse.Namespace(user="op", hours=1, api="http://192.168.1.2:8003", no_ascii=False, no_open=True)
+    args = argparse.Namespace(user="op", hours=1, api="http://192.168.1.2:8003", no_ascii=False, no_open=True,
+                              tower=False)
     assert stack.cmd_pair(args) == 0
     assert (tmp_path / "var" / "pairing-qr.svg").stat().st_size > 1000
     assert "cannot draw the QR code" in capsys.readouterr().out
@@ -265,3 +266,36 @@ def test_label_page_carries_each_code_as_text_and_qr() -> None:
     )
     assert page.count("<svg") == 2 and "02-01-01" in page and "class='l wrong'" in page
     assert "No open jobs" in stack.render_labels([], "now")
+
+
+def test_pair_tower_points_the_phone_at_the_tower_site(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import argparse
+
+    seen: dict[str, Any] = {}
+    monkeypatch.setattr(stack, "load_env", lambda: {})
+    monkeypatch.setattr(stack, "ROOT", tmp_path)
+    monkeypatch.setattr(stack, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(stack, "ensure_demo_site", lambda s: {"tenant": "t", "site": "wh", "site_name": "Warehouse"})
+    monkeypatch.setattr(stack, "ensure_tower_site", lambda s: {**s, "tower_site": "tw"})
+    monkeypatch.setattr(stack, "_core_token", lambda user, tenant, site, ttl: seen.setdefault("token_site", site) and "tok")
+
+    def payload(api: str, token: str, tenant: str, site: str, name: str) -> str:
+        seen.update(site=site, name=name)
+        return f"{api}|{site}"
+
+    monkeypatch.setattr(stack, "pairing_payload", payload)
+    args = argparse.Namespace(user="tech-1", hours=1, api="http://10.0.0.2:8000", no_ascii=True, no_open=True, tower=True)
+    assert stack.cmd_pair(args) == 0
+    assert seen == {"token_site": "tw", "site": "tw", "name": stack.TOWER_SITE_NAME}
+    assert (tmp_path / "var" / "pairing-qr-tower.svg").exists() and not (tmp_path / "var" / "pairing-qr.svg").exists()
+
+
+@pytest.mark.parametrize("text, want", [("12.9716, 77.5946", (12.9716, 77.5946)), ("-33.86;151.2", (-33.86, 151.2))])
+def test_tower_location_accepts_what_maps_copies(text: str, want: tuple[float, float]) -> None:
+    assert stack.parse_lat_lon(text) == want
+
+
+@pytest.mark.parametrize("text", ["12.97", "91, 10", "a, b", "1, 2, 3"])
+def test_tower_location_refuses_nonsense(text: str) -> None:
+    with pytest.raises(ValueError):
+        stack.parse_lat_lon(text)

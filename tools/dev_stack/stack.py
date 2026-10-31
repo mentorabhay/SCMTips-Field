@@ -446,9 +446,13 @@ def cmd_pair(a: argparse.Namespace) -> int:
     apply_ports()
     state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
     state = ensure_demo_site(state)
-    token = _core_token(a.user, state["tenant"], state["site"], a.hours * 3600)
+    site, site_name = state["site"], state["site_name"]
+    if a.tower:
+        state = ensure_tower_site(state)
+        site, site_name = state["tower_site"], TOWER_SITE_NAME
+    token = _core_token(a.user, state["tenant"], site, a.hours * 3600)
     api = a.api or f"http://{lan_ip()}:{port('field-api')}"
-    payload = pairing_payload(api, token, state["tenant"], state["site"], state["site_name"])
+    payload = pairing_payload(api, token, state["tenant"], site, site_name)
     import qrcode
 
     qr = qrcode.QRCode(border=2)
@@ -456,7 +460,7 @@ def cmd_pair(a: argparse.Namespace) -> int:
     qr.make(fit=True)
     from qrcode.image.svg import SvgPathImage
 
-    png = ROOT / "var" / "pairing-qr.svg"
+    png = ROOT / "var" / ("pairing-qr-tower.svg" if a.tower else "pairing-qr.svg")
     png.parent.mkdir(parents=True, exist_ok=True)
     with png.open("wb") as fh:
         qr.make_image(image_factory=SvgPathImage).save(fh)
@@ -470,7 +474,7 @@ def cmd_pair(a: argparse.Namespace) -> int:
         with contextlib.suppress(OSError):
             os.startfile(png)  # show the QR in the default image viewer / browser
     print(f"\nScan it in the app: SCMTips Field > Scan pairing QR. Image: {png} (open it in a browser).")
-    print(f"API {api} | site {state['site_name']} | user {a.user} | valid {a.hours} h")
+    print(f"API {api} | site {site_name} | user {a.user} | valid {a.hours} h")
     print("The QR holds a dev login token for this PC's fake-core only; it stops working when fake-core restarts.")
     return 0
 
@@ -915,6 +919,7 @@ def cmd_count(a: argparse.Namespace) -> int:
 
 TOWER_FL = "SAMPLE-TWR-0001"
 TOWER_LAT, TOWER_LON = 12.9716, 77.5946
+TOWER_SITE_NAME = "SAMPLE tower 0001 (field test)"
 TOWER_SLOTS = (("A", "S1", 30.0), ("A", "S2", 32.0), ("A", "S3", 34.0), ("B", "S1", 30.0))
 
 
@@ -968,13 +973,35 @@ def ensure_erp_tower() -> dict[str, Any]:
     return {"spare": spare, "installed": installed}
 
 
+def parse_lat_lon(text: str) -> tuple[float, float]:
+    """"12.9716, 77.5946" (as Google Maps copies it) -> (lat, lon); refuses anything off the globe."""
+    parts = [p.strip() for p in text.replace(";", ",").split(",")]
+    if len(parts) != 2:
+        raise ValueError(f"expected 'LAT,LON', got {text!r}")
+    lat, lon = float(parts[0]), float(parts[1])
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise ValueError(f"not a place on Earth: {lat}, {lon}")
+    return lat, lon
+
+
+def move_tower_site(state: dict[str, Any], lat: float, lon: float) -> None:
+    """Dev only: put the SAMPLE tower where the tester stands, so the real geofence check passes there."""
+    import psycopg
+
+    with psycopg.connect(_admin_url("field"), autocommit=True) as c, c.cursor() as cur:
+        cur.execute("UPDATE field.site SET lat = %s, lon = %s WHERE id = %s::uuid", (lat, lon, state["tower_site"]))
+    state["tower_at"] = [lat, lon]
+    STATE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+
 def ensure_tower_site(state: dict[str, Any]) -> dict[str, Any]:
     if state.get("tower_site") and site_exists(state["tower_site"]):
         return state
     token = _admin(state["tenant"])
     r = httpx.post(local("field-api") + "/v1/sites", json={
-        "code": TOWER_FL, "name": "SAMPLE tower 0001 (field test)", "kind": "tower", "lat": TOWER_LAT,
-        "lon": TOWER_LON, "geofence_radius_m": 150},
+        "code": TOWER_FL, "name": TOWER_SITE_NAME, "kind": "tower",
+        "lat": (state.get("tower_at") or [TOWER_LAT, TOWER_LON])[0],
+        "lon": (state.get("tower_at") or [TOWER_LAT, TOWER_LON])[1], "geofence_radius_m": 150},
         headers={"Authorization": f"Bearer {token}", "Idempotency-Key": str(uuid.uuid4())}, timeout=10)
     if r.status_code != 201:
         raise SystemExit(f"could not create the tower site: HTTP {r.status_code} {r.text[:300]}")
@@ -1000,11 +1027,15 @@ def create_tower_jobs(state: dict[str, Any]) -> dict[str, Any]:
             "installed": erp["installed"]}
 
 
-def cmd_tower(_a: argparse.Namespace) -> int:
+def cmd_tower(a: argparse.Namespace) -> int:
     load_env()
     apply_ports()
     state = ensure_demo_site(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
     out = create_tower_jobs(state)
+    if a.at:
+        lat, lon = parse_lat_lon(a.at)
+        move_tower_site(out["state"], lat, lon)
+        print(f"tower site moved to {lat:.6f}, {lon:.6f}: check in within 150 m of that point")
     print(f"tower {TOWER_FL}: {out['synced']['locations']} locations, {out['synced']['equipment']} units mirrored")
     print(f"audit task {out['audit']['id']} ({out['audit']['line_count']} units in sector A)")
     print(f"swap task {out['swap']['id']}: remove {out['swap']['expected_serial']} at {out['swap']['position']};"
@@ -1193,7 +1224,7 @@ def smoke_count(phone: Phone, phone2: Phone, console: Console, state: dict[str, 
     print(f"         recount by a second operator ({rt['reason']!r}) -> approved -> 702 of 10 posted in erp-sim")
 
 
-def smoke_visit_in(phone: Phone, site: str) -> str:
+def smoke_visit_in(phone: Phone, site: str, at: tuple[float, float] = (TOWER_LAT, TOWER_LON)) -> str:
     """Check in, harness, climb-safe, a rest platform, and a safety heartbeat: the app's tower visit (§6)."""
     from datetime import UTC, datetime, timedelta
 
@@ -1201,7 +1232,7 @@ def smoke_visit_in(phone: Phone, site: str) -> str:
     end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=0)
     r = httpx.post(f"{phone.api}/v1/sites/{site}/visits", json={
         "permit_ref": f"PTW-{uuid.uuid4().hex[:6].upper()}", "permit_valid_until": end_of_day.isoformat(),
-        "lat": TOWER_LAT + 0.0002, "lon": TOWER_LON, "accuracy_m": 8.0, "captured_at": now.isoformat()},
+        "lat": at[0] + 0.0002, "lon": at[1], "accuracy_m": 8.0, "captured_at": now.isoformat()},
         headers=phone._h(True), timeout=10)
     visit = str(_accepted(r, "check-in", 201)["id"])
     events = [("harness_confirmed", {}), ("climb_safe_activated", {}), ("checkpoint_reached", {"level": 1})]
@@ -1230,7 +1261,8 @@ def smoke_visit_out(phone: Phone, visit: str) -> None:
 def smoke_tower(phone: Phone, console: Console, state: dict[str, Any], wait: float) -> None:
     tw = create_tower_jobs(state)
     site = tw["state"]["tower_site"]
-    visit = smoke_visit_in(phone, site)
+    tower_at = state.get("tower_at") or [TOWER_LAT, TOWER_LON]
+    visit = smoke_visit_in(phone, site, (float(tower_at[0]), float(tower_at[1])))
     audit = _wait_task(phone, site, "audit", lambda t: t["id"] == tw["audit"]["id"], 10)
     _expect(len(audit["lines"]) == 3, f"sector A audit has {len(audit['lines'])} lines")
     print(f"audit    {audit['title']!r} ({audit['subtitle']}): {[(ln['position'], ln['expected_serial']) for ln in audit['lines']]}")
@@ -1476,13 +1508,15 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--api", help="override the URL the phone uses (e.g. a tunnel URL)")
     pr.add_argument("--no-ascii", action="store_true")
     pr.add_argument("--no-open", action="store_true", help="do not open the QR image (Windows)")
+    pr.add_argument("--tower", action="store_true", help="pair to the SAMPLE tower site (audit and swap jobs)")
     dl = sub.add_parser("delivery")
     dl.add_argument("--lines", type=int, default=3)
     ob = sub.add_parser("outbound", help="outbound delivery in erp-sim -> a pick task")
     ob.add_argument("--lines", type=int, default=2)
     ct = sub.add_parser("count", help="a blind count task for a bin of the SAMPLE site")
     ct.add_argument("bin", nargs="?", help="e.g. 03-05-02 (default: a bin that holds stock)")
-    sub.add_parser("tower", help="SAMPLE-TWR-0001 in erp-sim + field: a sector A audit and a swap task")
+    tw = sub.add_parser("tower", help="SAMPLE-TWR-0001 in erp-sim + field: a sector A audit and a swap task")
+    tw.add_argument("--at", help="LAT,LON where you will stand (e.g. from Google Maps), so check-in passes there")
     lb = sub.add_parser("labels", help="var/labels.html: printable QR labels for every open job")
     lb.add_argument("--api")
     lb.add_argument("--no-open", action="store_true")
