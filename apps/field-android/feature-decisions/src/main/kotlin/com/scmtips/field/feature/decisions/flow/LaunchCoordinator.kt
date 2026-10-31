@@ -5,7 +5,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
-/** One "Hey Meta, open SCMTips Field" launch from the glasses (Meta's voice invocation); answer it once. */
+/** One "Hey Meta, start SCMTips Field" launch from the glasses (Meta's voice invocation); answer it once. */
 class LaunchRequest(
     private val success: suspend (String) -> Boolean,
     private val failure: suspend (String) -> Boolean,

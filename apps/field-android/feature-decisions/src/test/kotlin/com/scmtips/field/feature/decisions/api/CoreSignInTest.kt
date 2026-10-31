@@ -140,4 +140,33 @@ class CoreSignInTest {
         assertTrue(messages[0], messages[0].contains("Cannot reach SCMTIPS at http://core.test:8011"))
         assertTrue(messages[1], messages[1].contains("wearable"))
     }
+
+    @Test
+    fun aWrongPairingCodeSaysSo_andTooManyAttemptsAsksToWait() = runBlocking {
+        http.reply(401, """{"title":"Invalid credentials","status":401,"code":"invalid_credentials"}""")
+        http.reply(429, """{"title":"Too many attempts","status":429,"code":"too_many_attempts","detail":"wait 5 minutes"}""")
+        val e1 = runCatching { CoreSignIn("http://core.test", http).signIn(SignInMethod.PairingCode("AB12CD34"), deviceId, DeviceModel.PHONE_ONLY) }.exceptionOrNull() as SignInException
+        assertTrue(e1.message!!, e1.message!!.contains("pairing code is not valid"))
+        val e2 = runCatching { CoreSignIn("http://core.test", http).signIn(SignInMethod.Password("a@b.c", "x"), deviceId, DeviceModel.PHONE_ONLY) }.exceptionOrNull() as SignInException
+        assertEquals("too_many_attempts", e2.code)
+        assertTrue(e2.message!!.startsWith("Too many tries"))
+    }
+
+    @Test
+    fun theCoreAppsOwnPairing_postsAnEightCharacterCode_andGivesAWearableSession() = runBlocking {
+        http.reply(201, """{"session_id":"ws-9","token":"scmw_paired","expires_at":"2026-11-03T20:00:00Z","device_id":"$deviceId","user_display_name":"Approver Sample"}""")
+        val (w, name) = CoreSignIn.pairWearable("http://core.test/", http, " ab12cd34 ".uppercase(), deviceId, DeviceModel.RAYBAN_META_GEN2)
+        assertEquals("scmw_paired", w.token)
+        assertEquals("Approver Sample", name)
+        val call = http.calls.single()
+        assertEquals("http://core.test/v1/wearable/sessions", call.url)
+        assertEquals("lr", call.headers["X-Requested-With"])
+        assertNull(call.headers["Authorization"])
+        val body = Json.parseToJsonElement((call.body as HttpBody.Json).text).jsonObject
+        assertEquals("AB12CD34", body["pairing_code"]!!.jsonPrimitive.content)
+        assertEquals(false, body["display_capable"]!!.jsonPrimitive.boolean)
+        val short = runCatching { CoreSignIn.pairWearable("http://core.test/", http, "123", deviceId, DeviceModel.PHONE_ONLY) }.exceptionOrNull()
+        assertTrue(short is SignInException && short.status == 0)
+        assertEquals(1, http.calls.size)
+    }
 }

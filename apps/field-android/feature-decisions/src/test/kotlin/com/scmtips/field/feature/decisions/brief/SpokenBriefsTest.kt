@@ -22,7 +22,7 @@ class SpokenBriefsTest {
     private val logs = mutableListOf<String>()
 
     private fun client(base: String? = "http://192.168.1.20:8000/", core: String? = "scmw_core", field: String? = "field-jwt", h: CoreHttp = http, deadline: Long = 8_000) =
-        FieldBriefClient({ base }, { core }, { "dev-1" }, { field }, h, deadline) { logs += it }
+        FieldBriefClient({ base }, { core }, { "dev-1" }, { field }, h, deadline, { logs += it }) { "idem-1" }
 
     @Test
     fun postsDecisionAndTemplate_withTheWearableTokenAsXCoreToken_andReadsTheModelText() = runBlocking {
@@ -35,6 +35,7 @@ class SpokenBriefsTest {
         assertEquals("scmw_core", call.headers["X-Core-Token"])
         assertEquals("dev-1", call.headers["X-Device-Id"])
         assertEquals("Bearer field-jwt", call.headers["Authorization"])
+        assertEquals("idem-1", call.headers["Idempotency-Key"])
         val body = Json.parseToJsonElement((call.body as HttpBody.Json).text).jsonObject
         assertEquals("d-1", body["decision_id"]!!.jsonPrimitive.content)
         assertEquals(template, body["template_text"]!!.jsonPrimitive.content)
@@ -79,5 +80,13 @@ class SpokenBriefsTest {
     fun anUnknownSourceIsTreatedAsTheTemplate() {
         assertEquals(SpokenBrief.TEMPLATE, FieldBriefClient.parse("""{"text":"x","source":"something"}""", template).source)
         assertEquals(HttpReply(200, "").ok, true)
+    }
+
+    @Test
+    fun outsideFieldApisLimitsNothingIsSent_andTheTemplateIsSpoken() = runBlocking {
+        assertEquals(SpokenBrief.TEMPLATE, client().spoken("bad id/with slash", template).source)
+        assertEquals(SpokenBrief.TEMPLATE, client().spoken("d-1", "x".repeat(4001)).source)
+        assertTrue(http.calls.isEmpty())
+        assertTrue(FieldBriefClient.acceptable("11111111-1111-4111-8111-111111111111", template))
     }
 }

@@ -29,7 +29,8 @@
   - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/OkHttpCoreHttpTest.kt::jsonPost_carriesHeadersAndBody_andTheAnswerIsReturnedAsText
   frs: []
   verified_at: null
-  note: Ported from the core's wearable app api/{Models,ScmtipsApi,OkHttpScmtipsApi}.kt. The client logic (paths under
+  note: >-
+    Ported from the core's wearable app api/{Models,ScmtipsApi,OkHttpScmtipsApi}.kt. The client logic (paths under
     {core}/v1, Bearer wearable token + X-Device-Id + X-Requested-With lr, Idempotency-Key on commands only, invalid_code vs
     401, problem documents, multipart photo fields) is pure Kotlin over a CoreHttp port and JVM-tested with a scripted
     transport; OkHttpCoreHttp is the only network code. MockWebServer is not in gradle/libs.versions.toml and was not added
@@ -38,8 +39,12 @@
     by hand from JsonObject (the JVM gate has no serialization plugin). Pairing (POST /v1/wearable/sessions) and server
     transcription are not ported: F2 sign-in replaces pairing, and speech is recognised on the glasses or phone. Sign-in
     (POST /v1/auth/app/token) follows handover 01 exactly; a missing claims object falls back to the token's payload. The
-    spoken brief calls field-api POST /v1/briefs/spoken (stream M, not built on this branch) and speaks the template on any
-    error, blank text or after 8 s. Nothing has been called against the real core or the stand-in core (stream C), and
+    spoken brief calls field-api POST /v1/briefs/spoken as stream M built it (Authorization field token, Idempotency-Key,
+    X-Core-Token, X-Device-Id; decision_id ^[A-Za-z0-9._:-]{1,128}$, template_text 1-4000, else nothing is sent) and speaks the
+    template on any 4xx/5xx, transport error, blank text or after 8 s. A wrong pairing code and 429 too_many_attempts get their own
+    words. The core app's own pairing (POST /v1/wearable/sessions, 8-character code, user_display_name) is ported as a fallback
+    for a core that does not serve /v1/auth/app/token (404/405/501): decisions only. Voice transcription is not used (the stand-in
+    does not serve it). Nothing has been called against the real core or the stand-in core (stream C), and
     nothing ran on the owner's phone or glasses.
 - id: M4-B02
   title: Approval flow ported onto Field's ports — next decision, spoken brief, voice turns, confirm turn, phone step-up, audio confirmation (F1)
@@ -66,7 +71,8 @@
   - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/flow/UtteranceInboxTest.kt::wordsHeardWhileListeningAreTaken_andWordsHeardBeforeAreDropped
   frs: []
   verified_at: null
-  note: Ported from the core's wearable app flow/{ApprovalFlow,CardFormatter,LaunchCoordinator,StepUpPrompter}.kt and
+  note: >-
+    Ported from the core's wearable app flow/{ApprovalFlow,CardFormatter,LaunchCoordinator,StepUpPrompter}.kt and
     ui/StepUpBroker.kt with their tests (runBlocking instead of kotlinx-coroutines-test, which is not a dependency). Rebuilt on
     Field's modules, no second glasses wrapper - speech out is core-wearables AudioOut (the app plays it through its TTS,
     which reaches the glasses' speakers over Bluetooth), speech in is a core-voice AsrCandidate from a DecisionEar the app

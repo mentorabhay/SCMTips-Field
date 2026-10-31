@@ -71,7 +71,7 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
         } catch (e: IOException) {
             throw SignInException(0, null, "Cannot reach SCMTIPS at ${url.substringBefore("/v1/")}. Check the address and the Wi-Fi.")
         }
-        if (!reply.ok) throw refusal(reply)
+        if (!reply.ok) throw refusal(reply, method)
         val body = CoreJson.obj(reply.body) ?: throw SignInException(reply.status, null, "SCMTIPS answered something this app cannot read.")
         return try {
             parse(body)
@@ -134,11 +134,13 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
             )
         }
 
-        /** 401 invalid_credentials, 403 pairing_required, 429, 503 core_tokens_unavailable (handover 01, 01a). */
-        fun refusal(reply: HttpReply): SignInException {
+        /** 401 invalid_credentials, 403 pairing_required, 429 too_many_attempts, 503 core_tokens_unavailable (handover 01, 01a). */
+        fun refusal(reply: HttpReply, method: SignInMethod? = null): SignInException {
             val p = CoreJson.problem(reply.body)
             val code = p?.code ?: p?.detail?.takeIf { it.matches(Regex("^[a-z_]+$")) }
             val text = when {
+                reply.status == 401 && method is SignInMethod.PairingCode ->
+                    "That pairing code is not valid or has expired. Make a new one in SCMTIPS on the web."
                 reply.status == 401 -> "The e-mail or password is not right."
                 reply.status == 403 && code == "pairing_required" ->
                     "Your organisation signs in with a pairing code. Make one in SCMTIPS on the web and enter it here."
@@ -148,6 +150,34 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
                 else -> "SCMTIPS refused the sign-in (HTTP ${reply.status}${code?.let { " $it" } ?: ""})."
             }
             return SignInException(reply.status, code, text)
+        }
+
+        /**
+         * The core wearable app's own pairing (`POST {core}/v1/wearable/sessions`, no auth, one-time 8-character
+         * code; ported from its OkHttpScmtipsApi.pair). It gives a wearable session only (decisions, no field-api
+         * token); the app uses it when a core does not serve `/v1/auth/app/token`.
+         */
+        suspend fun pairWearable(baseUrl: String, http: CoreHttp, code: String, deviceId: String, model: DeviceModel): Pair<WearableSession, String> {
+            val c = code.trim()
+            if (c.length != 8) throw SignInException(0, "pairing_code", "The pairing code has 8 characters.")
+            if (!DEVICE_ID.matches(deviceId)) throw SignInException(0, "device_id", "This phone's device id is not valid. Reinstall the app.")
+            val url = CoreUrls.join(CoreUrls.v1(baseUrl), "wearable", "sessions")
+            val body = buildJsonObject {
+                put("pairing_code", c); put("device_id", deviceId); put("device_model", model.wire); put("display_capable", false)
+            }
+            val reply = try {
+                http.execute(HttpCall("POST", url, mapOf(CoreClient.HEADER_REQUESTED_WITH to CoreClient.REQUESTED_WITH), HttpBody.Json(body.toString())))
+            } catch (e: IOException) {
+                throw SignInException(0, null, "Cannot reach SCMTIPS at ${baseUrl.trim().trimEnd('/')}. Check the address and the Wi-Fi.")
+            }
+            if (!reply.ok) throw refusal(reply, SignInMethod.PairingCode(c))
+            val o = CoreJson.obj(reply.body) ?: throw SignInException(reply.status, null, "SCMTIPS answered something this app cannot read.")
+            return try {
+                WearableSession(o.req("session_id"), o.req("token"), o.s("expires_at").orEmpty(), o.req("device_id")) to
+                    (o.s("user_display_name") ?: "Signed in")
+            } catch (e: IllegalArgumentException) {
+                throw SignInException(reply.status, null, "SCMTIPS answered without ${e.message?.substringAfter("missing ") ?: "a field"}.")
+            }
         }
 
         /** The payload of a JWT (no signature check: field-api verifies the token; the app only reads its claims). */
