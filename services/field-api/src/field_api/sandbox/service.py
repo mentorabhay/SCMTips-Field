@@ -107,8 +107,8 @@ def create_receipt(principal: Principal, site_id: str) -> SandboxTaskResult:
     deliv = _erp(erp.get_sandbox_port().create_sandbox_inbound_delivery(
         str(site["plant"]), _sloc(site), HOME_SUPPLIER))
     with principal_tx(principal) as cur:
-        cur.execute("SELECT id FROM field.task WHERE site_id = %s AND type = 'receive' AND ref_doc_no = %s",
-                    (site_id, deliv.delivery_document))
+        cur.execute("SELECT id FROM field.task WHERE site_id = %s AND type = 'receive' AND ref_doc_no = %s"
+                    " AND status = 'pending'", (site_id, deliv.delivery_document))
         row = cur.fetchone()
         if row is None:
             cur.execute(
@@ -204,17 +204,26 @@ def _load_task(cur: Any, task_id: str) -> dict[str, Any]:
 
 
 def _ensure_field_material(cur: Any, principal: Principal, plant: str, material_no: str, description: str,
-                           uom: str, barcode: str) -> str:
+                           uom: str, barcode: str, created: bool) -> str:
+    """field.material + field.material_barcode for the ERP's answer, at once (the worker's sync confirms it later).
+
+    ``created``: the ERP has just made this material, so whatever the field still holds under its number (a
+    HOME-nnnn of before an erp-sim reset) is replaced: description, unit and barcodes.
+    """
     cur.execute(
         """
         INSERT INTO field.material (tenant_id, plant, erp_material_no, description, base_uom, source, status)
         VALUES (%s, %s, %s, %s, %s, 'sandbox', 'active')
-        ON CONFLICT (tenant_id, plant, erp_material_no) DO UPDATE SET status = 'active', deleted_in_erp_at = NULL
+        ON CONFLICT (tenant_id, plant, erp_material_no) DO UPDATE SET status = 'active', deleted_in_erp_at = NULL,
+               description = CASE WHEN %s THEN EXCLUDED.description ELSE field.material.description END,
+               base_uom = CASE WHEN %s THEN EXCLUDED.base_uom ELSE field.material.base_uom END
         RETURNING id
         """,
-        (principal.tenant_id, plant, material_no, description, uom),
+        (principal.tenant_id, plant, material_no, description, uom, created, created),
     )
     material_id = str(cur.fetchone()[0])
+    if created:
+        cur.execute("DELETE FROM field.material_barcode WHERE material_id = %s AND barcode <> %s", (material_id, barcode))
     cur.execute(
         "INSERT INTO field.material_barcode (tenant_id, material_id, barcode, uom) VALUES (%s, %s, %s, %s)"
         " ON CONFLICT (tenant_id, material_id, barcode) DO NOTHING",
@@ -248,7 +257,8 @@ def add_item(principal: Principal, task_id: str, code: str, description: str, qt
                                                                 barcode))
         created, mat, uom = sm.created, sm.material_no, sm.base_uom
         with principal_tx(principal) as cur:
-            material_id = _ensure_field_material(cur, principal, plant, sm.material_no, sm.description, uom, barcode)
+            material_id = _ensure_field_material(cur, principal, plant, sm.material_no, sm.description, uom, barcode,
+                                                 sm.created)
     with principal_tx(principal) as cur:
         existing = _line_by_material(cur, task_id, material_id)
     if existing:

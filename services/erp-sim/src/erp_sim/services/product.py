@@ -77,13 +77,13 @@ async def list_product_plant(
         cur.execute("SELECT 1 FROM erpsim.plant WHERE client = %s AND plant = %s", (sap_client, plant))
         if cur.fetchone() is None:
             return {"d": {"__count": "0", "results": []}}
-        where = "client = %s AND (sandbox_plant IS NULL OR sandbox_plant = %s)"
-        cur.execute(f"SELECT count(*) FROM erpsim.material WHERE {where}", (sap_client, plant))  # noqa: S608
+        cur.execute("SELECT count(*) FROM erpsim.material WHERE client = %s"
+                    " AND (sandbox_plant IS NULL OR sandbox_plant = %s)", (sap_client, plant))
         row = cur.fetchone()
         total = int(row[0]) if row else 0
         cur.execute(
-            f"SELECT material_no, description, base_uom FROM erpsim.material WHERE {where}"  # noqa: S608
-            " ORDER BY material_no LIMIT %s OFFSET %s",
+            "SELECT material_no, description, base_uom FROM erpsim.material WHERE client = %s"
+            " AND (sandbox_plant IS NULL OR sandbox_plant = %s) ORDER BY material_no LIMIT %s OFFSET %s",
             (sap_client, plant, top, skip),
         )
         results: list[dict[str, Any]] = [
@@ -104,14 +104,15 @@ async def list_product_eans(
     m = _EAN_FILTER.match(filter_ or "")
     if not m:
         raise HTTPException(status_code=400, detail="only $filter=Product eq '<x>' or ProductStandardID eq '<x>'")
-    column = "material_no" if m.group(1) == "Product" else "barcode"
+    by_product = m.group(1) == "Product"
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
-            f"SELECT material_no FROM erpsim.material_barcode WHERE client = %s AND {column} = %s",  # noqa: S608
-            (sap_client, m.group(2)),
+            "SELECT material_no FROM erpsim.material_barcode WHERE client = %s"
+            " AND ((%s AND material_no = %s) OR (NOT %s AND barcode = %s))",
+            (sap_client, by_product, m.group(2), by_product, m.group(2)),
         )
         materials = sorted({str(r[0]) for r in cur.fetchall()})
         eans = _barcodes(cur, sap_client, materials)
     results = [e for mat in materials for e in eans[mat]
-               if column == "material_no" or e["ProductStandardID"] == m.group(2)]
+               if by_product or e["ProductStandardID"] == m.group(2)]
     return {"d": {"results": results}}

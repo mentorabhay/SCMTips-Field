@@ -215,6 +215,7 @@ def test_sandbox_receipt_new_barcode_soft_pegging_gr_101(home: dict[str, Any]) -
     assert set(rec) == {"task_id", "ref_doc_no"}
     task = _task(h, h["sbx"], rec["task_id"])
     assert task["type"] == "receive" and task["lines"] == [] and task["ref_doc_no"] == rec["ref_doc_no"]
+    assert len(rec["ref_doc_no"]) == 10 and rec["ref_doc_no"].startswith("19")  # never reused after an erp-sim reset
     assert _erp("SELECT status, header_data->>'sandbox' FROM erpsim.inbound_delivery WHERE delivery_document = %s",
                 (rec["ref_doc_no"],)) == [("open", "true")]
 
@@ -287,8 +288,8 @@ def test_sandbox_receipt_new_barcode_soft_pegging_gr_101(home: dict[str, Any]) -
                                                             erp_url="http://erp", db_url=ADMIN, client=cl)
     created, _lines, conflicts = asyncio.run(poll())
     assert (created, conflicts) == (0, [])
-    n = _field(h["tenant"], "SELECT count(*) FROM field.task WHERE ref_doc_no = %s AND type = 'receive'",
-               (rec["ref_doc_no"],))
+    n = _field(h["tenant"], "SELECT count(*) FROM field.task WHERE ref_doc_no = %s AND type = 'receive'"
+                            " AND tenant_id = %s", (rec["ref_doc_no"], h["tenant"]))
     assert n == [(1,)]
 
     # production: an ERP delivery line refuses the sandbox code, and a production task takes no sandbox items

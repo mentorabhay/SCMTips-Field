@@ -15,7 +15,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from erp_sim.db import get_conn
 from erp_sim.dedupe import check_dedupe, compute_request_hash, record_dedupe
@@ -54,8 +54,8 @@ class MaterialDocumentCreateIn(BaseModel):
     PostingDate: str | None = None
     MaterialDocumentHeaderText: str | None = None
     # Key-user extension fields (the S/4 YY1_ convention): set by the field app for sandbox sites (M3).
-    YY1_FieldSandbox: bool = False  # noqa: N815
-    YY1_FieldSimulated: bool = False  # noqa: N815
+    field_sandbox: bool = Field(default=False, alias="YY1_FieldSandbox")
+    field_simulated: bool = Field(default=False, alias="YY1_FieldSimulated")
     to_MaterialDocumentItem: dict[str, list[MaterialDocumentItemIn]] | list[MaterialDocumentItemIn] | None = None  # noqa: N815
 
 
@@ -64,9 +64,9 @@ def document_header(doc_in: MaterialDocumentCreateIn) -> dict[str, Any]:
     head: dict[str, Any] = {"GoodsMovementCode": doc_in.GoodsMovementCode}
     if doc_in.MaterialDocumentHeaderText:
         head["MaterialDocumentHeaderText"] = doc_in.MaterialDocumentHeaderText
-    if doc_in.YY1_FieldSandbox:
+    if doc_in.field_sandbox:
         head["sandbox"] = True
-    if doc_in.YY1_FieldSimulated:
+    if doc_in.field_simulated:
         head["simulated"] = True
     return head
 

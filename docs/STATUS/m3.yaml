@@ -23,7 +23,8 @@
     (migration and seed, so reset keeps them); read S/4-style as A_ProductUnitsOfMeasureEAN and as $expand on
     A_ProductPlant (the sim flattens S/4's A_Product/to_ProductUnitsOfMeasure/to_InternationalArticleNumber). Sandbox
     admin routes /_sim/sandbox/* (X-Sim-Admin-Token) create HOME-nnnn materials of one plant, empty sandbox
-    deliveries and their items; the S/4 adapter refuses them (FIELD_SANDBOX_NOT_SAP). 561 through the
+    deliveries (numbers 19xxxxxxxx from the clock, so a simulator reset never reuses one the field still holds)
+    and their items; the S/4 adapter refuses them (FIELD_SANDBOX_NOT_SAP). 561 through the
     material-document deep insert, now idempotent per Idempotency-Key. Documents of sandbox sites carry
     header_data.sandbox (GR from the delivery header, 561 and PI differences from YY1_FieldSandbox) and show a badge
     on the simulator pages. Soft pegging is OriginalDeliveryQuantity on the item PATCH, accepted only on sandbox

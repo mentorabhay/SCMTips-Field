@@ -15,7 +15,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from erp_sim.db import get_conn
 from erp_sim.dedupe import check_dedupe, compute_request_hash, record_dedupe
@@ -39,8 +39,9 @@ class PiDocCreate(BaseModel):
     PhysicalInventoryDocumentFiscalYear: str = "2026"
     PostingBlocked: bool = True
     FreezeBookInventory: bool = True
-    YY1_FieldSandbox: bool = False  # noqa: N815 - key-user extension field: created for a sandbox site (M3)
-    YY1_FieldSimulated: bool = False  # noqa: N815 - set up by `stack home --simulate-differences` (M3)
+    # Key-user extension fields (S/4 YY1_ convention, M3): created for a sandbox site / by --simulate-differences
+    field_sandbox: bool = Field(default=False, alias="YY1_FieldSandbox")
+    field_simulated: bool = Field(default=False, alias="YY1_FieldSimulated")
     to_PhysicalInventoryDocItem: dict[str, list[PiItemCreate]] | list[PiItemCreate] | None = None  # noqa: N815
 
 
@@ -73,8 +74,8 @@ async def create_pi_doc(
             VALUES (%s, %s, %s, %s, %s, 'created', %s);
         """,
             (sap_client, pi_num, doc_year, doc_in.Plant, doc_in.StorageLocation,
-             json.dumps({k: True for k, on in (("sandbox", doc_in.YY1_FieldSandbox),
-                                               ("simulated", doc_in.YY1_FieldSimulated)) if on})),
+             json.dumps({k: True for k, on in (("sandbox", doc_in.field_sandbox),
+                                               ("simulated", doc_in.field_simulated)) if on})),
         )
 
         items_raw = doc_in.to_PhysicalInventoryDocItem

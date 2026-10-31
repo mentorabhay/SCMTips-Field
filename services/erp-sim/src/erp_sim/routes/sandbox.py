@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from decimal import Decimal
 from typing import Any
 
@@ -115,9 +116,11 @@ async def create_sandbox_material(
 
 
 def _free_delivery_number(cur: Any, client: str) -> str:
-    """Next INBOUND_DELIVERY number that is not taken (the seed and the dev stack also create deliveries)."""
-    for _ in range(1000):
-        cand = str(allocate_number(cur, client, "INBOUND_DELIVERY"))
+    """A 10-digit sandbox delivery number 19xxxxxxxx from the clock, so it is not reused after a simulator reset
+    (the INBOUND_DELIVERY range restarts at a reset, while the field still holds tasks for the old numbers)."""
+    base = time.time_ns() // 100_000_000  # tenths of a second
+    for n in range(1000):
+        cand = f"19{(base + n) % 10**8:08d}"
         cur.execute("SELECT 1 FROM erpsim.inbound_delivery WHERE client = %s AND delivery_document = %s", (client, cand))
         if cur.fetchone() is None:
             return cand
