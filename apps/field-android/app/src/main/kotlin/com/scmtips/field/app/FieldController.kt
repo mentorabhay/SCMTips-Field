@@ -33,6 +33,7 @@ import com.scmtips.field.app.jobs.StepView
 import com.scmtips.field.app.navigation.Screen
 import com.scmtips.field.app.net.FieldSession
 import com.scmtips.field.app.net.HttpError
+import com.scmtips.field.app.net.PhoneBinding
 import com.scmtips.field.app.slice.Pairing
 import com.scmtips.field.app.slice.PairingPayload
 import com.scmtips.field.core.common.UUIDv7
@@ -102,6 +103,13 @@ class FieldController(private val context: Context, private val toolkitError: ()
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
         )
     }
+    private val binding by lazy {
+        PhoneBinding(object : PhoneBinding.Store {
+            override fun get(key: String): String? = prefs.getString(key, null)
+            override fun put(key: String, value: String) = prefs.edit().putString(key, value).apply()
+            override fun remove(key: String) = prefs.edit().remove(key).apply()
+        }) { UUID.randomUUID().toString() }
+    }
     private val speaker = TtsSpeaker(context) { said -> log("🔊 $said") }
     private val barcodes = BarcodeReader()
     private val phoneSpeech = PhoneSpeech(context, { t, c -> onSpeech(t, c, "phone") }, { e -> log("mic: $e") })
@@ -133,7 +141,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
             glassesAdvice = GlassesHelp.advise(GlassesStatus(), toolkitError()),
         )
         prefs.getString(KEY_PAIRING, null)?.let { saved ->
-            runCatching { PairingPayload.parse(saved) }.onSuccess { p -> attach(p, prefs.getString(KEY_DEVICE, null)) }
+            runCatching { PairingPayload.parse(saved) }.onSuccess { p -> attach(p, fromScan = false) }
         }
     }
 
@@ -146,21 +154,23 @@ class FieldController(private val context: Context, private val toolkitError: ()
             _ui.value = _ui.value.copy(connectError = e.message ?: "That code is not a SCMTips pairing code.")
             return
         }
-        prefs.edit().putString(KEY_PAIRING, qrText).remove(KEY_DEVICE).apply()
-        attach(p, null)
+        // The device id is kept when the code is for the same PC and company (PhoneBinding).
+        prefs.edit().putString(KEY_PAIRING, qrText).apply()
+        attach(p, fromScan = true)
     }
 
     /** Connect screen "Try again": the saved code, registered again. */
     fun retryConnect() {
         val p = _ui.value.pairing ?: return
-        attach(p, prefs.getString(KEY_DEVICE, null))
+        attach(p, fromScan = true)
     }
 
     fun unpair() {
         loops?.cancel()
         closeJob(null)
         glasses.disconnect()
-        prefs.edit().remove(KEY_PAIRING).remove(KEY_DEVICE).remove(KEY_VISIT).remove(KEY_VISIT_SITE).apply()
+        // The device id stays: re-pairing to another site of the same PC reuses it (PhoneBinding scope).
+        prefs.edit().remove(KEY_PAIRING).remove(KEY_VISIT).remove(KEY_VISIT_SITE).apply()
         session = null
         _ui.value = AppUi(
             scanner = _ui.value.scanner, audioOnly = _ui.value.audioOnly, glassesSpeech = _ui.value.glassesSpeech,
@@ -168,21 +178,25 @@ class FieldController(private val context: Context, private val toolkitError: ()
         )
     }
 
-    private fun attach(p: Pairing, deviceId: String?) {
+    private fun attach(p: Pairing, fromScan: Boolean) {
+        val where = PhoneBinding.scope(p.apiBaseUrl, p.tenantId)
+        val deviceId = binding.savedDevice(where)
         val s = FieldSession(p.apiBaseUrl, p.coreToken, deviceId)
         session = s
         _ui.value = _ui.value.copy(pairing = p, deviceId = deviceId, person = Person.fromCoreToken(p.coreToken), connecting = true, connectError = null)
+        val api = object : PhoneBinding.Api {
+            override suspend fun exchange(deviceId: String?) = s.bind(deviceId)
+            override suspend fun register(serial: String, idempotencyKey: String) = s.registerPhone(
+                serial = serial,
+                model = "${Build.MANUFACTURER} ${Build.MODEL}",
+                osVersion = "Android ${Build.VERSION.RELEASE}",
+                appVersion = BuildConfig.VERSION_NAME,
+                idempotencyKey = idempotencyKey,
+            )
+        }
         scope.launch {
             try {
-                val id = s.registerPhone(
-                    serial = prefs.getString(KEY_SERIAL, null) ?: UUID.randomUUID().toString().also {
-                        prefs.edit().putString(KEY_SERIAL, it).apply()
-                    },
-                    model = "${Build.MANUFACTURER} ${Build.MODEL}",
-                    osVersion = "Android ${Build.VERSION.RELEASE}",
-                    appVersion = BuildConfig.VERSION_NAME,
-                )
-                prefs.edit().putString(KEY_DEVICE, id).apply()
+                val id = binding.connect(where, fromScan, api)
                 _ui.value = _ui.value.copy(deviceId = id, connecting = false, link = Link.ONLINE)
                 log("Connected to ${p.siteName}; phone device $id")
                 startLoops(s)
@@ -494,8 +508,6 @@ class FieldController(private val context: Context, private val toolkitError: ()
 
     companion object {
         private const val KEY_PAIRING = "pairing"
-        private const val KEY_DEVICE = "device_id"
-        private const val KEY_SERIAL = "serial"
         private const val KEY_SCANNER = "scanner"
         private const val KEY_AUDIO_ONLY = "audio_only"
         private const val KEY_GLASSES_SPEECH = "glasses_speech"

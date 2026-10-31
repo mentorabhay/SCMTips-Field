@@ -22,16 +22,15 @@
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/navigation/Screen.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/AppRoot.kt
+  - "apps/field-android/app/src/main/kotlin/com/scmtips/field/app/navigation/Screen.kt"
   tests:
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/permissions/PermissionManagerTest.kt::fr2_006_permanentDenialOfCameraOrMicShowsMsg2_05AndSurvivesRefresh
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/permissions/PermissionManagerTest.kt::fr2_006_requestsTheSpecPermissions
+  - "apps/field-android/app/src/test/kotlin/com/scmtips/field/app/navigation/ScreenInitTest.kt::tabsHaveNoHolesWhicheverScreenIsTouchedFirst"
   frs:
   - FR2.006
   verified_at: null
-  note: 'No Espresso navigation test and no cold-start measurement; app never built. M2 (2026-10-31): the M1 slice UI (SliceController, SliceScreens)
-    is replaced by the M2 design: Connect (3 numbered steps), Today / Scan / Me tabs and one job screen drawn over them (ui/AppRoot.kt, FieldController.kt);
-    navigation/Screen.kt now lists these places. tools/android_check/compile_check passes; no Gradle build of this code yet, no device run, no
-    Espresso test.'
+  note: 'No Espresso navigation test and no cold-start measurement; app never built. M2 (2026-10-31): the M1 slice UI (SliceController, SliceScreens) is replaced by the M2 design: Connect (3 numbered steps), Today / Scan / Me tabs and one job screen drawn over them (ui/AppRoot.kt, FieldController.kt); navigation/Screen.kt now lists these places. tools/android_check/compile_check passes; no Gradle build of this code yet, no device run, no Espresso test. Owner crash 2026-10-31 (vivo I2304, Android 16): NPE in TabBar right after pairing, because Screen.tabs was built during Screen''s static init while Screen.Today was unassigned (cold start touches Today first). tabs/allScreens are now lazy; ScreenInitTest reproduces it in a fresh class loader and failed before the fix. The crash screen now has its own background and safe-area padding. The emulator launch check never pairs, so it cannot catch a post-pairing crash.'
 - id: T2.003
   title: Generate the Kotlin API client with interceptors
   workstream: WS2.1
@@ -41,13 +40,15 @@
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/api/HeaderInterceptor.kt
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/api/RedactingLoggingInterceptor.kt
   - apps/field-android/core-outbox/src/main/kotlin/com/scmtips/field/core/outbox/api/FieldApiClient.kt
-  tests: []
+  - "apps/field-android/app/src/main/kotlin/com/scmtips/field/app/net/PhoneBinding.kt"
+  tests:
+  - "apps/field-android/app/src/test/kotlin/com/scmtips/field/app/net/PhoneBindingTest.kt::crashBeforeTheIdIsSavedThenScanAgainReplaysTheSameDevice"
+  - "apps/field-android/app/src/test/kotlin/com/scmtips/field/app/net/PhoneBindingTest.kt::revokedPhoneStaysOutOnRestartButAFreshScanRegistersIt"
   frs:
   - FR2.045
   - FR2.066
   verified_at: null
-  note: Interceptors are OkHttp-bound and have no unit test (the Python grep test was removed in C5). Done_when
-    "unit test proves headers are set and logs contain no token or body bytes" unmet.
+  note: 'Interceptors are OkHttp-bound and have no unit test (the Python grep test was removed in C5). Done_when "unit test proves headers are set and logs contain no token or body bytes" unmet. Owner report 2026-10-31: after the crash every new scan answered 409 ''Device already bound'' (the app dropped its device id on each scan and registered the same serial with a fresh Idempotency-Key; the API is right per TC1.168). PhoneBinding keeps the id per PC+tenant, saves the registration key so a repeat replays the 201, registers a new install id only when the replay record is gone, and never re-registers a revoked phone without a fresh scan. tools/android_check/drive_backend.py checks the replay and the 409 against a live stack.'
 - id: T2.004
   title: Implement sign-in with a core device token
   workstream: WS2.1

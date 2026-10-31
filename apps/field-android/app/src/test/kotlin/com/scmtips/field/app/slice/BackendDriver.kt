@@ -25,8 +25,18 @@ object BackendDriver {
         val pairing = PairingPayload.parse(args[0])
         val delivery = args[1]
         val s = FieldSession(pairing.apiBaseUrl, pairing.coreToken, null)
-        val id = s.registerPhone("jvm-drive-${System.nanoTime()}", "JVM driver", "Linux", "check")
+        val serial = "jvm-drive-${System.nanoTime()}"
+        val key = java.util.UUID.randomUUID().toString()
+        val id = s.registerPhone(serial, "JVM driver", "Linux", "check", key)
         println("registered phone $id")
+        // PhoneBinding relies on these two answers (owner report 2026-10-31, "Device already bound"):
+        val replayed = s.registerPhone(serial, "JVM driver", "Linux", "check", key)
+        check(replayed == id) { "same Idempotency-Key must replay the same device, got $replayed for $id" }
+        val dup = runCatching { s.registerPhone(serial, "JVM driver", "Linux", "check", java.util.UUID.randomUUID().toString()) }
+        val err = dup.exceptionOrNull() as? com.scmtips.field.app.net.HttpError
+        check(err?.code == com.scmtips.field.app.net.PhoneBinding.DEVICE_EXISTS) { "same serial, new key must be 409 EXISTS, got $dup" }
+        println("re-registration: same key replays $id; new key -> ${err?.code}")
+        s.bind(id)
         suspend fun find() = s.tasks(pairing.siteId).firstOrNull { it.type == JobType.RECEIVE && it.refDocNo == delivery }
         var task = find()
         var tries = 0

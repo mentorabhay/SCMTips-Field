@@ -27,8 +27,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class HttpError(val status: Int, val code: String?, val title: String?, val detail: String?, message: String) : Exception(message)
-
 /**
  * Talks to field-api as tools/dev_stack/stack.py `Phone` does: exchange the core token, register the
  * phone, re-exchange bound to the device; then the job calls the [com.scmtips.field.app.jobs.JobRunner]
@@ -64,17 +62,19 @@ class FieldSession(
         access
     }
 
-    /** First run: register this phone, then bind the session to it. Returns the device id. */
-    suspend fun registerPhone(serial: String, model: String, osVersion: String, appVersion: String): String {
-        deviceId?.let { return it }
-        val res = call("POST", "/v1/devices", buildJsonObject {
-            put("kind", "phone"); put("serial_no", serial); put("model", model)
-            put("os_version", osVersion); put("app_version", appVersion)
-        }, bearer = token()).jsonObject
-        val id = res.str("id")
+    /** Exchange the core token again, bound to [id] (or unbound when null). Throws [HttpError] if refused. */
+    suspend fun bind(id: String?) {
         mutex.withLock { accessToken = null; deviceId = id }
         token()
-        return id
+    }
+
+    /** POST /v1/devices for this phone. [idempotencyKey] is saved by the caller, so a repeat replays the 201. */
+    suspend fun registerPhone(serial: String, model: String, osVersion: String, appVersion: String, idempotencyKey: String): String {
+        val text = raw("POST", "/v1/devices", buildJsonObject {
+            put("kind", "phone"); put("serial_no", serial); put("model", model)
+            put("os_version", osVersion); put("app_version", appVersion)
+        }, token(), idempotencyKey)
+        return json.parseToJsonElement(text.ifBlank { "{}" }).jsonObject.str("id")
     }
 
     /** `GET /v1/tasks` for the site: open and in-progress work (contract §2). */

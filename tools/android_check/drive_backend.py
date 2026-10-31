@@ -24,9 +24,11 @@ import httpx
 from tools.android_check.compile_check import ANDROID, COMPILER, ROOT, jar
 from tools.dev_stack.stack import (
     STATE,
+    apply_ports,
     create_inbound_delivery,
     ensure_demo_site,
     load_env,
+    local,
     pairing_payload,
 )
 
@@ -36,7 +38,7 @@ RUNTIME = [
     "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.9.0",
 ]
 APP = ANDROID / "app" / "src"
-SOURCES = [APP / "main/kotlin/com/scmtips/field/app/net/FieldHttp.kt",
+SOURCES = [*sorted((APP / "main/kotlin/com/scmtips/field/app/net").glob("*.kt")),
            *sorted((APP / "main/kotlin/com/scmtips/field/app/slice").glob("*.kt")),
            *sorted((APP / "main/kotlin/com/scmtips/field/app/jobs").glob("*.kt")),
            APP / "test/kotlin/com/scmtips/field/app/slice/BackendDriver.kt"]
@@ -53,12 +55,13 @@ def main() -> int:
     for m in ("core-common", "core-voice", "core-wearables", "core-safety"):
         srcs += [str(p) for p in sorted((ANDROID / m / "src/main/kotlin").rglob("*.kt"))]
     load_env()
+    apply_ports()  # the stack moves off busy ports (var/dev_stack_ports.json)
     state = ensure_demo_site(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
     deliv = create_inbound_delivery(3)
-    tok = httpx.post("http://127.0.0.1:8001/api/v1/auth/token", json={
+    tok = httpx.post(local("fake-core") + "/api/v1/auth/token", json={
         "principal_id": "jvm-driver", "tenant_id": state["tenant"], "roles": ["field.operator"],
         "site_ids": [state["site"]], "ttl_seconds": 1800}, timeout=5).raise_for_status().json()["access_token"]
-    payload = pairing_payload("http://127.0.0.1:8000", tok, state["tenant"], state["site"], state["site_name"])
+    payload = pairing_payload(local("field-api"), tok, state["tenant"], state["site"], state["site_name"])
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "classes"
         cp = os.pathsep.join(map(str, [stdlib, coroutines, *runtime]))
