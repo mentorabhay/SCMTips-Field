@@ -134,6 +134,9 @@ class MainActivity : ComponentActivity() {
             pauseWork = controller::pauseWork,
             resumeWork = controller::resumeWork,
             signIn = controller::signIn,
+            account = controller::onAccount,
+            scanSignInCode = ::scanSignInQr,
+            openMailApp = ::openMailApp,
             startReview = controller::startReview,
             stopReview = { controller.stopReview() },
             refreshDecisions = controller::refreshDecisions,
@@ -256,6 +259,26 @@ class MainActivity : ComponentActivity() {
         GmsBarcodeScanning.getClient(this, options).startScan()
             .addOnSuccessListener { code -> code.rawValue?.let(controller::pair) }
             .addOnFailureListener { e -> controller.toast(e.message ?: "The scan did not work. Try again.") }
+    }
+
+    /**
+     * M5-L "Scan a code from your computer": the Field console's QR (https://app.scmtips.com/pair?code=…), a bare
+     * code, or the field-api PC pairing QR (routed in signin/SignInLinks.kt).
+     */
+    private fun scanSignInQr() {
+        val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+        GmsBarcodeScanning.getClient(this, options).startScan()
+            .addOnSuccessListener { code -> code.rawValue?.let(controller::scannedSignInCode) }
+            .addOnFailureListener { e -> controller.toast(e.message ?: "The scan did not work. Try again.") }
+    }
+
+    /** M5-L "Open my mail app" after a reset or code e-mail: the phone's e-mail app (ACTION_MAIN, CATEGORY_APP_EMAIL), never a browser. */
+    private fun openMailApp() {
+        try {
+            startActivity(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_EMAIL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: ActivityNotFoundException) {
+            controller.toast("No e-mail app on this phone. Open your e-mail as you usually do; the link opens SCMTips Field.")
+        }
     }
 
     /**

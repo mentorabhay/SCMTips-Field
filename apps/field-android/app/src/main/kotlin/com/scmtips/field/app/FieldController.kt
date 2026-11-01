@@ -67,6 +67,12 @@ import com.scmtips.field.app.session.WorkSessionService
 import com.scmtips.field.app.slice.Pairing
 import com.scmtips.field.app.slice.PairingPayload
 import com.scmtips.field.app.signin.AccountCredentials
+import com.scmtips.field.app.signin.AccountEffect
+import com.scmtips.field.app.signin.AccountEvent
+import com.scmtips.field.app.signin.AccountFlow
+import com.scmtips.field.app.signin.AccountView
+import com.scmtips.field.app.signin.SignInLinks
+import com.scmtips.field.app.signin.SignInProblem
 import com.scmtips.field.app.signin.AccountStore
 import com.scmtips.field.app.signin.CoreAccount
 import com.scmtips.field.app.signin.FieldAccess
@@ -75,6 +81,7 @@ import com.scmtips.field.app.signin.ServerDefaults
 import com.scmtips.field.app.signin.SignInDefaults
 import com.scmtips.field.app.signin.SiteChoice
 import com.scmtips.field.app.signin.SiteRef
+import com.scmtips.field.feature.decisions.api.CoreAccountApi
 import com.scmtips.field.feature.decisions.api.CoreClient
 import com.scmtips.field.feature.decisions.api.CoreSignIn
 import com.scmtips.field.feature.decisions.api.OkHttpCoreHttp
@@ -197,6 +204,8 @@ data class AppUi(
     val shell: ShellView = ShellView(),
     /** M5-U06: the task id of the open [job] (its done screen's "Next up" leaves it out); null when no job is open. */
     val jobTaskId: String? = null,
+    /** M5-L: the in-app sign-in, invite and reset flow (signin/AccountFlow.kt). */
+    val account: AccountView = AccountView(),
 )
 
 /** Who is signed in against the core (no tokens here: AppUi is drawn and logged freely). */
@@ -209,6 +218,8 @@ data class SignInView(
     val email: String = "",
     val busy: Boolean = false,
     val error: String? = null,
+    /** M5-L: the kind of [error] (wrong details, locked, no Field role, single sign-on, demo off, offline). */
+    val problem: SignInProblem? = null,
 )
 
 /**
@@ -457,7 +468,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         val fieldUrl = SignInDefaults.fieldUrl(accounts.lastFieldUrl, pairedApi, servers)
         _ui.value = _ui.value.copy(signIn = SignInView(
             coreUrl = SignInDefaults.coreUrl(accounts.lastCoreUrl, fieldUrl, servers), fieldUrl = fieldUrl, email = accounts.lastEmail.orEmpty(),
-        ))
+        ), account = AccountView(email = accounts.lastEmail.orEmpty()))
         val saved = accounts.load()
         restoreShell(connectedAtStart = saved != null || prefs.getString(KEY_PAIRING, null) != null)
         when {
@@ -510,8 +521,9 @@ class FieldController(private val context: Context, private val toolkitError: ()
             scanner = _ui.value.scanner, audioOnly = _ui.value.audioOnly, glassesSpeech = _ui.value.glassesSpeech,
             glasses = _ui.value.glasses, glassesAdvice = _ui.value.glassesAdvice, log = _ui.value.log,
             attentionWord = _ui.value.attentionWord,
-            signIn = _ui.value.signIn.copy(busy = false, error = null, coreUrl = accounts.lastCoreUrl ?: _ui.value.signIn.coreUrl,
+            signIn = _ui.value.signIn.copy(busy = false, error = null, problem = null, coreUrl = accounts.lastCoreUrl ?: _ui.value.signIn.coreUrl,
                 fieldUrl = accounts.lastFieldUrl ?: _ui.value.signIn.fieldUrl),
+            account = AccountView(email = accounts.lastEmail ?: _ui.value.account.email, demoOff = _ui.value.account.demoOff),
             shell = ShellNav.signedOut(_ui.value.shell).also { saveShell(it) },
         )
     }
@@ -567,8 +579,9 @@ class FieldController(private val context: Context, private val toolkitError: ()
             return
         }
         accounts.rememberServers(core, field)
-        val email = (method as? SignInMethod.Password)?.email?.trim()
-        _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = true, error = null, coreUrl = core, fieldUrl = field, email = email ?: _ui.value.signIn.email))
+        val email = ((method as? SignInMethod.Password)?.email ?: (method as? SignInMethod.EmailCode)?.email)?.trim()
+        _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = true, error = null, problem = null, coreUrl = core, fieldUrl = field,
+            email = email ?: _ui.value.signIn.email))
         scope.launch {
             try {
                 val model = SignInDefaults.deviceModel(glassesRegistered())
@@ -583,10 +596,13 @@ class FieldController(private val context: Context, private val toolkitError: ()
                 accounts.save(a)
                 prefs.edit().remove(KEY_PAIRING).apply() // one link to field-api at a time: the sign-in replaces a QR pairing
                 log("Signed in to SCMTIPS as ${a.displayName} (${model.wire}); approve decisions: ${a.approver}, field work: ${a.fieldOperator}")
-                _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = false, error = null))
+                _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = false, error = null, problem = null),
+                    account = AccountView(demoOff = _ui.value.account.demoOff, email = email ?: _ui.value.account.email))
                 attachAccount(a, fromScan = true)
             } catch (e: SignInException) {
-                _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = false, error = e.message))
+                _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(busy = false, error = e.message, problem = SignInProblem.of(e.status, e.code)))
+                val demoOff = e.status == 403 && e.code == "demo_off"
+                if (demoOff || method is SignInMethod.EmailCode) onAccount(AccountEvent.SignInFailed(core, demoOff, method))
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -649,7 +665,15 @@ class FieldController(private val context: Context, private val toolkitError: ()
                 log("⚠ field-api: $why")
                 _ui.value = _ui.value.copy(connecting = false, connectError = why, link = if (e is IOException) Link.OFFLINE else _ui.value.link)
                 // No Field role for this core account (403 NO-FIELD-ROLE): field-api's sentence on the sign-in screen too.
-                (e as? HttpError)?.let(FieldAccess::noFieldRole)?.let { _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(error = it)) }
+                (e as? HttpError)?.let(FieldAccess::noFieldRole)?.let { why ->
+                    _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(error = why, problem = SignInProblem.NO_FIELD_ROLE))
+                    // M5-L: an account that can do nothing in the app (no Field role, no approvals) goes back to the sign-in
+                    // screen, where the sentence and "Try the SAMPLE demo" are shown; an approver keeps its approvals.
+                    if (!a.approver && account === a) {
+                        signOutOfCore(a)
+                        _ui.value = _ui.value.copy(signedIn = null, pairing = null, connectError = null, home = HomeSections.of(null, paired = false))
+                    }
+                }
             }
         }
     }
@@ -664,6 +688,56 @@ class FieldController(private val context: Context, private val toolkitError: ()
         stopLaunches()
         accounts.clear()
         account = null
+    }
+
+    // --- in-app accounts (M5-L: e-mail code, invite, reset, App Links) ------------------------------
+
+    /** Every tap of the sign-in, invite and reset screens, and the answers of their calls (rules: signin/AccountFlow.kt). */
+    fun onAccount(e: AccountEvent) {
+        val user = e is AccountEvent.Open || e is AccountEvent.Back || e is AccountEvent.Forgot || e is AccountEvent.Pasted ||
+            e is AccountEvent.Scanned || e is AccountEvent.Link || e is AccountEvent.UsePassword || e is AccountEvent.SendCode
+        if (user && _ui.value.signIn.error != null && !_ui.value.signIn.busy) {
+            _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(error = null, problem = null))
+        }
+        val step = AccountFlow.reduce(_ui.value.account, e)
+        _ui.value = _ui.value.copy(account = step.view)
+        step.effects.forEach(::runAccountEffect)
+    }
+
+    /** "Scan a code from your computer": the scanner's text (a console App Link, a bare code or the PC pairing QR). */
+    fun scannedSignInCode(text: String) = onAccount(AccountEvent.Scanned(text))
+
+    private fun runAccountEffect(effect: AccountEffect) {
+        when (effect) {
+            is AccountEffect.SignIn -> signIn(effect.method, _ui.value.signIn.coreUrl, _ui.value.signIn.fieldUrl)
+            is AccountEffect.Show -> shell(ShellAction.Go(effect.step))
+            is AccountEffect.PcPairing -> pair(effect.text)
+            is AccountEffect.RequestCode -> withCore { api -> onAccount(AccountEvent.CodeSent(api.requestCode(effect.email, binding.installId()), System.currentTimeMillis())) }
+            is AccountEffect.LoadInvite -> withCore { api -> onAccount(AccountEvent.InviteRead(effect.token, api.invite(effect.token))) }
+            is AccountEffect.AcceptInvite -> withCore { api ->
+                onAccount(AccountEvent.InviteAccepted(api.acceptInvite(effect.token, effect.acceptance), effect.email, effect.acceptance.password))
+            }
+            is AccountEffect.RequestReset -> withCore { api -> onAccount(AccountEvent.ResetSent(api.requestReset(effect.email))) }
+            is AccountEffect.ConfirmReset -> withCore { api -> onAccount(AccountEvent.ResetDone(api.confirmReset(effect.token, effect.password))) }
+        }
+    }
+
+    /** One public account call to the SCMTIPS address the sign-in screen is set to (checked as on sign-in). */
+    private fun withCore(call: suspend (CoreAccountApi) -> Unit) {
+        val (core, why) = SignInDefaults.check(_ui.value.signIn.coreUrl, "SCMTIPS")
+        if (core == null) {
+            _ui.value = _ui.value.copy(account = _ui.value.account.copy(busy = false, error = why))
+            return
+        }
+        scope.launch {
+            try {
+                call(CoreAccountApi(core, coreHttp))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ui.value = _ui.value.copy(account = _ui.value.account.copy(busy = false, error = describe(e)))
+            }
+        }
     }
 
     // --- decisions (M4 F1) ------------------------------------------------------------------------

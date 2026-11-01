@@ -13,7 +13,11 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 import java.io.IOException
 
-/** How the person signs in (handover 01, F2): demo e-mail + password, or a pairing code made on the web. */
+/**
+ * How the person signs in (handover 01, F2; M5-L contract §1): e-mail + password, a pairing code made on the web or
+ * shown as a QR by the Field console, a 6-digit code e-mailed by `POST /v1/auth/app/code/request` (§2), or the one-tap
+ * SAMPLE demo guest (§3, demo mode only).
+ */
 sealed interface SignInMethod {
     class Password(val email: String, val password: String) : SignInMethod {
         override fun toString(): String = "Password(email=$email, password=<redacted>)"
@@ -22,6 +26,14 @@ sealed interface SignInMethod {
     class PairingCode(val code: String) : SignInMethod {
         override fun toString(): String = "PairingCode(<redacted>)"
     }
+
+    /** §1 e-mail code: `email` + `email_code` (6 digits, single use, 10 minutes). */
+    class EmailCode(val email: String, val code: String) : SignInMethod {
+        override fun toString(): String = "EmailCode(email=$email, code=<redacted>)"
+    }
+
+    /** §1 demo: `demo: true` signs in the SAMPLE organisation's guest member (403 demo_off when demo mode is off). */
+    data object Demo : SignInMethod
 }
 
 /** `device_model` of the sign-in body. */
@@ -69,7 +81,7 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
         val reply = try {
             http.execute(call)
         } catch (e: IOException) {
-            throw SignInException(0, null, "Cannot reach SCMTIPS at ${url.substringBefore("/v1/")}. Check the address and the Wi-Fi.")
+            throw SignInException(0, OFFLINE, "Cannot reach SCMTIPS at ${url.substringBefore("/v1/")}. Check the address and the Wi-Fi.")
         }
         if (!reply.ok) throw refusal(reply, method)
         val body = CoreJson.obj(reply.body) ?: throw SignInException(reply.status, null, "SCMTIPS answered something this app cannot read.")
@@ -82,6 +94,10 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
 
     companion object {
         const val CLIENT = "scmtips-field"
+
+        /** [SignInException.code] when there was no answer at all (offline, TLS, timeout). */
+        const val OFFLINE = "offline"
+        private val EMAIL_CODE = Regex("^[0-9]{6}$")
         private val DEVICE_ID = Regex("^[A-Za-z0-9._:-]{8,64}$")
 
         /** Builds the call; throws [SignInException] (status 0) for input the core would refuse anyway. */
@@ -103,6 +119,15 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
                         }
                         put("pairing_code", code)
                     }
+                    is SignInMethod.EmailCode -> {
+                        val email = method.email.trim()
+                        if (!email.contains('@') || email.length > 254) throw SignInException(0, "email", "Enter your work e-mail address.")
+                        val code = method.code.filter { !it.isWhitespace() }
+                        if (!EMAIL_CODE.matches(code)) throw SignInException(0, "email_code", "Enter the 6 digits from the e-mail.")
+                        put("email", email)
+                        put("email_code", code)
+                    }
+                    SignInMethod.Demo -> put("demo", true)
                 }
                 put("device_id", deviceId)
                 put("device_model", model.wire)
@@ -134,17 +159,27 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
             )
         }
 
-        /** 401 invalid_credentials, 403 pairing_required, 429 too_many_attempts, 503 core_tokens_unavailable (handover 01, 01a). */
+        /**
+         * 401 invalid_credentials / invalid_code, 403 pairing_required / sso_required / demo_off, 429 too_many_attempts /
+         * locked, 503 core_tokens_unavailable (handover 01, 01a; M5-L contract §1). Every sentence is neutral: none
+         * says whether an e-mail has an account.
+         */
         fun refusal(reply: HttpReply, method: SignInMethod? = null): SignInException {
             val p = CoreJson.problem(reply.body)
             val code = p?.code ?: p?.detail?.takeIf { it.matches(Regex("^[a-z_]+$")) }
             val text = when {
                 reply.status == 401 && method is SignInMethod.PairingCode ->
                     "That pairing code is not valid or has expired. Make a new one in SCMTIPS on the web."
+                reply.status == 401 && method is SignInMethod.EmailCode ->
+                    "That code is not right or has expired. Check the e-mail, or ask for a new code."
                 reply.status == 401 -> "The e-mail or password is not right."
                 reply.status == 403 && code == "pairing_required" ->
                     "Your organisation signs in with a pairing code. Make one in SCMTIPS on the web and enter it here."
+                reply.status == 403 && code == "sso_required" ->
+                    "Your organisation signs in with single sign-on. Sign in to SCMTIPS on your computer, then scan its sign-in code here."
+                reply.status == 403 && code == "demo_off" -> "The SAMPLE demo is not available on this SCMTIPS server."
                 reply.status == 403 -> "SCMTIPS does not allow this sign-in (${code ?: "403"})."
+                reply.status == 429 && code == "locked" -> "Too many wrong tries for that code. Ask for a new code."
                 reply.status == 429 -> "Too many tries. Wait a minute, then try again."
                 reply.status == 503 -> "SCMTIPS cannot sign anyone in right now (${code ?: "503"}). Try again later."
                 else -> "SCMTIPS refused the sign-in (HTTP ${reply.status}${code?.let { " $it" } ?: ""})."
@@ -168,7 +203,7 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
             val reply = try {
                 http.execute(HttpCall("POST", url, mapOf(CoreClient.HEADER_REQUESTED_WITH to CoreClient.REQUESTED_WITH), HttpBody.Json(body.toString())))
             } catch (e: IOException) {
-                throw SignInException(0, null, "Cannot reach SCMTIPS at ${baseUrl.trim().trimEnd('/')}. Check the address and the Wi-Fi.")
+                throw SignInException(0, OFFLINE, "Cannot reach SCMTIPS at ${baseUrl.trim().trimEnd('/')}. Check the address and the Wi-Fi.")
             }
             if (!reply.ok) throw refusal(reply, SignInMethod.PairingCode(c))
             val o = CoreJson.obj(reply.body) ?: throw SignInException(reply.status, null, "SCMTIPS answered something this app cannot read.")

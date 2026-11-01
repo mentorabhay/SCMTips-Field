@@ -180,6 +180,17 @@ object SignInRules {
     const val KEEP_NOTE = "You stay signed in on this phone until you sign out in Profile."
 }
 
+/** The "Create an account" sheet without an invite (M5-L contract §7). */
+object CreateText {
+    const val BODY = "SCMTIPS accounts belong to an organisation. Your administrator adds you, and SCMTIPS e-mails you an " +
+        "invite: open it on this phone, or paste its link here."
+    const val ASK = "No invite yet? Ask your SCMTIPS administrator for one. To look around first, try the SAMPLE demo."
+}
+
+/**
+ * The A-07 words of the browser reset (the SCMTIPS page). M5-L draws [ResetText] instead; these stay, with their test,
+ * until the owner retires them (rule 2.5: a test is never deleted to make room).
+ */
 object ForgotText {
     const val INTRO = "SCMTIPS sends a reset link to your work e-mail. The link opens the SCMTIPS page; " +
         "SCMTips Field never sees your password."
@@ -188,4 +199,11 @@ object ForgotText {
     fun afterOpen(email: String): String = email.trim().takeIf { it.isNotEmpty() }
         ?.let { "Finish on the SCMTIPS page. If an account exists for $it, SCMTIPS sends the reset link there." }
         ?: "Finish on the SCMTIPS page. SCMTIPS sends the reset link to your work e-mail."
+}
+
+/** M5-L: the reset happens in the app; the e-mailed link opens SCMTips Field at "Set a new password". */
+object ResetText {
+    const val INTRO = "Enter your work e-mail. If it has an account, SCMTIPS e-mails you a link that opens this app at " +
+        "\"Set a new password\"."
+    const val SET_INTRO = "Choose a new password for your SCMTIPS account: at least 12 characters, not used before."
 }
