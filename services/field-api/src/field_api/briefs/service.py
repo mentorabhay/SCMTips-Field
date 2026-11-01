@@ -13,20 +13,31 @@ The core token is forwarded once and never stored, logged or sent to the model.
 
 from __future__ import annotations
 
+import math
+import os
 import time
 from dataclasses import dataclass
 from typing import Any
 
 import structlog
 
-from field_api.assistant.model import CallLog, ModelError, ModelRouter
+from field_api.assistant.model import CallLog, ModelError, ModelRouter, spoken_reasoning_effort
 from field_api.auth.jwt import Principal
 from field_api.briefs import numbers
 from field_api.briefs.core import CoreBriefCheck
 
 logger = structlog.get_logger(__name__)
 
-BRIEF_DEADLINE_S = 4.0
+BRIEF_DEADLINE_S = 4.0  # default; BRIEF_DEADLINE_S in the environment overrides it within 2..8 s
+
+
+def brief_deadline_s() -> float:
+    """Seconds the model may take for a spoken brief: env BRIEF_DEADLINE_S within 2..8, else 4.0."""
+    try:
+        v = float(os.getenv("BRIEF_DEADLINE_S", "").strip())
+    except ValueError:
+        return BRIEF_DEADLINE_S
+    return max(2.0, min(8.0, v)) if math.isfinite(v) else BRIEF_DEADLINE_S
 MAX_WORDS = 150
 BRIEF_PROMPT = (
     "You turn a supply-chain decision brief into what an approver hears through smart glasses. Rewrite the brief "
@@ -76,9 +87,9 @@ def _run(principal: Principal, b: BriefIn, router: ModelRouter, core: CoreBriefC
     errors: list[str] = []
     messages = [{"role": "system", "content": BRIEF_PROMPT}, {"role": "user", "content": b.template_text}]
     try:
-        res = router.chat(messages, tools=None, deadline=time.monotonic() + BRIEF_DEADLINE_S,
+        res = router.chat(messages, tools=None, deadline=time.monotonic() + brief_deadline_s(),
                           tenant_id=principal.tenant_id, request_id=request_id, log=log, errors=errors,
-                          purpose="brief")
+                          purpose="brief", reasoning_effort=spoken_reasoning_effort())
     except ModelError as e:
         reasons = [f"model:{x}" for x in errors] or [f"model:{e.code}"]
         if not router.models:

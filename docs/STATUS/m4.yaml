@@ -249,6 +249,7 @@
   - services/field-api/src/field_api/assistant/tools.py
   - services/field-api/src/field_api/assistant/prompts.py
   tests:
+  - services/field-api/tests/unit/test_spoken_reasoning_effort.py::test_spoken_effort_defaults_to_minimal_and_takes_a_valid_override
   - services/field-api/tests/assistant/test_assistant_rules_first.py::test_rules_first_turns_make_zero_model_calls_and_answer_at_once
   - services/field-api/tests/assistant/test_assistant_rules_first.py::test_needs_model_only_for_what_rules_cannot_answer
   - services/field-api/tests/assistant/test_assistant_rules_first.py::test_sandbox_dialog_is_rules_only_with_ai_on
@@ -271,6 +272,8 @@
     that calls it gets "unknown tool". Model-turn tests that used rules-classified turns now use unclassified utterances
     (docstrings say why; behaviour change asked for by the owner, not a weakening). Partial until proven on the
     owner's phone and glasses and with the real Meta API (A-04).
+    2 Nov: the assistant turn also asks Meta for minimal reasoning (same setting as the brief, M4-M03).
+
 - id: M4-M02
   title: >-
     Sandbox voice intents "new home receipt" and "count shelf <bin>" / "count a shelf" create and open the task;
@@ -344,6 +347,7 @@
   - services/field-api/src/field_api/briefs/core.py
   - packages/field-contract/openapi.json
   tests:
+  - services/field-api/tests/unit/test_spoken_reasoning_effort.py::test_router_sends_reasoning_effort_to_meta_only
   - services/field-api/tests/assistant/test_spoken_briefs.py::test_rewrite_accepted_by_the_core_is_spoken
   - services/field-api/tests/assistant/test_spoken_briefs.py::test_core_refusal_speaks_the_cores_template
   - services/field-api/tests/assistant/test_spoken_briefs.py::test_local_number_check_runs_before_the_core
@@ -375,6 +379,8 @@
     check client itself was called against the real core by the smoke (template accepted, a changed figure refused;
     META_FIELD row 21 VERIFIED for a local core). The core check refused its own template when net cost = committed
     spend; fixed on the core (6ea7c29), after which the smoke passed on that decision.
+    2 Nov (hosting TO_FIELD §14): the hosted brief hit AI_TIMEOUT and the template was spoken; spoken answers now ask Meta's model for reasoning_effort minimal (SPOKEN_REASONING_EFFORT overrides; Baseten never gets it) and BRIEF_DEADLINE_S (2..8, default 4) can be tuned on the host. Unverified on the host until the next look at a brief's source.
+
 - id: M4-B01
   title: feature-decisions core client — wearable /v1 calls, app sign-in wire, spoken brief from field-api (F1, F2)
   workstream: M4-F1

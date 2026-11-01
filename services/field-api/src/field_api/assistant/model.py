@@ -295,6 +295,19 @@ class ChatModel:
                               "cost_usd": str(billed)})
 
 
+# Spoken answers (the assistant turn, the decision brief) need speed, not deep reasoning: Muse Spark's default reasoning
+# made the hosted brief time out (hosting TO_FIELD §14, 2 Nov: AI_TIMEOUT, template spoken instead). Gate 0 showed
+# reasoning tokens eat the answer's allowance and time. SPOKEN_REASONING_EFFORT overrides (minimal..max).
+SPOKEN_REASONING_DEFAULT = "minimal"
+SPOKEN_REASONING_EFFORTS = ("minimal", "low", "medium", "high", "xhigh", "max")
+
+
+def spoken_reasoning_effort() -> str:
+    """The reasoning effort asked of Meta's model for spoken answers: SPOKEN_REASONING_EFFORT if valid, else minimal."""
+    v = os.getenv("SPOKEN_REASONING_EFFORT", "").strip().lower()
+    return v if v in SPOKEN_REASONING_EFFORTS else SPOKEN_REASONING_DEFAULT
+
+
 class ModelRouter:
     """Primary then fallback. A provider that refuses or fails before answering hands over to the next one."""
 
@@ -303,7 +316,9 @@ class ModelRouter:
 
     def chat(self, messages: Sequence[dict[str, Any]], *, tools: Sequence[dict[str, Any]] | None, deadline: float,
              tenant_id: str | None, request_id: str | None, log: CallLog, errors: list[str],
-             purpose: str = "assistant", max_tokens: int | None = None) -> ChatResult:
+             purpose: str = "assistant", max_tokens: int | None = None,
+             reasoning_effort: str | None = None) -> ChatResult:
+        """``reasoning_effort`` goes to Meta's models only (Baseten's API has no such field)."""
         for m in self.models:
             remaining = deadline - time.monotonic()
             if remaining < 0.3:
@@ -311,7 +326,8 @@ class ModelRouter:
                 break
             try:
                 return m.chat(messages, tools=tools, timeout_s=remaining, max_tokens=max_tokens, purpose=purpose,
-                              tenant_id=tenant_id, request_id=request_id, log=log)
+                              tenant_id=tenant_id, request_id=request_id, log=log,
+                              reasoning_effort=reasoning_effort if m.cfg.provider == "meta" else None)
             except ModelError as e:
                 errors.append(f"{m.provider}:{e.code}")
         raise ModelError("AI_UNAVAILABLE", ", ".join(errors) or "no provider configured")

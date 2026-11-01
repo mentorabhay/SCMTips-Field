@@ -31,7 +31,13 @@ import structlog
 
 from field_api.assistant import actions as safe_actions
 from field_api.assistant import records, work
-from field_api.assistant.model import CallLog, ModelError, ModelRouter, model_deadline_s
+from field_api.assistant.model import (
+    CallLog,
+    ModelError,
+    ModelRouter,
+    model_deadline_s,
+    spoken_reasoning_effort,
+)
 from field_api.assistant.photos import AssistantPhotoStore, decode_photo
 from field_api.assistant.ports import AssistantPorts
 from field_api.assistant.prompts import SYSTEM_PROMPT, clip_say
@@ -156,7 +162,7 @@ def run_model(router: ModelRouter, tools: AssistantTools, t: TurnIn, history: li
     specs = tool_specs()
     for _ in range(MAX_MODEL_CALLS):
         res = router.chat(msgs, tools=specs, deadline=deadline, tenant_id=tools.ctx.principal.tenant_id,
-                          request_id=request_id, log=log, errors=errors)
+                          request_id=request_id, log=log, errors=errors, reasoning_effort=spoken_reasoning_effort())
         m = res.message
         calls = m.get("tool_calls") or []
         if calls:
