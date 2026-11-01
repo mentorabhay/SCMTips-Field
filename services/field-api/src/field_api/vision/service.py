@@ -9,6 +9,10 @@ e) the proposal and ``say`` (vision.say: a number-checked template);
 f) no model answered (AI off, no key, budget or unconfirmed price refused, timeout, error): ``source: rules``,
    no instances, counts.seen null, ``say`` asks for a spoken count. Never an error to the app.
 
+Small instances (the app caps a look photo at 640 px, FR2.066): when labels were read but some came back unreadable
+and the instances' median short side is under VISION_LABEL_MIN_INSTANCE_PX (200 pixels), ``reasons`` gets ``labels:close_look_needed`` and
+``labels:small_image:<w>x<h>:instance_px=<n>``, and ``say`` ends by asking for a close look at a label.
+
 ``source``: ``model`` when the instances and every label batch were answered, ``partial`` when the instances were but
 some label batch was not (those instances are ``read: false``), ``rules`` otherwise. The look never stages or posts
 anything; a receipt posted with ``look_id`` links it (tasks/api.py). On a count task the line's expected quantity is
@@ -18,12 +22,13 @@ the book quantity, so it is never used (blind count, FR3.029): counts.expected i
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from statistics import median
+from types import MappingProxyType
 from typing import Any, Literal
 
 import structlog
@@ -53,7 +58,8 @@ from field_api.vision.say import say_for
 logger = structlog.get_logger(__name__)
 
 Case = Literal["grocery", "pharmacy", "generic"]
-DEFAULT_OBJECT: dict[str, str] = {"grocery": "pack", "pharmacy": "box", "generic": "item"}
+DEFAULT_OBJECT: Mapping[str, str] = MappingProxyType({"grocery": "pack", "pharmacy": "box", "generic": "item"})
+CLOSE_LOOK_SAY = " Some labels are too small to read: take a close look at one label."
 ERR_TASK = FieldError(status=404, code="FIELD-VIS-404-TASK", title="Task not found or out of scope")
 ERR_CAPTURE = FieldError(status=404, code="FIELD-VIS-404-CAPTURE", title="Capture not found or out of scope")
 ERR_LOOK = FieldError(status=404, code="FIELD-VIS-404-LOOK", title="Look not found or out of scope")
@@ -289,6 +295,13 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
     answered = False
     if found is not None and cap is not None:
         reads, answered = read_labels(ports.readers, cap, found, lc.expectation, ctx, reasons)
+    close_look = False
+    if found and cap is not None and reads:
+        unread = sum(1 for n in range(1, len(found) + 1) if not (reads.get(n) or LabelRead(False)).read)
+        px = int(median(min(f.box[2] - f.box[0], f.box[3] - f.box[1]) for f in found))
+        if unread and px < settings.label_min_instance_px():
+            close_look = True
+            reasons += ["labels:close_look_needed", f"labels:small_image:{cap.width}x{cap.height}:instance_px={px}"]
     seen = None if found is None else [_seen(n, reads.get(n)) for n in range(1, len(found) + 1)]
     check: Check = reconcile(seen, lc.expectation, today())
     source = "rules" if found is None else ("model" if answered else "partial")
@@ -298,7 +311,7 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
                "outcome": c.outcome} for c in ctx.calls]
     cost = sum((c.cost_usd for c in ctx.calls), Decimal(0))
     image = {"capture_id": body.capture_id, "width": cap.width if cap else None, "height": cap.height if cap else None}
-    say = say_for(check, lc.expectation)
+    say = say_for(check, lc.expectation) + (CLOSE_LOOK_SAY if close_look else "")
     latency = int((time.perf_counter() - t0) * 1000)
     with principal_tx(principal) as cur:
         cur.execute(

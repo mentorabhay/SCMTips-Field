@@ -200,3 +200,22 @@ def test_m5_v02_idempotent_and_validated(client: TestClient, site: dict[str, Any
     assert client.post("/v1/vision/looks", json=base, headers=v.h(site["sup"])).status_code == 403
     blind = _look(client, site, v, double, task_id=site["count"], line_id=site["count_line"], case="generic")
     assert blind["counts"]["expected"] is None and "7777" not in str(blind)
+
+
+def test_m5_v02_small_photo_with_unread_labels_asks_for_a_close_look(client: TestClient, site: dict[str, Any],
+                                                                     v: SimpleNamespace, ai_on: None) -> None:
+    """The app caps a look photo at 640 px: instances are counted, labels come back unreadable, and the look tells
+    the app (reasons labels:close_look_needed, labels:small_image:...) and the operator (say) to look closer."""
+    v.add_case_line(site, "grocery", ppu=12)
+    boxes = v.grid_boxes(20, width=640, height=480)
+    double = v.VisionDouble(boxes=boxes, width=640, height=480, labels={})
+    cap = v.upload_capture(client, site, v.photo(boxes, width=640, height=480))
+    look = _look(client, site, v, double, capture=cap)
+    assert look["source"] == "model" and look["counts"]["seen"] == 20
+    assert look["reasons"][:2] == ["labels:close_look_needed", "labels:small_image:640x480:instance_px=100"]
+    assert look["say"].endswith("Some labels are too small to read: take a close look at one label.")
+    assert look["proposal"]["reasons"][-1] == "20 labels not read"
+    readable = v.VisionDouble(boxes=boxes, width=640, height=480,
+                              labels={n: {"pieces_per_unit": 12} for n in range(1, 21)})
+    ok = _look(client, site, v, readable, capture=v.upload_capture(client, site, v.photo(boxes, 640, 480)))
+    assert ok["reasons"] == [] and "close look" not in ok["say"]

@@ -52,6 +52,7 @@
   tests:
   - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v02_no_model_answer_is_rules_never_an_error
   - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v02_labels_fall_back_to_baseten_then_partial
+  - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v02_small_photo_with_unread_labels_asks_for_a_close_look
   - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v02_sam_box_tokens_scaled_clipped_and_scored
   - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v02_sam_accepts_json_answer_and_bills_per_image
   - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v02_sam_failures_raise_and_close_the_reservation
@@ -65,7 +66,9 @@
     /docs/pricing-rate-limits) and Meta's meta-sam-parser package description; /docs/sam/segmenting and
     /docs/sam/reading-segmentation could not be fetched. No call reached api.meta.ai (no key, no route from the
     build sandbox). The SAM mask is not decoded (polygon null). Gate 0 (tools/probes/m5_gate0.py) is the first
-    real call.
+    real call. Small instances (the app's 640 px look photo): unread labels with a median instance short side under
+    VISION_LABEL_MIN_INSTANCE_PX (200) add reasons labels:close_look_needed and labels:small_image:WxH:instance_px=N
+    and ask for a close look in say; the 200 px figure is an estimate, UNVERIFIED until Gate 0.
 - id: M5-V03
   title: >-
     Label text (raw) kept 30 days like assistant turns: field.worker_purge_vision_raw(days) run by the worker, never
@@ -149,13 +152,17 @@
   - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_grocery_case_look_post_18_good_2_flagged
   - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_pharmacy_case_and_a_look_is_posted_once
   - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_erp_sim_refuses_an_unknown_quality_location
+  - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_spoken_flag_without_a_look_and_the_today_starter
   - tests/e2e/test_m3_sandbox_e2e.py::test_sandbox_receipt_new_barcode_soft_pegging_gr_101
   - tests/e2e/test_slice_receive_e2e.py::test_slice_goods_receipt_round_trip
   frs: []
   verified_at: null
   note: >-
     The counted quantity (and staged_hash) stays the whole received quantity: "receive 18, flag 2" is a count of 20
-    with flag_qty 2; flag at most counted minus damaged; flag_qty needs look_id. The quality storage location is
+    with flag_qty 2. As the app (stream B) sends it, POST /v1/count-records takes flag_qty, look_id and capture_id
+    and keeps the flag on the line (a count without flag_qty clears it), and the post request takes a top-level
+    look_id; a flag_qty map on the post request overrides the counted flags. A spoken flag without a look also
+    posts to 101Q. Flag at most counted minus damaged. The quality storage location is
     FIELD_QUALITY_SLOC (default 101Q). 101Q existed in erp-sim only as master data of plant 1010; receipts to it are
     new, through the simulator's YY1_QualityQuantity / YY1_QualityStorageLocation item fields. Real S/4 differs
     (UNVERIFIED): it would split the delivery item per storage location or receive into quality inspection stock;
@@ -176,9 +183,12 @@
   - services/field-api/src/field_api/assistant/rules.py
   - services/field-api/src/field_api/assistant/ports.py
   - services/field-api/src/field_api/assistant/tools.py
+  - tools/dev_stack/m5.py
+  - tools/dev_stack/stack.py
   tests:
   - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_grocery_case_look_post_18_good_2_flagged
   - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_pharmacy_case_and_a_look_is_posted_once
+  - tools/dev_stack/tests/test_m5.py::test_m5_v07_case_labels_and_commands
   - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_case_intents
   - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_voice_starters_create_and_open_the_case
   - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_production_site_and_unwired_build_refuse
@@ -188,5 +198,8 @@
   note: >-
     C1 grocery: 20 packs of 12 pieces by default, counted as "pack", material "biscuit pack"; C2 pharmacy: 10 boxes,
     window VISION_EXPIRY_WINDOW_DAYS (90), counted as "box", material "tablet box" (generic names, contract §6). The
-    delivery uses storage location FIELD_CASE_SLOC (101A) when the site lists it. The Today starters call the same
-    endpoint (stream B). Not yet run with real products, the phone or the glasses.
+    delivery uses storage location FIELD_CASE_SLOC (101A) when the site lists it. The app's Today starters send POST
+    /v1/sandbox/receipts {site_id, case} (answered {task_id, ref_doc_no}, the M3 shape), the same case receipt. `stack m5-cases` makes one open receipt of each kind on "Home (sandbox)" (re-run reuses them,
+    --reset cancels and remakes them), adds 101A and 101Q to plant HOME and the home site, and writes
+    var/m5_cases.html with the delivery numbers and product labels as QR codes; run three times on the build
+    sandbox's private stack (create, reuse, reset). Not yet run with real products, the phone or the glasses.

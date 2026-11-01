@@ -211,14 +211,21 @@ def test_m5_v06_grocery_case_look_post_18_good_2_flagged(home: dict[str, Any]) -
         "receive": 18, "flag": 2, "reasons": ["2 damaged", "2 packs hold 10, not 12: 4 pieces short"]}
     assert look["erp_document_id"] is None
 
-    _count(h, case["line_id"], 20)  # "receive 18, flag 2": 20 received, 2 of them flagged
-    bad = _post(h, case["task_id"], case["line_id"], 20, flag_qty={case["line_id"]: 2})
-    assert bad.status_code == 422 and bad.json()["code"] == "FIELD-POST-422-LOOK-REQUIRED"
+    # the app's count after a look: value = good + flagged, flag_qty, look_id, capture_id (stream B)
+    count = {"task_line_id": case["line_id"], "value": 20, "unit": "EA", "source": "manual", "flag_qty": 21,
+             "look_id": look["look_id"], "capture_id": look["capture_id"]}
+    bad = api.post("/v1/count-records", json=count, headers=_h(h["dev"]))
+    assert bad.status_code == 422 and bad.json()["code"] == "FIELD-POST-422-FLAG-QTY"
+    bad = api.post("/v1/count-records", json={**count, "flag_qty": 2, "look_id": str(uuid.uuid4())},
+                   headers=_h(h["dev"]))
+    assert bad.status_code == 404 and bad.json()["code"] == "FIELD-VIS-404-LOOK"
+    r = api.post("/v1/count-records", json={**count, "flag_qty": 2}, headers=_h(h["dev"]))
+    assert r.status_code == 201 and r.json()["flag_qty"] == 2.0, r.text
+    bad = _post(h, case["task_id"], case["line_id"], 20, look_id=str(uuid.uuid4()))
+    assert bad.status_code == 404 and bad.json()["code"] == "FIELD-VIS-404-LOOK"
     bad = _post(h, case["task_id"], case["line_id"], 20, look_id=look["look_id"], flag_qty={case["line_id"]: 21})
     assert bad.status_code == 422 and bad.json()["code"] == "FIELD-POST-422-FLAG-QTY"
-    bad = _post(h, case["task_id"], case["line_id"], 20, look_id=str(uuid.uuid4()), flag_qty={case["line_id"]: 2})
-    assert bad.status_code == 404 and bad.json()["code"] == "FIELD-VIS-404-LOOK"
-    r = _post(h, case["task_id"], case["line_id"], 20, look_id=look["look_id"], flag_qty={case["line_id"]: 2})
+    r = _post(h, case["task_id"], case["line_id"], 20, look_id=look["look_id"])  # the app: top-level look_id only
     assert r.status_code == 202 and r.json()["status"] == "queued", r.text
     erp_doc = r.json()["posting_request_id"]
     payload = _sql(ADMIN, "SELECT payload FROM field.erp_document WHERE id = %s", (erp_doc,), h["tenant"])[0][0]
@@ -275,6 +282,35 @@ def test_m5_v06_pharmacy_case_and_a_look_is_posted_once(home: dict[str, Any]) ->
     assert again.status_code == 422
     r = api.post("/v1/sandbox/cases", json={"site_id": h["site"], "case": "grocery", "units": 0}, headers=_h(h["op"]))
     assert r.status_code == 422
+
+
+def test_m5_v06_spoken_flag_without_a_look_and_the_today_starter(home: dict[str, Any]) -> None:
+    """The Today starter is POST /v1/sandbox/receipts {site_id, case} (the app); a spoken "flag 1" recorded with the
+    count posts 1 to 101Q without a look; flag_qty on the post overrides the counted flag; a later count without a
+    flag clears it."""
+    h = home
+    r = api.post("/v1/sandbox/receipts", json={"site_id": h["site"], "case": "pharmacy"}, headers=_h(h["op"]))
+    assert r.status_code == 201 and set(r.json()) == {"task_id", "ref_doc_no"}, r.text
+    task = r.json()["task_id"]
+    line = _sql(ADMIN, "SELECT l.id::text, l.expected_qty, v.expiry_window_days FROM field.task_line l"
+                       " JOIN field.vision_case_line v ON v.task_line_id = l.id WHERE l.task_id = %s", (task,),
+                h["tenant"])
+    assert [(float(q), w) for _i, q, w in line] == [(10.0, 90)]
+    lid = line[0][0]
+    body = {"task_line_id": lid, "value": 10, "unit": "EA", "source": "manual"}
+    assert api.post("/v1/count-records", json={**body, "flag_qty": 3}, headers=_h(h["dev"])).status_code == 201
+    assert api.post("/v1/count-records", json=body, headers=_h(h["dev"])).status_code == 201  # M4 body: flag cleared
+    assert _sql(ADMIN, "SELECT flag_qty FROM field.task_line WHERE id = %s", (lid,), h["tenant"]) == [(Decimal(0),)]
+    assert api.post("/v1/count-records", json={**body, "flag_qty": 3}, headers=_h(h["dev"])).status_code == 201
+    r = _post(h, task, lid, 10, flag_qty={lid: 1})  # the post's flag wins over the counted 3
+    assert r.status_code == 202, r.text
+    assert _drain(h["tenant"]) == 2
+    doc_no, year, payload = _sql(ADMIN, "SELECT doc_number, fiscal_year, payload FROM field.erp_document WHERE id = %s",
+                                 (r.json()["posting_request_id"],), h["tenant"])[0]
+    assert payload["look_id"] is None and payload["flag_qty"] == {lid: "1.000"}
+    moves = _sql(ERPSIM, "SELECT storage_location, quantity FROM erpsim.document_item WHERE doc_number = %s"
+                         " AND fiscal_year = %s ORDER BY line_no", (doc_no, year))
+    assert [(s, float(q)) for s, q in moves] == [("101A", 9.0), ("101Q", 1.0)]
 
 
 def test_m5_v06_erp_sim_refuses_an_unknown_quality_location(home: dict[str, Any]) -> None:

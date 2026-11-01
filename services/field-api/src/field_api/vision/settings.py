@@ -12,6 +12,8 @@ Other settings:
   VISION_INSTANCES_MODEL       default sam-3.1
   VISION_LABELS_MODEL          default ASSISTANT_MODEL, else muse-spark-1.3
   VISION_BASETEN_MODEL_ID      default BASETEN_MODEL_ID (the Llama 3.2 Vision deployment); needs BASETEN_BASE_URL
+  VISION_LABEL_MIN_INSTANCE_PX default 200   labels left unread while the instances' median short side is smaller
+                                             than this (pixels of the capture): reason labels:close_look_needed
   META_MODEL_API_BASE_URL      default https://api.meta.ai/v1 (the dev stack points it at its local model stand-in)
 """
 
@@ -87,3 +89,7 @@ def baseten_vision_model() -> str:
 
 def baseten_base_url() -> str:
     return os.getenv("BASETEN_BASE_URL", "").strip()
+
+
+def label_min_instance_px() -> int:
+    return _int("VISION_LABEL_MIN_INSTANCE_PX", 200, 8, 5000)

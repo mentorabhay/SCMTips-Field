@@ -16,8 +16,10 @@ FIELD_QUALITY_SLOC (default 101Q). A production site refuses (403 FIELD-SBX-403-
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
+from types import MappingProxyType
 from typing import Literal, TypedDict
 
 from field_api.auth.jwt import Principal
@@ -38,10 +40,10 @@ class CaseSpec:
     pieces_per_unit: int | None
 
 
-CASES: dict[str, CaseSpec] = {
+CASES: Mapping[str, CaseSpec] = MappingProxyType({
     "grocery": CaseSpec("pack", "biscuit pack", "M5-C1-PACK", 20, 12),
     "pharmacy": CaseSpec("box", "tablet box", "M5-C2-BOX", 10, None),
-}
+})
 
 
 class CaseResult(TypedDict):

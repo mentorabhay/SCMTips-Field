@@ -30,28 +30,33 @@ from field_api.vision.ports import CallContext, LabelRead, ModelCall
 from field_api.vision.sam import data_url
 
 ITEM_FIELDS = ("n", "label_readable", "pieces_per_unit", "batch", "expiry", "damaged", "damage_note", "label_text")
-LABEL_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {"items": {"type": "array", "items": {
+def label_schema() -> dict[str, Any]:
+    """The JSON schema of a label answer (a fresh dict per call)."""
+    return {
         "type": "object",
-        "properties": {
-            "n": {"type": "integer"},
-            "label_readable": {"type": "boolean"},
-            "pieces_per_unit": {"type": ["integer", "null"]},
-            "batch": {"type": ["string", "null"]},
-            "expiry": {"type": ["string", "null"]},
-            "damaged": {"type": "boolean"},
-            "damage_note": {"type": ["string", "null"]},
-            "label_text": {"type": ["string", "null"]},
-        },
-        "required": list(ITEM_FIELDS),
+        "properties": {"items": {"type": "array", "items": {
+            "type": "object",
+            "properties": {
+                "n": {"type": "integer"},
+                "label_readable": {"type": "boolean"},
+                "pieces_per_unit": {"type": ["integer", "null"]},
+                "batch": {"type": ["string", "null"]},
+                "expiry": {"type": ["string", "null"]},
+                "damaged": {"type": "boolean"},
+                "damage_note": {"type": ["string", "null"]},
+                "label_text": {"type": ["string", "null"]},
+            },
+            "required": list(ITEM_FIELDS),
+            "additionalProperties": False,
+        }}},
+        "required": ["items"],
         "additionalProperties": False,
-    }}},
-    "required": ["items"],
-    "additionalProperties": False,
-}
-RESPONSE_FORMAT: dict[str, Any] = {"type": "json_schema",
-                                   "json_schema": {"name": "LabelReads", "strict": True, "schema": LABEL_SCHEMA}}
+    }
+
+
+def response_format() -> dict[str, Any]:
+    return {"type": "json_schema", "json_schema": {"name": "LabelReads", "strict": True, "schema": label_schema()}}
+
 
 _BATCH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9./-]{0,31}$")
 _YM = re.compile(r"^(\d{4})[-/.](\d{1,2})(?:[-/.](\d{1,2}))?$")
@@ -177,7 +182,7 @@ class ChatLabelReader:
         try:
             res = self.chat.chat(messages(crops, case, object_noun), timeout_s=timeout_s, max_tokens=max_tokens,
                                  purpose="vision", tenant_id=ctx.tenant_id, request_id=ctx.request_id, log=log,
-                                 response_format=RESPONSE_FORMAT if self.use_response_format else None,
+                                 response_format=response_format() if self.use_response_format else None,
                                  images=len(crops))
         except ModelError as e:
             ctx.calls.append(self._call(log, e.code))
