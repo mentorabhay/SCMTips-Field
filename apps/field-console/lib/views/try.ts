@@ -177,19 +177,21 @@ export function findings(look: TryLook): string[] {
     return out;
   }
   if (c.damaged) out.push(`${c.damaged} damaged.`);
+  // Statements about labels need at least one label read (hosted 1 Nov: 0 seen still said "on every label read").
+  const read = look.instances.filter((i) => i.label.read).length;
   if (look.pack) {
     const d = look.pack.pieces_difference;
     if (look.pack.mismatches.length) {
       out.push(`${look.pack.mismatches.length} ${plural(look.object, look.pack.mismatches.length)} not ${look.pack.expected_pieces_per_unit} per pack` +
         (d ? `: ${Math.abs(d)} pieces ${d < 0 ? "short" : "over"}.` : "."));
-    } else if (c.seen != null) out.push(`Pack size ${look.pack.expected_pieces_per_unit} on every label read.`);
+    } else if (read > 0) out.push(`Pack size ${look.pack.expected_pieces_per_unit} on every label read.`);
   }
   if (look.expiry) {
     const near = look.expiry.flagged.filter((f) => f.reason === "near").length;
     const expired = look.expiry.flagged.filter((f) => f.reason === "expired").length;
     if (expired) out.push(`${expired} expired.`);
     if (near) out.push(`${near} expire${near === 1 ? "s" : ""} within ${look.expiry.window_days} days.`);
-    if (!near && !expired && c.seen != null) out.push(`Nothing expires within ${look.expiry.window_days} days.`);
+    if (!near && !expired && read > 0) out.push(`Nothing expires within ${look.expiry.window_days} days.`);
     if (look.expiry.batches.length > 1) out.push(`${look.expiry.batches.length} batches: ${look.expiry.batches.join(", ")}.`);
   }
   const unread = look.instances.filter((i) => !i.label.read).length;
@@ -369,4 +371,12 @@ export function browserVoice(
 export function costText(models: TryLook["models"]): string {
   const total = models.reduce((s, m) => s + (Number.isFinite(m.cost_usd) ? m.cost_usd : 0), 0);
   return `$${total.toFixed(4)}`;
+}
+
+/** The Look button's words: while the request runs, while labels are read, while the answer is spoken (hosted 1 Nov:
+ * it kept saying "Reading the labels…" after the final answer, during the speech). */
+export function lookButtonLabel(busy: boolean, look: TryLook | null): string {
+  if (!busy) return "Look";
+  if (!look) return "Looking…";
+  return look.final === false ? "Reading the labels…" : "Speaking the answer…";
 }

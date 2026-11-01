@@ -12,6 +12,7 @@ import {
   findings,
   fitWithin,
   itemRows,
+  lookButtonLabel,
   modeNotice,
   outlines,
   plural,
@@ -133,6 +134,23 @@ describe("findings, item rows and the proposal", () => {
     expect(itemRows(body)[0].label).toBe("batch B1 · expires 2027-09");
     expect(itemRows(body)[2].label).toBe("Label not read");
     expect([plural("box", 2), plural("pack", 2), plural("pack", 1)]).toEqual(["boxes", "packs", "pack"]);
+  });
+});
+
+describe("hosted look of 1 Nov: nothing seen, and the button after the answer", () => {
+  test("no label read means no claim about every label or about expiry", () => {
+    const none = final({ counts: { expected: 8, seen: 0, damaged: 0, good: 0 }, instances: [], pack: { ...final().pack!, mismatches: [], pieces_difference: 0 } });
+    expect(findings(none)).toEqual(["0 of 8 packs seen."]);
+    const pharmacyNone = final({ case: "pharmacy", object: "box", counts: { expected: 5, seen: 0, damaged: 0, good: 0 }, pack: null,
+      expiry: { window_days: 90, flagged: [], batches: [] }, instances: [] });
+    expect(findings(pharmacyNone)).toEqual(["0 of 5 boxes seen."]);
+  });
+
+  test("the Look button says what is happening, never reading labels after the final answer", () => {
+    expect(lookButtonLabel(false, null)).toBe("Look");
+    expect(lookButtonLabel(true, null)).toBe("Looking…");
+    expect(lookButtonLabel(true, first())).toBe("Reading the labels…");
+    expect(lookButtonLabel(true, final())).toBe("Speaking the answer…");
   });
 });
 

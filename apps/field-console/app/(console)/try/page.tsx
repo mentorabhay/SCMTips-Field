@@ -15,6 +15,7 @@ import {
   findings,
   fitWithin,
   itemRows,
+  lookButtonLabel,
   modeNotice,
   outlines,
   pollUntilFinal,
@@ -353,7 +354,7 @@ export default function TryPage() {
             disabled={busy}
             className="min-h-[48px] rounded-md bg-primary px-5 text-lg font-bold text-white hover:bg-primary-hover disabled:opacity-60"
           >
-            {busy ? (look ? "Reading the labels…" : "Looking…") : "Look"}
+            {lookButtonLabel(busy, look)}
           </button>
           {error ? <span role="alert" className="font-bold text-alert-ink">{error}</span> : null}
         </div>
