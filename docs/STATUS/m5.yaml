@@ -983,3 +983,56 @@
     Contract only. Everything in C3 is SAMPLE (fictional OEM Kestrel Optics (SAMPLE), OEM simulator); a real OEM
     would have to sign its seals and open its registry, which none does for this build. Partial until proven on the
     owner's phone and glasses.
+- id: M5-T02
+  title: >-
+    OEM simulator (services/oem-sim): the SAMPLE maker Kestrel Optics (SAMPLE), its own schema oemsim and Alembic
+    history, units + history + atomic first-check claims, Ed25519 key from the secret OEMSIM_SIGNING_SEED, public
+    keys at /_oem/.well-known/oem-keys, registry and admin routes behind X-Sim-Admin-Token, /_oem/ui; mounted by
+    erp-sim under /_oem (ERPSIM_OEM_ENABLED)
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/oem-sim/src/oem_sim/routes.py
+  - services/oem-sim/src/oem_sim/keys.py
+  - services/oem-sim/src/oem_sim/pages.py
+  - services/oem-sim/src/oem_sim/app.py
+  - services/oem-sim/alembic/versions/oemsim_0001_baseline.py
+  - services/erp-sim/src/erp_sim/app.py
+  tests:
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_keys_need_the_seed_and_publish_one_ed25519_key
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_admin_unit_returns_a_signed_code_that_stays_valid_when_seeded_again
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_a_tampered_code_fails_the_signature
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_first_check_first_then_same_then_other_checker
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t07_first_check_race_one_of_many_concurrent_checks_wins
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_forgery_is_never_a_registered_unit_and_reset_clears_everything
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_admin_page_lists_units_and_erp_sim_mounts_the_oem_routes
+  frs: []
+  verified_at: null
+  note: >-
+    Mounted inside erp-sim (no new container or hostname): one router, its own schema oemsim with version table
+    oemsim.alembic_version in the simulator database (OEMSIM_DATABASE_URL, default ERPSIM_DATABASE_URL); the
+    alembic job, the dev stack's migrate and the image comment run services/oem-sim too. The private key is never
+    stored: it is derived from OEMSIM_SIGNING_SEED (generated into .env.local by stack up, a host secret otherwise);
+    the nonce is derived per serial so seeding again keeps printed labels valid. The registry route needs the same
+    admin token field-api already holds for erp-sim's sandbox. A SIMULATOR of a maker; no real maker signs seals or
+    opens a registry for this build. Partial until proven on the owner's phone and glasses.
+- id: M5-T03
+  title: >-
+    Printable seal-label sheet /_oem/labels: five scenario labels (signed QR + a SAMPLE seal drawn in SVG, no real
+    logos) and the cloned code printed twice; captions and expected verdicts outside the cut line
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/oem-sim/src/oem_sim/labels.py
+  - services/oem-sim/src/oem_sim/pages.py
+  tests:
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t03_label_sheet_prints_every_scenario_and_the_clone_twice
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t03_qr_path_draws_only_dark_modules_of_the_code
+  frs: []
+  verified_at: null
+  note: >-
+    QR drawn from qrcode's module matrix as one SVG path (qrcode is a runtime dependency of oem-sim). The tampered
+    label (L5) is drawn with a torn seal band and a tape strip, and the sheet asks for real tape over it. Not yet
+    printed and scanned with the glasses or the phone.

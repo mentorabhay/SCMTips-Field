@@ -12,7 +12,11 @@ dependencies = [
     "psycopg[binary]>=3.2.3",
     "jinja2>=3.1.4",
     "structlog>=24.4.0",
+    "oem-sim",
 ]
+
+[tool.uv.sources]
+oem-sim = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

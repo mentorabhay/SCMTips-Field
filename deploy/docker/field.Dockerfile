@@ -4,7 +4,8 @@
 #   docker build -f deploy/docker/field.Dockerfile --target erp-sim      -t scmtips-erp-sim .
 # One locked environment (uv.lock, runtime dependencies only) holds field-api, field-worker, the ERP connector and
 # erp-sim; the stand-in core (tools/fake-core, a dev double) is never installed. Every target runs as a non-root user.
-# Migrations: the field-api image, `alembic upgrade head` in services/field-api and services/erp-sim (compose
+# Migrations: the field-api image, `alembic upgrade head` in services/field-api, services/erp-sim and services/oem-sim
+# (the OEM simulator of M5 case C3, schema oemsim in the erpsim database, mounted by erp-sim under /_oem; compose
 # service field-migrate in the hosting kit). Settings by name: deploy/hosted/field.env.example.
 
 ARG PYTHON_IMAGE=python:3.13-slim-bookworm
@@ -25,7 +26,9 @@ COPY pyproject.toml uv.lock ./
 COPY services/field-api/pyproject.toml services/field-api/
 COPY services/field-worker/pyproject.toml services/field-worker/
 COPY services/erp-sim/pyproject.toml services/erp-sim/
+COPY services/oem-sim/pyproject.toml services/oem-sim/
 COPY connectors/sap/pyproject.toml connectors/sap/
+COPY connectors/oem/pyproject.toml connectors/oem/
 COPY compat/pyproject.toml compat/
 COPY tools/fake-core/pyproject.toml tools/fake-core/
 RUN uv sync --frozen --no-dev --no-install-project --no-install-workspace

@@ -90,7 +90,7 @@ RUN = ROOT / "var" / "run"
 LOG = ROOT / "var" / "log"
 STATE = ROOT / "var" / "dev_stack.json"
 GENERATED_SECRETS = ("FIELD_JWT_SECRET", "FIELD_CURSOR_HMAC_SECRET", "FIELD_P13F_WEBHOOK_SECRET", "FIELD_EVIDENCE_SECRET",
-                     "FIELD_CORE_INVENTORY_FEED_SECRET", "FIELD_CORE_SUPPLY_FEED_SECRET")
+                     "FIELD_CORE_INVENTORY_FEED_SECRET", "FIELD_CORE_SUPPLY_FEED_SECRET", "OEMSIM_SIGNING_SEED")
 # Settings an older .env.local gets appended once (not secrets; the owner may change them).
 ENV_DEFAULTS = (("FIELD_CORE_TARGET", "standin"),)
 STANDIN_FEEDS = {"FIELD_CORE_INVENTORY_FEED_URL": ("FAKE_CORE_INVENTORY_FEED_ID", "standin-inventory"),
@@ -307,7 +307,7 @@ def ensure_database() -> None:
 
 def migrate() -> None:
     env = {**os.environ, "FIELD_DATABASE_URL": _admin_url("field"), "ERPSIM_DATABASE_URL": _admin_url("erpsim")}
-    for svc in ("field-api", "erp-sim"):
+    for svc in ("field-api", "erp-sim", "oem-sim"):  # oem-sim: schema oemsim in the erpsim database (M5 C3)
         subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=ROOT / "services" / svc,
                        env=env, check=True)
 
