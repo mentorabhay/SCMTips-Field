@@ -1,7 +1,11 @@
 package com.scmtips.field.app
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.KeyEvent
@@ -22,6 +26,8 @@ import com.scmtips.field.app.glasses.DatGlasses
 import com.scmtips.field.app.glasses.GlassesAdvice
 import com.scmtips.field.app.jobs.InputSource
 import com.scmtips.field.app.scan.WedgeBuffer
+import com.scmtips.field.app.shell.PermissionStep
+import com.scmtips.field.app.shell.ShellText
 import com.scmtips.field.app.ui.Actions
 import com.scmtips.field.app.ui.AppRoot
 import com.scmtips.field.app.ui.CrashScreen
@@ -86,9 +92,13 @@ class MainActivity : ComponentActivity() {
         }
         if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
         if (app.datInitError == null && DatGlasses.isVoiceLaunch(intent)) controller.onVoiceLaunch()
-        androidPermissions.launch(
-            arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS),
-        )
+        // M5-U01: a new install asks on first run's Permissions step instead, one permission at a time with its reason.
+        val shellNow = controller.ui.value.shell
+        if (shellNow.classic || shellNow.setupDone) {
+            androidPermissions.launch(
+                arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS),
+            )
+        }
         lifecycleScope.launch { controller.cameraRequests.collect { scanWithCamera() } }
         lifecycleScope.launch { controller.photoRequests.collect { takePhoneLookPhoto() } }
         val actions = Actions(
@@ -144,6 +154,12 @@ class MainActivity : ComponentActivity() {
             uploadProbe = { agree -> controller.uploadProbe(agree) },
             closeProbe = controller::closeProbe,
             check = controller::checkButton,
+            shell = controller::shell,
+            openUrl = ::openUrl,
+            requestPermission = ::requestFirstRunPermission,
+            chooseSite = controller::chooseSite,
+            setScanner = controller::setScanner,
+            setServers = controller::setServers,
         )
         setContent {
             val ui by controller.ui.collectAsState()
@@ -153,6 +169,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Android's "Remove animations" (Settings › Accessibility); read again on every resume, it can change meanwhile.
+        val scale = runCatching { Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) }.getOrDefault(1f)
+        if (app.crashLog.read() == null) controller.setReduceMotion(ShellText.reduceMotion(scale))
         if (app.crashLog.read() == null) controller.inForeground = true
     }
 
@@ -298,6 +317,30 @@ class MainActivity : ComponentActivity() {
             .addOnSuccessListener { code -> code.rawValue?.let { controller.onCode(it, InputSource.SCAN) } ?: controller.scanCancelled() }
             .addOnCanceledListener { controller.scanCancelled() } // a box check waiting for this scan gets no code (M5-T05)
             .addOnFailureListener { e -> controller.scanCancelled(); controller.toast(e.message ?: "The scan did not work. Try again.") }
+    }
+
+    /** M5-U01: the SCMTIPS reset and sign-up pages, in the phone's browser. */
+    private fun openUrl(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: ActivityNotFoundException) {
+            controller.toast("No browser on this phone could open $url")
+        }
+    }
+
+    private val firstRunPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (!ok) controller.toast("Not allowed. You can allow it later in Settings › Apps › SCMTips Field.")
+    }
+
+    /** M5-U01: first run's Permissions step. Nearby devices goes through the glasses launcher (it starts watching the glasses). */
+    private fun requestFirstRunPermission(step: PermissionStep) {
+        when {
+            Build.VERSION.SDK_INT < step.minSdk || hasPermission(step.androidPermission) -> controller.toast("${step.title}: already allowed.")
+            step == PermissionStep.CAMERA && !declaresPermission(Manifest.permission.CAMERA) ->
+                controller.toast("The phone's camera app takes the photos; no permission is needed for it.")
+            step == PermissionStep.NEARBY -> androidPermissions.launch(arrayOf(step.androidPermission))
+            else -> firstRunPermission.launch(step.androidPermission)
+        }
     }
 
     private fun sendFeedback() {

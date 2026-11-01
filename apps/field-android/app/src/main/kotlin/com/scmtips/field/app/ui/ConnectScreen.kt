@@ -74,7 +74,7 @@ fun ConnectScreen(ui: AppUi, a: Actions) {
 
 /** E-mail + password, or a pairing code; the two server addresses (dev defaults, kept once typed). */
 @Composable
-private fun SignInCard(ui: AppUi, a: Actions) {
+internal fun SignInCard(ui: AppUi, a: Actions) {
     var withCode by rememberSaveable { mutableStateOf(false) }
     var email by rememberSaveable(ui.signIn.email) { mutableStateOf(ui.signIn.email) }
     var password by remember { mutableStateOf("") }

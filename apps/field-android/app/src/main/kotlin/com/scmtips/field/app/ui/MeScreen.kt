@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.AppUi
+import com.scmtips.field.app.shell.ShellAction
 import com.scmtips.field.app.ui.theme.CardBg
 import com.scmtips.field.app.ui.theme.Divider
 import com.scmtips.field.app.ui.theme.Ink
@@ -68,6 +69,11 @@ fun MeScreen(ui: AppUi, a: Actions) {
                 if (ui.audioOnly) "Turn off" else "Turn on", a.toggleAudioOnly, last = true)
         }
         CameraTestCard(ui.probe, a)
+        // M5-U01: the classic layout's way back to the redesign (the new layout has it in Settings › Diagnostics).
+        Column(Modifier.fillMaxWidth().background(CardBg, Corner).border(1.dp, Line, Corner)) {
+            SettingRow("Layout", if (ui.shell.classic) "Classic · the old three tabs" else "New · role homes and a tab bar",
+                if (ui.shell.classic) "Use the new layout" else "Use classic", { a.shell(ShellAction.Classic(!ui.shell.classic)) }, last = true)
+        }
         CardBox {
             Text("Talking to the glasses", fontWeight = FontWeight.Bold, color = Ink)
             Text("During a work session the glasses' microphone hears you; just speak (or start with “Field” when the attention word is on). " +

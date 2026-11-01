@@ -119,6 +119,10 @@ import com.scmtips.field.app.check.CodeScanner
 import com.scmtips.field.app.check.SealCamera
 import com.scmtips.field.app.check.SealShot
 import com.scmtips.field.app.session.CheckPort
+import com.scmtips.field.app.shell.FirstRun
+import com.scmtips.field.app.shell.ShellAction
+import com.scmtips.field.app.shell.ShellNav
+import com.scmtips.field.app.shell.ShellView
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -189,6 +193,8 @@ data class AppUi(
     val probe: CameraProbe? = null,
     /** M5-T05: the C3 box check (photo, seal code, verdict, signals, its claim and evidence page). */
     val check: CheckView = CheckView(),
+    /** M5-U01: the redesign's shell (first run, tab, page, chosen home, classic layout, reduce motion). */
+    val shell: ShellView = ShellView(),
 )
 
 /** Who is signed in against the core (no tokens here: AppUi is drawn and logged freely). */
@@ -451,6 +457,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
             coreUrl = SignInDefaults.coreUrl(accounts.lastCoreUrl, fieldUrl, servers), fieldUrl = fieldUrl, email = accounts.lastEmail.orEmpty(),
         ))
         val saved = accounts.load()
+        restoreShell(connectedAtStart = saved != null || prefs.getString(KEY_PAIRING, null) != null)
         when {
             saved != null && !saved.accessExpired(System.currentTimeMillis()) -> attachAccount(saved, fromScan = false)
             saved != null -> _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(error = "Your SCMTIPS sign-in has expired. Sign in again."))
@@ -503,6 +510,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
             attentionWord = _ui.value.attentionWord,
             signIn = _ui.value.signIn.copy(busy = false, error = null, coreUrl = accounts.lastCoreUrl ?: _ui.value.signIn.coreUrl,
                 fieldUrl = accounts.lastFieldUrl ?: _ui.value.signIn.fieldUrl),
+            shell = ShellNav.signedOut(_ui.value.shell).also { saveShell(it) },
         )
     }
 
@@ -1419,9 +1427,16 @@ class FieldController(private val context: Context, private val toolkitError: ()
 
     /** Me → Site → Change (signed in with SCMTIPS): the next site field-api lists; Today reloads for it (M5-H05). */
     fun nextSite() {
-        val a = account ?: return
         val current = _ui.value.pairing?.siteId
         val site = SiteChoice.next(_ui.value.sites, current) ?: return
+        chooseSite(site.id)
+    }
+
+    /** M5-U: the site picked on first run's Site and role, or Profile's site list (signed in with SCMTIPS). */
+    fun chooseSite(siteId: String) {
+        val a = account ?: return
+        val site = _ui.value.sites.firstOrNull { it.id == siteId } ?: return
+        if (site.id == _ui.value.pairing?.siteId) return
         accounts.chosenSite = site.id
         siteModes?.remember(site.id, site.mode)
         _ui.value = _ui.value.copy(pairing = a.pairing(site.id, site.name), sandbox = site.mode == SiteModes.SANDBOX, tasks = emptyList())
@@ -1432,7 +1447,11 @@ class FieldController(private val context: Context, private val toolkitError: ()
 
     fun cycleScanner() {
         val all = ScannerKind.entries
-        val next = all[(all.indexOf(_ui.value.scanner) + 1) % all.size]
+        setScanner(all[(all.indexOf(_ui.value.scanner) + 1) % all.size])
+    }
+
+    /** M5-U05: Settings › Scanning with (Glasses / Phone camera / Handheld). */
+    fun setScanner(next: ScannerKind) {
         prefs.edit().putString(KEY_SCANNER, next.name).apply()
         runner?.scanner = next
         _ui.value = _ui.value.copy(scanner = next)
@@ -1495,6 +1514,53 @@ class FieldController(private val context: Context, private val toolkitError: ()
             File(dir, "feedback-${System.currentTimeMillis()}.txt").writeText(text)
         }
         return text
+    }
+
+    // --- M5-U shell ------------------------------------------------------------------------------
+
+    private fun restoreShell(connectedAtStart: Boolean) {
+        fun flag(key: String): Boolean? = if (prefs.contains(key)) prefs.getBoolean(key, false) else null
+        val v = ShellView(
+            welcomeSeen = FirstRun.initialFlag(flag(KEY_WELCOME), connectedAtStart),
+            setupDone = FirstRun.initialFlag(flag(KEY_SETUP), connectedAtStart),
+            savedHome = prefs.getString(KEY_HOME, null),
+            classic = prefs.getBoolean(KEY_CLASSIC, false),
+            reduceMotion = _ui.value.shell.reduceMotion,
+        )
+        saveShell(v)
+        _ui.value = _ui.value.copy(shell = v)
+    }
+
+    private fun saveShell(v: ShellView) {
+        prefs.edit().putBoolean(KEY_WELCOME, v.welcomeSeen).putBoolean(KEY_SETUP, v.setupDone).putBoolean(KEY_CLASSIC, v.classic)
+            .apply { if (v.savedHome == null) remove(KEY_HOME) else putString(KEY_HOME, v.savedHome) }.apply()
+    }
+
+    /** Every shell navigation (first run, tabs, pages, role switcher, classic layout); the rules are ShellNav's. */
+    fun shell(a: ShellAction) {
+        val u = _ui.value
+        val next = ShellNav.reduce(u.shell, a, connected = u.signedIn != null || u.pairing != null)
+        if (next == u.shell) return
+        if (next.welcomeSeen != u.shell.welcomeSeen || next.setupDone != u.shell.setupDone || next.savedHome != u.shell.savedHome ||
+            next.classic != u.shell.classic) saveShell(next)
+        if (next.classic != u.shell.classic) log("Layout: ${if (next.classic) "classic" else "new"}")
+        _ui.value = u.copy(shell = next)
+    }
+
+    /** MainActivity.onResume: Android's "Remove animations" (ANIMATOR_DURATION_SCALE == 0). */
+    fun setReduceMotion(on: Boolean) {
+        if (_ui.value.shell.reduceMotion != on) _ui.value = _ui.value.copy(shell = _ui.value.shell.copy(reduceMotion = on))
+    }
+
+    /** Settings › Connections while signed out: the two server addresses the next sign-in uses (checked as on sign-in). */
+    fun setServers(coreUrl: String, fieldUrl: String) {
+        if (account != null || _ui.value.pairing != null) return toast("Sign out first to change the servers.")
+        val (core, coreWhy) = SignInDefaults.check(coreUrl, "SCMTIPS")
+        val (field, fieldWhy) = SignInDefaults.check(fieldUrl, "SCMTips Field server")
+        if (core == null || field == null) return toast(coreWhy ?: fieldWhy)
+        accounts.rememberServers(core, field)
+        _ui.value = _ui.value.copy(signIn = _ui.value.signIn.copy(coreUrl = core, fieldUrl = field, error = null))
+        toast("Servers saved. Sign in to use them.")
     }
 
     fun toast(text: String?) {
@@ -1597,6 +1663,10 @@ class FieldController(private val context: Context, private val toolkitError: ()
         private const val KEY_VISIT_SITE = "visit_site_id"
         private const val KEY_CLIMB_SEQ = "climb_seq"
         private const val KEY_ATTENTION = "attention_word"
+        private const val KEY_WELCOME = "shell_welcome_seen"
+        private const val KEY_SETUP = "shell_setup_done"
+        private const val KEY_HOME = "shell_home"
+        private const val KEY_CLASSIC = "shell_classic_layout"
 
         /** Answers meaning "this core has no POST /v1/auth/app/token" (then the wearable pairing is tried). */
         private val NO_APP_SIGN_IN = setOf(404, 405, 501)
