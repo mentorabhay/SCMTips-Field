@@ -92,6 +92,7 @@ function Nav() {
 function Header() {
   const { session, signOut } = useSession();
   const router = useRouter();
+  const path = usePathname() ?? "/";
   return (
     <header className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-line bg-card px-4 py-3.5 sm:px-6">
       <Link href="/" className="flex items-center gap-2.5 text-lg font-bold text-ink no-underline hover:text-ink">
@@ -113,6 +114,13 @@ function Header() {
               {session.displayName || session.principalId} · {roleLabel(session.roles)}
             </span>
           </div>
+          <Link
+            href="/phone"
+            aria-current={path === "/phone" ? "page" : undefined}
+            className="inline-flex min-h-[44px] items-center rounded-md border border-control bg-card px-3 font-bold text-ink no-underline hover:bg-soft hover:text-ink"
+          >
+            Sign in your phone
+          </Link>
           <button
             type="button"
             onClick={() => {

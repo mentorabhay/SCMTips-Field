@@ -1,6 +1,6 @@
 /**
  * The console's sign-in route handlers (M5-J01), kept here so tests call them with an injected fetch and env.
- * app/api/console-auth/{signin,refresh,signout}/route.ts bind them to the real fetch and process.env.
+ * app/api/console-auth/{signin,refresh,signout,pairing}/route.ts bind them to the real fetch and process.env.
  *
  * Responses carry only session information (never a token): `{ session: SessionInfo }` on success,
  * `{ code, message }` on a refusal. The tokens travel only in httpOnly cookies (see lib/coreSignIn.ts).
@@ -25,6 +25,7 @@ import {
   type Refusal,
   type SignInResult,
 } from "./coreSignIn";
+import { requestPairingCode } from "./phonePairing";
 
 export interface HandlerDeps {
   fetch: (input: string, init?: RequestInit) => Promise<Response>;
@@ -99,4 +100,20 @@ export async function handleSignOut(req: NextRequest, deps: Pick<HandlerDeps, "e
   if (!sameOrigin(req.headers, req.url)) return refusal({ status: 403, code: "cross_site", message: COPY.crossSite });
   const res = new NextResponse(null, { status: 204, headers: NO_STORE });
   return setCookies(res, clearedCookies(secure(req, deps.env)));
+}
+
+/**
+ * POST /api/console-auth/pairing (M5-L03): a single-use code that signs the person's phone in, from the core token
+ * cookie. Answers `{code, expires_at, expires_in, link}`; never a token. 401 without a core sign-in.
+ */
+export async function handlePairing(req: NextRequest, deps: HandlerDeps): Promise<NextResponse> {
+  const config = coreSignInConfig(deps.env);
+  if (!config) return refusal({ status: 404, code: "not_configured", message: COPY.notConfigured });
+  if (!sameOrigin(req.headers, req.url)) return refusal({ status: 403, code: "cross_site", message: COPY.crossSite });
+  const result = await requestPairingCode({ fetch: deps.fetch, config }, req.cookies.get(CORE_COOKIE)?.value, deps.env, deps.nowS() * 1000);
+  if (!result.ok) {
+    const clear = result.refusal.code === "session_ended" ? clearedCookies(secure(req, deps.env)) : [];
+    return refusal(result.refusal, clear);
+  }
+  return NextResponse.json(result.body, { status: 200, headers: NO_STORE });
 }

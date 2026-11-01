@@ -1631,3 +1631,66 @@
     two-line labels, C's is 58 dp and SemiBold), so merging them would change a screen. The Compose files type-check
     with tools/android_check/compile_check (Kotlin 2.2.21 + Compose against the real AndroidX jars); no Gradle build or
     device run was possible here (no Android SDK).
+- id: M5-L03
+  title: >-
+    Field console "Sign in your phone" (A-08, contract docs/design/M5_SIGNIN_CONTRACT.md §8 calling §4): the console's
+    server asks the SCMTIPS core for a pairing code with the signed-in person's core token and the page shows it as a
+    QR of the App Link https://app.scmtips.com/pair?code=<code>, the code in text, a countdown and "New code"
+  workstream: M5
+  role: Field console builder (M5-L sign-in slice)
+  status: partial
+  evidence:
+  - apps/field-console/lib/phonePairing.ts
+  - apps/field-console/lib/consoleAuthHandlers.ts
+  - apps/field-console/app/api/console-auth/pairing/route.ts
+  - apps/field-console/lib/phonePairingClient.ts
+  - apps/field-console/lib/qr.ts
+  - apps/field-console/components/QrCode.tsx
+  - apps/field-console/components/PhonePairingView.tsx
+  - apps/field-console/app/(console)/phone/page.tsx
+  - apps/field-console/components/ConsoleShell.tsx
+  - apps/field-console/components/LoginView.tsx
+  - apps/field-console/README.md
+  - deploy/hosted/field.env.example
+  tests:
+  - "apps/field-console/tests/console-phone-pairing.test.ts::core 201: calls the core's pairing-codes with the bearer and
+    X-Requested-With, answers code, expiry and link only"
+  - "apps/field-console/tests/console-phone-pairing.test.ts::no core sign-in cookie: 401, the core is not called"
+  - "apps/field-console/tests/console-phone-pairing.test.ts::core 403: Your account can't sign in phones"
+  - "apps/field-console/tests/console-phone-pairing.test.ts::core 5xx: a plain message, the core's body is not passed on"
+  - "apps/field-console/tests/console-phone-pairing.test.ts::core 401: the sign-in has ended, the token cookies are cleared"
+  - apps/field-console/tests/console-phone-pairing.test.ts::never follows a redirect with the bearer token
+  - apps/field-console/tests/console-phone-pairing.test.ts::the pairing route module is wired to the server's fetch and environment
+  - apps/field-console/tests/console-phone-pairing.test.ts::countdown text
+  - apps/field-console/tests/qr.test.ts::HELLO, version 1, mask 5 equals the reference matrix
+  - apps/field-console/tests/qr.test.ts::the pairing App Link, version 3, mask 2 equals the reference matrix
+  - apps/field-console/tests/qr.test.ts::versions 7 and 10 and UTF-8 text equal the reference matrices
+  - "apps/field-console/tests/qr.test.ts::property: every block's Reed-Solomon codeword is a multiple of the generator
+    (zero syndromes)"
+  frs: []
+  verified_at: null
+  note: >-
+    partial until proven with the owner's phone against the hosted core. Flow: the page (/phone, linked in the
+    console header; a SCMTIPS sign-in now lands on /phone?signedin=1, the sign-in success page, with "Go to the
+    console") posts to POST /api/console-auth/pairing (same-origin only, like the other console-auth routes); the
+    server reads the httpOnly cookie scmtips_core_token and calls POST {FIELD_CONSOLE_CORE_URL}/v1/wearable/pairing-codes
+    with Authorization Bearer <core token> and X-Requested-With lr (no body, redirect "error" so the bearer is never
+    sent elsewhere), and answers {code, expires_at, expires_in, link} with link = {FIELD_CONSOLE_APP_LINK_BASE,
+    default https://app.scmtips.com}/pair?code=<code>; expires_in (seconds by the server's clock) is an addition to
+    the contract's {code, expires_at, link} so a browser with a wrong clock still counts down right. No token in any
+    body or header (tested for 200, 403, 5xx with the token echoed in the core's body, and a fetch error naming
+    it). Refusals: no core cookie 401 not_signed_in; core 401 401 session_ended with both token cookies cleared; core
+    403 "Your account can't sign in phones."; 429 with Retry-After; 503 / other 5xx / unreachable / malformed answer
+    as plain messages; FIELD_CONSOLE_CORE_URL unset 404. Development sign-in (fake-core, no core token): the page
+    says it needs SCMTIPS sign-in. The QR is drawn in the page by lib/qr.ts (no QR library is in pnpm-lock.yaml, so
+    none was added): byte mode UTF-8, level M, versions 1-10 (213 bytes; the hosted link is 42 bytes, version 3),
+    all 8 masks scored by the four penalty rules. Tests freeze matrices from an independent reference (Project
+    Nayuki's qrcodegen 1.8.0) for versions 1, 3, 7 and 10 and UTF-8 text; while building, 110 (text, version, mask)
+    cases matched qrcodegen and the qrcode package module for module and all were read back by the zxing-cpp decoder,
+    as was the SVG path the page draws (scratch tools outside the repository, not a gate). The automatic mask
+    choice differs from qrcodegen's in 4 of 20 cases (penalty-rule N3 interpretations differ between
+    implementations); every mask decodes. Proven here: vitest (all console tests), tsc --noEmit, next build, and a
+    production next start against a stand-in core (correct bearer 200 with the link, wrong bearer 401 with cookies
+    cleared, no cookie 401, cross-site 403, /phone 200). UNVERIFIED: the real core accepting the core app token as
+    Bearer on /v1/wearable/pairing-codes (a core builder adds it in parallel, contract §4), the phone app's "Scan a
+    code from your computer" redeeming the code, and the page in a real browser (no browser in this sandbox).
