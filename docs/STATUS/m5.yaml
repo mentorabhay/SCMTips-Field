@@ -1,0 +1,15 @@
+- id: M5-00
+  title: >-
+    M5 look-and-act contract (A-06): the two real-world test cases, the vision look API, claims and evidence, the
+    app's look and voice flow, stream ownership
+  workstream: M5
+  role: Integrator (lead session)
+  status: partial
+  evidence:
+  - docs/design/M5_CONTRACT.md
+  tests: []
+  frs: []
+  verified_at: null
+  note: >-
+    Contract only. Nothing in M5 is done until proven on the owner's phone and glasses with the two cases (C1 grocery
+    delivery, C2 pharmacy receipt).
