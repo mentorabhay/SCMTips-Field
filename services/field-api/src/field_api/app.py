@@ -15,6 +15,7 @@ from field_api.assistant.api import router as assistant_router
 from field_api.audit.api import router as audit_router
 from field_api.audits.reports import router as audit_reports_router
 from field_api.briefs.api import router as briefs_router
+from field_api.claims.api import router as claims_router
 from field_api.codes.api import router as codes_router
 from field_api.equipment.api import router as equipment_router
 from field_api.errors import (
@@ -238,6 +239,7 @@ def create_app() -> FastAPI:
     app.include_router(sandbox_router)
     app.include_router(assistant_router)
     app.include_router(briefs_router)
+    app.include_router(claims_router)  # M5 stream X
 
     return app
 

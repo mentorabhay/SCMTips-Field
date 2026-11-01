@@ -25,6 +25,9 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.visit.checkin",
             "field.visit.ack",
             "field.assistant.use",  # spoken Field Assistant (M3 contract §4)
+            "field.claim.create",  # supplier claims from a look (M5 contract §3)
+            "field.claim.read",
+            "field.evidence.pack",  # the evidence pack of a posted document (M5 contract §3)
         ),
         "field.technician": (
             "field.capture.create",
@@ -45,6 +48,7 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.swap.post",
             "field.task.read",
             "field.assistant.use",
+            "field.evidence.pack",
         ),
         "field.supervisor": (
             "field.system.read",
@@ -74,6 +78,10 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.trail.read",
             "field.assistant.use",
             "field.assistant.review",  # assistant session records: list, detail, CSV export (M3 contract §4)
+            "field.claim.create",
+            "field.claim.read",
+            "field.claim.decide",  # approve / reject a supplier claim, then confirm within 10 s (M5 contract §3)
+            "field.evidence.pack",
         ),
         "inventory.controller": (
             "field.stock.read",
@@ -89,6 +97,8 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.task.read",
             "field.capture.read",
             "field.evidence.read",
+            "field.claim.read",
+            "field.evidence.pack",
         ),
         "field.integration": (
             "field.material.sync",
@@ -106,6 +116,7 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.location.read",
             "field.material.read",
             "field.task.read",
+            "field.evidence.pack",
         ),
         "field.admin": (
             "field.*",

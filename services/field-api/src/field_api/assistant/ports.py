@@ -16,9 +16,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Protocol, TypedDict
+from typing import Any, Protocol, TypedDict
 
+from field_api.assistant.model import build_router
 from field_api.auth.jwt import Principal
+from field_api.claims.looks import db_get_look
+from field_api.claims.voice import ClaimsVoice
 from field_api.codes.resolve import resolve_code
 from field_api.sandbox.service import add_item, create_count, create_receipt
 
@@ -72,18 +75,35 @@ class SandboxCounts(Protocol):
     def __call__(self, principal: Principal, site_id: str, storage_bin: str) -> SandboxTaskResult: ...
 
 
+class Claims(Protocol):
+    """M5 stream X (``field_api.claims.voice.ClaimsVoice``): supplier claims by voice. Every call raises FieldError
+    with a speakable title when the claims service refuses (no look, nothing to claim, wrong state, too late)."""
+
+    def create(self, principal: Principal, look_id: str) -> dict[str, Any]: ...
+
+    def drafts(self, principal: Principal) -> list[dict[str, Any]]: ...
+
+    def decide(self, principal: Principal, claim_id: str, version: int, decision: str,
+               reason: str | None) -> tuple[dict[str, Any], dict[str, Any]]: ...
+
+    def confirm(self, principal: Principal, claim_id: str, version: int,
+                words: str | None) -> tuple[dict[str, Any], dict[str, Any]]: ...
+
+
 @dataclass(frozen=True)
 class AssistantPorts:
     resolve_code: CodeResolver | None = None
     add_item: SandboxItems | None = None
     create_receipt: SandboxReceipts | None = None
     create_count: SandboxCounts | None = None
+    claims: Claims | None = None  # M5: left None, the assistant answers that claims are not available
 
 
 def get_ports() -> AssistantPorts:
-    """FastAPI dependency: track S's code lookup and sandbox service (M3 contract section 7, M4 new tasks)."""
+    """FastAPI dependency: track S's code lookup and sandbox service (M3 contract section 7, M4 new tasks) and the
+    M5 claims (stream X: the database look port and the Meta model router through the budget guard)."""
     return AssistantPorts(resolve_code=_resolve_code, add_item=add_item, create_receipt=_create_receipt,
-                          create_count=_create_count)
+                          create_count=_create_count, claims=ClaimsVoice(looks=db_get_look, router=build_router()))
 
 
 def _create_receipt(principal: Principal, site_id: str) -> SandboxTaskResult:

@@ -41,6 +41,7 @@ class ClientState(BaseModel):
     task_id: uuid.UUID | None = None
     line_id: uuid.UUID | None = None
     step: str | None = Field(default=None, max_length=64)
+    look_id: uuid.UUID | None = Field(default=None, description="M5: the look just made, for \"make a claim\"")
 
 
 class TurnRequest(BaseModel):
@@ -84,6 +85,7 @@ def post_turn(
         text=(body.text or "").strip() or None, code=(body.code or "").strip() or None,
         photo_jpeg_b64=body.photo_jpeg_b64 or None, task_id=str(cs.task_id) if cs.task_id else None,
         line_id=str(cs.line_id) if cs.line_id else None, step=cs.step,
+        look_id=str(cs.look_id) if cs.look_id else None,
     )
     return run_turn(principal, t, idempotency_key=idempotency_key, ports=ports, router=model_router,
                     request_id=getattr(request.state, "request_id", None))

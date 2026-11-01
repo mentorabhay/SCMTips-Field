@@ -67,6 +67,7 @@ class TurnIn:
     task_id: str | None
     line_id: str | None
     step: str | None
+    look_id: str | None = None  # M5: the phone's last look, for "make a claim"
 
 
 def _parse_json_object(content: str) -> dict[str, Any] | None:
@@ -211,7 +212,7 @@ def run_turn(principal: Principal, t: TurnIn, *, idempotency_key: str, ports: As
     explicit_yes = t.event == "utterance" and is_yes(t.text) and bool(dialog)
     ctx = TurnContext(principal=principal, site_id=t.site_id, session_id=session["id"], site_mode=mode,
                       ports=ports, idempotency_key=idempotency_key, task_id=t.task_id, dialog=dialog,
-                      explicit_yes=explicit_yes)
+                      explicit_yes=explicit_yes, look_id=t.look_id)
     tools = AssistantTools(ctx)
     history = records.recent_turns(principal, session["id"], HISTORY_TURNS)
 
