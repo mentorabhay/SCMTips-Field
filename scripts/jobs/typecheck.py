@@ -46,7 +46,9 @@ def run_mypy() -> int:
         "services/field-api/src",
         "services/field-worker/src",
         "services/erp-sim/src",
+        "services/oem-sim/src",
         "connectors/sap/src",
+        "connectors/oem/src",
         "tools/",
     ]
     missing = [t for t in targets if not (ROOT / t).exists()]

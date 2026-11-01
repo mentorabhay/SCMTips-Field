@@ -1064,3 +1064,168 @@
     read-out add "Box check"; look claims unchanged. The Android wiring (FieldController, MainActivity, CheckScreen,
     Today card) is type-checked by tools/android_check/compile_check.py only, not a Gradle build. Nothing ran on the
     owner's phone or the glasses, and the glasses photo path is unproven on real glasses (META_FIELD row 5).
+- id: M5-T02
+  title: >-
+    OEM simulator (services/oem-sim): the SAMPLE maker Kestrel Optics (SAMPLE), its own schema oemsim and Alembic
+    history, units + history + atomic first-check claims, Ed25519 key from the secret OEMSIM_SIGNING_SEED, public
+    keys at /_oem/.well-known/oem-keys, registry and admin routes behind X-Sim-Admin-Token, /_oem/ui; mounted by
+    erp-sim under /_oem (ERPSIM_OEM_ENABLED)
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/oem-sim/src/oem_sim/routes.py
+  - services/oem-sim/src/oem_sim/keys.py
+  - services/oem-sim/src/oem_sim/pages.py
+  - services/oem-sim/src/oem_sim/app.py
+  - services/oem-sim/alembic/versions/oemsim_0001_baseline.py
+  - services/erp-sim/src/erp_sim/app.py
+  tests:
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_keys_need_the_seed_and_publish_one_ed25519_key
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_admin_unit_returns_a_signed_code_that_stays_valid_when_seeded_again
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_a_tampered_code_fails_the_signature
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_first_check_first_then_same_then_other_checker
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t07_first_check_race_one_of_many_concurrent_checks_wins
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_forgery_is_never_a_registered_unit_and_reset_clears_everything
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t02_admin_page_lists_units_and_erp_sim_mounts_the_oem_routes
+  frs: []
+  verified_at: null
+  note: >-
+    Mounted inside erp-sim (no new container or hostname): one router, its own schema oemsim with version table
+    oemsim.alembic_version in the simulator database (OEMSIM_DATABASE_URL, default ERPSIM_DATABASE_URL); the
+    alembic job, the dev stack's migrate and the image comment run services/oem-sim too. The private key is never
+    stored: it is derived from OEMSIM_SIGNING_SEED (generated into .env.local by stack up, a host secret otherwise);
+    the nonce is derived per serial so seeding again keeps printed labels valid. The registry route needs the same
+    admin token field-api already holds for erp-sim's sandbox. A SIMULATOR of a maker; no real maker signs seals or
+    opens a registry for this build. Partial until proven on the owner's phone and glasses.
+- id: M5-T03
+  title: >-
+    Printable seal-label sheet /_oem/labels: five scenario labels (signed QR + a SAMPLE seal drawn in SVG, no real
+    logos) and the cloned code printed twice; captions and expected verdicts outside the cut line
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/oem-sim/src/oem_sim/labels.py
+  - services/oem-sim/src/oem_sim/pages.py
+  tests:
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t03_label_sheet_prints_every_scenario_and_the_clone_twice
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t03_qr_path_draws_only_dark_modules_of_the_code
+  frs: []
+  verified_at: null
+  note: >-
+    QR drawn from qrcode's module matrix as one SVG path (qrcode is a runtime dependency of oem-sim). The tampered
+    label (L5) is drawn with a torn seal band and a tape strip, and the sheet asks for real tape over it. Not yet
+    printed and scanned with the glasses or the phone.
+- id: M5-T04
+  title: >-
+    C3 check API: POST /v1/authenticity/checks and GET /v1/authenticity/checks/{id} through the OemPort (simulator
+    adapter by config, a real-OEM adapter that refuses), local Ed25519 verification with cached keys, the maker's
+    history and atomic first check, the deterministic verdict, the optional two-step visual seal check (SAM 3.1 +
+    Muse Spark 1.3), permission field.authenticity.check, table field.authenticity_check with forced RLS (migration
+    field_0067_m5_c3), the signed evidence pack and page, claims of kind authenticity
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/authenticity/api.py
+  - services/field-api/src/field_api/authenticity/service.py
+  - services/field-api/src/field_api/authenticity/seal_code.py
+  - services/field-api/src/field_api/authenticity/rules.py
+  - services/field-api/src/field_api/authenticity/seal.py
+  - services/field-api/src/field_api/authenticity/oem.py
+  - services/field-api/src/field_api/authenticity/evidence.py
+  - services/field-api/alembic/versions/field_0067_m5_c3.py
+  - connectors/oem/src/field_oem/ports/oem_port.py
+  - connectors/oem/src/field_oem/sim/adapter.py
+  - connectors/oem/src/field_oem/real/adapter.py
+  - connectors/oem/src/field_oem_testing/memory.py
+  - services/field-api/src/field_api/claims/service.py
+  - services/field-api/src/field_api/evidence/signing.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_genuine_new_then_same_checker_then_another_checker
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_returned_unit_says_the_contract_example
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_counterfeit_and_unreadable_codes
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_unreachable_or_unconfigured_maker_is_a_verdict_not_an_error
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_visual_check_two_steps_flags_tape_over_the_seal
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_unfinished_visual_check_is_ended_by_the_next_read
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_roles_sites_and_validation
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_rls_isolates_tenants_and_sites
+  - services/field-api/tests/authenticity/test_seal_code.py::test_m5_t04_forgeries_fail_the_signature
+  - services/field-api/tests/authenticity/test_authenticity_evidence_claims.py::test_m5_t04_evidence_pack_hashes_and_the_signed_page
+  - services/field-api/tests/authenticity/test_authenticity_evidence_claims.py::test_m5_t04_claim_from_a_check_lines_one_per_check_and_voice_approval
+  - connectors/oem/tests/contract/test_oem_port_contract.py::test_m5_t04_sim_adapter_meets_the_port_contract
+  - connectors/oem/tests/contract/test_oem_port_contract.py::test_m5_t04_real_oem_adapter_refuses_honestly
+  - tests/e2e/test_m5_c3_seal_code_e2e.py::test_m5_t04_sim_signed_codes_verify_in_field_api_and_the_clone_is_caught
+  frs: []
+  verified_at: null
+  note: >-
+    UNVERIFIED dependencies (rule 2.4, docs/META_FIELD.md row 27): no real maker signs seals or opens a registry, so
+    the only answering adapter is the OEM simulator; FIELD_OEM_ADAPTER=oem refuses (CANNOT_VERIFY
+    oem:not_configured). The visual check uses the M5 look's SAM 3.1 and Muse Spark 1.3 shapes (rows 20, 23),
+    proven with test doubles only. Two steps chosen over one: the verdict never depends on the photo, so it is
+    final at once and only tamper / say_next follow (POST final false, GET polled; visual_due_at = 2 x instances +
+    labels deadlines + 15 s, then the next read ends it as visual:not_finished). The maker's key cache is per
+    adapter instance (lru_cache per process), refreshed once on an unknown kid. Claims: supplier_claim gains kind
+    and check_id (look_id nullable, exactly one by kind); POST /v1/claims accepts {check_id}; ClaimOut.look_id is
+    null for kind authenticity (the M5 app must accept it). Migration field_0067_m5_c3 revises
+    field_0066_m5_look_stage; the integrator re-points it if a try-page 0067 lands first. Partial until proven on
+    the owner's phone and glasses.
+- id: M5-T06
+  title: >-
+    C3 scenario seed: field_api.tools.seed_c3 seeds the five scenarios (L1 genuine new, L2 returned and resold, L3
+    counterfeit on the label sheet only, L4 cloned code printed twice, L5 tampered seal) through the OEM port's seed
+    capability (the simulator's admin API; a real maker refuses); `stack c3` writes var/c3_labels.html
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/tools/seed_c3.py
+  - tools/dev_stack/c3.py
+  - tools/dev_stack/stack.py
+  - connectors/oem/src/field_oem/sim/adapter.py
+  tests:
+  - tests/e2e/test_m5_c3_seed_e2e.py::test_m5_t06_seed_makes_every_scenario_and_the_label_sheet
+  - tests/e2e/test_m5_c3_seed_e2e.py::test_m5_t06_seed_refuses_on_a_real_maker
+  - tools/dev_stack/tests/test_c3.py::test_m5_t06_stack_has_the_c3_command_and_the_smoke_flag
+  frs: []
+  verified_at: null
+  note: >-
+    Idempotent: units are upserted with their stable nonce (printed labels stay valid) and their first checks
+    reset, so the cloned-code scenario starts over on a re-run. `stack c3` ran on a private stack (1 Nov 2026): five
+    scenarios, a six-label sheet; all six QR codes decoded from the sheet's SVG paths (zxing-cpp, outside the repo),
+    the two L4 copies identical. Not yet printed on paper and scanned by the glasses or the phone.
+- id: M5-T07
+  title: >-
+    C3 tests: the verdict rule table as Hypothesis properties, signature verification and forgery, the API, roles,
+    the first-check race (two concurrent first checks, one wins), the OpenAPI export, and `smoke --c3` on the dev
+    stack with the model stand-in for the visual part
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/field-api/tests/property/test_m5_c3_rules_property.py
+  - services/field-api/tests/authenticity/test_seal_code.py
+  - tools/dev_stack/c3.py
+  - tools/dev_stack/model_standin.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/property/test_m5_c3_rules_property.py::test_m5_t07_property_rule_table_first_match_wins
+  - services/field-api/tests/property/test_m5_c3_rules_property.py::test_m5_t07_property_genuine_new_only_for_a_clean_verified_unit
+  - services/field-api/tests/property/test_m5_c3_rules_property.py::test_m5_t07_property_every_spoken_number_comes_from_the_facts
+  - services/field-api/tests/property/test_m5_c3_rules_property.py::test_m5_t07_property_tamper_only_from_a_finished_visual_check
+  - services/field-api/tests/authenticity/test_seal_code.py::test_m5_t07_property_any_one_character_change_of_a_code_never_verifies
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t07_first_check_race_through_the_api_one_of_two_wins
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t07_first_check_race_one_of_many_concurrent_checks_wins
+  - tests/e2e/test_m5_c3_seal_code_e2e.py::test_m5_t07_two_concurrent_first_checks_through_field_api_one_wins
+  - tools/dev_stack/tests/test_c3.py::test_m5_t07_standin_answers_the_seal_check_from_the_scene
+  frs: []
+  verified_at: null
+  note: >-
+    `smoke --c3` PASSED on a private stack (uvicorn, Postgres 16, model stand-in; 1 Nov 2026): L1-L5 verdicts, the
+    contract's spoken example, the cloned code caught by a second phone, the L5 first answer in 0.1 s while the
+    stand-in held the seal answer 2 s, then tamper true; claim approved by a supervisor; the check's signed page
+    and pack (photo sha256 verified). The race is proven at the maker (8 threads on oemsim.first_check) and
+    through field-api (2 threads, in-process and with the sim adapter). Models: the stand-in only, never Meta;
+    partial until proven on the owner's phone and glasses against the real Meta API.

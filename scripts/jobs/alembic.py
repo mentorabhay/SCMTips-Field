@@ -34,6 +34,7 @@ def test_service(service_name: str) -> None:
 def main() -> None:
     test_service("field-api")
     test_service("erp-sim")
+    test_service("oem-sim")
     print("ALL ALEMBIC ROUND-TRIPS PASSED.")
 
 

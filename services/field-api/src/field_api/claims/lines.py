@@ -21,7 +21,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-REASONS = ("damaged", "expired", "near_expiry", "short", "pack_size")
+SUPPLIER_REASONS = ("damaged", "expired", "near_expiry", "short", "pack_size")
+# Authenticity claims from a C3 check (docs/design/M5_C3_CONTRACT.md section 4.4): one unit each, no pieces.
+AUTH_REASONS = ("not_new", "counterfeit", "copied_code", "cannot_verify", "tampered_seal")
+REASONS = SUPPLIER_REASONS + AUTH_REASONS
 FLAG_REASONS = frozenset({"damaged", "expired", "near_expiry"})
 
 
@@ -116,6 +119,21 @@ def claim_lines(look: dict[str, Any]) -> list[ClaimLine]:
     packs = short_packs(look, flagged)
     if packs:
         lines.append(ClaimLine("pack_size", len(packs), sum(packs.values()), tuple(sorted(packs))))
+    return lines
+
+
+def authenticity_lines(check: dict[str, Any]) -> list[ClaimLine]:
+    """The claim lines of a C3 check (contract section 4.4), from its verdict, rule and tamper flag only."""
+    verdict, rule = check.get("verdict"), check.get("rule")
+    lines: list[ClaimLine] = []
+    if verdict in ("GENUINE_PREVIOUSLY_ACTIVATED", "RETURNED_REFURBISHED"):
+        lines.append(ClaimLine("not_new", 1, 0))
+    elif verdict == "LIKELY_COUNTERFEIT":
+        lines.append(ClaimLine("counterfeit", 1, 0))
+    elif verdict == "CANNOT_VERIFY":
+        lines.append(ClaimLine("copied_code" if rule == "R13" else "cannot_verify", 1, 0))
+    if check.get("tamper") is True:
+        lines.append(ClaimLine("tampered_seal", 1, 0))
     return lines
 
 

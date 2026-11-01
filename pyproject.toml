@@ -26,7 +26,9 @@ dependencies = [
     "field-api",
     "field-worker",
     "erp-sim",
+    "oem-sim",
     "field-sap-connector",
+    "field-oem-connector",
     "fake-core",
 ]
 
@@ -53,7 +55,9 @@ members = [
     "services/field-api",
     "services/field-worker",
     "services/erp-sim",
+    "services/oem-sim",
     "connectors/sap",
+    "connectors/oem",
     "compat",
     "tools/fake-core",
 ]
@@ -62,6 +66,8 @@ members = [
 field-api = { workspace = true }
 field-worker = { workspace = true }
 erp-sim = { workspace = true }
+oem-sim = { workspace = true }
+field-oem-connector = { workspace = true }
 field-sap-connector = { workspace = true }
 fake-core = { workspace = true }
 
@@ -89,7 +95,9 @@ mypy_path = [
     "services/field-api/src",
     "services/field-worker/src",
     "services/erp-sim/src",
+    "services/oem-sim/src",
     "connectors/sap/src",
+    "connectors/oem/src",
     "tools/fake-core/src",
 ]
 
@@ -100,7 +108,9 @@ pythonpath = [
     "services/field-api/src",
     "services/field-worker/src",
     "services/erp-sim/src",
+    "services/oem-sim/src",
     "connectors/sap/src",
+    "connectors/oem/src",
     "tools/fake-core/src",
 ]
 markers = [

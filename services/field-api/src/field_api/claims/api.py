@@ -1,7 +1,7 @@
 """Supplier claims HTTP API (M5 contract section 3).
 
-POST /v1/claims {look_id}                          field.claim.create (operator, supervisor)
-     -> 201 a new claim, 200 the existing claim of this look; ETag
+POST /v1/claims {look_id} | {check_id}             field.claim.create (operator, supervisor)
+     -> 201 a new claim, 200 the existing claim of this look (or of this C3 check: kind authenticity); ETag
 GET  /v1/claims?status=draft|pending|approved|rejected&limit=   field.claim.read
 GET  /v1/claims/{id}                               field.claim.read; ETag
 POST /v1/claims/{id}/decision {decision, reason?}  field.claim.decide (supervisor); If-Match
@@ -20,17 +20,35 @@ from pydantic import BaseModel, Field
 
 from field_api.assistant.model import ModelRouter, get_router
 from field_api.auth.jwt import Principal
+from field_api.authenticity import service as checks
 from field_api.claims import service
 from field_api.claims.looks import LookPort, get_look_port
 from field_api.deps import require_permission
+from field_api.errors import FieldError
 
 router = APIRouter(tags=["Supplier claims (M5)"])
 
-Reason = Literal["damaged", "short", "pack_size", "expired", "near_expiry"]
+
+def read_check(principal: Principal, check_id: str) -> dict[str, Any] | None:
+    """A C3 check as GET /v1/authenticity/checks/{id} answers it, or None when it is not visible."""
+    try:
+        return checks.get_check(principal, check_id)
+    except FieldError as e:
+        if e.code == checks.ERR_CHECK.code:
+            return None
+        raise
+
+Reason = Literal["damaged", "short", "pack_size", "expired", "near_expiry",
+                 "not_new", "counterfeit", "copied_code", "cannot_verify", "tampered_seal"]
+ERR_ONE_SUBJECT = FieldError(status=422, code="FIELD-HTTP-422-VALIDATION", title="Give look_id or check_id",
+                             detail="A claim is made from exactly one look (supplier) or one check (authenticity).")
 
 
 class ClaimIn(BaseModel):
-    look_id: str = Field(min_length=36, max_length=36, description="the look (POST /v1/vision/looks)")
+    look_id: str | None = Field(default=None, min_length=36, max_length=36,
+                                description="the look (POST /v1/vision/looks): a supplier claim")
+    check_id: str | None = Field(default=None, min_length=36, max_length=36,
+                                 description="the C3 check (POST /v1/authenticity/checks): an authenticity claim")
 
 
 class ClaimLineOut(BaseModel):
@@ -46,8 +64,11 @@ class ClaimOut(BaseModel):
     text: str
     source: Literal["model", "template"]
     reasons: list[str]
-    evidence_url: str = Field(description="the JSON evidence pack of the posted receipt; empty until it is posted")
-    look_id: str
+    evidence_url: str = Field(description="the JSON evidence pack of the posted receipt (empty until it is posted),"
+                                          " or of the C3 check for an authenticity claim")
+    kind: Literal["supplier", "authenticity"] = "supplier"
+    check_id: str | None = None
+    look_id: str | None
     task_id: str | None
     site_id: str
     created_by: str
@@ -99,8 +120,16 @@ def post_claim(
     looks: LookPort = Depends(get_look_port),
     model_router: ModelRouter = Depends(get_router),
 ) -> dict[str, Any]:
-    out, created = service.create_claim(principal, body.look_id, looks=looks, router=model_router,
-                                        request_id=getattr(request.state, "request_id", None))
+    rid = getattr(request.state, "request_id", None)
+    if (body.look_id is None) == (body.check_id is None):
+        raise ERR_ONE_SUBJECT
+    if body.check_id is not None:
+        out, created = service.create_check_claim(principal, body.check_id, checks=read_check, router=model_router,
+                                                  request_id=rid)
+    else:
+        assert body.look_id is not None
+        out, created = service.create_claim(principal, body.look_id, looks=looks, router=model_router,
+                                            request_id=rid)
     if not created:
         response.status_code = 200
     response.headers["ETag"] = service.etag(out)

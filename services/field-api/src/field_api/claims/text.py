@@ -15,6 +15,7 @@ import math
 import os
 import time
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any
 
 from field_api.assistant.model import CallLog, ModelError, ModelRouter
@@ -56,6 +57,8 @@ def _pieces(p: int) -> str:
 def line_phrase(line: ClaimLine, *, ppu: int | None, window: int | None) -> str:
     u, p = line.units, line.pieces
     units = _plural(u, "unit", "units")
+    if line.reason in AUTH_PHRASES:
+        return f"{u} {units} {AUTH_PHRASES[line.reason]}"
     if line.reason == "damaged":
         return f"{u} damaged {units}{_pieces(p)}"
     if line.reason == "expired":
@@ -68,6 +71,22 @@ def line_phrase(line: ClaimLine, *, ppu: int | None, window: int | None) -> str:
     packs = _plural(u, "pack holds", "packs hold")
     expected = f" than {ppu}" if ppu else ""
     return f"{u} {packs} fewer pieces{expected}: {p} {_plural(p, 'piece', 'pieces')} short"
+
+
+AUTH_PHRASES = MappingProxyType({
+    "not_new": "sold as new but not a new unit by the maker's records",
+    "counterfeit": "with a seal code the maker did not sign",
+    "copied_code": "with a seal code that someone else checked first",
+    "cannot_verify": "that cannot be verified with the maker",
+    "tampered_seal": "with a tampered seal",
+})
+AUTH_CLAIM_PROMPT = (
+    "You write the body of a short, polite claim message from a customer or a returns team to a seller about one "
+    "boxed unit whose authenticity check failed. Use only the facts given. Keep every number exactly as written, in "
+    "digits, and say each of them. Do not add any number, date, price, name, brand, company or product name, and do "
+    "not promise or demand anything that is not in the facts. One or two plain sentences, no greeting, no signature, "
+    "no lists, no markdown, no quotes. Reply with the message text and nothing else."
+)
 
 
 def template_text(lines: list[ClaimLine], *, ppu: int | None = None, window: int | None = None) -> str:
@@ -110,14 +129,22 @@ def _calls(log: CallLog, errors: list[str]) -> list[dict[str, Any]]:
     return out
 
 
+def authenticity_template(lines: list[ClaimLine]) -> str:
+    """The claim text of a C3 check without a model (contract section 4.4): every number of the lines."""
+    return ("We claim for this unit: " + "; ".join(line_phrase(ln, ppu=None, window=None) for ln in lines)
+            + ". The authenticity check record is attached.")
+
+
 def draft_text(lines: list[ClaimLine], *, router: ModelRouter, tenant_id: str, request_id: str | None,
-               ppu: int | None = None, window: int | None = None) -> Draft:
-    template = template_text(lines, ppu=ppu, window=window)
+               ppu: int | None = None, window: int | None = None, kind: str = "supplier") -> Draft:
+    """``kind`` "authenticity" (a C3 check) uses its own template and prompt; the supplier claim is unchanged."""
+    template = authenticity_template(lines) if kind == "authenticity" else template_text(lines, ppu=ppu, window=window)
+    prompt = AUTH_CLAIM_PROMPT if kind == "authenticity" else CLAIM_PROMPT
     log = CallLog()
     errors: list[str] = []
     if not router.models:
         return Draft(template, "template", ["model:no_model_configured"])
-    messages = [{"role": "system", "content": CLAIM_PROMPT}, {"role": "user", "content": template}]
+    messages = [{"role": "system", "content": prompt}, {"role": "user", "content": template}]
     try:
         res = router.chat(messages, tools=None, deadline=time.monotonic() + claim_deadline_s(), tenant_id=tenant_id,
                           request_id=request_id, log=log, errors=errors, purpose="claim", max_tokens=CLAIM_MAX_TOKENS)

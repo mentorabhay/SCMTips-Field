@@ -9,6 +9,8 @@ Verifies strict boundaries:
    - services/field-api must NOT import erp_sim
    - connectors must NOT import field_api or field_worker
    - services/erp-sim must NOT import field_api
+   - services/field-api must NOT import oem_sim (the OEM simulator is reached only through the OEM port, M5 C3)
+   - services/oem-sim must NOT import field_api; connectors must NOT import oem_sim outside their tests
 """
 
 import re
@@ -86,6 +88,13 @@ def check_python_file(path: Path) -> list[str]:
         r"\bfrom\s+field_api\b|\bimport\s+field_api\b", content
     ):
         violations.append(f"{path}: Simulation boundary breach: erp_sim cannot import field_api")
+    if "field-api" in posix_path and re.search(r"\bfrom\s+oem_sim\b|\bimport\s+oem_sim\b", content):
+        violations.append(f"{path}: Cross-service boundary breach: field-api cannot import oem_sim")
+    if "oem-sim" in posix_path and re.search(r"\bfrom\s+field_api\b|\bimport\s+field_api\b", content):
+        violations.append(f"{path}: Simulation boundary breach: oem_sim cannot import field_api")
+    if ("connectors" in posix_path and "/tests/" not in posix_path
+            and re.search(r"\bfrom\s+oem_sim\b|\bimport\s+oem_sim\b", content)):
+        violations.append(f"{path}: Connector boundary breach: connector code reaches the OEM simulator over HTTP only")
 
     return violations
 

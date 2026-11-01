@@ -16,6 +16,7 @@ from typing import Any
 import structlog
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from oem_sim import app as oem_sim_app
 
 from erp_sim.admin_ui import router as ui_router
 from erp_sim.dedupe import IdempotencyConflictError
@@ -107,6 +108,11 @@ app.include_router(faults_router)
 app.include_router(sandbox_router)
 app.include_router(fl_router)
 app.include_router(ui_router)
+
+# The OEM simulator (M5 case C3, docs/design/M5_C3_CONTRACT.md section 5) under /_oem, with its own schema oemsim:
+# no new container or hostname. ERPSIM_OEM_ENABLED=false leaves it out.
+if oem_sim_app.enabled():
+    oem_sim_app.include(app)
 
 
 # 4. Control Endpoints

@@ -149,6 +149,7 @@ Response **200** (also the Idempotency-Key replay, which returns the stored firs
   "check_id": "uuid",
   "final": true,
   "verdict": "GENUINE_NEW | GENUINE_PREVIOUSLY_ACTIVATED | RETURNED_REFURBISHED | CANNOT_VERIFY | LIKELY_COUNTERFEIT",
+  "rule": "R11",
   "tamper": true,
   "reasons": ["history:activated", "history:returned", "visual:tape_over_seal"],
   "signals": {
@@ -302,7 +303,8 @@ Seal artwork is drawn in SVG with "KESTREL OPTICS (SAMPLE)" and "SAMPLE SEAL - N
 - Photos: the captures API's rules (faces pixelated on the phone before upload, `blur_applied` required, kept 30
   days like M5 look photos). Muse is asked only for tamper signs from a closed list; its free text is not stored.
   No face, person, brand or company name is asked for or stored.
-- Area: optional, city level at most, never coordinates (validated: no digits). Omitted by default.
+- Area: optional, city level at most, never coordinates (validated: no digits). Omitted by default. Field shows the
+  first check's area only to that same checker; another checker learns when the code was first checked, never where.
 - The OEM receives the serial, a pseudonymous checker id and the optional area; nothing else.
 - The check record (code text, signals, verdict, say) is kept as evidence, under tenant RLS and site scope.
 

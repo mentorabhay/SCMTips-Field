@@ -28,5 +28,8 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE SCHEMA IF NOT EXISTS erpsim;
 GRANT ALL ON SCHEMA erpsim TO erpsim_app;
+-- The OEM simulator (M5 case C3) keeps its own schema in the same database (services/oem-sim).
+CREATE SCHEMA IF NOT EXISTS oemsim;
+GRANT ALL ON SCHEMA oemsim TO erpsim_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA erpsim GRANT ALL ON TABLES TO erpsim_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA erpsim GRANT ALL ON SEQUENCES TO erpsim_app;
