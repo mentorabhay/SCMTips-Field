@@ -36,8 +36,9 @@ import httpx
 import structlog
 
 from field_api.ai.budget import BudgetGuard, BudgetRefused, Reservation
-from field_api.assistant.model import CALL_TIMEOUT_S, META_KEY_ENV, ModelError, validate_model_id
+from field_api.assistant.model import META_KEY_ENV, ModelError, validate_model_id
 from field_api.vision.ports import CallContext, FoundInstance, ModelCall
+from field_api.vision.settings import VISION_CALL_CAP_S
 
 logger = structlog.get_logger(__name__)
 
@@ -177,7 +178,7 @@ class Sam31Instances:
         except BudgetRefused as e:
             record(e.code)
             raise ModelError(e.code, str(e)) from None
-        timeout = min(max(timeout_s, 0.1), CALL_TIMEOUT_S)
+        timeout = min(max(timeout_s, 0.1), VISION_CALL_CAP_S)
         t0 = time.perf_counter()
         try:
             with httpx.Client(base_url=self.base_url, timeout=timeout, transport=self._transport) as client:

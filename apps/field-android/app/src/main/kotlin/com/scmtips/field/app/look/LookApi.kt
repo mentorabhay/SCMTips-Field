@@ -70,6 +70,9 @@ object LookApi {
     const val CODE_TYPE = "look"
     const val NO_CONSENT = "FIELD-CAP-403-NO-CONSENT"
     const val CONSENT_VERSION = "f1-2026-11"
+    /** The look waits up to SAM 3.1 (15 s) + Muse label reads (30 s) on the server (vision/settings.py); 75 s leaves
+     *  room for the upload and the reconciliation. Only the look call gets it. */
+    const val LOOK_READ_TIMEOUT_S = 75
 
     fun uploadSession(key: String, deviceId: String, jpeg: ByteArray) =
         ApiRequest("POST", "/v1/captures/uploads", buildJsonObject {
@@ -97,7 +100,7 @@ object LookApi {
             put("capture_id", captureId)
             put("object", case.noun)
             put("case", case.wire)
-        }, key)
+        }, key, readTimeoutSeconds = LOOK_READ_TIMEOUT_S)
 
     fun consent(key: String, siteId: String, deviceId: String) =
         ApiRequest("POST", "/v1/consents", buildJsonObject {

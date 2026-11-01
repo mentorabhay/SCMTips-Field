@@ -105,7 +105,8 @@ class FieldSession(
 
     override suspend fun send(request: ApiRequest): ApiResult = try {
         var etag: String? = null
-        val text = raw(request.method, request.path, request.body, token(), request.idempotencyKey, request.headers) { etag = it }
+        val text = raw(request.method, request.path, request.body, token(), request.idempotencyKey, request.headers,
+            request.readTimeoutSeconds) { etag = it }
         ApiResult.Ok(200, (json.parseToJsonElement(text.ifBlank { "{}" }) as? JsonObject) ?: JsonObject(emptyMap()), etag)
     } catch (e: HttpError) {
         ApiResult.Problem(e.status, e.code, e.title, e.detail)
@@ -152,7 +153,7 @@ class FieldSession(
 
     private suspend fun raw(
         method: String, path: String, body: JsonElement?, bearer: String?, idemKey: String?,
-        headers: Map<String, String> = emptyMap(), onEtag: (String?) -> Unit = {},
+        headers: Map<String, String> = emptyMap(), readTimeoutSeconds: Int? = null, onEtag: (String?) -> Unit = {},
     ): String =
         withContext(Dispatchers.IO) {
             val rb = Request.Builder().url(apiBaseUrl.trimEnd('/') + path)
@@ -162,7 +163,8 @@ class FieldSession(
             key?.let { rb.header("Idempotency-Key", it) }
             val rbody = body?.toString()?.toRequestBody(JSON_TYPE) ?: if (method == "GET") null else "{}".toRequestBody(JSON_TYPE)
             rb.method(method, rbody)
-            client.newCall(rb.build()).execute().use { res ->
+            val http = readTimeoutSeconds?.let { client.newBuilder().readTimeout(it.toLong(), TimeUnit.SECONDS).build() } ?: client
+            http.newCall(rb.build()).execute().use { res ->
                 onEtag(res.header("ETag"))
                 val text = res.body?.string().orEmpty()
                 if (!res.isSuccessful) {

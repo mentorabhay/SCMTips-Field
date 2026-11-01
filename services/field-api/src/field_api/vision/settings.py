@@ -1,9 +1,12 @@
 """Settings of the vision look, read from the environment per call (so a restart with a new .env.local applies).
 
-Per-stage deadlines (seconds; each clamped to 0.5..6, the model client's own per-call cap):
-  VISION_INSTANCES_DEADLINE_S  default 4.0   SAM 3.1 instances
-  VISION_LABELS_DEADLINE_S     default 6.0   Muse Spark label + damage reads, all batches together
-  VISION_FALLBACK_DEADLINE_S   default 4.0   the Baseten (Llama 3.2 Vision) fallback for label reads
+Per-stage deadlines (seconds; each clamped to 0.5..VISION_CALL_CAP_S = 60). Raised after the owner's Gate 0 from India
+(1 Nov 2026, docs/evidence/2026-11-01-m5-gate0-093109.txt): SAM 3.1 answered a 1600 px photo in about 5 s, a Muse
+Spark image read did not answer within 7.7 s. A look is a deliberate step, so it may take tens of seconds; the app says
+it is looking. The assistant's own 6 s cap is unchanged.
+  VISION_INSTANCES_DEADLINE_S  default 15    SAM 3.1 instances
+  VISION_LABELS_DEADLINE_S     default 30    Muse Spark label + damage reads, all batches together
+  VISION_FALLBACK_DEADLINE_S   default 15    the Baseten (Llama 3.2 Vision) fallback for label reads
 Other settings:
   VISION_EXPIRY_WINDOW_DAYS    default 90    a site's "expiring soon" window when the line names none (C2)
   VISION_CROPS_PER_CALL        default 8     instance crops sent in one Muse call (1..20; the API takes up to 50)
@@ -23,6 +26,7 @@ import math
 import os
 
 INSTANCES_MODEL = "sam-3.1"
+VISION_CALL_CAP_S = 60.0  # the longest single vision model call (the assistant keeps its own 6 s cap)
 LABELS_MODEL = "muse-spark-1.3"
 
 
@@ -44,15 +48,15 @@ def _int(name: str, default: int, lo: int, hi: int) -> int:
 
 
 def instances_deadline_s() -> float:
-    return _float("VISION_INSTANCES_DEADLINE_S", 4.0, 0.5, 6.0)
+    return _float("VISION_INSTANCES_DEADLINE_S", 15.0, 0.5, VISION_CALL_CAP_S)
 
 
 def labels_deadline_s() -> float:
-    return _float("VISION_LABELS_DEADLINE_S", 6.0, 0.5, 6.0)
+    return _float("VISION_LABELS_DEADLINE_S", 30.0, 0.5, VISION_CALL_CAP_S)
 
 
 def fallback_deadline_s() -> float:
-    return _float("VISION_FALLBACK_DEADLINE_S", 4.0, 0.5, 6.0)
+    return _float("VISION_FALLBACK_DEADLINE_S", 15.0, 0.5, VISION_CALL_CAP_S)
 
 
 def expiry_window_days() -> int:

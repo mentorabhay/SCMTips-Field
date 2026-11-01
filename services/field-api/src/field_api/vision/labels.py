@@ -28,6 +28,7 @@ from typing import Any
 from field_api.assistant.model import CallLog, ChatModel, ModelError
 from field_api.vision.ports import CallContext, LabelRead, ModelCall
 from field_api.vision.sam import data_url
+from field_api.vision.settings import VISION_CALL_CAP_S
 
 ITEM_FIELDS = ("n", "label_readable", "pieces_per_unit", "batch", "expiry", "damaged", "damage_note", "label_text")
 def label_schema() -> dict[str, Any]:
@@ -183,7 +184,7 @@ class ChatLabelReader:
             res = self.chat.chat(messages(crops, case, object_noun), timeout_s=timeout_s, max_tokens=max_tokens,
                                  purpose="vision", tenant_id=ctx.tenant_id, request_id=ctx.request_id, log=log,
                                  response_format=response_format() if self.use_response_format else None,
-                                 images=len(crops))
+                                 images=len(crops), timeout_cap_s=VISION_CALL_CAP_S)
         except ModelError as e:
             ctx.calls.append(self._call(log, e.code))
             raise

@@ -228,4 +228,13 @@ class LookClientTest {
         val missing = client(ScriptedFieldApi()).evidenceLink("1", null)
         assertNull(missing.first); assertEquals("The evidence page is not available on this server yet.", missing.second)
     }
+
+    @Test
+    fun look_alone_gets_the_long_read_timeout_after_gate0() {
+        // Owner's Gate 0 from India (1 Nov 2026): SAM 3.1 about 5 s, a Muse image read over 7.7 s; the server allows
+        // 15 s + 30 s, so only the look call waits longer than the client's 15 s default.
+        val look = LookApi.look("k", "t-1", "l-1", "cap-1", LookCase.GROCERY)
+        assertEquals(75, look.readTimeoutSeconds)
+        assertNull(LookApi.consent("k", "s-1", "d-1").readTimeoutSeconds)
+    }
 }

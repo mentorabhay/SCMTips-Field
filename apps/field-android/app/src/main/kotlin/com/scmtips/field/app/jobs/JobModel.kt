@@ -128,6 +128,9 @@ data class ApiRequest(
     val idempotencyKey: String? = null,
     /** M5: extra request headers (If-Match on claim decisions); empty for every earlier call. */
     val headers: Map<String, String> = emptyMap(),
+    /** M5: a longer read timeout in seconds for a slow call (the vision look: Meta's image models took 5-8+ s each
+     *  in the owner's Gate 0 from India, 1 Nov 2026); null keeps the client's default (15 s) for every other call. */
+    val readTimeoutSeconds: Int? = null,
 )
 
 sealed interface ApiResult {

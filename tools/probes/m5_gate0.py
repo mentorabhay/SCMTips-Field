@@ -169,7 +169,8 @@ class ProbeResult:
     exchanges: list[Exchange]
 
 
-def run_g0_1(jpeg: bytes, case: str, noun: str, transport: httpx.BaseTransport, guard: Any) -> ProbeResult:
+def run_g0_1(jpeg: bytes, case: str, noun: str, transport: httpx.BaseTransport, guard: Any,
+             timeout_s: float = 60.0) -> ProbeResult:
     from field_api.assistant.model import META_KEY_ENV, ChatModel, ModelError, ProviderConfig
     from field_api.vision import settings
     from field_api.vision.labels import ChatLabelReader
@@ -182,7 +183,7 @@ def run_g0_1(jpeg: bytes, case: str, noun: str, transport: httpx.BaseTransport, 
     ctx = CallContext(None, "m5-gate0")
     t0 = time.perf_counter()
     try:
-        reads = reader.read([(1, jpeg)], case=case, object_noun=noun, timeout_s=6.0, ctx=ctx)
+        reads = reader.read([(1, jpeg)], case=case, object_noun=noun, timeout_s=timeout_s, ctx=ctx)
     except ModelError as e:
         status = "BLOCKED" if not rec.seen else "FAILED"
         return ProbeResult("G0-1", model, status, e.code, int((time.perf_counter() - t0) * 1000), None, rec.seen)
@@ -196,7 +197,7 @@ def run_g0_1(jpeg: bytes, case: str, noun: str, transport: httpx.BaseTransport, 
 
 
 def run_g0_2(jpeg: bytes, width: int, height: int, noun: str, transport: httpx.BaseTransport,
-             guard: Any) -> ProbeResult:
+             guard: Any, timeout_s: float = 60.0) -> ProbeResult:
     from field_api.assistant.model import ModelError
     from field_api.vision import settings
     from field_api.vision.ports import CallContext
@@ -208,7 +209,7 @@ def run_g0_2(jpeg: bytes, width: int, height: int, noun: str, transport: httpx.B
     ctx = CallContext(None, "m5-gate0")
     t0 = time.perf_counter()
     try:
-        found = sam.find(jpeg, width, height, noun, timeout_s=6.0, ctx=ctx)
+        found = sam.find(jpeg, width, height, noun, timeout_s=timeout_s, ctx=ctx)
     except ModelError as e:
         status = "BLOCKED" if not rec.seen else "FAILED"
         return ProbeResult("G0-2", model, status, e.code, int((time.perf_counter() - t0) * 1000), None, rec.seen)
@@ -245,6 +246,9 @@ def main(argv: list[str] | None = None, transport: httpx.BaseTransport | None = 
     ap.add_argument("--prompt", default="pack", help="the object noun for SAM and the label reader")
     ap.add_argument("--case", default="grocery", choices=("grocery", "pharmacy", "generic"))
     ap.add_argument("--only", choices=("g0-1", "g0-2"))
+    ap.add_argument("--timeout", type=float, default=60.0,
+                    help="seconds per model call (default 60: measures the real latency; the look's own deadlines are"
+                         " the VISION_*_DEADLINE_S settings)")
     ap.add_argument("--allow-unconfirmed-prices", action="store_true",
                     help="AI_ALLOW_UNCONFIRMED_PRICES=true for this run only (the placeholder prices are recorded)")
     ap.add_argument("--no-evidence", action="store_true", help="print only, write no file")
@@ -264,9 +268,9 @@ def main(argv: list[str] | None = None, transport: httpx.BaseTransport | None = 
     net = transport or httpx.HTTPTransport()
     results: list[ProbeResult] = []
     if a.only in (None, "g0-1"):
-        results.append(run_g0_1(jpeg, a.case, a.prompt, net, guard))
+        results.append(run_g0_1(jpeg, a.case, a.prompt, net, guard, a.timeout))
     if a.only in (None, "g0-2"):
-        results.append(run_g0_2(jpeg, w, h, a.prompt, net, guard))
+        results.append(run_g0_2(jpeg, w, h, a.prompt, net, guard, a.timeout))
     text = report(results, str(a.photo), (w, h))
     key = os.environ.get("MODEL_API_KEY", "").strip()
     if key and key in text:  # never: shapes carry no values; refuse to print or write if it ever did

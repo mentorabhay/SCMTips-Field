@@ -204,16 +204,19 @@ class ChatModel:
     def chat(self, messages: Sequence[dict[str, Any]], *, tools: Sequence[dict[str, Any]] | None = None,
              timeout_s: float = CALL_TIMEOUT_S, max_tokens: int | None = None, purpose: str = "assistant",
              tenant_id: str | None = None, request_id: str | None = None, log: CallLog | None = None,
-             response_format: dict[str, Any] | None = None, images: int = 0) -> ChatResult:
+             response_format: dict[str, Any] | None = None, images: int = 0,
+             timeout_cap_s: float = CALL_TIMEOUT_S) -> ChatResult:
         """One call. ``response_format`` (M5 vision look: a JSON schema answer) and ``images`` (the number of input
         images, so the budget guard applies its image-input rules) are sent only when given; without them the
-        request and the reservation are exactly the M3/M4 ones."""
+        request and the reservation are exactly the M3/M4 ones. ``timeout_cap_s`` lets the vision look allow image
+        calls longer than the assistant's 6 s cap (owner's Gate 0 from India, 1 Nov 2026: SAM 3.1 took about 5 s and a
+        Muse image read more than 7.7 s); the assistant and the brief router keep the default."""
         if os.getenv("AI_CLOUD_ENABLED", "false").strip().lower() != "true":
             raise ModelError("AI_CLOUD_DISABLED")
         key = os.environ.get(self.cfg.key_env, "").strip()
         if not key:
             raise ModelError("AI_NO_KEY", f"{self.cfg.key_env} is not set")
-        timeout = min(max(timeout_s, 0.1), CALL_TIMEOUT_S)
+        timeout = min(max(timeout_s, 0.1), timeout_cap_s)
         if max_tokens is None:
             max_tokens = max_output_tokens()
         body: dict[str, Any] = {"model": self.cfg.model, "messages": list(messages), "max_tokens": max_tokens,
