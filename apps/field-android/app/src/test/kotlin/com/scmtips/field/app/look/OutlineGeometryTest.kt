@@ -3,6 +3,7 @@ package com.scmtips.field.app.look
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Outline scaling (image pixels → canvas pixels, letterboxed) and the look photo's on-device blur rules. */
@@ -72,15 +73,40 @@ class OutlineGeometryTest {
     }
 
     @Test
-    fun m5B01_faceBoxIsGrownAndClamped_andPhotosAreScaledTo640WithAnEvenWidth() {
+    fun m5B01_faceBoxIsGrownAndClamped_andPhotosAreScaledTo1600WithAnEvenWidth() {
         val b = FacePixels.faceBox(100f, 100f, 40f, 640, 480)!!
         assertEquals(PixelBox(51, 47, 148, 170), b)
         val edge = FacePixels.faceBox(5f, 5f, 40f, 640, 480)!!
         assertEquals(0, edge.left); assertEquals(0, edge.top)
         assertNull(FacePixels.faceBox(10f, 10f, 0f, 640, 480))
-        assertEquals(640 to 480, FacePixels.scaledSize(1920, 1440))
-        assertEquals(360 to 640, FacePixels.scaledSize(720, 1280))
+        // M5-P01: a look photo is at most 1600 px on its long side (was 640); never scaled up; width even
+        assertEquals(1600 to 1200, FacePixels.scaledSize(1920, 1440))
+        assertEquals(1200 to 1600, FacePixels.scaledSize(3024, 4032))
+        assertEquals(720 to 1280, FacePixels.scaledSize(720, 1280))
+        assertEquals(1600 to 900, FacePixels.scaledSize(1601, 901))
         assertEquals(500 to 375, FacePixels.scaledSize(500, 375))
         assertEquals(500 to 375, FacePixels.scaledSize(501, 375))
+        // the explicit cap still works for any other caller
+        assertEquals(640 to 480, FacePixels.scaledSize(1920, 1440, max = 640))
+    }
+
+    @Test
+    fun m5P01_lookPhotoIs1600AtQuality85_andCameraFilesAreDecodedAtOneToTwiceThatSize() {
+        assertEquals(1600, LookApi.MAX_PX)
+        assertEquals(85, LookApi.JPEG_QUALITY)
+        assertEquals(1_000_000, LookApi.MAX_BYTES) // the captures API's 1 MB limit is unchanged
+        // a 12 MP phone file (4032 x 3024) is decoded at 2016 x 1512 (sample 2), then scaled to 1600 x 1200
+        assertEquals(2, FacePixels.sampleFor(4032, 3024))
+        assertEquals(1600 to 1200, FacePixels.scaledSize(4032 / 2, 3024 / 2))
+        // a 48 MP file (8000 x 6000): sample 4 -> 2000 px; never below the 1600 px look size
+        assertEquals(4, FacePixels.sampleFor(8000, 6000))
+        assertEquals(1, FacePixels.sampleFor(3199, 2400)) // 3199 / 2 < 1600: decoded full size, then scaled down
+        assertEquals(2, FacePixels.sampleFor(3200, 2400))
+        assertEquals(1, FacePixels.sampleFor(1280, 960)) // small photos are not sampled (and not scaled up)
+        for (w in listOf(1600, 2000, 3000, 4032, 6000, 9000)) {
+            val s = FacePixels.sampleFor(w, w * 3 / 4)
+            assertTrue("decoded long side ${w / s} >= 1600", w / s >= 1600)
+            assertTrue("decoded long side ${w / s} < 3200", w / s < 3200)
+        }
     }
 }

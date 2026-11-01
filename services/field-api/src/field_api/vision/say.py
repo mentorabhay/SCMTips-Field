@@ -15,6 +15,9 @@ from field_api.vision.reconcile import Check, Expectation, plural
 
 RULES_SAY = "I couldn't count them this time. Say the count, for example: receive, then the number."
 NO_NUMBERS_SAY = "Look done. The counts are on the screen."
+# M5-S01 two-step look: the first answer once SAM's instances are counted, then the label read.
+PENDING_SAY = "Reading the labels."
+LABELS_FAILED_SAY = "I couldn't read the labels. Say your numbers."
 
 
 def allowed_numbers(check: Check, exp: Expectation) -> set[Decimal]:
@@ -46,6 +49,33 @@ def numbers_ok(text: str, allowed: set[Decimal]) -> bool:
     return values(text) <= allowed
 
 
+def count_sentence(seen: int, expected: int | None, noun: str) -> str:
+    """"20 of 20 packs." with an expected quantity, else "8 packs." (the first sentence of every counted say)."""
+    if expected is not None:
+        return f"{seen} of {expected} {plural(noun, int(expected))}."
+    return f"{seen} {plural(noun, seen)}."
+
+
+def first_say(seen: int, expected: int | None, exp: Expectation) -> str:
+    """The first answer of a two-step look (M5-S01): the count only, then "Reading the labels.". Damage, pack size
+    and expiry come from the label read, so nothing else is said yet. Number-checked against the count."""
+    text = f"{count_sentence(seen, expected, exp.object_noun)} {PENDING_SAY}"
+    allowed = {Decimal(n).normalize() for n in (seen, expected) if n is not None}
+    return text if numbers_ok(text, allowed) else f"Counted. {PENDING_SAY}"
+
+
+def next_say(final_say: str, first: str) -> str:
+    """What the app speaks when the look is final, after it spoke ``first``: the final ``say`` without the count
+    sentence it already heard (when the count is unchanged), else the whole final ``say``. A part of a checked
+    sentence set, so every number in it is still one of the look's own figures."""
+    lead = first.removesuffix(PENDING_SAY).strip()
+    if lead and final_say.startswith(lead + " "):
+        rest = final_say[len(lead):].strip()
+        if rest:
+            return rest
+    return final_say
+
+
 def compose(check: Check, exp: Expectation) -> str:
     """The full sentence set: count, damage, pack groups (at most two), expiry, unread labels, the proposal."""
     c = check.counts
@@ -53,11 +83,7 @@ def compose(check: Check, exp: Expectation) -> str:
         return RULES_SAY
     seen = int(c["seen"])
     noun = exp.object_noun
-    parts: list[str] = []
-    if c["expected"] is not None:
-        parts.append(f"{seen} of {c['expected']} {plural(noun, int(c['expected']))}.")
-    else:
-        parts.append(f"{seen} {plural(noun, seen)}.")
+    parts: list[str] = [count_sentence(seen, c["expected"], noun)]
     if c["damaged"]:
         parts.append(f"{c['damaged']} damaged.")
     for k, value, diff in check.pack_groups[:2]:

@@ -1,8 +1,11 @@
 """Vision look routes (docs/design/M5_CONTRACT.md §2; stream V).
 
 POST /v1/vision/looks {task_id, line_id?, capture_id, object?, case}   (field.task.execute; Idempotency-Key)
-    -> 200 the look (always 200 once the task and capture are found: model failures degrade to source rules)
-GET  /v1/vision/looks/{look_id}                                       (field.task.read) -> 200 the same body
+    -> 200 the look (always 200 once the task and capture are found: model failures degrade to source rules).
+       Two-step (M5-S01): with instances and a label reader the answer comes once the instances are counted
+       (``final`` false); the label read runs in this request's background task after the answer is sent.
+GET  /v1/vision/looks/{look_id}                                       (field.task.read) -> 200 the same body, as
+       it is now (poll it until ``final`` is true; a read past the look's due time ends it as partial)
 
 Besides the contract's keys the body carries task_id, line_id, capture_id, case, object, created_at and
 erp_document_id (the receipt document the look was posted with, null until then).
@@ -12,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, BackgroundTasks, Depends, Header
 
 from field_api.auth.jwt import Principal
 from field_api.deps import require_permission
@@ -25,11 +28,12 @@ router = APIRouter(prefix="/v1/vision", tags=["Vision (M5)"])
 @router.post("/looks", status_code=200)
 def post_look(
     body: LookIn,
+    background: BackgroundTasks,
     idempotency_key: str = Header(..., alias="Idempotency-Key"),
     principal: Principal = Depends(require_permission("field.task.execute")),
     ports: VisionPorts = Depends(get_vision_ports),
 ) -> dict[str, Any]:
-    return create_look(principal, body, idempotency_key, ports)
+    return create_look(principal, body, idempotency_key, ports, defer=background.add_task)
 
 
 @router.get("/looks/{look_id}")

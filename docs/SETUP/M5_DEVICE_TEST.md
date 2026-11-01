@@ -11,12 +11,15 @@ phone and the glasses.
 | **C1 grocery** | 8–20 identical packs of one product (biscuits, noodles). One or two dented or opened is good. | count, damaged packs, pack size on each label ("pack of 6", "12 x 50 g") vs 12 pieces expected |
 | **C2 pharmacy** | 5–15 boxes of one medicine. An expired or soon-expiring box (within 90 days) and a dented box if you have them. | count, damaged boxes, batch and expiry on each box, mixed batches |
 
-**Photo size:** a look photo is at most **640 px** on its long side (the privacy rule for crops). With many items each
-label is small and may not be readable. **Start with 8 packs (C1) and 5 boxes (C2)**, filling the view from about
-40–50 cm. If you hear *"Some labels are too small to read: take a close look at one label"*, hold one item with its
-label 15–20 cm from the glasses and say **"look again"**. That close look is a new look of one item: it reads that
-label, but its count is 1 and it does **not** update the first look; post and claim then use the close look. So for
-the claim test, prefer fewer items so that no close look is needed, and always say your own numbers (step 5).
+**Photo size:** a look photo is at most **1600 px** on its long side (raised from 640 on 1 Nov 2026, M5-P01), JPEG
+quality about 85; faces are blurred on the phone on that full photo before it is sent, and each label crop the model
+reads is cut from it (at most 768 px). Labels are much more readable than at 640 px, but with many items each label
+is still small: **start with 8 packs (C1) and 5 boxes (C2)**, filling the view from about 40–50 cm. If you hear
+*"Some labels are too small to read: take a close look at one label"*, hold one item with its label 15–20 cm from the
+glasses and say **"look again"**. That close look is a new look of one item: it reads that label, but its count is 1
+and it does **not** update the first look; post and claim then use the close look. So for the claim test, prefer
+fewer items so that no close look is needed, and always say your own numbers (step 5). The bigger photo takes longer
+to upload on a slow Wi-Fi; the app says "Sending the photo…" meanwhile.
 
 ## 1. PC side
 1. Double-click **`<workspace>\field-test\START FIELD TEST.cmd`**; it starts the stack and runs `smoke --all` (must end
@@ -54,8 +57,8 @@ phone camera; the look screen always says which camera was used.
 | Step | Say (or tap) | Look for |
 |---|---|---|
 | 4. Start | open the receipt `m5-cases` printed (it expects your numbers); Today → **New grocery delivery** / **New pharmacy delivery** (or saying it) makes one with the defaults | a receive job with one line; fewer items than expected show as short |
-| 5. Look | **"look"** (or the Look button) | the photo with numbered outlines (green good, red damaged); you hear e.g. *"8 of 8 packs. 1 damaged. … Receive 7, flag 1?"*. Wrong count or missed damage: note it, say **"count again"** |
-| 6. Claim | **"make a claim"** | the draft read out with its lines (damaged, short, pack size, expired, near expiry) |
+| 5. Look | **"look"** (or the Look button) | two answers (M5-S01): first, within a few seconds, the count and outlines, *"8 of 8 packs. Reading the labels."*; then, when the labels are read (up to about 40 s), the rest, e.g. *"1 damaged. … Receive 7, flag 1?"*, and the outlines turn green good / red damaged. If the labels cannot be read you hear *"I couldn't read the labels. Say your numbers."*. Note both delays. Wrong count or missed damage: note it, say **"count again"** |
+| 6. Claim | **"make a claim"** (after the second answer; while the labels are read the app says to wait) | the draft read out with its lines (damaged, short, pack size, expired, near expiry) |
 | 7. Approve | **"claims"** or **"next claim"**, then **"approve"** (or "reject, wrong product"), then **"confirm"** within 10 s | the read-back, then *"Claim approved. Sending it to the supplier is simulated in this build."* |
 | 8. Post | your own numbers **"receive 7, flag 1"**, then **"post"**, then **"confirm"** within 10 s | *"Posted. Document 49…"*; the evidence page opens: SAMPLE banner, photo with outlines, the check, the claim, two hashes |
 

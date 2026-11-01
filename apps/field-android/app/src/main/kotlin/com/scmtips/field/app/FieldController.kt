@@ -353,6 +353,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         onLook = { fill -> runner?.applyLook(fill) },
         baseUrl = { session?.apiBaseUrl },
         log = ::log,
+        scope = scope,
     )
     private val caseByTask = mutableMapOf<String, LookCase>()
     private val claimInbox = UtteranceInbox { if (workSession.view.active) REVIEW_LISTEN_SESSION_MS else REVIEW_LISTEN_PHONE_MS }
@@ -832,7 +833,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
         runnerJobs.forEach { it.cancel() }
         runnerJobs.clear()
         _ui.value = _ui.value.copy(job = null, toast = note ?: _ui.value.toast)
-        // A posted look stays for "make a claim" and its evidence page until the next job opens.
+        // A posted look stays for "make a claim" and its evidence page until the next job opens; its label poll stops.
+        lookFlow.leave()
         if (!r.usedLook && _ui.value.look.evidenceUrl == null) lookFlow.clear()
         applyStreaming()
         if (!r.practice) refreshTasks()

@@ -10,9 +10,10 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
- * Android side of a look photo: scale to [LookApi.MAX_PX], find faces with the platform's
- * android.media.FaceDetector, pixelate them ([FacePixels], FaceBlurStage rules), JPEG at most
- * [LookApi.MAX_BYTES]. A photo whose face check fails is never returned, so it cannot be uploaded.
+ * Android side of a look photo: scale to [LookApi.MAX_PX] (1600), find faces with the platform's
+ * android.media.FaceDetector, pixelate them ([FacePixels], FaceBlurStage rules) on that full-size photo, JPEG quality
+ * [LookApi.JPEG_QUALITY] (lower only to stay within [LookApi.MAX_BYTES]). A photo whose face check fails is never
+ * returned, so it cannot be uploaded.
  */
 object LookPhotos {
     private const val MAX_FACES = 8
@@ -29,7 +30,7 @@ object LookPhotos {
         scaled.getPixels(argb, 0, w, 0, 0, w, h)
         FacePixels.pixelate(argb, w, h, faces)
         val out = Bitmap.createBitmap(argb, w, h, Bitmap.Config.ARGB_8888)
-        for (q in listOf(88, 75, 60, 45)) {
+        for (q in listOf(LookApi.JPEG_QUALITY, 75, 60, 45)) {
             val bytes = ByteArrayOutputStream().also { out.compress(Bitmap.CompressFormat.JPEG, q, it) }.toByteArray()
             if (bytes.size <= LookApi.MAX_BYTES) return LookPhoto(bytes, w, h, camera, takenAtMs, captureMs, faces.size)
         }
@@ -47,13 +48,12 @@ object LookPhotos {
         }
     }
 
-    /** The phone camera app's photo file, decoded at about 2x the upload size and turned upright (EXIF). */
+    /** The phone camera app's photo file, decoded at 1-2x the upload size ([FacePixels.sampleFor]) and turned upright (EXIF). */
     fun decodePhoneFile(file: File): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        var sample = 1
-        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= LookApi.MAX_PX * 2) sample *= 2
+        val sample = FacePixels.sampleFor(bounds.outWidth, bounds.outHeight)
         val bmp = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return null
         val degrees = runCatching {
             when (ExifInterface(file.path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {

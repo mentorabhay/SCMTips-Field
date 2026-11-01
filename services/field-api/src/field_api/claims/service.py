@@ -2,7 +2,8 @@
 
 - create: the look through the look port; lines computed (``claims.lines``); the text drafted by Muse or the
   template (``claims.text``); one claim per look (UNIQUE (tenant_id, look_id)): a second create for the same look
-  returns the first claim and makes no model call.
+  returns the first claim and makes no model call. A look whose label read is still running (``final`` false,
+  M5-S01) is refused 409 FIELD-CLM-409-LOOK-PENDING: a claim is always made from the look's final state.
 - decide (supervisor, ``field.claim.decide``; If-Match): ``approve`` / ``reject`` -> ``pending_confirm`` with a
   read-back and ``confirm_by`` = now + FIELD_CONFIRM_TIMEOUT_S (10 s, the posting rule of routes/voice.py), on the
   database clock.
@@ -52,6 +53,9 @@ ERR_EXPIRED = FieldError(status=422, code="FIELD-CLM-422-CONFIRM-EXPIRED", title
                          detail=f"Confirm within {CONFIRM_TIMEOUT_S:g} s of the decision. The claim is a draft "
                                 "again; decide again.")
 ERR_ID = FieldError(status=422, code="FIELD-HTTP-422-VALIDATION", title="Invalid id")
+ERR_LOOK_PENDING = FieldError(status=409, code="FIELD-CLM-409-LOOK-PENDING", title="The look is still reading labels",
+                              detail="A claim is made from the look's final state (M5-S01). Try again when GET "
+                                     "/v1/vision/looks/{id} answers final: true.")
 
 STATUS_FILTER = MappingProxyType({"draft": ("draft",), "pending": ("pending_confirm",),
                                   "pending_confirm": ("pending_confirm",), "approved": ("approved",),
@@ -171,6 +175,8 @@ def create_claim(principal: Principal, look_id: str, *, looks: LookPort, router:
     look = looks(principal, look_id)
     if look is None:
         raise ERR_LOOK
+    if look.get("final") is False:  # damage, pack size and expiry are not known before the label read ends
+        raise ERR_LOOK_PENDING
     lines = claim_lines(look)
     if not lines:
         raise ERR_NOTHING

@@ -3,9 +3,16 @@ package com.scmtips.field.app.look
 import com.scmtips.field.app.jobs.LookFill
 import com.scmtips.field.app.jobs.Speaker
 import com.scmtips.field.core.wearables.EarconCue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -44,6 +51,8 @@ data class LookView(
     val claim: Claim? = null,
     val claimBusy: Boolean = false,
     val evidenceUrl: String? = null,
+    /** M5-S01: the look's first answer is shown (count, outlines) and its labels are still being read. */
+    val labelsPending: Boolean = false,
 ) {
     val busy: Boolean get() = state == LookState.CAPTURING || state == LookState.UPLOADING || state == LookState.READING
     val camera: CameraUsed? get() = photo?.camera
@@ -55,6 +64,12 @@ data class LookView(
  * the receive job ([onLook]) as a pre-fill only. Posting stays the operator's spoken numbers + "post" +
  * "yes". Then "make a claim" (`POST /v1/claims`) and, after the posting, the evidence link.
  *
+ * Two steps (M5-S01): when the first answer is not `final` (counted, labels still being read) its `say` is spoken
+ * at once, then `GET /v1/vision/looks/{id}` is polled every [LookApi.POLL_MS] up to [LookApi.POLL_MAX] times on
+ * [scope]; when the look is final the screen is updated and its second part (`say_next`, else `say`) is spoken
+ * once, with the hint. A new look, another job, [leave] or [clear] cancels the poll; no answer within the polls
+ * says [LABELS_TIMEOUT_SAY]. A claim waits for the final look.
+ *
  * Pure Kotlin over ports; every path is JVM-tested in LookFlowTest. One look at a time.
  */
 class LookFlow(
@@ -64,8 +79,14 @@ class LookFlow(
     private val onLook: suspend (LookFill) -> Unit,
     private val baseUrl: () -> String?,
     private val log: (String) -> Unit = {},
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val sleep: suspend (Long) -> Unit = { delay(it) },
 ) {
     private val mutex = Mutex()
+    @Volatile private var poll: Job? = null
+
+    /** The running poll of a two-step look (tests join it); null when none. */
+    internal val polling: Job? get() = poll
     private val _view = MutableStateFlow(LookView())
     val view: StateFlow<LookView> = _view.asStateFlow()
     private var target: LookTarget? = null
@@ -76,13 +97,21 @@ class LookFlow(
     /** The last look id (for "make a claim"); null before a look answered. */
     val lastLookId: String? get() = _view.value.look?.lookId
 
-    /** A new job: an old job's look is not shown on it. */
+    /** A new job: an old job's look is not shown on it (and its poll stops). */
     fun forTask(taskId: String?, case: LookCase) {
-        if (_view.value.taskId != taskId) _view.value = LookView(taskId = taskId, case = case)
-        else _view.value = _view.value.copy(case = case)
+        if (_view.value.taskId != taskId) {
+            stopPolling()
+            _view.value = LookView(taskId = taskId, case = case)
+        } else _view.value = _view.value.copy(case = case)
+    }
+
+    /** Leaving the job screen: the poll stops (nothing more is spoken); the look stays for "make a claim". */
+    fun leave() {
+        if (stopPolling()) update { it.copy(labelsPending = false) }
     }
 
     fun clear() {
+        stopPolling()
         target = null
         pending = null
         _view.value = LookView()
@@ -91,6 +120,7 @@ class LookFlow(
     /** "look" / "take a look" / the Look button. */
     suspend fun look(t: LookTarget) {
         if (_view.value.busy) return speaker.say("Still looking. One moment.")
+        stopPolling() // a new look: the last one's labels are not spoken any more
         mutex.withLock {
             target = t
             update { LookView(state = LookState.CAPTURING, taskId = t.taskId, case = t.case, claim = null) }
@@ -132,18 +162,67 @@ class LookFlow(
             is LookResult.Failed -> fail(r.text, spoken = r.text)
             is LookResult.Ok -> {
                 val look = r.look
-                log("look ${look.lookId} (${look.source}, ${photo.camera.label}): ${look.counts}; models ${look.models.joinToString { "${it.model} ${it.outcome}" }}")
-                val fill = LookFill(look.lookId, look.captureId ?: captureId, t.lineId, look.proposal?.receive, look.proposal?.flag, hint(look))
-                update { it.copy(state = LookState.SHOWN, look = look) }
-                onLook(fill)
-                speaker.say(listOf(look.say.ifBlank { null }, fill.hint).filterNotNull().joinToString(" "))
+                log("look ${look.lookId} (${look.source}${if (look.final) "" else ", reading labels"}, ${photo.camera.label}): ${look.counts}; models ${look.models.joinToString { "${it.model} ${it.outcome}" }}")
+                if (look.final) {
+                    val fill = LookFill(look.lookId, look.captureId ?: captureId, t.lineId, look.proposal?.receive, look.proposal?.flag, hint(look))
+                    update { it.copy(state = LookState.SHOWN, look = look, labelsPending = false) }
+                    onLook(fill)
+                    speaker.say(listOf(look.say.ifBlank { null }, fill.hint).filterNotNull().joinToString(" "))
+                } else {
+                    // M5-S01: counted; the labels are read on the server. Nothing is proposed yet.
+                    val fill = LookFill(look.lookId, look.captureId ?: captureId, t.lineId, null, null, PENDING_HINT)
+                    update { it.copy(state = LookState.SHOWN, look = look, labelsPending = true) }
+                    onLook(fill)
+                    speaker.say(look.say.ifBlank { "Counted. Reading the labels." })
+                    poll = scope.launch { pollLabels(t, look.lookId, look.captureId ?: captureId) }
+                }
             }
         }
+    }
+
+    /** M5-S01: GET the look every second until it is final (at most [LookApi.POLL_MAX] times). */
+    private suspend fun pollLabels(t: LookTarget, lookId: String, captureId: String) {
+        repeat(LookApi.POLL_MAX) {
+            sleep(LookApi.POLL_MS)
+            val now = (client.lookNow(lookId) as? LookResult.Ok)?.look ?: return@repeat // a failed poll: try again
+            if (now.final) return finishLabels(t, now, captureId)
+        }
+        if (_view.value.look?.lookId != lookId) return
+        log("look $lookId: labels not read within ${LookApi.POLL_MAX} polls")
+        update { it.copy(labelsPending = false, message = LABELS_TIMEOUT_SAY) }
+        onLook(LookFill(lookId, captureId, t.lineId, null, null, "Say receive and the number you count. Or say look again."))
+        speaker.queue(LABELS_TIMEOUT_SAY)
+        pollDone()
+    }
+
+    private suspend fun finishLabels(t: LookTarget, look: Look, captureId: String) {
+        if (_view.value.look?.lookId != look.lookId) return // another look replaced it
+        log("look ${look.lookId} final (${look.source}): ${look.counts}; models ${look.models.joinToString { "${it.model} ${it.outcome}" }}")
+        val fill = LookFill(look.lookId, look.captureId ?: captureId, t.lineId, look.proposal?.receive, look.proposal?.flag, hint(look))
+        update { it.copy(look = look, labelsPending = false) }
+        onLook(fill)
+        speaker.queue(listOf((look.sayNext ?: look.say).ifBlank { null }, fill.hint).filterNotNull().joinToString(" "))
+        pollDone()
+    }
+
+    /** The poll that is ending forgets itself (never a newer poll that replaced it). */
+    private suspend fun pollDone() {
+        val me = currentCoroutineContext()[Job]
+        if (poll === me) poll = null
+    }
+
+    /** Cancels a running poll; true when there was one. */
+    private fun stopPolling(): Boolean {
+        val p = poll ?: return false
+        poll = null
+        p.cancel()
+        return true
     }
 
     /** "make a claim": a supplier claim from the last look; its draft text is read out. */
     suspend fun claim() {
         val lookId = lastLookId ?: return speaker.say("Take a look first, then say make a claim.")
+        if (_view.value.labelsPending) return speaker.say("Still reading the labels. Say make a claim in a moment.")
         if (_view.value.claimBusy) return
         update { it.copy(claimBusy = true) }
         when (val r = client.claim(lookId)) {
@@ -188,6 +267,9 @@ class LookFlow(
         const val CONSENT_TEXT = "Photos taken on this site are sent to the Field server. Faces are blurred on the phone " +
             "before sending, and photos are kept 30 days. Agree once for this site."
         const val CONSENT_SPOKEN = "Photos on this site need your OK once. Faces are blurred on the phone. Say I agree, or tap Agree."
+        /** M5-S01: the look's labels did not come back within the polls (the server's own failure says the same). */
+        const val LABELS_TIMEOUT_SAY = "I couldn't read the labels. Say your numbers."
+        const val PENDING_HINT = "Reading the labels. Or say receive and the number you count."
 
         /** The next step after a look: the proposal as words to say back, or a spoken count. */
         fun hint(look: Look): String {

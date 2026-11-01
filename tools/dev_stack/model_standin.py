@@ -7,8 +7,11 @@ a dev marker instead of MODEL_API_KEY and a zero-price pricing file (tools/dev_s
 never imports this module; the request and answer shapes it serves are the UNVERIFIED ones of
 field_api.vision.sam / field_api.vision.labels (META_FIELD rows 20, 23).
 
-    POST /_standin/scene   {"boxes": [[x0, y0, x1, y1], ...], "width", "height", "labels": {"<n>": {...}}}
-         the scene the next looks see: boxes in reading order (n = index + 1), label fields as the label schema
+    POST /_standin/scene   {"boxes": [[x0, y0, x1, y1], ...], "width", "height", "labels": {"<n>": {...}},
+                            "label_delay_s": 0..10 (optional, default 0)}
+         the scene the next looks see: boxes in reading order (n = index + 1), label fields as the label schema;
+         label_delay_s holds every label answer that long, so the smoke can see the look answer before its labels
+         are read (M5-S01 two-step look)
     GET  /_standin/requests -> {"responses": <n>, "chat": <n>, "models": [...]}  (counts, never a header)
     POST /v1/responses          SAM 3.1: server-sent events, text "<0f>" + box tokens of the scene (shuffled)
     POST /v1/chat/completions   with images: the label JSON for the numbered crops asked; without: a short JSON say
@@ -16,6 +19,7 @@ field_api.vision.sam / field_api.vision.labels (META_FIELD rows 20, 23).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import random
 import re
@@ -25,7 +29,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
 app = FastAPI(title="Model stand-in (dev stack only, not the Meta Model API)")
-SCENE: dict[str, Any] = {"boxes": [], "width": 0, "height": 0, "labels": {}}
+SCENE: dict[str, Any] = {"boxes": [], "width": 0, "height": 0, "labels": {}, "label_delay_s": 0.0}
 SEEN: dict[str, Any] = {"responses": 0, "chat": 0, "models": []}
 _N = re.compile(r"(\d+):$")
 
@@ -57,7 +61,8 @@ def label_items(content: list[dict[str, Any]], labels: dict[str, Any]) -> list[d
 async def set_scene(request: Request) -> dict[str, Any]:
     body = await request.json()
     SCENE.update({"boxes": [list(map(int, b)) for b in body.get("boxes") or []], "width": int(body["width"]),
-                  "height": int(body["height"]), "labels": {str(k): v for k, v in (body.get("labels") or {}).items()}})
+                  "height": int(body["height"]), "labels": {str(k): v for k, v in (body.get("labels") or {}).items()},
+                  "label_delay_s": max(0.0, min(10.0, float(body.get("label_delay_s") or 0)))})
     return {"boxes": len(SCENE["boxes"])}
 
 
@@ -92,6 +97,8 @@ async def chat(request: Request) -> JSONResponse:
     content = messages[-1].get("content")
     system = str(messages[0].get("content") or "") if messages[0].get("role") == "system" else ""
     if isinstance(content, list) and any(p.get("type") == "image_url" for p in content):
+        if SCENE["label_delay_s"]:
+            await asyncio.sleep(SCENE["label_delay_s"])
         answer = json.dumps({"items": label_items(content, SCENE["labels"])})
     elif system.startswith(CLAIM_DRAFT_PROMPT_START) and isinstance(content, str):
         answer = content  # a claim draft (M5 claims): the facts as given, so field-api's number check passes

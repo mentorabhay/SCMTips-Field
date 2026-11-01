@@ -62,6 +62,25 @@ unread label is `read: false`, never guessed. The look never stages or posts any
 
 `GET /v1/vision/looks/{look_id}` returns the same body. `GET /v1/captures/{id}` / `/crop` serve the image as today.
 
+**Two-step look (M5-S01).** The body gains `"final": bool` and `"say_next": str | null` (additive; a body without
+`final` is final). With instances and a label reader, `POST` answers as soon as SAM's instances are counted:
+`final: false`, `source: "partial"`, instances with outlines and `label.read: false`, `counts.expected`/`seen` set
+and `counts.damaged`/`good` **null** (damage comes from the label read), `pack`/`expiry` null, `proposal`
+`{receive: null, flag: null, reasons: []}`, and `say` = the count only, number-checked, then "Reading the labels."
+(e.g. "8 of 20 packs. Reading the labels."). The label read continues in field-api (the request's background task,
+after the answer is sent). Then `GET` answers `final: true` with labels, pack/expiry checks, proposal, the full
+`say` (as a one-step look) and `say_next` = what the app speaks next (the final `say` without the count sentence
+already heard). If no label batch is answered (failure, time-out) or anything fails, the look ends `final: true`,
+`source: "partial"`, a reason, the label-free check (every label unread) and `say` = `say_next` = "I couldn't read
+the labels. Say your numbers.". A read unfinished at its due time (labels + fallback deadlines + 15 s, e.g. field-api
+restarted) is ended the same way by the next read of the look (reason `labels:not_finished`). Looks without
+instances or without a reader are final in one step (`say_next` null). The `Idempotency-Key` replay of the POST
+returns the stored first answer; the app polls `GET` (every 1 s, up to 40 s) until `final`. Every spoken number is
+still checked against the deterministic result, and nothing posts without the operator's numbers and "confirm".
+`POST /v1/claims` on a look that is not final is refused **409 `FIELD-CLM-409-LOOK-PENDING`**: a claim is always made
+from the final state. Posting a receipt with a look that is not final is allowed (the operator's numbers post); the
+evidence page shows the look as it is when the page is opened.
+
 Posting: the existing receive flow (counts, then "post" → "confirm" within 10 s, or touch confirm) gains an optional
 `look_id` and a `flag_qty` per line (stream V): good quantity → 101 to 101A, flagged quantity → 101 to 101Q, one
 material document, linked to the look. The operator's spoken numbers ("receive 18, flag 2") are what posts; the
@@ -116,6 +135,14 @@ Real products appear on camera. Field stores no brand or company names: the labe
 unit, batch, expiry and damage; `raw` text is kept 30 days like assistant turns and is excluded from logs; material
 names in the sandbox come from the operator's words or a generic description. On-device blur and consent gates for
 photos are unchanged. The video is the owner's decision (§ Blueprint), not part of this build.
+
+Look photo size (M5-P01, owner-approved 1 Nov 2026; was 640 px): a look photo from the glasses or the phone camera is
+at most **1600 px** on its long side (aspect kept, never scaled up), JPEG quality about 85 (lower only to stay within
+the captures API's 1 MB limit, which is unchanged). Faces are found and pixelated on the phone **on that full-size
+photo, before it is uploaded**, and the captures API refuses a photo without `blur_applied`, so no model call ever
+sees an unblurred face. SAM 3.1 gets the photo as stored; each label crop sent to Muse (or the fallback) is cut from
+the full-size photo and is at most **768 px** on its long side. The evidence page shows the photo as stored. Scan
+crops (barcode captures, FR2.066) keep their own 640 px rule.
 
 ## 7. Done for M5 build (before the owner's device test)
 
