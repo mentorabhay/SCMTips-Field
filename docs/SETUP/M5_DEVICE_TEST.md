@@ -11,12 +11,15 @@ phone and the glasses.
 | **C1 grocery** | 8–20 identical packs of one product (biscuits, noodles). One or two dented or opened is good. | count, damaged packs, pack size on each label ("pack of 6", "12 x 50 g") vs 12 pieces expected |
 | **C2 pharmacy** | 5–15 boxes of one medicine. An expired or soon-expiring box (within 90 days) and a dented box if you have them. | count, damaged boxes, batch and expiry on each box, mixed batches |
 
-**Photo size:** a look photo is at most **640 px** on its long side (the privacy rule for crops). With many items each
-label is small and may not be readable. **Start with 8 packs (C1) and 5 boxes (C2)**, filling the view from about
-40–50 cm. If you hear *"Some labels are too small to read: take a close look at one label"*, hold one item with its
-label 15–20 cm from the glasses and say **"look again"**. That close look is a new look of one item: it reads that
-label, but its count is 1 and it does **not** update the first look; post and claim then use the close look. So for
-the claim test, prefer fewer items so that no close look is needed, and always say your own numbers (step 5).
+**Photo size:** a look photo is at most **1600 px** on its long side (raised from 640 on 1 Nov 2026, M5-P01), JPEG
+quality about 85; faces are blurred on the phone on that full photo before it is sent, and each label crop the model
+reads is cut from it (at most 768 px). Labels are much more readable than at 640 px, but with many items each label
+is still small: **start with 8 packs (C1) and 5 boxes (C2)**, filling the view from about 40–50 cm. If you hear
+*"Some labels are too small to read: take a close look at one label"*, hold one item with its label 15–20 cm from the
+glasses and say **"look again"**. That close look is a new look of one item: it reads that label, but its count is 1
+and it does **not** update the first look; post and claim then use the close look. So for the claim test, prefer
+fewer items so that no close look is needed, and always say your own numbers (step 5). The bigger photo takes longer
+to upload on a slow Wi-Fi; the app says "Sending the photo…" meanwhile.
 
 ## 1. PC side
 1. Double-click **`<workspace>\field-test\START FIELD TEST.cmd`**; it starts the stack and runs `smoke --all` (must end

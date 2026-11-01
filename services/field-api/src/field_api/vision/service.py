@@ -9,7 +9,11 @@ e) the proposal and ``say`` (vision.say: a number-checked template);
 f) no model answered (AI off, no key, budget or unconfirmed price refused, timeout, error): ``source: rules``,
    no instances, counts.seen null, ``say`` asks for a spoken count. Never an error to the app.
 
-Small instances (the app caps a look photo at 640 px, FR2.066): when labels were read but some came back unreadable
+Photo size (M5-P01): the app sends a look photo of at most 1600 px on its long side (JPEG ~85, faces pixelated on
+the phone on that full photo before upload, captures API 1 MB limit). SAM gets the photo as stored; each label crop
+is cut from it and scaled to at most CROP_MAX_SIDE (768 px, vision.image).
+
+Small instances (many items in one view, or a small camera photo): when labels were read but some came back unreadable
 and the instances' median short side is under VISION_LABEL_MIN_INSTANCE_PX (200 pixels), ``reasons`` gets ``labels:close_look_needed`` and
 ``labels:small_image:<w>x<h>:instance_px=<n>``, and ``say`` ends by asking for a close look at a label.
 

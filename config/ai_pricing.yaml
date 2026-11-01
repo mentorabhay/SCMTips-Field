@@ -33,6 +33,10 @@ meta:
   # Not yet confirmed by the owner on the console (META_FIELD row 20).
   # image_input: the docs do not say how many prompt tokens an input image costs. Placeholder 3000 tokens per image
   # (worst case reserved; the provider's own prompt-token count is what is settled). UNVERIFIED, owner to confirm.
+  # M5-P01 (1 Nov 2026): look photos are now up to 1600 px (was 640), so label crops are cut at full size and reach
+  # the 768 px crop cap far more often. The reservation is flat per image (one per instance crop), so the count of
+  # images per look is unchanged, but the real tokens of a 768 px crop may be above 3000: RE-MEASURE at the new size
+  # (Gate 0 usage.prompt_tokens for one call with N crops) and correct tokens_per_image. Still unconfirmed.
   muse-spark-1.3: {input_per_mtok: 1.25, cached_input_per_mtok: 0.15, output_per_mtok: 4.25,
                    image_input: {confirmed: false, tokens_per_image: 3000}}
   # SAM 3.1 (M5 vision look, instances from a text prompt). Billed per image, not per token: the same docs page lists

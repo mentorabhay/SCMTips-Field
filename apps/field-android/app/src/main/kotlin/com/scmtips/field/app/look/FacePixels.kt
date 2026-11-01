@@ -8,7 +8,8 @@ data class PixelBox(val left: Int, val top: Int, val right: Int, val bottom: Int
  * (FR2.022): every face at confidence >= 0.30, its box grown by 10 % on each side, pixelated in 16 px
  * blocks (each block its mean colour) before the JPEG is made. The face finder is Android's own
  * android.media.FaceDetector (no extra library); it reports an eye midpoint and the eye distance.
- * A look photo is at most 640 px on its long side like a capture crop (FR2.066).
+ * The blur runs on the full look photo that is uploaded (at most [LookApi.MAX_PX] = 1600 px on its long side, M5-P01),
+ * so every model call on the server sees only blurred faces.
  */
 object FacePixels {
     const val MIN_CONFIDENCE = 0.30f
@@ -61,9 +62,21 @@ object FacePixels {
     /** The size a photo is scaled to: the long side at most [max] px, aspect kept, width even (the face finder needs it). */
     fun scaledSize(w: Int, h: Int, max: Int = LookApi.MAX_PX): Pair<Int, Int> {
         val longest = maxOf(w, h)
-        val f = if (longest > max) max.toFloat() / longest else 1f
-        val sw = (w * f).toInt().coerceAtLeast(2).let { if (it % 2 == 1) it - 1 else it }
-        val sh = (h * f).toInt().coerceAtLeast(1)
+        // integer arithmetic: a float factor (1600 / 1920f) can land a pixel short of the cap
+        fun scale(v: Int): Int = if (longest > max) (v.toLong() * max / longest).toInt() else v
+        val sw = scale(w).coerceAtLeast(2).let { if (it % 2 == 1) it - 1 else it }
+        val sh = scale(h).coerceAtLeast(1)
         return sw to sh
+    }
+
+    /**
+     * The BitmapFactory inSampleSize for decoding a [w] x [h] camera file: the largest power of two that still leaves
+     * the long side at least [max] (so the photo is scaled down to [max], never up), 1 for small files.
+     */
+    fun sampleFor(w: Int, h: Int, max: Int = LookApi.MAX_PX): Int {
+        val longest = maxOf(w, h)
+        var sample = 1
+        while (longest / (sample * 2) >= max) sample *= 2
+        return sample
     }
 }

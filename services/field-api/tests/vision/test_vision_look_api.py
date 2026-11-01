@@ -204,8 +204,9 @@ def test_m5_v02_idempotent_and_validated(client: TestClient, site: dict[str, Any
 
 def test_m5_v02_small_photo_with_unread_labels_asks_for_a_close_look(client: TestClient, site: dict[str, Any],
                                                                      v: SimpleNamespace, ai_on: None) -> None:
-    """The app caps a look photo at 640 px: instances are counted, labels come back unreadable, and the look tells
-    the app (reasons labels:close_look_needed, labels:small_image:...) and the operator (say) to look closer."""
+    """A 640 px photo (the app's cap before M5-P01; still what a small camera gives): instances are counted, labels
+    come back unreadable, and the look tells the app (reasons labels:close_look_needed, labels:small_image:...) and
+    the operator (say) to look closer."""
     v.add_case_line(site, "grocery", ppu=12)
     boxes = v.grid_boxes(20, width=640, height=480)
     double = v.VisionDouble(boxes=boxes, width=640, height=480, labels={})

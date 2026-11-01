@@ -18,7 +18,7 @@ fun interface BytesPort {
 
 /**
  * One look photo, ready to upload: JPEG with faces already pixelated on the phone ([facesBlurred]),
- * at most [LookApi.MAX_PX] on its long side and [LookApi.MAX_BYTES]. [captureMs] is how long the camera took.
+ * at most [LookApi.MAX_PX] (1600) on its long side and [LookApi.MAX_BYTES]. [captureMs] is how long the camera took.
  */
 class LookPhoto(
     val jpeg: ByteArray,
@@ -64,9 +64,14 @@ sealed interface StepResult {
  * by LookClientTest.
  */
 object LookApi {
-    /** The captures crop limit (field-api MAX_CROP_BYTES) and the on-device crop size rule (FR2.066). */
+    /** The captures crop limit (field-api MAX_CROP_BYTES, 1 MB): the JPEG steps down in quality to fit it. */
     const val MAX_BYTES = 1_000_000
-    const val MAX_PX = 640
+    /** A look photo's long side (M5-P01, owner-approved 1 Nov 2026: 640 left labels unreadable). Faces are pixelated
+     *  on this full-size photo before it leaves the phone; the server cuts each label crop from it (at most 768 px).
+     *  Scan crops keep core-capture's own 640 px rule (FR2.066, QuietModePolicy). */
+    const val MAX_PX = 1600
+    /** The first JPEG quality tried for a look photo; lower ones only when the photo is above [MAX_BYTES]. */
+    const val JPEG_QUALITY = 85
     const val CODE_TYPE = "look"
     const val NO_CONSENT = "FIELD-CAP-403-NO-CONSENT"
     const val CONSENT_VERSION = "f1-2026-11"

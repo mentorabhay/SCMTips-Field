@@ -117,6 +117,14 @@ unit, batch, expiry and damage; `raw` text is kept 30 days like assistant turns 
 names in the sandbox come from the operator's words or a generic description. On-device blur and consent gates for
 photos are unchanged. The video is the owner's decision (§ Blueprint), not part of this build.
 
+Look photo size (M5-P01, owner-approved 1 Nov 2026; was 640 px): a look photo from the glasses or the phone camera is
+at most **1600 px** on its long side (aspect kept, never scaled up), JPEG quality about 85 (lower only to stay within
+the captures API's 1 MB limit, which is unchanged). Faces are found and pixelated on the phone **on that full-size
+photo, before it is uploaded**, and the captures API refuses a photo without `blur_applied`, so no model call ever
+sees an unblurred face. SAM 3.1 gets the photo as stored; each label crop sent to Muse (or the fallback) is cut from
+the full-size photo and is at most **768 px** on its long side. The evidence page shows the photo as stored. Scan
+crops (barcode captures, FR2.066) keep their own 640 px rule.
+
 ## 7. Done for M5 build (before the owner's device test)
 
 All gates green (ruff, mypy --strict, tools/checks, openapi drift, alembic round trip, pytest, compile_check --all,

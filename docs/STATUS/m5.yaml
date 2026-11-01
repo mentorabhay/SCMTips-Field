@@ -66,7 +66,7 @@
     /docs/pricing-rate-limits) and Meta's meta-sam-parser package description; /docs/sam/segmenting and
     /docs/sam/reading-segmentation could not be fetched. No call reached api.meta.ai (no key, no route from the
     build sandbox). The SAM mask is not decoded (polygon null). Gate 0 (tools/probes/m5_gate0.py) is the first
-    real call. Small instances (the app's 640 px look photo): unread labels with a median instance short side under
+    real call. Small instances (many items in one look; the app's look photo was 640 px until M5-P01): unread labels with a median instance short side under
     VISION_LABEL_MIN_INSTANCE_PX (200) add reasons labels:close_look_needed and labels:small_image:WxH:instance_px=N
     and ask for a close look in say; the 200 px figure is an estimate, UNVERIFIED until Gate 0.
 - id: M5-V03
@@ -484,7 +484,7 @@
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_canvasHeightFollowsThePhotoUpToTheCap
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_outlinesUseTheLooksImageSize_elseThePhotos
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_facesArePixelatedInSixteenPixelBlocksOfTheirMeanColour
-  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_faceBoxIsGrownAndClamped_andPhotosAreScaledTo640WithAnEvenWidth
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_faceBoxIsGrownAndClamped_andPhotosAreScaledTo1600WithAnEvenWidth
   frs: []
   verified_at: null
   note: >-
@@ -492,9 +492,8 @@
     called. The photo goes through the existing captures API unchanged (POST /v1/captures/uploads, PUT the bytes, POST
     /v1/captures with crop_upload_id, code_type look, a unique code_value per photo, blur_applied true): faces are found
     with Android's own android.media.FaceDetector and pixelated with FaceBlurStage's rules (>= 0.30, +10 %, 16 px), and a
-    photo whose face check fails is not uploaded. A look photo is at most 640 px on its long side like a capture crop
-    (FR2.066): label reads of small print (pack size, expiry) may need a close look; a larger look photo is a privacy-rule
-    change for the owner. A 403 FIELD-CAP-403-NO-CONSENT asks once per site ("I agree" or Agree) and records POST
+    photo whose face check fails is not uploaded. A look photo was at most 640 px on its long side like a capture crop
+    (FR2.066); since M5-P01 (owner-approved) it is at most 1600 px, blurred at that size before upload. A 403 FIELD-CAP-403-NO-CONSENT asks once per site ("I agree" or Agree) and records POST
     /v1/consents. Outlines are drawn from image pixels with letterboxing (the look's image size, else the uploaded photo).
     Nothing ran on the owner's phone or the glasses; the glasses photo path (DatGlasses.capturePhoto, toolkit 1.0.1)
     compiles against the real jars but has never run (META_FIELD row 5).
@@ -631,7 +630,7 @@
     Stream.capturePhoto(), PhotoData.Bitmap or HEIC decoded) and times it from the call to the bitmap, stream opening
     included. Before it runs, MainActivity checks BLUETOOTH_CONNECT and the toolkit's CAMERA permission
     (Wearables.checkPermissionStatus) and sends the operator through the Meta AI app grant when missing. Upload is the
-    captures API with the blurred 640 px copy (consent asked once if needed). Compiled against the 1.0.1 jars only; it
+    captures API with the blurred look-size copy (1600 px since M5-P01; consent asked once if needed). Compiled against the 1.0.1 jars only; it
     has never run on the glasses (META_FIELD row 5), which is exactly what G0-5 is for.
 - id: M5-B06
   title: >-
@@ -751,3 +750,41 @@
     new browser tab needs a new sign-in (session info is per tab, as with the dev sign-in); browsers without
     Sec-Fetch-Site (Safari before 16.4) get no cookie bearer on GET calls; the core's per-IP sign-in rate limit sees
     the console container's address for every person.
+- id: M5-P01
+  title: >-
+    Larger look photos: the app's look photo long side 640 -> 1600 px (JPEG ~85, faces blurred on the phone on the
+    full photo before upload), SAM 3.1 gets the stored photo, label crops cut from it at most 768 px, evidence page
+    shows the photo as stored (owner-approved 1 Nov 2026)
+  workstream: M5-P
+  role: Builder (photo and speech)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookApi.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/FacePixels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookPhotos.kt
+  - services/field-api/src/field_api/vision/image.py
+  - services/field-api/src/field_api/vision/service.py
+  - docs/design/M5_CONTRACT.md
+  - docs/SETUP/M5_DEVICE_TEST.md
+  - config/ai_pricing.yaml
+  tests:
+  - services/field-api/tests/vision/test_vision_photo_size.py::test_m5_p01_1600_px_photo_goes_whole_to_sam_and_label_crops_are_cut_full_size
+  - services/field-api/tests/vision/test_vision_photo_size.py::test_m5_p01_label_crops_are_capped_at_768_px
+  - services/field-api/tests/vision/test_vision_photo_size.py::test_m5_p01_same_layout_at_640_and_1600_px_sends_the_same_number_of_label_images
+  - services/field-api/tests/vision/test_vision_photo_size.py::test_m5_p01_captures_api_keeps_its_1_mb_limit_and_its_blur_gate
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5P01_lookPhotoIs1600AtQuality85_andCameraFilesAreDecodedAtOneToTwiceThatSize
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_faceBoxIsGrownAndClamped_andPhotosAreScaledTo1600WithAnEvenWidth
+  frs: []
+  verified_at: null
+  note: >-
+    App: LookApi.MAX_PX 1600 (was 640), JPEG quality 85 first (75/60/45 only to stay within the captures API's 1 MB,
+    which is unchanged), scaledSize in integer arithmetic (never scaled up, width even), camera files decoded at 1-2x
+    the look size (FacePixels.sampleFor). The face blur (android.media.FaceDetector + FaceBlurStage rules) runs on the
+    full 1600 px photo that is uploaded; the server refuses a capture without blur_applied. Scan crops keep
+    core-capture's 640 px rule (FR2.066). Server: no pixel cap existed besides 40 MP (vision.image MAX_PIXELS) and the
+    1 MB byte cap; SAM already got the stored bytes and crops were already cut from the stored photo with the 768 px
+    cap, now pinned by tests. Budget: Muse image input is reserved flat per image (tokens_per_image 3000, placeholder,
+    unconfirmed); the number of images per look (one per instance) does not change with the photo size, so the
+    estimate logic is unchanged; config/ai_pricing.yaml notes it must be re-measured at the new crop size. The Android
+    FaceDetector on a 1600 px bitmap is slower than at 640 (not measured) and the glasses' own photo size through the
+    toolkit is unknown (a smaller photo is kept as is). Partial until proven on the owner's phone and glasses.
