@@ -1432,3 +1432,108 @@
     "Option X" only (DecisionsView does not carry the option titles); the evidence page cannot be reopened from the
     done screen. ScanScreen gained optional ManualCode ink/onDark parameters (defaults unchanged); SessionViews and
     M5Screens are unchanged.
+- id: M5-U02
+  title: >-
+    First-run screens of the app redesign (A-07, prototype Main / SignIn / Forgot / Permissions / Glasses / Site
+    .dc.html, M5_UI_CONTRACT §3): Welcome with three swipeable cards and looping drawn hints, Sign in (e-mail, password
+    Show/Hide, busy and error states, Forgot password?, Create an account, "I have a code from my PC", SAMPLE note),
+    Forgot password through the SCMTIPS reset page, Permissions one at a time with why, optional Glasses setup in three
+    steps from the real toolkit state, Site and "what are you doing now" home choice
+  workstream: M5-U
+  role: Builder B (UI screens)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/WelcomeScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SignInScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/PermissionsScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/GlassesSetupScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SitePickScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunArt.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HintMotion.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeTokens.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeArt.kt
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_welcome_threeCardsInOrder_nextStopsOnTheLast_andDotsAreLabelled
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_permissions_onlyThisAndroidsSteps_minusGranted_oneAtATime
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_glasses_stepsFollowTheRealToolkitState
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_glasses_aToolkitThatDidNotStart_isSaid_andOnlySkipLeads_on
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_site_sandboxIsMarked_selectionAndContinueFollowTheList
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_site_roleNoteCountsTheHomesTheAccountCanActIn
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_signIn_needsBothFields_andNotWhileBusy_forgotSaysWhatHappensNext
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HintMotionTest.kt::m5U02_pulseAndPop_followThePrototypeKeyframes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HintMotionTest.kt::m5U02_waveRingFlyBreatheTapBlink_stayInTheirRanges
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HintMotionTest.kt::m5U02_reduceMotionStills_areRestingFrames_neverAClaim
+  frs: []
+  verified_at: null
+  note: >-
+    Signatures as M5_UI_CONTRACT §3 (WelcomeScreen, SignInScreen, ForgotScreen, PermissionsScreen, GlassesSetupScreen,
+    SitePickScreen), each taking explicit values and lambdas, no Actions / AppUi / FieldController import (SignInView,
+    the contract's state type, is the only FieldController.kt type). Extra trailing parameters with defaults:
+    SignInScreen onServers (null hides the testers' "Servers" link), ForgotScreen reduceMotion, PermissionsScreen steps
+    (default: this Android version's steps), GlassesSetupScreen probe (the Me camera test result ticks step 3),
+    SitePickScreen pairedSiteName. Decisions: "Keep me signed in" is said as a fact (the app already keeps the phone
+    signed in until Sign out) rather than a switch that would do nothing; Forgot opens the SCMTIPS reset page and then
+    says to finish there (the app cannot know a mail was sent); glasses step 1 is the person's own "They are on" (or
+    connected glasses), steps 2 and 3 tick only from GlassesHelp's advice and the camera probe; a toolkit that did not
+    start leaves "Continue with the phone camera". Animations are Compose-native (rememberInfiniteTransition read in
+    the draw phase, animateDpAsState), no new dependency; with reduceMotion every drawing shows its still frame and no
+    transition runs. shell/Homes.kt and shell/ShellNav.kt are verbatim copies of builder A's pure shell types (as
+    committed in f50841b on feat/m5-ui-shell) so these screens compile; A's branch owns them and its tests cover
+    them; the integrator keeps A's copies. HomeTokens.kt mirrors A's theme tokens by name and value until the merge.
+    Type-checked with tools/android_check/compile_check.py (Kotlin 2.2.21 + Compose plugin against the real AndroidX
+    jars), not a Gradle build; nothing drawn on a device yet. Partial until proven on the owner's phone.
+- id: M5-U03
+  title: >-
+    Role homes of the app redesign (A-07, prototype WarehouseHome / TowerHome / ApprovalsInbox / ScanSeal .dc.html,
+    M5_UI_CONTRACT §3): Warehouse (NEXT UP = oldest open receipt or a sandbox case, real tile counts for receive,
+    put away, pick, count, "Test at home" on a sandbox site), Tower (check-in state, tower jobs), Approvals (All /
+    Decisions / Claims filter, decisions by time left, claims newest first, box-check claims marked), Scan product (a
+    calm landing with one "Check a box"); each with a designed empty state and canAct (view only) honoured
+  workstream: M5-U
+  role: Builder B (UI screens)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeModelsFromUi.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/WarehouseHome.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/TowerHome.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/ApprovalsHome.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/ScanHome.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeArt.kt
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_warehouse_nextUpIsTheOldestReceive_tilesCountRealJobs_towerJobsLeftOut
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_warehouse_aStartedJobComesFirst_elseTheOldestOfAnyKind
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_warehouse_sandboxWithoutAReceive_offersTheFirstHomeCase_andTheStarters
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_warehouse_emptyAndUnlinked_areSaidAsTheyAre
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_tower_jobsAndCheckIn_fromTheOpenVisitAtThisSite
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_approvals_countsOnly_giveHonestSummaryRows
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_approvals_realItems_decisionByTimeLeft_thenClaimsNewestFirst_boxChecksAreMarked
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_approvals_timeLeft_wordsAndUrgency
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_approvals_emptyAndChecking
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_scan_followsTodaysCardRule_andAnOpenCheck
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HintMotionTest.kt::m5U03_theScanFrameClosesIn_andTheCodeReadTagShowsOnlyAfter
+  frs: []
+  verified_at: null
+  note: >-
+    Homes draw only the content under the shell's header (A's switcher, status pill, greeting, headline from
+    HomeRules.headline, connection card and view-only banner): a Refresh row, then an optional `extra: LazyListScope.()
+    -> Unit` slot (last parameter) where the integrator can keep Today's work-session, decisions-review or claims-review
+    sections, then the home's own cards. The models still carry their own headline (tested) in case the shell wants it.
+    Signatures: WarehouseHome(model, canAct, reduceMotion, onOpenTask, onOpenStarter, onStartCase,
+    onStartSandbox, onRefresh), TowerHome(model, canAct, reduceMotion, onOpenTask, onRefresh), ApprovalsHome(model,
+    canAct, reduceMotion, onReviewDecisions, onReviewClaims, onRefresh), ScanHome(model, canAct, reduceMotion,
+    onCheckBox, onOpenCheck, onLinkSite?). Models come from real state only: HomeModelsFromUi reads AppUi (Android-bound
+    because AppUi is in FieldController.kt) into the JVM-tested builders; they reuse TodayModel.card / starters,
+    CaseStart / SandboxStarters.offered, HomeRules.warehouseTasks / towerTasks, ClaimText.lines and Today's box-check
+    card rule. "Oldest" is the smallest task id (field.task ids are UUIDv7, so they sort by creation); a started job
+    comes first. Approvals: AppUi holds only the waiting counts, so the cards are honest summaries ("2 decisions
+    waiting") until FieldController keeps the core's next item (title, options, deadline_at) and field-api's draft
+    list (HomeModelsFromUi.approvals takes both); the app's Claim has no created_at, so "newest first" reverses
+    field-api's created_at order. A tap starts the existing voice review of that kind (one decision at a time, all
+    drafts in turn), not a single chosen claim. Tower check-in opens the first tower job, whose runner step checks
+    location and permit; the home shows no GPS or permit of its own. canAct false disables every act button; Refresh
+    stays. Type-checked with tools/android_check/compile_check.py, not a Gradle build; nothing drawn on a device yet.
+    Partial until proven on the owner's phone.

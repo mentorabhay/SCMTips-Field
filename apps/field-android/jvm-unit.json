@@ -77,6 +77,19 @@
     "app/src/main/kotlin/com/scmtips/field/app/ui/CheckScreenClassic.kt": "androidx.compose, android.graphics (the classic box check card and Today's check card)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/DecisionScreenClassic.kt": "androidx.compose (the classic review, Today's decisions card, the step-up and shelf dialogs)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskChrome.kt": "androidx.compose, android.provider, android.content (M5-U04 task chrome; its rules are ui/kit/TaskModel.kt)",
-    "app/src/main/kotlin/com/scmtips/field/app/ui/kit/HintAnimations.kt": "androidx.compose (the six drawn hints; which hint plays when is ui/kit/TaskModel.kt)"
+    "app/src/main/kotlin/com/scmtips/field/app/ui/kit/HintAnimations.kt": "androidx.compose (the six drawn hints; which hint plays when is ui/kit/TaskModel.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeTokens.kt": "androidx.compose (local copy of builder A's M5-U tokens and the shared buttons and cards; the loop curves are homes/HintMotion.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeArt.kt": "androidx.compose (the drawn home art and glyphs; the motion curves are homes/HintMotion.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunArt.kt": "androidx.compose (welcome, envelope, permission and glasses drawings; curves in homes/HintMotion.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/WelcomeScreen.kt": "androidx.compose (the welcome pager; its cards are firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SignInScreen.kt": "androidx.compose, SignInView from FieldController.kt (sign in and forgot password; rules in firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/PermissionsScreen.kt": "androidx.compose, android.os.Build (the permission steps; the plan is firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/GlassesSetupScreen.kt": "androidx.compose (glasses setup; its steps are GlassesSetupModel in firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SitePickScreen.kt": "androidx.compose (site and role; the rules are SitePick in firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/WarehouseHome.kt": "androidx.compose (the warehouse home; its model and rules are homes/HomeModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/TowerHome.kt": "androidx.compose (the tower home; its model and rules are homes/HomeModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/ApprovalsHome.kt": "androidx.compose (the approvals home; its model, filter and order are homes/HomeModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/ScanHome.kt": "androidx.compose (the scan product home; its states are homes/HomeModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeModelsFromUi.kt": "reads AppUi from FieldController.kt (field reads only; the builders it calls are JVM-tested in HomeModels.kt)"
   }
 }
