@@ -172,10 +172,18 @@ def _look(h: dict[str, Any], case: dict[str, Any], kind: str, labels: dict[int, 
         cap = _capture(h, case["task_id"], _photo(boxes))
         r = api.post("/v1/vision/looks", json={"task_id": case["task_id"], "line_id": case["line_id"],
                                                 "capture_id": cap, "case": kind}, headers=_h(h["dev"]))
+        assert r.status_code == 200, r.text
+        first = dict(r.json())
+        # M5-S01: POST answers once SAM's instances are counted; the label read runs after the response (the test
+        # client runs it before returning), so GET answers the final look the checks below are about.
+        assert first["final"] is False and first["source"] == "partial" and first["proposal"]["receive"] is None, first
+        g = api.get(f"/v1/vision/looks/{first['look_id']}", headers=_h(h["dev"]))
     finally:
         app.dependency_overrides.pop(get_vision_ports, None)
-    assert r.status_code == 200, r.text
-    return dict(r.json())
+    assert g.status_code == 200, g.text
+    look = dict(g.json())
+    assert look["final"] is True and look["look_id"] == first["look_id"], look
+    return look
 
 
 def _count(h: dict[str, Any], line: str, qty: float) -> None:

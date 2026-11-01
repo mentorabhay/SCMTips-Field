@@ -4004,6 +4004,78 @@
         }
       }
     },
+    "/_sim/sandbox/plants": {
+      "post": {
+        "tags": [
+          "Simulator sandbox (M3)"
+        ],
+        "summary": "Ensure Sandbox Plant",
+        "description": "A plant and its storage locations for a sandbox site, idempotent (M5-H01): what is missing is added.",
+        "operationId": "ensure_sandbox_plant__sim_sandbox_plants_post",
+        "parameters": [
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          },
+          {
+            "name": "sap-client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "100",
+              "title": "Sap-Client"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SandboxPlantIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Ensure Sandbox Plant  Sim Sandbox Plants Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sap/opu/odata/sap/API_FUNCTIONALLOCATION/A_FunctionalLocation": {
       "get": {
         "tags": [
@@ -5282,6 +5354,57 @@
           "Barcode"
         ],
         "title": "SandboxMaterialIn"
+      },
+      "SandboxPlantIn": {
+        "properties": {
+          "Plant": {
+            "type": "string",
+            "maxLength": 4,
+            "minLength": 1,
+            "title": "Plant"
+          },
+          "Name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "StorageLocations": {
+            "items": {
+              "$ref": "#/components/schemas/SandboxStorageLocationIn"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Storagelocations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "Plant",
+          "Name"
+        ],
+        "title": "SandboxPlantIn"
+      },
+      "SandboxStorageLocationIn": {
+        "properties": {
+          "StorageLocation": {
+            "type": "string",
+            "maxLength": 4,
+            "minLength": 1,
+            "title": "Storagelocation"
+          },
+          "Name": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Name",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "StorageLocation"
+        ],
+        "title": "SandboxStorageLocationIn"
       },
       "ValidationError": {
         "properties": {
