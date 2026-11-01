@@ -3,8 +3,10 @@
 # The console has dynamic routes (sites/[id]/towers, models/[id]) and same-origin /v1 rewrites to field-api, so it
 # runs as a minimal Next.js standalone server rather than a static export. The rewrite target is fixed at build
 # time (FIELD_API_INTERNAL_URL, default http://field-api:8020, the kit's internal field-api); the browser only ever
-# calls this host. The development sign-in (NEXT_PUBLIC_DEV_SIGNIN) is off in this image: the login page says that
-# core sign-in is not connected to the console yet (M4 ledger). Runs as the non-root `node` user.
+# calls this host. The development sign-in (NEXT_PUBLIC_DEV_SIGNIN) is off in this image. Sign-in through the SCMTIPS
+# core (M5-J01) is configured at RUN time: set FIELD_CONSOLE_CORE_URL (e.g. http://api:8000) on the console container
+# (see deploy/hosted/field.env.example and apps/field-console/README.md); without it the login page says core sign-in
+# is not connected. Runs as the non-root `node` user.
 
 ARG NODE_IMAGE=node:22.23.4-slim
 # The pnpm that wrote pnpm-lock.yaml (the repository pins no packageManager; a newer pnpm refuses ignored builds).

@@ -66,6 +66,14 @@ core token, a feed secret or a password.
    token for at most 600 s (never longer than the core token). The core's permissions are echoed as
    `core_permissions`; Field decides nothing on them.
 
+3. The hosted field console (M5-J01) signs in the same way from its own server: the browser sends
+   e-mail + password to the console (`POST /api/console-auth/signin`), the console calls the core's
+   app token with `X-Requested-With: lr`, a per-browser `device_id` `web-console:<uuid>` and
+   `device_model` `WEB_CONSOLE`, then `/v1/auth/exchange` with `client_id: field-console` and no
+   `device_id`. Field answers such a token without a device binding (a browser is not a field device;
+   no field.device, no device status); a token bound to any other device id keeps the checks of 2.2.
+   Both tokens stay in httpOnly cookies on the console's host (`FIELD_CONSOLE_CORE_URL`).
+
 ### 2.2 Device status and revocation
 
 `FIELD_CORE_DEVICE_STATUS_URL` is a template such as

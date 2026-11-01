@@ -2,8 +2,13 @@
  * The console's field session: the field token from POST /v1/auth/exchange, kept in sessionStorage
  * (cleared when the tab closes) and mirrored in memory. Nothing here is a credential the console owns:
  * the token is issued by field-api and expires with it.
+ *
+ * Core sign-in (M5-J01, `transport: "cookie"`): the token is NOT here. It lives in an httpOnly cookie set by the
+ * console's server (app/api/console-auth), and `accessToken` is "". sessionStorage then holds only who is signed
+ * in, the roles and permissions, and when the cookie ends.
  */
 export interface FieldSession {
+  /** The field token (development sign-in); "" for a cookie session. */
   accessToken: string;
   /** Epoch ms after which the token is no longer accepted. */
   expiresAt: number;
@@ -12,6 +17,12 @@ export interface FieldSession {
   roles: string[];
   permissions: string[];
   siteIds: string[];
+  /** "cookie": core sign-in, the token is in an httpOnly cookie (M5-J01). Absent: the development sign-in. */
+  transport?: "cookie";
+  /** The core user's name or e-mail, shown in the shell (core sign-in). */
+  displayName?: string;
+  /** Epoch ms when the core sign-in ends; the field token is refreshed until then (core sign-in). */
+  signInEndsAt?: number;
 }
 
 export interface KeyValueStore {
@@ -41,8 +52,9 @@ export function parseSession(raw: string | null): FieldSession | null {
     const roles = strs(o.roles);
     const permissions = strs(o.permissions);
     const siteIds = strs(o.siteIds);
+    const cookie = o.transport === "cookie";
     if (
-      typeof o.accessToken !== "string" || !o.accessToken ||
+      typeof o.accessToken !== "string" || (!o.accessToken && !cookie) || (cookie && o.accessToken !== "") ||
       typeof o.expiresAt !== "number" ||
       typeof o.principalId !== "string" ||
       typeof o.tenantId !== "string" ||
@@ -50,9 +62,16 @@ export function parseSession(raw: string | null): FieldSession | null {
     ) {
       return null;
     }
-    return {
+    const base: FieldSession = {
       accessToken: o.accessToken, expiresAt: o.expiresAt, principalId: o.principalId,
       tenantId: o.tenantId, roles, permissions, siteIds,
+    };
+    if (!cookie) return base;
+    return {
+      ...base,
+      transport: "cookie",
+      ...(typeof o.displayName === "string" ? { displayName: o.displayName } : {}),
+      ...(typeof o.signInEndsAt === "number" ? { signInEndsAt: o.signInEndsAt } : {}),
     };
   } catch {
     return null;

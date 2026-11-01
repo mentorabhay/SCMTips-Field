@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
 import type { ActiveVisits, ApprovalRequest, Device, Mismatch, QueueSummary, Site, Task } from "@/lib/api";
 import { api, sessionStore } from "@/lib/client";
+import { coreSignOut, CoreSignInError, refreshCoreSession, refreshDelayMs } from "@/lib/coreSignInClient";
 import { hasPermission, isExpired, type FieldSession } from "@/lib/session";
 import { usePoll, type PollState } from "./usePoll";
 
@@ -35,11 +36,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (stored && isExpired(stored, now)) sessionStore.clear();
   }, [stored, now]);
+  // Core sign-in (M5-J01): the field token cookie lasts at most 600 s; renew it from the core sign-in before then.
+  useEffect(() => {
+    if (!stored || stored.transport !== "cookie") return;
+    const t = setTimeout(() => {
+      refreshCoreSession((input, init) => fetch(input, init), stored, Date.now())
+        .then((next) => sessionStore.set(next))
+        .catch((e: unknown) => {
+          if (e instanceof CoreSignInError && e.status === 401) sessionStore.clear();
+          else setNow(Date.now()); // try again on the next tick; the session ends at expiresAt regardless
+        });
+    }, refreshDelayMs(stored, Date.now()));
+    return () => clearTimeout(t);
+  }, [stored, now]);
   const value: SessionValue = {
     ready,
     session,
     can: (p) => Boolean(session && hasPermission(session.permissions, p)),
-    signOut: () => sessionStore.clear(),
+    signOut: () => {
+      if (sessionStore.get()?.transport === "cookie") void coreSignOut((input, init) => fetch(input, init));
+      sessionStore.clear();
+    },
   };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
@@ -86,7 +103,7 @@ const LiveContext = createContext<LiveData | null>(null);
 export function LiveDataProvider({ children }: { children: React.ReactNode }) {
   const { session, can } = useSession();
   const on = Boolean(session);
-  const key = session?.accessToken ?? "";
+  const key = session ? session.accessToken || `cookie:${session.principalId}:${session.tenantId}` : "";
   const tasks = usePoll(() => api.listTasks(), { enabled: on && can(NEEDS.tasks.permission), key });
   const approvals = usePoll(() => api.listPendingApprovals(), { enabled: on, key });
   const mismatches = usePoll(() => api.listMismatches(), { enabled: on, key });
