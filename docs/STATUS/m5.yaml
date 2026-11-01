@@ -251,3 +251,20 @@
     from .env.local by name and never printed or written; the report refuses to print if it would contain the key.
     Label text is reduced to its length in the output (contract §6). Both prices are placeholders, so the probe
     needs --allow-unconfirmed-prices (that run only).
+- id: M5-V10
+  title: >-
+    docs/META_FIELD.md rows 20 (Muse image input) and 23 (SAM 3.1) updated: what was built, the doc URLs used, what
+    was tried, UNVERIFIED
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - docs/META_FIELD.md
+  - docs/SETUP/FIELD_TEST_GUIDE.md
+  tests:
+  - tests/property/test_pr1_meta_field.py::test_meta_field_structure_and_decision
+  frs: []
+  verified_at: null
+  note: >-
+    Both rows stay UNVERIFIED until the owner's Gate 0 evidence file is committed. Two doc pages
+    (dev.meta.ai/docs/sam/segmenting, /docs/sam/reading-segmentation) could not be read from the build sandbox.
