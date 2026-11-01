@@ -9,6 +9,7 @@ Every FIELD_IBD_POLL_S (spec default 300 s; set lower for a field test):
   - imports open outbound deliveries of the same plant (pick tasks, FR3.017)
 Every 10 min:
   - purges expired idempotency records
+  - removes try-look photos and label text older than 24 h (M5-W01, field_worker.retention.try_looks)
 Every FIELD_ASSISTANT_PURGE_S (3600 s):
   - clears Field Assistant heard / said text and photos older than FIELD_ASSISTANT_RETENTION_DAYS (30)
 Every tick, when FIELD_CORE_INVENTORY_FEED_URL and FIELD_CORE_SUPPLY_FEED_URL are set (M4 F4):
@@ -44,6 +45,7 @@ from field_worker.material_sync import MaterialCacheSynchronizer
 from field_worker.posting.equipment_queue import process_next_tower_job
 from field_worker.posting.queue import PostingQueueWorker
 from field_worker.retention.assistant import purge_assistant_content
+from field_worker.retention.try_looks import purge_try_looks
 from field_worker.retention.vision import purge_vision_raw
 from field_worker.warehouse.ibd_import import poll_and_import_inbound_deliveries
 from field_worker.warehouse.obd_import import poll_and_import_outbound_deliveries
@@ -177,6 +179,10 @@ class FieldWorker:
         """Vision look label text retention (30 days, M5); returns the number of looks cleared."""
         return purge_vision_raw(self.db_url)
 
+    def purge_try_looks(self) -> int:
+        """Try look photos and label text (24 h, M5-W01); returns the number of photo files deleted."""
+        return purge_try_looks(self.db_url).photos_deleted
+
     async def tick(self, now: float) -> None:
         """One pass over every loop. A failing loop is logged and must not starve the others."""
         await self._guard("posting", self.process_posting_queue())
@@ -193,6 +199,7 @@ class FieldWorker:
         if now - self._last_purge >= PURGE_S:
             self._last_purge = now
             await self._guard("idempotency_purge", asyncio.to_thread(self.purge_expired_idempotency_records))
+            await self._guard("try_look_retention", asyncio.to_thread(self.purge_try_looks))
         if self._last_assistant_purge is None or now - self._last_assistant_purge >= ASSISTANT_PURGE_S:
             self._last_assistant_purge = now
             await self._guard("assistant_retention", asyncio.to_thread(self.purge_assistant_content))

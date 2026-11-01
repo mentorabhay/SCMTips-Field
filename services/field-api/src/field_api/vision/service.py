@@ -32,6 +32,10 @@ some label batch was not (those instances are ``read: false``) or while the labe
 otherwise. The look never stages or posts
 anything; a receipt posted with ``look_id`` links it (tasks/api.py). On a count task the line's expected quantity is
 the book quantity, so it is never used (blind count, FR3.029): counts.expected is null there.
+
+Try looks (M5-W01, vision.try_look): the same engine (``run_look``: stages a-f, one or two steps) on a photo uploaded
+from the console's "Try a look" page, with no task, line or capture (``LookTarget`` kind ``try``). A try look is never
+returned by ``get_look`` (so no claim, evidence pack or posting can use it); it is read through vision.try_look.
 """
 
 from __future__ import annotations
@@ -94,7 +98,11 @@ class LookIn(BaseModel):
 def get_vision_ports() -> VisionPorts:
     """FastAPI dependency: SAM 3.1 and Muse Spark 1.3 on the Meta Model API, the Baseten fallback when configured.
     Tests override it with adapters over an httpx test transport (test code only)."""
-    guard = BudgetGuard()
+    return vision_ports(BudgetGuard())
+
+
+def vision_ports(guard: BudgetGuard) -> VisionPorts:
+    """The production adapters over one budget guard (the try page passes a guard with the ``try`` scope)."""
     readers: list[LabelReader] = []
     instances: Sam31Instances | None = None
     try:
@@ -118,8 +126,20 @@ def get_vision_ports() -> VisionPorts:
 
 # --------------------------------------------------------------------------- context
 @dataclass(frozen=True)
+class LookTarget:
+    """What a look row points at: a task's capture (``task``, the M5 look) or an uploaded try photo (``try``, M5-W01:
+    no task, line, capture or ERP document; the photo in the try photo store, kept until ``photo_expires_at``)."""
+    kind: Literal["task", "try"]
+    task_id: str | None
+    capture_id: str | None
+    photo_uri: str | None = None
+    photo_sha256: str | None = None
+    photo_expires_at: datetime | None = None
+
+
+@dataclass(frozen=True)
 class LookContext:
-    site_id: str
+    site_id: str | None  # None for a try look (M5-W01)
     task_type: str
     line_id: str | None
     expectation: Expectation
@@ -267,7 +287,8 @@ def look_body(row: tuple[Any, ...]) -> dict[str, Any]:
     return {"look_id": str(look_id), "source": source, "image": image, "instances": inst, "counts": counts,
             "pack": pack, "expiry": expiry, "proposal": proposal, "say": say, "models": models, "reasons": reasons,
             "final": bool(final), "say_next": say_next,
-            "task_id": str(task_id), "line_id": str(line_id) if line_id else None, "capture_id": str(capture_id),
+            "task_id": str(task_id) if task_id else None, "line_id": str(line_id) if line_id else None,
+            "capture_id": str(capture_id) if capture_id else None,
             "case": case, "object": obj, "erp_document_id": str(erp_doc) if erp_doc else None,
             "created_at": created_at.isoformat()}
 
@@ -410,7 +431,6 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
             return again
         lc = _context(cur, body)
     reasons: list[str] = []
-    ctx = CallContext(principal.tenant_id, idempotency_key)
     cap: Capture | None = None
     if lc.crop_uri is None:
         reasons.append("image:unavailable")
@@ -421,6 +441,16 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
             reasons.append("image:unavailable")
         except ImageUnreadable:
             reasons.append("image:unreadable")
+    return run_look(principal, LookTarget("task", body.task_id, body.capture_id), lc, cap, reasons, idempotency_key,
+                    ports, today, defer, t0)
+
+
+def run_look(principal: Principal, target: LookTarget, lc: LookContext, cap: Capture | None, reasons: list[str],
+             idempotency_key: str, ports: VisionPorts, today: Callable[[], date], defer: Defer | None, t0: float,
+             image_extra: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Stages a-f on a photo already opened (or None: rules), for a task look or a try look (M5-W01). ``image_extra``
+    adds keys to the body's ``image`` (a try look: ``faces_blurred``)."""
+    ctx = CallContext(principal.tenant_id, idempotency_key)
     found: list[FoundInstance] | None = None
     if cap is not None:
         if ports.instances is None:
@@ -432,9 +462,10 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
             except ModelError as e:
                 reasons.append(f"instances:{ports.instances.model}:{e.code}")
     day = today()
-    image = {"capture_id": body.capture_id, "width": cap.width if cap else None, "height": cap.height if cap else None}
+    image = {"capture_id": target.capture_id, "width": cap.width if cap else None,
+             "height": cap.height if cap else None, **(image_extra or {})}
     if found and cap is not None and ports.readers:
-        return _first_answer(principal, body, idempotency_key, lc, cap, found, ctx, reasons, ports, image, day, t0,
+        return _first_answer(principal, target, idempotency_key, lc, cap, found, ctx, reasons, ports, image, day, t0,
                              defer)
     reads: dict[int, LabelRead] = {}
     answered = False
@@ -442,7 +473,7 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
         reads, answered = read_labels(ports.readers, cap, found, lc.expectation, ctx, reasons)
     out = _outcome(cap, found, reads, answered, lc, ctx, reasons, day)
     latency = int((time.perf_counter() - t0) * 1000)
-    row = _insert(principal, body, idempotency_key, lc, out.source, image, out.instances, out.raw, out.check.counts,
+    row = _insert(principal, target, idempotency_key, lc, out.source, image, out.instances, out.raw, out.check.counts,
                   out.check.pack, out.check.expiry, out.check.proposal, out.say, out.models, reasons, out.cost,
                   latency, final=True, due=None, fallback=None)
     row.pop("_replayed", None)
@@ -451,7 +482,7 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
     return row
 
 
-def _first_answer(principal: Principal, body: LookIn, key: str, lc: LookContext, cap: Capture,
+def _first_answer(principal: Principal, target: LookTarget, key: str, lc: LookContext, cap: Capture,
                   found: list[FoundInstance], ctx: CallContext, reasons: list[str], ports: VisionPorts,
                   image: dict[str, Any], day: date, t0: float, defer: Defer | None) -> dict[str, Any]:
     """Writes the first answer of a two-step look and starts (or runs) its label read."""
@@ -467,7 +498,7 @@ def _first_answer(principal: Principal, body: LookIn, key: str, lc: LookContext,
                                         + LABELS_GRACE_S)
     fallback = {"counts": blank.counts, "pack": blank.pack, "expiry": blank.expiry, "proposal": blank.proposal}
     latency = int((time.perf_counter() - t0) * 1000)
-    row = _insert(principal, body, key, lc, "partial", image, instances, {}, counts, None, None, proposal, say, models,
+    row = _insert(principal, target, key, lc, "partial", image, instances, {}, counts, None, None, proposal, say, models,
                   list(reasons), cost, latency, final=False, due=due, fallback=fallback)
     logger.info("vision_look", look_id=row["look_id"], source="partial", seen=len(found), calls=len(models),
                 latency_ms=latency, final=False)
@@ -477,12 +508,12 @@ def _first_answer(principal: Principal, body: LookIn, key: str, lc: LookContext,
     stage = LabelStage(principal, row["look_id"], say, cap, found, lc, ctx, reasons, ports.readers, t0, day)
     if defer is None:
         finish_labels(stage)
-        return get_look(principal, row["look_id"])
+        return _read_look(principal, row["look_id"], target.kind)
     defer(lambda: finish_labels(stage))
     return row
 
 
-def _insert(principal: Principal, body: LookIn, key: str, lc: LookContext, source: str, image: dict[str, Any],
+def _insert(principal: Principal, target: LookTarget, key: str, lc: LookContext, source: str, image: dict[str, Any],
             instances: list[dict[str, Any]], raw: dict[str, str], counts: dict[str, Any], pack: dict[str, Any] | None,
             expiry: dict[str, Any] | None, proposal: dict[str, Any], say: str, models: list[dict[str, Any]],
             reasons: list[str], cost: Decimal, latency: int, *, final: bool, due: datetime | None,
@@ -492,16 +523,18 @@ def _insert(principal: Principal, body: LookIn, key: str, lc: LookContext, sourc
             f"""
             INSERT INTO field.vision_look (tenant_id, site_id, task_id, line_id, capture_id, "case", object, source,
                    idempotency_key, principal_id, device_id, image, instances, raw_labels, counts, pack, expiry,
-                   proposal, say, models, reasons, cost_usd, latency_ms, final, labels_due_at, labels_fallback)
+                   proposal, say, models, reasons, cost_usd, latency_ms, final, labels_due_at, labels_fallback,
+                   kind, photo_uri, photo_sha256, photo_expires_at)
             VALUES (%s, %s, %s::uuid, %s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s)
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
             RETURNING {LOOK_COLS}
             """,  # noqa: S608 - fixed column list
-            (principal.tenant_id, lc.site_id, body.task_id, lc.line_id, body.capture_id, lc.expectation.case,
+            (principal.tenant_id, lc.site_id, target.task_id, lc.line_id, target.capture_id, lc.expectation.case,
              lc.expectation.object_noun, source, key, principal.id, principal.device_id, Jsonb(image),
              Jsonb(instances), Jsonb(raw) if raw else None, Jsonb(counts), _jsonb(pack), _jsonb(expiry),
-             Jsonb(proposal), say, Jsonb(models), Jsonb(reasons), cost, latency, final, due, _jsonb(fallback)),
+             Jsonb(proposal), say, Jsonb(models), Jsonb(reasons), cost, latency, final, due, _jsonb(fallback),
+             target.kind, target.photo_uri, target.photo_sha256, target.photo_expires_at),
         )
         row = cur.fetchone()
         if row:
@@ -517,10 +550,16 @@ def _jsonb(v: dict[str, Any] | None) -> Jsonb | None:
 
 
 def get_look(principal: Principal, look_id: str) -> dict[str, Any]:
-    """The look as it is now; a label read past its due time is given up first (``final`` true, partial)."""
+    """The look as it is now; a label read past its due time is given up first (``final`` true, partial). A try look
+    (M5-W01) is not found here: no claim, evidence pack or receipt can use one."""
+    return _read_look(principal, look_id, "task")
+
+
+def _read_look(principal: Principal, look_id: str, kind: str) -> dict[str, Any]:
     with principal_tx(principal) as cur:
         _settle_overdue(cur, "id::text", look_id)
-        cur.execute(f"SELECT {LOOK_COLS} FROM field.vision_look WHERE id::text = %s", (look_id,))  # noqa: S608
+        cur.execute(f"SELECT {LOOK_COLS} FROM field.vision_look WHERE id::text = %s AND kind = %s",  # noqa: S608
+                    (look_id, kind))
         row = cur.fetchone()
     if not row:
         raise ERR_LOOK

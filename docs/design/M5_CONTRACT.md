@@ -81,6 +81,26 @@ still checked against the deterministic result, and nothing posts without the op
 from the final state. Posting a receipt with a look that is not final is allowed (the operator's numbers post); the
 evidence page shows the look as it is when the page is opened.
 
+**Try looks (M5-W01, the console's "Try a look" page for judges).** `POST /v1/try/looks` — permission
+`field.try.use` (field.operator, field.supervisor, field.viewer); `Idempotency-Key` required; `multipart/form-data`
+with `photo` (JPEG or PNG by its own bytes, at most 5 MB; the browser scales it to at most 1600 px first) and `look`
+(JSON `{"case": "grocery"|"pharmacy", "expected_units": 1..200, "pieces_per_unit"?: int (C1), "window_days"?: int
+(C2), "object"?: str}`). It runs the same engine as a task look (`vision.service.run_look`: SAM 3.1 instances → label
+reads → deterministic reconcile → number-checked `say`, two steps) with no task, line, capture, posting or claim. The
+body is the look body above plus `kind: "try"` and `try: {sample: true, posts: false, photo_url, photo_expires_at,
+photo_kept_hours: 24}`; `task_id`, `line_id`, `capture_id` and `image.capture_id` are null and `image.faces_blurred`
+counts the faces field-api pixelated. `GET /v1/try/looks/{id}` (poll every 1 s up to 60 s until `final`) and
+`GET /v1/try/looks/{id}/photo` (the stored, face-blurred JPEG; 410 `FIELD-TRY-410-PHOTO-EXPIRED` after 24 h) answer
+only the look's own principal (404 `FIELD-TRY-404-LOOK` otherwise). A try look is never returned by
+`GET /v1/vision/looks/{id}`, so no claim, evidence pack or receipt can use it, and the database refuses a task or ERP
+document on one (`ck_vision_look_kind`). Server-enforced: 413 `FIELD-TRY-413-SIZE`, 415 `FIELD-TRY-415-TYPE`,
+422 `FIELD-TRY-422-PHOTO` / `-FIELDS`, 429 `FIELD-TRY-429-RATE` with `Retry-After` after `FIELD_TRY_LOOKS_PER_HOUR`
+(default 10) looks per principal per rolling hour, and the budget guard's `try` scope: `AI_TRY_DAILY_CAP_USD`
+(default 3) per tenant per UTC day on top of every other cap, recorded as purpose `try:vision`; a refused call
+degrades the look to `source: "rules"` with the reason (e.g. `instances:sam-3.1:AI_TRY_DAILY_CAP`), never an error.
+Storage: `field.vision_look` rows with `kind = 'try'` (migration `field_0067_m5_try`: site/task/capture nullable for
+try rows only, photo columns, policy `try_scope`, table `field.try_look_slot` for the rate limit).
+
 Posting: the existing receive flow (counts, then "post" → "confirm" within 10 s, or touch confirm) gains an optional
 `look_id` and a `flag_qty` per line (stream V): good quantity → 101 to 101A, flagged quantity → 101 to 101Q, one
 material document, linked to the look. The operator's spoken numbers ("receive 18, flag 2") are what posts; the
@@ -143,6 +163,15 @@ photo, before it is uploaded**, and the captures API refuses a photo without `bl
 sees an unblurred face. SAM 3.1 gets the photo as stored; each label crop sent to Muse (or the fallback) is cut from
 the full-size photo and is at most **768 px** on its long side. The evidence page shows the photo as stored. Scan
 crops (barcode captures, FR2.066) keep their own 640 px rule.
+
+Try looks (M5-W01): a browser upload has no on-device blur gate and its own claim of blurring proves nothing, so
+field-api finds faces itself (OpenCV Haar cascades from the opencv-python-headless wheel: the two frontal cascades
+agreeing, the profile cascade both ways) on the photo as stored (at most 1600 px) and pixelates them before the photo is
+stored and before any model call; the SAMPLE banner asks people not to photograph anyone, because Haar cascades miss
+small, strongly turned or partly covered faces. Try photos and their label text are kept **24 hours**
+(`field.worker_purge_try_looks`, run by field-worker every 10 minutes, deletes the files from `FIELD_TRY_PHOTO_DIR`);
+the rest of the row (counts, model calls, cost) stays. The bundled SAMPLE photos are synthetic
+(`tools/samples/try_photos.py`): generic printed words, no brand, logo or face.
 
 ## 7. Done for M5 build (before the owner's device test)
 

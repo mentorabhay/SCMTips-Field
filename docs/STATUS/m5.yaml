@@ -1123,7 +1123,7 @@
     adapter by config, a real-OEM adapter that refuses), local Ed25519 verification with cached keys, the maker's
     history and atomic first check, the deterministic verdict, the optional two-step visual seal check (SAM 3.1 +
     Muse Spark 1.3), permission field.authenticity.check, table field.authenticity_check with forced RLS (migration
-    field_0067_m5_c3), the signed evidence pack and page, claims of kind authenticity
+    field_0068_m5_c3, after field_0067_m5_try), the signed evidence pack and page, claims of kind authenticity
   workstream: M5-T
   role: Stream T (C3 authenticity)
   status: partial
@@ -1135,7 +1135,7 @@
   - services/field-api/src/field_api/authenticity/seal.py
   - services/field-api/src/field_api/authenticity/oem.py
   - services/field-api/src/field_api/authenticity/evidence.py
-  - services/field-api/alembic/versions/field_0067_m5_c3.py
+  - services/field-api/alembic/versions/field_0068_m5_c3.py
   - connectors/oem/src/field_oem/ports/oem_port.py
   - connectors/oem/src/field_oem/sim/adapter.py
   - connectors/oem/src/field_oem/real/adapter.py
@@ -1169,8 +1169,8 @@
     labels deadlines + 15 s, then the next read ends it as visual:not_finished). The maker's key cache is per
     adapter instance (lru_cache per process), refreshed once on an unknown kid. Claims: supplier_claim gains kind
     and check_id (look_id nullable, exactly one by kind); POST /v1/claims accepts {check_id}; ClaimOut.look_id is
-    null for kind authenticity (the M5 app must accept it). Migration field_0067_m5_c3 revises
-    field_0066_m5_look_stage; the integrator re-points it if a try-page 0067 lands first. Partial until proven on
+    null for kind authenticity (the M5 app must accept it). Migration field_0068_m5_c3 revises
+    field_0067_m5_try (built on field_0066 beside the try page; re-pointed at the M5 merge). Partial until proven on
     the owner's phone and glasses.
 - id: M5-T06
   title: >-
@@ -1229,3 +1229,61 @@
     and pack (photo sha256 verified). The race is proven at the maker (8 threads on oemsim.first_check) and
     through field-api (2 threads, in-process and with the sim adapter). Models: the stand-in only, never Meta;
     partial until proven on the owner's phone and glasses against the real Meta API.
+- id: M5-W01
+  title: >-
+    Web "Try a look" page for judges: console /try (C1 grocery / C2 pharmacy, expected units adjustable, a bundled
+    SAMPLE photo or a JPEG/PNG upload scaled to 1600 px in the browser) runs the real look engine through
+    POST /v1/try/looks and GET /v1/try/looks/{id}[/photo]: numbered outlines, counts, label reads, pack-size and
+    expiry findings, the proposal, the spoken first answer then say_next; nothing posted, photos kept 24 h
+  workstream: M5
+  role: Builder (try page)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/vision/try_look.py
+  - services/field-api/src/field_api/vision/try_api.py
+  - services/field-api/src/field_api/vision/faces.py
+  - services/field-api/src/field_api/vision/service.py
+  - services/field-api/src/field_api/ai/budget.py
+  - services/field-api/alembic/versions/field_0067_m5_try.py
+  - services/field-worker/src/field_worker/retention/try_looks.py
+  - tools/samples/try_photos.py
+  - apps/field-console/app/(console)/try/page.tsx
+  - apps/field-console/lib/views/try.ts
+  - docs/SETUP/M5_TRY_PAGE.md
+  - docs/design/M5_CONTRACT.md
+  tests:
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_c1_sample_two_step_look_without_task_capture_or_posting
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_c2_sample_expiry_window_and_batches
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_route_answers_first_then_get_is_final_and_replay_is_stored
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_rules_mode_when_the_model_is_off
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_try_daily_cap_degrades_to_rules
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_budget_guard_try_scope_is_per_tenant_and_extra
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_ten_try_looks_per_principal_per_rolling_hour
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_size_type_and_fields_are_refused
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_png_is_accepted_flattened_and_scaled_to_1600
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_faces_are_pixelated_before_storing_and_before_any_model_call
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_roles_without_field_try_use_get_403[tech]
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_a_try_look_is_its_owners_only_and_never_a_task_look
+  - services/field-api/tests/vision/test_try_look_api.py::test_m5_w01_photo_is_gone_after_24_hours
+  - services/field-worker/tests/unit/test_try_retention.py::test_m5_w01_purge_clears_expired_try_photos_and_deletes_unused_files
+  - tools/samples/tests/test_try_photos.py::test_m5_w01_committed_samples_match_a_fresh_draw
+  - tools/samples/tests/test_try_photos.py::test_m5_w01_samples_hold_no_face
+  - 'apps/field-console/tests/views-try.test.ts::the first answer at once, say_next only after the first ended and the look is final'
+  - 'apps/field-console/tests/views-try.test.ts::GET every 1 s until final; updates on the way'
+  - 'apps/field-console/tests/views-try.test.ts::a box becomes a rectangle, a polygon is used as it is; blue while reading, then green good / red damaged'
+  frs: []
+  verified_at: null
+  note: >-
+    Engine reuse: vision.service gained LookTarget and run_look (stages a-f, one or two steps) shared by the task look
+    and the try look; get_look now reads task looks only (a try look is never visible to claims, evidence or
+    receipts). Migration field_0067_m5_try (down_revision field_0066_m5_look_stage): vision_look site/task/capture
+    nullable for kind 'try' only (ck_vision_look_kind), photo columns, PERMISSIVE policy try_scope, table
+    field.try_look_slot (forced RLS) for the rolling-hour rate, SECURITY DEFINER field.worker_purge_try_looks.
+    Faces: the browser has no blur gate, so field-api pixelates faces it finds itself (OpenCV Haar cascades, new
+    dependency opencv-python-headless 4.14.0.94 resolved into uv.lock; 5.x ships no cascades) before storing and
+    before any model call; Haar misses small or turned faces (documented, the page asks not to photograph people).
+    Budget: BudgetGuard(scope="try") adds AI_TRY_DAILY_CAP_USD (default 3) per tenant per UTC day, purpose
+    try:vision; refusals degrade to rules mode. Idempotency: a multipart body gets a new boundary per request, so a
+    repeated Idempotency-Key is 422 KEY-REUSED from the middleware (as for captures); the service itself replays a
+    key's stored look. Proven with the Meta API test double and the SAMPLE scene only; partial until the hosted stack
+    runs the page with the real Meta key (META_FIELD rows 20, 23 UNVERIFIED) and a judge's browser speaks it.

@@ -57,6 +57,7 @@ from field_api.sites.tree import router as site_tree_router
 from field_api.tasks.api import router as tasks_router
 from field_api.trails.api import router as trails_router
 from field_api.vision.api import router as vision_router
+from field_api.vision.try_api import router as try_router
 from field_api.visits.api import router as visits_router
 from field_api.visits.override import router as visits_override_router
 
@@ -122,6 +123,7 @@ def create_app() -> FastAPI:
             detail=exc.detail,
             request=request,
             errors=exc.errors,
+            headers=exc.headers,
         )
 
     @app.exception_handler(RequestValidationError)
@@ -243,6 +245,7 @@ def create_app() -> FastAPI:
     app.include_router(assistant_router)
     app.include_router(briefs_router)
     app.include_router(vision_router)
+    app.include_router(try_router)  # M5-W01 "Try a look"
     app.include_router(claims_router)  # M5 stream X
     app.include_router(evidence_router)  # M5 stream X
     app.include_router(authenticity_router)  # M5 case C3 (docs/design/M5_C3_CONTRACT.md)

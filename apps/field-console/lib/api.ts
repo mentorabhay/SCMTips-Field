@@ -297,6 +297,75 @@ export interface ExchangeResponse {
   device_id?: string | null;
 }
 
+// ------------------------------------------------------------------ Try a look (M5-W01, docs/design/M5_CONTRACT.md §2)
+
+export type TryCase = "grocery" | "pharmacy";
+
+/** The `look` JSON part of POST /v1/try/looks. */
+export interface TryLookRequest {
+  case: TryCase;
+  expected_units: number;
+  pieces_per_unit?: number | null;
+  window_days?: number | null;
+  object?: string | null;
+}
+
+export interface LookLabel {
+  read: boolean;
+  pieces_per_unit?: number | null;
+  batch?: string | null;
+  expiry?: string | null;
+  raw?: string | null;
+}
+
+export interface LookInstance {
+  n: number;
+  /** [x0, y0, x1, y1] in pixels of the stored photo. */
+  box: [number, number, number, number];
+  polygon?: Array<[number, number]> | null;
+  score?: number | null;
+  damaged: boolean;
+  damage_note?: string | null;
+  label: LookLabel;
+}
+
+export interface LookCounts {
+  expected: number | null;
+  seen: number | null;
+  damaged: number | null;
+  good: number | null;
+}
+
+export interface LookModelCall {
+  model: string;
+  purpose: string;
+  latency_ms: number;
+  cost_usd: number;
+  outcome: string;
+}
+
+/** The vision look body (GET /v1/vision/looks/{id}) plus the try fields (GET /v1/try/looks/{id}). */
+export interface TryLook {
+  look_id: string;
+  source: "model" | "partial" | "rules";
+  final?: boolean;
+  say: string;
+  say_next?: string | null;
+  image: { capture_id: string | null; width: number | null; height: number | null; faces_blurred?: number };
+  instances: LookInstance[];
+  counts: LookCounts;
+  pack: { expected_pieces_per_unit: number; mismatches: Array<{ n: number; pieces_per_unit: number }>; pieces_difference: number | null } | null;
+  expiry: { window_days: number; flagged: Array<{ n: number; expiry: string; reason: string }>; batches: string[] } | null;
+  proposal: { receive: number | null; flag: number | null; reasons: string[] };
+  models: LookModelCall[];
+  reasons: string[];
+  case: string;
+  object: string;
+  created_at: string;
+  kind?: "try";
+  try?: { sample: boolean; posts: boolean; photo_url: string | null; photo_expires_at: string; photo_kept_hours: number };
+}
+
 export interface CoreTokenRequest {
   principal_id: string;
   tenant_id: string;
@@ -429,20 +498,25 @@ export const MAX_PAGES = 10;
 export function createApiClient(deps: ClientDeps) {
   const idem = deps.idempotencyKey ?? (() => uuid7());
 
-  async function request<T>(method: string, url: string, opts: { body?: unknown; auth?: boolean; write?: boolean } = {}): Promise<T> {
+  async function request<T>(
+    method: string,
+    url: string,
+    opts: { body?: unknown; form?: FormData; auth?: boolean; write?: boolean } = {},
+  ): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
     if (opts.auth !== false) {
       const token = deps.getToken();
       if (token) headers.Authorization = `Bearer ${token}`;
     }
-    if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+    // A multipart body sets its own Content-Type (with the boundary): the browser writes it.
+    if (opts.body !== undefined && !opts.form) headers["Content-Type"] = "application/json";
     if (opts.write) headers["Idempotency-Key"] = idem();
     let res: Response;
     try {
       res = await deps.fetch(url, {
         method,
         headers,
-        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+        body: opts.form ?? (opts.body !== undefined ? JSON.stringify(opts.body) : undefined),
         cache: "no-store",
       });
     } catch (e) {
@@ -587,6 +661,17 @@ export function createApiClient(deps: ClientDeps) {
     exportAssistantSessionCsv: (id: string) => download(`/v1/assistant/sessions/${enc(id)}/export.csv`),
     /** A turn's photo when its photo_ref is a field-api path (e.g. /v1/assistant/photos/...). */
     downloadPath: (path: string) => download(path),
+
+    // --- Try a look (M5-W01): a SAMPLE look on a photo, nothing posted
+    createTryLook: (photo: Blob, look: TryLookRequest, fileName = "photo.jpg") => {
+      const form = new FormData();
+      form.append("photo", photo, fileName);
+      form.append("look", JSON.stringify(look));
+      return request<TryLook>("POST", api("/v1/try/looks"), { form, write: true });
+    },
+    getTryLook: (id: string) => get<TryLook>(`/v1/try/looks/${enc(id)}`),
+    /** The stored photo (faces pixelated by field-api); 410 after 24 hours. */
+    getTryPhoto: (id: string) => download(`/v1/try/looks/${enc(id)}/photo`),
 
     // --- system
     getSystemStatus: () => get<SystemStatus>("/v1/system/status"),
