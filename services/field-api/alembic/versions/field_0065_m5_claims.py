@@ -7,22 +7,21 @@
   status draft | pending_confirm | approved | rejected. ``lines`` are computed from the look (never by a model);
   ``text`` is Muse's draft or the template (``source``), ``reasons`` say why the template was used.
 
-Independent of stream V's tables: ``look_id`` and ``capture_id`` are plain uuids (no foreign key to
-field.vision_look), so this migration applies with or without V's field_0064 before it. The evidence page reads
+``look_id`` and ``capture_id`` are plain uuids (no foreign key to field.vision_look): the claim reads the look
+through ``field_api.vision.service`` (stream V), and a look's raw label purge never touches a claim. The evidence page reads
 everything else from tables that exist since M1-M4 (erp_document, posting_job, outbox, capture_evidence,
 voice_event, assistant_turn) and adds no copies of them.
 
 Forced RLS: RESTRICTIVE tenant_isolation plus a PERMISSIVE site_scope, as every M3/M4 table.
 
 Revision ID: field_0065
-Revises: field_0062 (until stream V's field_0064 lands; the integrator re-points this to field_0064, M5 contract
-section 5)
+Revises: field_0064_m5_vision (re-pointed by the M5 integrator from field_0062, M5 contract section 5: one head)
 """
 
 from alembic import op
 
 revision = "field_0065"
-down_revision = "field_0062"
+down_revision = "field_0064_m5_vision"
 branch_labels = None
 depends_on = None
 

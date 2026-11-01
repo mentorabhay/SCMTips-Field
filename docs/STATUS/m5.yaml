@@ -288,8 +288,8 @@
   frs: []
   verified_at: null
   note: >-
-    Migration field_0065 revises field_0062 until stream V lands; the integrator re-points it to V's field_0064
-    (contract section 5). It has no foreign key to V's tables (look_id, capture_id are plain uuids). One claim per
+    Migration field_0065 revises field_0064_m5_vision (re-pointed by the integrator on 2026-11-01; one alembic
+    head, upgrade / downgrade field_0062 / upgrade round trip clean on a scratch database). It has no foreign key to V's tables (look_id, capture_id are plain uuids). One claim per
     look (UNIQUE tenant_id, look_id). Look port ASSUMPTION, to be checked at the V -> X merge: the look is a row of
     field.vision_look with id = look_id under tenant RLS, holding the section 2 body either as one jsonb column
     body (or response) or as one column per top-level key (source, image, instances, counts, pack, expiry,
