@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 /**
  * field-api and fake-core send no CORS headers, so the browser talks only to this Next server and
  * these rewrites forward the calls:
@@ -10,9 +12,15 @@ const trim = (v, d) => (v && v.trim() ? v.trim().replace(/\/+$/, "") : d);
 const fieldApi = trim(process.env.NEXT_PUBLIC_FIELD_API_URL, "http://127.0.0.1:8020");
 const fakeCore = trim(process.env.NEXT_PUBLIC_FAKE_CORE_URL, "http://127.0.0.1:8011");
 const devSignIn = process.env.NEXT_PUBLIC_DEV_SIGNIN === "1";
+// Container builds (deploy/docker/console.Dockerfile) set NEXT_OUTPUT=standalone; `next dev` / `next start` unchanged.
+const standalone = process.env.NEXT_OUTPUT === "standalone"
+  ? { output: "standalone", outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)) }
+  : {};
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  ...standalone,
+  poweredByHeader: false,
   async rewrites() {
     return [
       { source: "/v1/:path*", destination: `${fieldApi}/v1/:path*` },

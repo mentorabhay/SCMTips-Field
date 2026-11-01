@@ -1171,3 +1171,44 @@
     the run logs only: nothing on the glasses, the owner's phone, his kit or a host; the tests pin the ledger counts
     it quotes and fail when a glasses row of the register changes. Partial: the owner's review, the organisers' answer
     to T1's question, the links (hosted URL, video, judge accounts) and the video itself (M20) are open.
+- id: M4-C18
+  title: >-
+    Hosting on VM-1 (K6, hosting plan sections 5, 10 and 16): production images for field-api, field-worker, erp-sim
+    and the console, the ops image for seeding and smokes, the hosted settings template, field-api's public URL for
+    the phone and the pairing QR, and only the configured core organisation's goods receipts to the core's feeds
+  workstream: M4-C
+  role: Integration (K6, owner amendment A-05)
+  status: partial
+  evidence:
+  - deploy/docker/field.Dockerfile
+  - deploy/docker/console.Dockerfile
+  - deploy/hosted/ops.Dockerfile
+  - deploy/hosted/field.env.example
+  - .dockerignore
+  - apps/field-console/next.config.mjs
+  - services/field-worker/src/field_worker/core_feeds/config.py
+  - services/field-worker/src/field_worker/core_feeds/publisher.py
+  - services/field-worker/src/field_worker/core_feeds/snapshot.py
+  - tools/dev_stack/stack.py
+  - README.md
+  tests:
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c18_only_the_configured_tenants_receipts_reach_the_core
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c18_the_real_core_needs_its_tenant_named_else_nothing_is_sent
+  - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c18_feed_tenants_and_target_from_the_environment
+  - tools/dev_stack/tests/test_stack.py::test_m4_c18_hosted_service_urls_and_the_phones_public_field_url
+  frs: []
+  verified_at: null
+  note: >-
+    K6 (1 Nov 2026, Linux container; owner amendment A-05). One locked uv environment (runtime dependencies only, the
+    stand-in core never installed) in a multi-stage, non-root image with targets field-api (:8020, /v1/health),
+    field-worker (healthy while its ops.service_heartbeat row is under 2 minutes old) and erp-sim (:8002,
+    /_sim/health); migrations with the field-api image (alembic in services/field-api and services/erp-sim). The
+    console is a Next.js standalone server (dynamic routes and the same-origin /v1 rewrite rule out a static export);
+    its login page still says core sign-in is not connected (development sign-in off in the image), and there is no
+    HUD simulator (M4-F05 missing; README corrected). The K5 finding is fixed: the feed publisher sends only
+    FIELD_CORE_FEED_TENANTS (else FIELD_CORE_SNAPSHOT_TENANTS, else every tenant for back-compat) and, with
+    FIELD_CORE_TARGET=core and no tenant named, sends nothing and reports FIELD_CORE_FEED_TENANTS. `stack` reaches
+    hosted containers through FIELD_STACK_API_URL / FIELD_STACK_ERPSIM_URL / FIELD_STACK_CORE_URL and the pairing QR
+    carries FIELD_PUBLIC_URL. Partial: the image build and compose run on this container are recorded in
+    docs/evidence/runs/2026-11-01-k6-hosted-compose.txt once done; not run on GCP (VM-1, Cloud Build), not behind
+    real DNS and Let's Encrypt certificates, and not with the phone or the glasses against field.scmtips.com.

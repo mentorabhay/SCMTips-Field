@@ -19,13 +19,21 @@
   again; after that it is, so a core that lost or replaced it catches up.
 - FIELD_CORE_SNAPSHOT_TENANTS (empty = every tenant): comma-separated Field tenant ids whose plants the snapshot reads.
   The two feeds belong to one core organisation; with FIELD_CORE_TARGET=core name its tenant here, so another tenant
-  of this installation (the stack's demo tenant) never reaches it.
+  of this installation (the stack's demo tenant) never reaches it. Empty: FIELD_CORE_FEED_TENANTS (below).
+- FIELD_CORE_FEED_TENANTS (empty = FIELD_CORE_SNAPSHOT_TENANTS; both empty = every tenant): comma-separated Field
+  tenant ids whose goods receipts are sent (M4-C18, the K5 finding). The feeds belong to one core organisation, so
+  with FIELD_CORE_TARGET=core one of the two must name it: otherwise nothing is sent and the worker logs the name.
+- FIELD_CORE_TARGET: read only for that check (core = the real SCMTIPS core).
 """
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+
+
+def _ids(name: str) -> tuple[str, ...]:
+    return tuple(x.strip() for x in os.getenv(name, "").split(",") if x.strip())
 
 
 def _flag(name: str) -> bool:
@@ -49,6 +57,8 @@ class FeedConfig:
     snapshot_batch: int = 200
     snapshot_resend_h: float = 24.0
     snapshot_tenants: tuple[str, ...] = ()
+    feed_tenants: tuple[str, ...] = ()
+    core_target: str = ""
 
     @classmethod
     def from_env(cls) -> FeedConfig:
@@ -67,9 +77,15 @@ class FeedConfig:
             snapshot_interval_s=max(0.0, float(os.getenv("FIELD_CORE_SNAPSHOT_INTERVAL_S") or "900")),
             snapshot_batch=min(1000, max(1, int(os.getenv("FIELD_CORE_SNAPSHOT_BATCH") or "200"))),
             snapshot_resend_h=max(0.0, float(os.getenv("FIELD_CORE_SNAPSHOT_RESEND_H") or "24")),
-            snapshot_tenants=tuple(x.strip() for x in os.getenv("FIELD_CORE_SNAPSHOT_TENANTS", "").split(",")
-                                   if x.strip()),
+            snapshot_tenants=_ids("FIELD_CORE_SNAPSHOT_TENANTS"),
+            feed_tenants=_ids("FIELD_CORE_FEED_TENANTS"),
+            core_target=os.getenv("FIELD_CORE_TARGET", "").strip().lower(),
         )
+
+    @property
+    def receipt_tenants(self) -> tuple[str, ...]:
+        """Tenants whose goods receipts go to the feeds: FIELD_CORE_FEED_TENANTS, else the snapshot's; () = all."""
+        return self.feed_tenants or self.snapshot_tenants
 
     @property
     def enabled(self) -> bool:
@@ -84,6 +100,8 @@ class FeedConfig:
     def problems(self) -> list[str]:
         """Variable names that are missing for an enabled configuration (never values)."""
         out: list[str] = []
+        if self.enabled and self.core_target == "core" and not self.receipt_tenants:
+            out.append("FIELD_CORE_FEED_TENANTS")  # the real core: never every tenant of this installation
         if self.inventory_url and not self.inventory_secret:
             out.append("FIELD_CORE_INVENTORY_FEED_SECRET")
         if self.supply_url and not self.supply_secret:

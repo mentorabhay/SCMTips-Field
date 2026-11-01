@@ -40,7 +40,7 @@
 - `services/field-worker`: Background worker handling transactional outbox events, material synchronization, and asynchronous SAP postings.
 - `services/erp-sim`: High-fidelity simulated S/4HANA OData ERP providing realistic numbering ranges, enqueue locks, reversals (102/602/702), and fault injection (`/_sim/faults`).
 - `connectors/sap`: Pluggable ERP connector port (`ErpPort`) with `SimAdapter` and `S4ODataAdapter`.
-- `apps/field-console`: Next.js 15 console featuring system status, document audits, and the **Web Ray-Ban HUD Simulator**.
+- `apps/field-console`: Next.js 15 supervisor console: system status, live work, decisions, postings, sites and towers, work sessions, devices, site packs, recalls and model cards. Its sign-in today is the development sign-in only (`NEXT_PUBLIC_DEV_SIGNIN=1` against the stand-in core); sign-in through the SCMTIPS core is not connected yet. There is no HUD simulator yet: the F5 HUD decision player is `missing` in `docs/STATUS/m4.yaml` (M4-F05); the glasses path today is audio on Ray-Ban Meta Gen 2 through the phone app.
 - `packages/ui-tokens`: Design token system guaranteeing WCAG 2.1 AA contrast across Light, Dark, and Lens monochrome themes.
 - `packages/field-contract`: OpenAPI 3.1 specifications and generated clients.
 - `packages/core-contract`: Pinned client contract for SCMTIPS Core P13.

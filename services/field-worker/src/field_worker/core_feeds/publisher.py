@@ -104,10 +104,13 @@ class CoreFeedPublisher:
         return conn
 
     def tenants(self) -> list[str]:
+        """Tenants with receipts to stage or deliveries due, limited to the configured ones (receipt_tenants)."""
         with psycopg.connect(self.db_url, autocommit=True) as conn, conn.cursor() as cur:
             cur.execute("SELECT DISTINCT t FROM field.worker_core_feed_tenants(make_interval(secs => %s)) AS t",
                         (self.config.lookback_h * 3600,))
-            return [str(r[0]) for r in cur.fetchall()]
+            found = [str(r[0]) for r in cur.fetchall()]
+        wanted = set(self.config.receipt_tenants)
+        return [t for t in found if not wanted or t in wanted]
 
     async def run_once(self) -> tuple[int, int]:
         """(receipts staged, pushes attempted). Nothing at all unless both feed URLs are set."""

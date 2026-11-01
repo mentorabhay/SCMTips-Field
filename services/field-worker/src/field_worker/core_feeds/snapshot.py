@@ -118,7 +118,7 @@ class ErpSnapshotFeed:
             cur.execute("SELECT tenant_id::text, site_id::text, erp_plant FROM field.worker_erp_sites()")
             sites = [(str(t), str(s), str(p)) for t, s, p in cur.fetchall()]
         out: dict[str, dict[str, str]] = {}
-        wanted = set(self.config.snapshot_tenants)
+        wanted = set(self.config.snapshot_tenants or self.config.feed_tenants)  # one core organisation for both
         for tenant in sorted({t for t, _, _ in sites if (not wanted or t in wanted) and only in (None, t)}):
             ids = [s for t, s, _ in sites if t == tenant]
             with self._conn(tenant) as conn, conn.cursor() as cur:
