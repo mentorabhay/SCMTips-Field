@@ -43,38 +43,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.scmtips.field.app.ui.theme.AccentInk
+import com.scmtips.field.app.ui.theme.AccentTint
+import com.scmtips.field.app.ui.theme.Border
+import com.scmtips.field.app.ui.theme.BrandGradient
+import com.scmtips.field.app.ui.ButtonShape
+import com.scmtips.field.app.ui.CardShape
+import com.scmtips.field.app.ui.theme.Ink
+import com.scmtips.field.app.ui.MinTouch
+import com.scmtips.field.app.ui.theme.Muted
+import com.scmtips.field.app.ui.theme.NightRaised
+import com.scmtips.field.app.ui.theme.Surface
 
-// Local copy of builder A's M5-U theme tokens (docs/design/M5_UI_CONTRACT.md §5: ui/theme/Color.kt and
-// ui/Components.kt on feat/m5-ui-shell), same names and values. INTEGRATOR: delete this block and import
-// com.scmtips.field.app.ui.theme.* / com.scmtips.field.app.ui.{CardShape, ButtonShape, MinTouch, GradientButton}.
-val Ink = Color(0xFF15171C)
-val Muted = Color(0xFF5B6170)
-val Ground = Color(0xFFF5F6F8)
-val Surface = Color(0xFFFFFFFF)
-val Border = Color(0xFFE4E7EC)
-val Night = Color(0xFF17181C)
-val NightTask = Color(0xFF0F1013)
-val NightRaised = Color(0xFF23252B)
-val NightButton = Color(0xFF2A2C33)
-val NightMuted = Color(0xFFC9CCD3)
-val Good = Color(0xFF157A3C)
-val Warning = Color(0xFFA15C07)
-val Danger = Color(0xFFB3261E)
-val AccentInk = Color(0xFF5B21B6)
-val AccentTint = Color(0xFFEDE9FE)
-val BrandStart = Color(0xFF6D28D9)
-val BrandEnd = Color(0xFFC2410C)
-val BrandGradient = Brush.horizontalGradient(listOf(BrandStart, BrandEnd))
-val BrandGradientDiagonal = Brush.linearGradient(listOf(BrandStart, BrandEnd))
-val SwitchOff = Color(0xFFC9CDD5)
-val RowDivider = Color(0xFFEEF0F3)
-val SuccessBg = Color(0xFFE6F4EA)
-val WarnBg = Color(0xFFFFF1E6)
-val WarnInk = Color(0xFF7C2D12)
-val DangerBg = Color(0xFFFDECEA)
-val CardShape = RoundedCornerShape(16.dp)
-val ButtonShape = RoundedCornerShape(14.dp)
-val MinTouch = 48.dp
+// The theme tokens are builder A's (ui/theme/Color.kt; CardShape, ButtonShape, MinTouch in ui/Components.kt),
+// imported since the M5-U06 integration; below are the components and tokens of these screens only.
 
 // Tokens of these screens only (the prototype's), not in A's theme.
 /** Sandbox tag ink on [WarnBg] (#9A3412 on #FFF1E6, contrast 6.9:1). */

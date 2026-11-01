@@ -32,12 +32,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.shell.PermissionStep
-import com.scmtips.field.app.ui.homes.BrandStart
+import com.scmtips.field.app.ui.theme.BrandStart
 import com.scmtips.field.app.ui.homes.GradientButton
-import com.scmtips.field.app.ui.homes.Ground
-import com.scmtips.field.app.ui.homes.Ink
+import com.scmtips.field.app.ui.theme.Ground
+import com.scmtips.field.app.ui.theme.Ink
 import com.scmtips.field.app.ui.homes.LinkButton
-import com.scmtips.field.app.ui.homes.Muted
+import com.scmtips.field.app.ui.theme.Muted
 import androidx.compose.ui.graphics.Color
 
 /**

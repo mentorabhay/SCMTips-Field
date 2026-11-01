@@ -30,23 +30,23 @@ import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.shell.Home
 import com.scmtips.field.app.shell.HomeChoice
 import com.scmtips.field.app.signin.SiteRef
-import com.scmtips.field.app.ui.homes.AccentInk
+import com.scmtips.field.app.ui.theme.AccentInk
 import com.scmtips.field.app.ui.homes.AccentSelected
-import com.scmtips.field.app.ui.homes.AccentTint
-import com.scmtips.field.app.ui.homes.Border
-import com.scmtips.field.app.ui.homes.BrandStart
-import com.scmtips.field.app.ui.homes.CardShape
+import com.scmtips.field.app.ui.theme.AccentTint
+import com.scmtips.field.app.ui.theme.Border
+import com.scmtips.field.app.ui.theme.BrandStart
+import com.scmtips.field.app.ui.CardShape
 import com.scmtips.field.app.ui.homes.Glyph
 import com.scmtips.field.app.ui.homes.GlyphKind
 import com.scmtips.field.app.ui.homes.GradientButton
-import com.scmtips.field.app.ui.homes.Ground
-import com.scmtips.field.app.ui.homes.Ink
-import com.scmtips.field.app.ui.homes.Muted
+import com.scmtips.field.app.ui.theme.Ground
+import com.scmtips.field.app.ui.theme.Ink
+import com.scmtips.field.app.ui.theme.Muted
 import com.scmtips.field.app.ui.homes.QuietTint
 import com.scmtips.field.app.ui.homes.SandboxInk
-import com.scmtips.field.app.ui.homes.Surface
+import com.scmtips.field.app.ui.theme.Surface
 import com.scmtips.field.app.ui.homes.Tag
-import com.scmtips.field.app.ui.homes.WarnBg
+import com.scmtips.field.app.ui.theme.WarnBg
 import androidx.compose.ui.graphics.Color
 
 /**

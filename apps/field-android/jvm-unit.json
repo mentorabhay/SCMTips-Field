@@ -78,7 +78,7 @@
     "app/src/main/kotlin/com/scmtips/field/app/ui/DecisionScreenClassic.kt": "androidx.compose (the classic review, Today's decisions card, the step-up and shelf dialogs)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskChrome.kt": "androidx.compose, android.provider, android.content (M5-U04 task chrome; its rules are ui/kit/TaskModel.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/kit/HintAnimations.kt": "androidx.compose (the six drawn hints; which hint plays when is ui/kit/TaskModel.kt)",
-    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeTokens.kt": "androidx.compose (local copy of builder A's M5-U tokens and the shared buttons and cards; the loop curves are homes/HintMotion.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeTokens.kt": "androidx.compose (the homes' own tokens, buttons and cards over builder A's theme; the loop curves are homes/HintMotion.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeArt.kt": "androidx.compose (the drawn home art and glyphs; the motion curves are homes/HintMotion.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunArt.kt": "androidx.compose (welcome, envelope, permission and glasses drawings; curves in homes/HintMotion.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/WelcomeScreen.kt": "androidx.compose (the welcome pager; its cards are firstrun/FirstRunModels.kt)",

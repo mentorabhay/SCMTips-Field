@@ -1422,8 +1422,8 @@
     which step, the first-time rule keyed by task type and step, ring progress, verdict colours and signals, the
     decision layout, the two look answers) are JVM-tested against the real JobRunner, CardFormatter, DecisionText
     and check models; the Compose files are type-checked by tools/android_check/compile_check.py only (no Gradle
-    build, no device, no screenshot). Tokens in ui/kit/TaskChrome.kt copy builder A's names and values
-    (M5_UI_CONTRACT §5) for the integrator to delete. JobScreen, CheckScreen and DecisionScreen take
+    build, no device, no screenshot). Tokens in ui/kit/TaskChrome.kt copied builder A's names and values
+    (M5_UI_CONTRACT §5); M5-U06 deleted the copies and the screens import ui/theme. JobScreen, CheckScreen and DecisionScreen take
     classic=false (the old layouts moved unchanged to *Classic.kt), reduceMotion (default: the system animator
     scale; LocalReduceMotion to be passed), and JobScreen onEvidence / nextUp (null: rows left out). Known gaps,
     for the integrator: the confirm ring is anchored when the step starts listening with JobRunner's default 10 s
@@ -1484,7 +1484,8 @@
     the draw phase, animateDpAsState), no new dependency; with reduceMotion every drawing shows its still frame and no
     transition runs. shell/Homes.kt and shell/ShellNav.kt are verbatim copies of builder A's pure shell types (as
     committed in f50841b on feat/m5-ui-shell) so these screens compile; A's branch owns them and its tests cover
-    them; the integrator keeps A's copies. HomeTokens.kt mirrors A's theme tokens by name and value until the merge.
+    them; the integrator keeps A's copies. HomeTokens.kt mirrored A's theme tokens by name and value until the merge (removed in M5-U06; the screens
+    import ui/theme).
     Type-checked with tools/android_check/compile_check.py (Kotlin 2.2.21 + Compose plugin against the real AndroidX
     jars), not a Gradle build; nothing drawn on a device yet. Partial until proven on the owner's phone. Integrated in
     M5-U06: FirstRunContent now draws these screens (the interim ones are deleted); SitePick.canContinue gained
@@ -1570,6 +1571,8 @@
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/AppRoot.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeTokens.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskChrome.kt
   tests:
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U06_site_anAnsweredEmptyList_letsTheAccountOnToHome_aListStillAskedForWaits
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/shell/HomeRulesTest.kt::m5U06_aFieldSupervisorWhoDecidesClaims_actsOnApprovals_withoutBecomingADecisionApprover
@@ -1614,7 +1617,12 @@
     job; none in practice) opening it with openTask; "Evidence page" on the done screen reopens the look's evidence
     page through LookFlow.reopenEvidence (LookView.evidenceSeenUrl, the signed link the posting already fetched;
     forgotten on a new look or job) and Actions.reopenEvidence, shown only for the open job's own look.
-    FieldController's logic is unchanged: waitingDecisions now reads the same one call through nextDecision. The
-    Compose files type-check
+    FieldController's logic is unchanged: waitingDecisions now reads the same one call through nextDecision. Tokens:
+    the copies of builder A's tokens in ui/homes/HomeTokens.kt (Ink … DangerBg, CardShape, ButtonShape, MinTouch) and
+    ui/kit/TaskChrome.kt (Ink … BrandGradient, the shapes, and NightRaised, NightMuted, DangerBg, Divider, which have
+    the same values in ui/theme) are deleted and every user imports ui/theme and ui/Components.kt instead; each file
+    keeps only its own prototype colours (SandboxInk, AccentSelected, ArtInk, NightCard, StepDone, …). The three
+    GradientButton composables (A's, B's, C's) are components, not tokens, and stay: they differ (B and C centre
+    two-line labels, C's is 58 dp and SemiBold), so merging them would change a screen. The Compose files type-check
     with tools/android_check/compile_check (Kotlin 2.2.21 + Compose against the real AndroidX jars); no Gradle build or
     device run was possible here (no Android SDK).

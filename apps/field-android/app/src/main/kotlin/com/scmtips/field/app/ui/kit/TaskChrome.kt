@@ -48,39 +48,34 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.scmtips.field.app.ui.theme.AccentInk
+import com.scmtips.field.app.ui.theme.Border
+import com.scmtips.field.app.ui.theme.BrandGradient
+import com.scmtips.field.app.ui.ButtonShape
+import com.scmtips.field.app.ui.CardShape
+import com.scmtips.field.app.ui.theme.Ground
+import com.scmtips.field.app.ui.theme.Ink
+import com.scmtips.field.app.ui.MinTouch
+import com.scmtips.field.app.ui.theme.Muted
+import com.scmtips.field.app.ui.theme.NightMuted
+import com.scmtips.field.app.ui.theme.NightRaised
+import com.scmtips.field.app.ui.theme.NightTask
+import com.scmtips.field.app.ui.theme.Surface
 
 /*
- * M5-U04 task chrome (prototype ReceiveLook … ScanVerdict). Tokens below use builder A's names and values
- * (docs/design/M5_UI_CONTRACT.md §5), so the integrator can delete these copies and import ui/theme instead.
+ * M5-U04 task chrome (prototype ReceiveLook … ScanVerdict). Builder A's tokens come from ui/theme
+ * (docs/design/M5_UI_CONTRACT.md §5); only the task screens' own prototype colours are declared here.
  * Everything else here is the step header, the hint area, the voice chip, the one main action, the confirm ring and
  * the result rows. Behaviour stays with the callers: these composables only draw and call what they are given.
  */
 
-// --- builder A's tokens (same names and values as ui/theme on feat/m5-ui-shell) -------------------------------------
-val Ink = Color(0xFF15171C)
-val Muted = Color(0xFF5B6170)
-val Ground = Color(0xFFF5F6F8)
-val Surface = Color(0xFFFFFFFF)
-val Border = Color(0xFFE4E7EC)
-val Night = Color(0xFF17181C)
-val NightTask = Color(0xFF0F1013)
-val Good = Color(0xFF157A3C)
-val Warning = Color(0xFFA15C07)
-val Danger = Color(0xFFB3261E)
-val AccentInk = Color(0xFF5B21B6)
-val BrandStart = Color(0xFF6D28D9)
-val BrandEnd = Color(0xFFC2410C)
-val BrandGradient: Brush = Brush.horizontalGradient(listOf(BrandStart, BrandEnd))
-val CardShape = RoundedCornerShape(16.dp)
-val ButtonShape = RoundedCornerShape(14.dp)
-val MinTouch: Dp = 48.dp
+// builder A's tokens (Ink … BrandGradient, CardShape, ButtonShape, MinTouch) are imported from ui/theme and ui/Components.kt
+// since the M5-U06 integration; NightRaised, NightMuted, DangerBg and Divider too (same values).
 
 // --- task-screen colours from the prototype (only here) ----------------------------------------------------------------
 val NightCard = Color(0xFF1E2026)
-val NightRaised = Color(0xFF23252B)
 val NightTrack = Color(0xFF3A3D46)
 val NightLine = Color(0xFF2A2D35)
-val NightMuted = Color(0xFFC9CCD3)
 val NightInk = Color(0xFFE5E7EB)
 val StepDone = Color(0xFFFB923C)
 val LiveGreen = Color(0xFF4ADE80)
@@ -96,8 +91,6 @@ val GoodBg = Color(0xFFE6F4EA)
 val AccentBg = Color(0xFFF3F0FF)
 val AccentSoft = Color(0xFFEDE9FE)
 val WarningBg = Color(0xFFFEF3C7)
-val DangerBg = Color(0xFFFDECEA)
-val Divider = Color(0xFFEEF0F3)
 val HintScrim = Color(0xDB0F1013)
 
 /** One step's palette: Night (#0F1013) or Ground. */
