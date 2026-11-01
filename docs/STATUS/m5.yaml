@@ -281,21 +281,24 @@
   tests:
   - services/field-api/tests/claims/test_claims_api.py::test_rls_isolates_tenants_and_sites
   - services/field-api/tests/claims/test_claims_api.py::test_one_claim_per_look_and_idempotent_replay
-  - services/field-api/tests/claims/test_look_port.py::test_a_body_column_gives_the_section_2_shape
-  - services/field-api/tests/claims/test_look_port.py::test_one_column_per_key_wins_over_the_body_and_fills_the_capture
-  - services/field-api/tests/claims/test_look_port.py::test_an_empty_row_is_an_empty_look
+  - services/field-api/tests/claims/test_look_port.py::test_v_look_body_gives_the_section_2_shape
+  - services/field-api/tests/claims/test_look_port.py::test_a_missing_image_capture_is_filled_from_the_row_capture
+  - services/field-api/tests/claims/test_look_port.py::test_an_empty_body_is_an_empty_look
   - services/field-api/tests/claims/test_look_port.py::test_the_database_port_answers_none_without_raising
+  - services/field-api/tests/claims/test_look_port.py::test_the_database_port_reads_a_real_vision_look_under_rls
+  - services/field-api/tests/claims/test_look_port.py::test_a_claim_and_the_evidence_pack_on_a_real_vision_look
   frs: []
   verified_at: null
   note: >-
     Migration field_0065 revises field_0064_m5_vision (re-pointed by the integrator on 2026-11-01; one alembic
-    head, upgrade / downgrade field_0062 / upgrade round trip clean on a scratch database). It has no foreign key to V's tables (look_id, capture_id are plain uuids). One claim per
-    look (UNIQUE tenant_id, look_id). Look port ASSUMPTION, to be checked at the V -> X merge: the look is a row of
-    field.vision_look with id = look_id under tenant RLS, holding the section 2 body either as one jsonb column
-    body (or response) or as one column per top-level key (source, image, instances, counts, pack, expiry,
-    proposal, say, models, reasons), optionally task_id, line_id, capture_id; a missing table answers "no look".
-    The real port has only run against a database without V's table; every claim test uses the look double in
-    test code (tests/claims/conftest.py). Partial until V's table exists and the owner's device test passes.
+    head, upgrade / downgrade field_0062 / upgrade round trip clean on a scratch database). It has no foreign key
+    to V's tables (look_id, capture_id are plain uuids). One claim per look (UNIQUE tenant_id, look_id). Look port
+    (integrator, 2026-11-01): X's storage assumption (jsonb body or one column per key) is replaced by a read
+    through stream V's field_api.vision.service.get_look / look_body over LOOK_COLS, normalised by
+    look_from_body; the two tests of the old body-column parser were replaced by tests of the new mapping, and
+    two integration tests run the database port, POST /v1/claims and the evidence pack on a real
+    field.vision_look row (RLS: other site and other tenant see no look). The claims rule tests keep the look
+    double in test code (tests/claims/conftest.py). Partial until the owner's device test passes.
 - id: M5-X02
   title: >-
     Claim lines computed deterministically from the look (damaged, expired, near_expiry, short, pack_size with

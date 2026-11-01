@@ -1,7 +1,8 @@
 """Fixtures for the M5 stream X tests: supplier claims and the evidence page.
 
-``LookDouble`` is the test double of the look port (``field_api.claims.looks``): stream V's ``field.vision_look``
-does not exist on this branch, so the looks are dicts in the contract section 2 shape, held here in test code only.
+``LookDouble`` is the test double of the look port (``field_api.claims.looks``): the looks are dicts in the contract
+section 2 shape, held here in test code only, so the claims rules are tested without a vision run. The database port
+over stream V's real ``field.vision_look`` is tested in test_look_port.py.
 ``RecordedAPI`` is the scripted Meta Model API (OpenAI-compatible chat completions) as in tests/assistant: an httpx
 MockTransport in test code; the real API is not reachable from the build sandbox (docs/META_FIELD.md row 19).
 """
