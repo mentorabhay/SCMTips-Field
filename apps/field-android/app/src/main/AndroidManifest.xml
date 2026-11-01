@@ -27,6 +27,10 @@
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <!-- M5: the phone camera app for a look photo when the glasses give none -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
     </queries>
 
     <application
@@ -65,6 +69,17 @@
                 <data android:scheme="scmtipsfield" />
             </intent-filter>
         </activity>
+
+        <!-- M5: the phone camera app writes a look photo into this app's cache (res/xml/look_files.xml) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.looks"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/look_files" />
+        </provider>
 
         <service
             android:name=".session.WorkSessionService"

@@ -64,6 +64,7 @@ fun MeScreen(ui: AppUi, a: Actions) {
             SettingRow("Audio-only mode", if (ui.audioOnly) "On · prompts are spoken, never shown" else "Off",
                 if (ui.audioOnly) "Turn off" else "Turn on", a.toggleAudioOnly, last = true)
         }
+        CameraTestCard(ui.probe, a)
         CardBox {
             Text("Talking to the glasses", fontWeight = FontWeight.Bold, color = Ink)
             Text("During a work session the glasses' microphone hears you; just speak (or start with “Field” when the attention word is on). " +

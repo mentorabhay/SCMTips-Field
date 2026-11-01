@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.AppUi
+import com.scmtips.field.app.home.CaseStart
 import com.scmtips.field.app.home.SandboxStart
 import com.scmtips.field.feature.decisions.api.SignInMethod
 import com.scmtips.field.feature.decisions.api.StepUpMethod
@@ -83,6 +84,22 @@ class Actions(
     /** M3 fix: Today's sandbox starters (a home receipt; a shelf count with its bin). */
     val startSandbox: (SandboxStart, String?) -> Unit = { _, _ -> },
     val toggleAttentionWord: () -> Unit = {},
+    /** M5 look and act: the Look button, a claim, photo consent, the evidence page. */
+    val look: () -> Unit = {},
+    val makeClaim: () -> Unit = {},
+    val agreePhotos: () -> Unit = {},
+    val closeEvidence: () -> Unit = {},
+    /** M5: Today's case starters (grocery, pharmacy). */
+    val startCase: (CaseStart) -> Unit = {},
+    /** M5: supervisors' claims review. */
+    val startClaims: () -> Unit = {},
+    val stopClaims: () -> Unit = {},
+    val refreshClaims: () -> Unit = {},
+    val claimButton: (String) -> Unit = {},
+    /** M5: Me → Test glasses camera (G0-5), its Upload (true: after agreeing to photos) and Close. */
+    val testCamera: () -> Unit = {},
+    val uploadProbe: (Boolean) -> Unit = {},
+    val closeProbe: () -> Unit = {},
 )
 
 @Composable
@@ -98,9 +115,17 @@ fun AppRoot(ui: AppUi, a: Actions) {
                 if (ui.work.active) SessionStrip(ui.work, a)
                 Box(Modifier.weight(1f)) { DecisionScreen(ui, a) }
             }
+            ui.claims.reviewing -> Column(Modifier.fillMaxSize()) {
+                if (ui.work.active) SessionStrip(ui.work, a)
+                Box(Modifier.weight(1f)) { ClaimReviewScreen(ui.claims, a) }
+            }
+            ui.look.evidenceUrl != null -> Column(Modifier.fillMaxSize()) {
+                if (ui.work.active) SessionStrip(ui.work, a)
+                Box(Modifier.weight(1f)) { EvidenceScreen(ui.look.evidenceUrl, a) }
+            }
             job != null -> Column(Modifier.fillMaxSize()) {
                 if (ui.work.active) SessionStrip(ui.work, a)
-                Box(Modifier.weight(1f)) { JobScreen(job, ui.audioOnly, a) }
+                Box(Modifier.weight(1f)) { JobScreen(job, ui.audioOnly, a, look = ui.look.takeIf { it.taskId != null }) }
             }
             else -> Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {

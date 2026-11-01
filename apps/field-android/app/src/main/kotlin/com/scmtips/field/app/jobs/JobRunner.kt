@@ -76,6 +76,10 @@ data class StepView(
     /** The job is over; the app returns to Today and shows [exitNote] if set. */
     val finished: Boolean = false,
     val exitNote: String? = null,
+    /** M5: units of the active (count step) or reviewed lines set aside for quality inspection; null when none. */
+    val flagged: Int? = null,
+    /** M5: a look can be taken on this step (receive jobs, not practice): the app shows its Look button. */
+    val canLook: Boolean = false,
 )
 
 sealed interface JobAction {
@@ -105,6 +109,20 @@ sealed interface JobAction {
 fun interface UnknownCodeHandler {
     suspend fun take(task: JobTask, code: String): Boolean
 }
+
+/**
+ * M5 (docs/design/M5_CONTRACT.md §2): what one look proposed for a receive line. [receive] / [flag] only
+ * pre-fill the count step; what posts is what the operator says ("receive 18, flag 2") or sets on the phone.
+ * [hint] is the spoken next step ("Say receive 18, flag 2. Or say count again.").
+ */
+data class LookFill(
+    val lookId: String,
+    val captureId: String?,
+    val lineId: String?,
+    val receive: Int?,
+    val flag: Int?,
+    val hint: String,
+)
 
 /** What the phone tells the assistant about the open job (contract §4 `client_state`). */
 data class JobState(val taskId: String?, val lineId: String?, val step: String?)
@@ -137,6 +155,8 @@ class JobRunner(
     private val nextSeq: () -> Long = AtomicLong(0)::incrementAndGet,
     private val confirmWindowMs: Long = 10_000L,
     private val unknownCodes: UnknownCodeHandler? = null,
+    /** M5: the case starters' intro ("Lay out the packs in one layer, then say look."); null keeps the M2 intro. */
+    private val lookHint: String? = null,
 ) {
     /** The task this job runs; [updateTask] replaces its lines (sandbox items added by the assistant). */
     var task: JobTask = task
@@ -200,6 +220,10 @@ class JobRunner(
     private var level = 0
     private var lastPrompt = ""
     private var lastScan: String? = null
+    private var lookFill: LookFill? = null
+    private val flagByLine = mutableMapOf<String, Int>()
+    private val lookByLine = mutableMapOf<String, LookFill>()
+    private var docYear: String? = null
 
     /** The site visit this job runs under (set by check-in, cleared by check-out). */
     var visitId: String? = visitId
@@ -305,6 +329,41 @@ class JobRunner(
     /** True once the job reached its done step (the work session tells the assistant `step_done`). */
     val isDone: Boolean get() = phase == Phase.DONE
 
+    /** M5: the ERP document SAP posted for this job (erp.posted), for the evidence link; null until then. */
+    val postedDocument: String? get() = docNumber.takeIf { phase == Phase.DONE && doneKind == DoneKind.POSTED }
+
+    /** The posted document's year when the event carried one. */
+    val postedYear: String? get() = docYear.takeIf { postedDocument != null }
+
+    /** M5: true when a count of this job was saved from a look (the posting links to it). */
+    val usedLook: Boolean get() = lookByLine.isNotEmpty()
+
+    /**
+     * M5: the line a look is for: the count step's line, else the only open line, else the only line;
+     * null when a receive has several open lines and none is selected (the look then counts the whole view).
+     */
+    val lookLineId: String?
+        get() = activeId ?: openLines().singleOrNull()?.id ?: lines.singleOrNull()?.id
+
+    /**
+     * M5: a look's proposal arrived. It pre-fills the count step of its line (good and flagged) without
+     * saving anything; nothing is spoken here (the app speaks the look's `say` and [LookFill.hint]).
+     */
+    suspend fun applyLook(fill: LookFill) = mutex.withLock {
+        if (finished || type != JobType.RECEIVE) return@withLock
+        lookFill = fill
+        val line = lines.firstOrNull { it.id == fill.lineId } ?: lines.firstOrNull { it.id == lookLineId }
+        if (line != null && phase in setOf(Phase.INTRO, Phase.LINE)) {
+            phase = Phase.LINE
+            activeId = line.id
+            sub = Sub.COUNT
+            qty = fill.receive ?: qty
+        }
+        lastPrompt = fill.hint
+        message = null
+        publish()
+    }
+
     /**
      * The task as field-api lists it now (refresh_task, e.g. after the assistant added a sandbox item).
      * Lines already done stay done and the current step is kept; new lines become open work. With
@@ -401,6 +460,8 @@ class JobRunner(
         if (voiceStage != null && cmd !in STAGE_SAFE) cancelStage(spoken = true)
         when (cmd) {
             Command.Capture -> Unit // the app takes the photo (glasses or phone camera)
+            Command.Look, Command.Claim -> Unit // M5: the app takes the look and makes the claim
+            is Command.Receive -> receiveSpoken(cmd, transcript, confidence)
             Command.Repeat -> say(lastPrompt)
             Command.WhatIsThis -> say(whatIsThis())
             Command.Cancel -> if (phase == Phase.CONFIRM) cancelStage(spoken = true) else say("Nothing to cancel.")
@@ -436,11 +497,38 @@ class JobRunner(
         }
     }
 
+    /**
+     * M5 "receive N, flag M": the line's count is N + M units, M of them flagged. "receive N" alone flags
+     * none; "flag M" alone keeps the good units already said (or the look's proposal). Posting still needs
+     * "post" and the operator's own "yes" within 10 s.
+     */
+    private suspend fun receiveSpoken(cmd: Command.Receive, transcript: String, confidence: Float) {
+        if (type != JobType.RECEIVE || practice) return say("Say receive on a delivery.")
+        if (phase !in setOf(Phase.INTRO, Phase.LINE, Phase.REVIEW, Phase.CONFIRM)) return say("Not now. $lastPrompt")
+        val fill = lookFill
+        val line = activeLine ?: lines.firstOrNull { it.id == fill?.lineId } ?: openLines().singleOrNull() ?: lines.singleOrNull()
+            ?: return say("Scan a box first, then say receive and the number.")
+        val fromLook = fill?.takeIf { it.lineId == null || it.lineId == line.id }
+        val good = cmd.good ?: qtyByLine[line.id]?.let { it.toInt() - (flagByLine[line.id] ?: 0) } ?: fromLook?.receive
+            ?: return say("Say receive and the number of good ones first.")
+        val flag = cmd.flag ?: if (cmd.good != null) 0 else flagByLine[line.id] ?: 0
+        if (good + flag > 9999) return say("That is more than 9999. Say it again.")
+        val vid = voiceEvent("count", transcript, confidence) ?: return
+        activeId = line.id
+        if (phase != Phase.LINE) { phase = Phase.LINE; sub = Sub.COUNT }
+        saveCount(good, InputSource.VOICE, vid, flag = flag, look = fromLook)
+    }
+
     private suspend fun allHere(source: InputSource, voice: Pair<String, Float>?) {
         if (phase != Phase.LINE || sub != Sub.COUNT) return
-        val exp = expectedOf(activeLine) ?: return
+        val line = activeLine ?: return
+        val exp = expectedOf(line) ?: return
         val vid = voice?.let { voiceEvent("count", it.first, it.second) ?: return }
-        saveCount(exp, source, vid)
+        // After a look "all here" means all expected units arrived; the flagged ones are part of them.
+        val linked = linkedLook(line)
+        if (linked == null) return saveCount(exp, source, vid)
+        val f = (flagByLine[line.id] ?: linked.flag ?: 0).coerceAtMost(exp)
+        saveCount(exp - f, source, vid, flag = f, look = linked)
     }
 
     private suspend fun scanned(code: String, source: InputSource) {
@@ -538,18 +626,36 @@ class JobRunner(
         enter()
     }
 
-    private suspend fun saveCount(value: Int, source: InputSource, voiceEventId: String?) {
+    private suspend fun saveCount(value: Int, source: InputSource, voiceEventId: String?, flag: Int? = null, look: LookFill? = null) {
         val line = activeLine ?: return
-        val res = call(JobRequests.countRecord(newKey(), line.id, value.toDouble(), line.uom, source, voiceEventId)) ?: run {
+        // With a look for this line, or a spoken "flag M", [value] is the GOOD units (the phone's number and
+        // + / −) and the flagged units come on top; otherwise the count is exactly as in M2/M4.
+        val linked = look ?: linkedLook(line)
+        val flagQty = if (linked != null) flag ?: flagByLine[line.id] ?: linked.flag ?: 0
+            else flag?.takeIf { it > 0 } ?: flagByLine[line.id]?.takeIf { flag == null && it > 0 }
+        val total = value + (flagQty ?: 0)
+        val res = call(JobRequests.countRecord(newKey(), line.id, total.toDouble(), line.uom, source, voiceEventId,
+            flagQty = flagQty, lookId = linked?.lookId, captureId = linked?.captureId)) ?: run {
             say("Not saved. Check phone.")
             return
         }
-        val stored = res.num("picked_qty") ?: res.num("counted_qty") ?: value.toDouble()
+        val stored = res.num("picked_qty") ?: res.num("counted_qty") ?: total.toDouble()
         qtyByLine[line.id] = stored
+        linked?.let { lookByLine[line.id] = it }
+        if (flagQty != null) flagByLine[line.id] = flagQty else flagByLine.remove(line.id)
         completed += line.id
         val exp = expectedOf(line)
         val n = qtyText(stored)
+        val flagged = flagByLine[line.id]?.takeIf { linked != null || it > 0 }
         var lead = when {
+            flagged != null -> {
+                val split = "${qtyText(stored - flagged)} good, ${if (flagged == 0) "none" else "$flagged"} flagged, saved."
+                when {
+                    exp == null || stored.toInt() == exp -> split
+                    stored < exp -> "$split ${qtyText(exp - stored)} fewer than expected."
+                    else -> "$split ${qtyText(stored - exp)} more than expected."
+                }
+            }
             exp == null || stored.toInt() == exp -> "$n saved."
             stored < exp -> "${shortLabel(line)}: $n, ${qtyText(exp - stored)} fewer than expected."
             else -> "${shortLabel(line)}: $n, ${qtyText(stored - exp)} more than expected."
@@ -580,6 +686,10 @@ class JobRunner(
         }
         enter(lead = lead)
     }
+
+    /** The look a count of [line] belongs to: one already saved for it, else the last look when it was for this line. */
+    private fun linkedLook(line: JobLine): LookFill? =
+        lookByLine[line.id] ?: lookFill?.takeIf { it.lineId == line.id || (it.lineId == null && lines.size == 1) }
 
     private fun startLines() {
         if (openLines().isEmpty()) { phase = Phase.REVIEW; return }
@@ -682,8 +792,9 @@ class JobRunner(
     private suspend fun post(voice: Pair<String, String>?) {
         val lines = postable()
         if (lines.isEmpty()) return
-        val req = retryPost ?: if (voice == null) JobRequests.postTouch(newKey(), task.id, lines)
-        else JobRequests.postVoice(newKey(), task.id, lines, voice.first, voice.second)
+        val lookId = lookByLine.values.firstOrNull()?.lookId
+        val req = retryPost ?: if (voice == null) JobRequests.postTouch(newKey(), task.id, lines, lookId)
+        else JobRequests.postVoice(newKey(), task.id, lines, voice.first, voice.second, lookId)
         voiceStage = null
         busy = true
         publish()
@@ -724,7 +835,7 @@ class JobRunner(
     private fun applyEvent(kind: String, p: Map<String, String?>) {
         if (phase != Phase.WAITING) return
         when (kind) {
-            "erp.posted" -> { docNumber = p["doc_number"]; done(DoneKind.POSTED) }
+            "erp.posted" -> { docNumber = p["doc_number"]; docYear = p["doc_year"] ?: p["year"]; done(DoneKind.POSTED) }
             "erp.failed" -> {
                 failure = p["message"]?.takeIf { it.isNotBlank() }
                 phase = Phase.FAILED
@@ -849,7 +960,7 @@ class JobRunner(
     private fun countBin(): String? = lines.firstNotNullOfOrNull { it.bin }
 
     private fun promptFor(): String = when (phase) {
-        Phase.INTRO -> "Delivery ${spokenDoc(task.refDocNo ?: "")}. ${lines.size} ${plural(lines.size, "item")}. ${scanVerb("a box")}"
+        Phase.INTRO -> "Delivery ${spokenDoc(task.refDocNo ?: "")}. ${lines.size} ${plural(lines.size, "item")}. ${lookHint ?: scanVerb("a box")}"
         Phase.GO_BIN -> if (task.isRecount) "Recount requested. Go to bin ${countBin() ?: ""}." else "Go to bin ${countBin() ?: ""}."
         Phase.CHECKIN -> "Check in at $siteLabel. Enter the permit number on the phone."
         Phase.CHECKLIST -> "Before you climb, tick the three checks on the phone."
@@ -920,7 +1031,9 @@ class JobRunner(
             JobType.RECEIVE, JobType.PICK -> {
                 val pieces = done.sumOf { qtyByLine[it.id] ?: 0.0 }
                 val diffs = done.count { l -> l.expectedQty != null && (qtyByLine[l.id] ?: 0.0) != l.expectedQty }
+                val flagged = done.sumOf { flagByLine[it.id] ?: 0 }
                 "${done.size} ${plural(done.size, "item")}, ${qtyText(pieces)} pieces" +
+                    (if (flagged > 0) ", $flagged flagged" else "") +
                     if (diffs > 0) ", with $diffs ${plural(diffs, "difference")}" else ""
             }
             JobType.COUNT -> "${done.size} ${plural(done.size, "product")} counted"
@@ -962,6 +1075,7 @@ class JobRunner(
             practice = practice,
             finished = finished,
             exitNote = exitNote,
+            canLook = type == JobType.RECEIVE && !practice && phase in setOf(Phase.INTRO, Phase.LINE, Phase.REVIEW),
         )
         val l = activeLine
         return when (phase) {
@@ -1078,7 +1192,8 @@ class JobRunner(
         Sub.SCAN_BIN -> base.copy(kind = StepKind.SCAN, title = "Scan the bin label to confirm", where = l?.bin, whereLabel = "Bin")
         Sub.COUNT -> {
             val exp = expectedOf(l)
-            val dq = if (exp != null) qty - exp else 0
+            val flaggedHere = l?.let { line -> linkedLook(line)?.let { flagByLine[line.id] ?: it.flag ?: 0 } ?: flagByLine[line.id]?.takeIf { it > 0 } }
+            val dq = if (exp != null) qty + (flaggedHere ?: 0) - exp else 0
             val last = openLines().none { it.id != l?.id }
             base.copy(
                 kind = StepKind.COUNT,
@@ -1087,7 +1202,12 @@ class JobRunner(
                 body = if (type == JobType.COUNT) "Count what you see. You are not shown the system quantity, so your count stays honest." else null,
                 expected = exp,
                 qty = qty,
+                flagged = flaggedHere,
                 qtyNote = when {
+                    flaggedHere != null -> "Good units · $flaggedHere flagged on top · ${
+                        when { exp == null -> "${qty + flaggedHere} in all"; dq == 0 -> "matches the $exp expected"
+                            dq < 0 -> "${-dq} fewer than expected"; else -> "$dq more than expected" }
+                    }"
                     exp == null -> "Tap + and − to set your count"
                     dq == 0 -> "Matches what is expected"
                     dq < 0 -> "${-dq} fewer than expected"
@@ -1119,7 +1239,11 @@ class JobRunner(
         val counted = { l: JobLine -> qtyByLine[l.id]?.let(::qtyText) }
         return when (type) {
             JobType.RECEIVE -> base.copy(kind = StepKind.REVIEW, title = "Check, then post to SAP",
-                detail = lines.map { l -> Detail(l.label, counted(l)?.let { "$it of ${qtyText(l.expectedQty ?: 0.0)}" } ?: "not counted") },
+                detail = lines.map { l ->
+                    val f = flagByLine[l.id]?.takeIf { it > 0 }?.let { " · $it flagged" } ?: ""
+                    Detail(l.label, counted(l)?.let { "$it of ${qtyText(l.expectedQty ?: 0.0)}$f" } ?: "not counted")
+                },
+                flagged = lines.sumOf { flagByLine[it.id] ?: 0 }.takeIf { it > 0 },
                 body = "Any difference is saved with the receipt so the buyer can follow up.",
                 primary = "Post goods receipt", primaryEnabled = !busy && postable().isNotEmpty())
             JobType.PICK -> base.copy(kind = StepKind.REVIEW, title = "Check, then post to SAP",

@@ -37,12 +37,12 @@ import java.util.concurrent.TimeUnit
  * UUIDv7 (FR2.039).
  */
 class FieldSession(
-    private val apiBaseUrl: String,
+    val apiBaseUrl: String,
     private val coreToken: String,
     var deviceId: String?,
     private val client: OkHttpClient = defaultClient(),
     private val clock: () -> Long = System::currentTimeMillis,
-) : JobTransport {
+) : JobTransport, com.scmtips.field.app.look.BytesPort {
     private val json = Json { ignoreUnknownKeys = true }
     private val mutex = Mutex()
     private var accessToken: String? = null
@@ -104,8 +104,31 @@ class FieldSession(
     }
 
     override suspend fun send(request: ApiRequest): ApiResult = try {
-        val text = raw(request.method, request.path, request.body, token(), request.idempotencyKey)
-        ApiResult.Ok(200, (json.parseToJsonElement(text.ifBlank { "{}" }) as? JsonObject) ?: JsonObject(emptyMap()))
+        var etag: String? = null
+        val text = raw(request.method, request.path, request.body, token(), request.idempotencyKey, request.headers) { etag = it }
+        ApiResult.Ok(200, (json.parseToJsonElement(text.ifBlank { "{}" }) as? JsonObject) ?: JsonObject(emptyMap()), etag)
+    } catch (e: HttpError) {
+        ApiResult.Problem(e.status, e.code, e.title, e.detail)
+    } catch (e: IOException) {
+        ApiResult.Offline(e.message ?: e.javaClass.simpleName)
+    }
+
+    /** M5: the look photo's bytes to the captures upload (`PUT /v1/captures/uploads/{id}`, 204). */
+    override suspend fun put(path: String, bytes: ByteArray, contentType: String): ApiResult = try {
+        val bearer = token()
+        withContext(Dispatchers.IO) {
+            val req = Request.Builder().url(apiBaseUrl.trimEnd('/') + path)
+                .header("Authorization", "Bearer $bearer")
+                .put(bytes.toRequestBody(contentType.toMediaType()))
+                .build()
+            client.newCall(req).execute().use { res ->
+                if (res.isSuccessful) ApiResult.Ok(res.code, JsonObject(emptyMap()))
+                else {
+                    val problem = runCatching { json.parseToJsonElement(res.body?.string().orEmpty()).jsonObject }.getOrNull()
+                    ApiResult.Problem(res.code, problem?.opt("code"), problem?.opt("title"), (problem?.get("detail") as? JsonPrimitive)?.contentOrNull)
+                }
+            }
+        }
     } catch (e: HttpError) {
         ApiResult.Problem(e.status, e.code, e.title, e.detail)
     } catch (e: IOException) {
@@ -127,15 +150,20 @@ class FieldSession(
         return json.parseToJsonElement(text.ifBlank { "{}" })
     }
 
-    private suspend fun raw(method: String, path: String, body: JsonElement?, bearer: String?, idemKey: String?): String =
+    private suspend fun raw(
+        method: String, path: String, body: JsonElement?, bearer: String?, idemKey: String?,
+        headers: Map<String, String> = emptyMap(), onEtag: (String?) -> Unit = {},
+    ): String =
         withContext(Dispatchers.IO) {
             val rb = Request.Builder().url(apiBaseUrl.trimEnd('/') + path)
             bearer?.let { rb.header("Authorization", "Bearer $it") }
+            headers.forEach { (k, v) -> rb.header(k, v) }
             val key = idemKey ?: if (method != "GET") UUIDv7.generate() else null
             key?.let { rb.header("Idempotency-Key", it) }
             val rbody = body?.toString()?.toRequestBody(JSON_TYPE) ?: if (method == "GET") null else "{}".toRequestBody(JSON_TYPE)
             rb.method(method, rbody)
             client.newCall(rb.build()).execute().use { res ->
+                onEtag(res.header("ETag"))
                 val text = res.body?.string().orEmpty()
                 if (!res.isSuccessful) {
                     val problem = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()

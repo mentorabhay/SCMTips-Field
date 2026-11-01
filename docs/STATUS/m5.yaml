@@ -425,3 +425,208 @@
     template; the intent itself is rules-only. The claim dialog keeps the claim's version for If-Match; "confirm"
     outside a claim_confirm dialog keeps its M3 answer. Every existing assistant test passes unchanged. Not yet
     heard on the glasses.
+- id: M5-B01
+  title: >-
+    App look: photo from the glasses camera (Meta toolkit) or the phone camera, faces blurred on the phone, upload
+    through the captures API, POST /v1/vision/looks, outlines on a Compose Canvas, say spoken, camera shown
+  workstream: M5-B
+  role: Stream B (app)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookApi.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookFlow.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/OutlineGeometry.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/FacePixels.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B01_uploadGoesThroughTheCapturesApi_withBlurAndAUniqueLookCode
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B01_noConsentIsItsOwnAnswer_andConsentIsRecordedForTheSiteAndDevice
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B01_uploadRefusals
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B01_lookRequestAndTheContractResponse
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B01_rulesOnlyLook_andALookRouteThatIsNotThereYet
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5B01_aLookIsSpokenShownAndPreFillsTheJob
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5B01_thePhoneCameraIsUsedAndSaid_whenTheGlassesGiveNone
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5B01_noPhoto_saysWhyAndOffersAnotherTry
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5B01_consentIsAskedOnce_thenTheSamePhotoIsSent
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5B01_aRulesOnlyLookAsksForASpokenCount
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_landscapePhotoInATallCanvas_isLetterboxedTopAndBottom
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_portraitPhotoInAWideCanvas_isLetterboxedLeftAndRight
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_boxesAreNormalisedClampedAndMalformedOnesDropped
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_canvasHeightFollowsThePhotoUpToTheCap
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_outlinesUseTheLooksImageSize_elseThePhotos
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_facesArePixelatedInSixteenPixelBlocksOfTheirMeanColour
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/OutlineGeometryTest.kt::m5B01_faceBoxIsGrownAndClamped_andPhotosAreScaledTo640WithAnEvenWidth
+  frs: []
+  verified_at: null
+  note: >-
+    Coded against M5_CONTRACT §2 with a scripted field-api in test code (ScriptedFieldApi); stream V's route was not
+    called. The photo goes through the existing captures API unchanged (POST /v1/captures/uploads, PUT the bytes, POST
+    /v1/captures with crop_upload_id, code_type look, a unique code_value per photo, blur_applied true): faces are found
+    with Android's own android.media.FaceDetector and pixelated with FaceBlurStage's rules (>= 0.30, +10 %, 16 px), and a
+    photo whose face check fails is not uploaded. A look photo is at most 640 px on its long side like a capture crop
+    (FR2.066): label reads of small print (pack size, expiry) may need a close look; a larger look photo is a privacy-rule
+    change for the owner. A 403 FIELD-CAP-403-NO-CONSENT asks once per site ("I agree" or Agree) and records POST
+    /v1/consents. Outlines are drawn from image pixels with letterboxing (the look's image size, else the uploaded photo).
+    Nothing ran on the owner's phone or the glasses; the glasses photo path (DatGlasses.capturePhoto, toolkit 1.0.1)
+    compiles against the real jars but has never run (META_FIELD row 5).
+- id: M5-B02
+  title: >-
+    Voice in the work session: "receive N, flag M" pre-fills good and flagged units with the look id, "post" then "yes"
+    (10 s), then the evidence link is opened; "count again" / "look again"; "make a claim" reads the draft
+  workstream: M5-B
+  role: Stream B (app)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobGrammar.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRunner.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/jobs/JobRequests.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookFlow.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/M5GrammarTest.kt::m5B02_receiveAndFlag_asWordsOrDigits
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/M5GrammarTest.kt::m5B02_receiveOutsideTheGrammar_isNothing
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/M5GrammarTest.kt::m5B02_lookAndClaimWords
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/M5GrammarTest.kt::m5B02_m2WordsAreUnchanged
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerLookTest.kt::m5B02_receiveEighteenFlagTwo_savesTwentyWithTwoFlagged_thenPostAndYesCarryTheLook
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerLookTest.kt::m5B02_flagAloneKeepsTheGoodUnits_andReceiveAloneFlagsNone
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerLookTest.kt::m5B02_touchSaveAndAllHereAfterALook_keepTheFlaggedUnits
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerLookTest.kt::m5B02_withoutALookTheReceiveBodiesStayM4Shaped
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerLookTest.kt::m5B02_aCaseIntroSaysLook_andTheLookLineIsTheOnlyLine
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5B02_makeAClaimReadsTheDraft_andTheEvidenceLinkIsOpened
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5B02_hintsSayTheProposalBack
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B02_evidenceLinkIsSignedByTheServer_andMadeAbsolute
+  frs: []
+  verified_at: null
+  note: >-
+    The proposal only pre-fills; what posts is the operator's own numbers and "yes". Posting shape is an ASSUMPTION for
+    the integrator (contract §2 names look_id and a per-line flag_qty but no field placement): POST /v1/count-records
+    carries value = good + flagged, flag_qty, look_id and capture_id (only after a look or a spoken flag; without them
+    the body is the M4 one), and POST /v1/tasks/{id}/post-requests carries look_id at top level; staged_hash is
+    unchanged (over counted_qty). The evidence link is POST /v1/evidence/documents/{doc}/link?year= (year when
+    erp.posted carried doc_year or year) answering {url, path, expires_at}; url is opened in an in-app WebView
+    (platform android.webkit, JavaScript off). A claim's evidence_url (the authenticated JSON path) is never opened. Numbers said as words parse through core-voice's NumberWordParser. Nothing ran on
+    the phone or the glasses.
+- id: M5-B03
+  title: >-
+    Supervisor claims by voice: "claims" / "next claim" reads each draft, "approve" / "reject [reason]" → the server's
+    read-back → "confirm" within 10 s → the spoken result; a Claims card on Today
+  workstream: M5-B
+  role: Stream B (app)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/ClaimReview.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookViews.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookApi.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5B03_approveThenConfirm_postsBothAndSpeaksTheServersWords
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5B03_rejectWithAReason_thenConfirm
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5B03_cancelOrSilenceAfterTheReadBack_changesNothing
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5B03_aConfirmAfterTenSeconds_isNotSent
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5B03_buttonsOnThePhoneCardDoTheSame
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5B03_nothingWaiting_notAllowed_andSilenceEndTheReview
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5B03_unclearWordsAreNeverActedOn
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B03_claimsDecisionsConfirmAndList
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B03_aPersonWhoDoesNotDecideClaimsGetsNoList
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/M5GrammarTest.kt::m5B03_claimReviewWords
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5B03_aStaleETagOrAnExpiredConfirm_changesNothingAndFetchesAgain
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B03_approveOrRejectOutsideAReview_startsTheClaimsReview_neverTheAssistant
+  frs: []
+  verified_at: null
+  note: >-
+    The M4 approval flow's structure on Field's own API (contract §3, no core): it reuses feature-decisions' DecisionEar
+    (UtteranceInbox), DecisionDisplay (the phone card) and AudioOut (SpeechWaiter); no DAT wrapper is duplicated. The
+    phone keeps its own 10 s window from the read-back and never sends a late confirm; the server's confirm_by is the
+    authority. Aligned with stream X's deviations (lead, 1 Nov): If-Match on /decision and /confirm (the list item's
+    etag, else GET /v1/claims/{id}'s ETag header; the confirm uses the ETag the decision answered; 412 drops it and
+    fetches again; 422 FIELD-CLM-422-CONFIRM-EXPIRED and 403 other-supervisor are spoken, nothing changes), confirm
+    body {words}, GET /v1/claims?status=draft&limit=50 {items, count}, POST /v1/claims 200 or 201. ASSUMPTION: GET
+    /v1/claims/{id} exists and answers the claim's ETag (the list may carry no per-item ETag). One path per flow: the
+    claims endpoints directly; the app never sends look_id in the assistant's client_state, and "approve" / "reject"
+    outside a review start the review instead of reaching the assistant's server-side claim intents. Who decides is
+    the server's: operators may list (field.claim.read), so the Today card hides after a decision answers 403, or when
+    the list answers 403/404. Coded against a scripted field-api; stream X's routes were not called. Nothing ran on the
+    phone or the glasses.
+- id: M5-B04
+  title: >-
+    The two cases on a sandbox site's Today ("New grocery delivery", "New pharmacy delivery", also by voice), each with
+    a How to test card; the work session routes look, claim, claims, cases and "I agree"
+  workstream: M5-B
+  role: Stream B (app)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/home/CaseStarters.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/Conductor.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/home/CaseStartersTest.kt::m5B04_bothCasesOnASandboxSiteOnly_eachWithAHowToTestCard
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/home/CaseStartersTest.kt::m5B04_aCaseIsASandboxReceiptWithItsCase
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/home/CaseStartersTest.kt::m5B04_anOlderServer_saysNotAvailableYet_neverCrashes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B04_lookAndClaimWordsGoToTheLookPort_notToTheAssistant
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B04_receiveAndFlagGoToTheOpenJob
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B04_casesClaimsAndConsentByVoice
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B04_aMumbledAgreeIsNotConsent
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B04_withoutTheLookPortTheM4RoutingIsUnchanged
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/M5GrammarTest.kt::m5B04_sessionPhrasesForCasesClaimsAndConsent
+  frs: []
+  verified_at: null
+  note: >-
+    ASSUMPTION for the integrator: the starters call POST /v1/sandbox/receipts {site_id, case: grocery|pharmacy} and
+    read 201 {task_id, ref_doc_no} like the M3 home receipt; a 404 or 422 (a field-api before stream V) is "not
+    available yet" with a clear message, never a crash. The case's intro asks for a look instead of a scan. Without the
+    M5 port the conductor routes exactly as in M4 (pinned). Nothing ran on the phone or the glasses.
+- id: M5-B05
+  title: >-
+    Me → Test glasses camera (the owner's Gate 0 probe G0-5): one photo through the Meta toolkit, its size and delay;
+    nothing leaves the phone unless the operator taps Upload
+  workstream: M5-B
+  role: Stream B (app)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookViews.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/M5Screens.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5B05_cameraTestShowsSizeAndDelay_andNothingIsSentByIt
+  frs: []
+  verified_at: null
+  note: >-
+    The probe uses the existing DatGlasses.capturePhoto (DeviceSession.addCamera(StreamConfiguration(HIGH, 2 fps)) then
+    Stream.capturePhoto(), PhotoData.Bitmap or HEIC decoded) and times it from the call to the bitmap, stream opening
+    included. Before it runs, MainActivity checks BLUETOOTH_CONNECT and the toolkit's CAMERA permission
+    (Wearables.checkPermissionStatus) and sends the operator through the Meta AI app grant when missing. Upload is the
+    captures API with the blurred 640 px copy (consent asked once if needed). Compiled against the 1.0.1 jars only; it
+    has never run on the glasses (META_FIELD row 5), which is exactly what G0-5 is for.
+- id: M5-B06
+  title: >-
+    App wiring and hands-busy UX: look, voice, claims and evidence with no touch after Start Work; big fallback
+    targets; SAMPLE labels; phone-camera fallback; versionCode 7, versionName 0.6.0-m5
+  workstream: M5-B
+  role: Stream B (app)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/net/FieldHttp.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookPhotos.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/LookPanel.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/M5Screens.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/JobScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/TodayScreen.kt
+  - apps/field-android/app/src/main/AndroidManifest.xml
+  - apps/field-android/app/src/main/res/xml/look_files.xml
+  - apps/field-android/app/build.gradle.kts
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B04_lookAndClaimWordsGoToTheLookPort_notToTheAssistant
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B04_casesClaimsAndConsentByVoice
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerLookTest.kt::m5B02_receiveEighteenFlagTwo_savesTwentyWithTwoFlagged_thenPostAndYesCarryTheLook
+  frs: []
+  verified_at: null
+  note: >-
+    The Android wiring is type-checked by tools/android_check/compile_check.py (not a Gradle build); its pure parts are
+    the JVM-tested classes above. A look runs off the conductor's lock, so "stop work" is heard meanwhile. Camera
+    order: the glasses (Meta toolkit) when their session is STARTED; else, or when they give no photo, the phone's
+    camera app (ACTION_IMAGE_CAPTURE into the app cache through androidx.core's FileProvider, no CAMERA permission
+    unless a merged library manifest declares it, then it is asked first), only while the app is on screen; the panel
+    and the log say which camera was used. No new dependency coordinate: FileProvider is androidx.core (core-ktx),
+    the WebView and the face finder are platform APIs. Lint, the manifest merge and the APK are proven only by the
+    Gradle build in CI. Nothing ran on the owner's phone or the glasses.
