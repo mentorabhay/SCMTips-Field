@@ -27,6 +27,7 @@ from field_oem.ports.oem_port import (
     OemKey,
     OemKeySet,
     OemUnavailable,
+    SeedUnit,
     UnitCheck,
     UnitEvent,
     UnitHistory,
@@ -156,3 +157,35 @@ class SimOemAdapter:
         except ValueError:
             raise OemUnavailable("registry: not JSON") from None
         return parse_check(body, oem)
+
+    # -- OemSeedPort: the C3 scenarios through the simulator's admin API (X-Sim-Admin-Token)
+    def _admin(self, method: str, path: str, **kw: Any) -> httpx.Response:
+        token = os.getenv(ADMIN_TOKEN_ENV, ADMIN_TOKEN_DEV)
+        try:
+            with self._http() as c:
+                r = c.request(method, path, headers={"X-Sim-Admin-Token": token}, **kw)
+        except httpx.HTTPError as e:
+            raise OemUnavailable(f"admin: {type(e).__name__}") from None
+        if r.status_code not in (200, 201):
+            raise OemUnavailable(f"admin {path}: HTTP {r.status_code} {r.text[:200]}")
+        return r
+
+    def seed_unit(self, unit: SeedUnit) -> str:
+        body = {"serial": unit.serial, "sku": unit.sku, "sealed_at": unit.sealed_at.isoformat(),
+                "events": [{"type": e.type, "at": e.at.isoformat(), "area": e.area} for e in unit.events],
+                "scenario": unit.scenario, "title": unit.title, "copies": unit.copies, "reset_first_check": True}
+        return str(self._admin("POST", "/admin/units", json=body).json()["code"])
+
+    def seed_forgery(self, serial: str, sku: str, sealed_at: date, scenario: str | None, title: str | None) -> str:
+        body = {"serial": serial, "sku": sku, "sealed_at": sealed_at.isoformat(), "scenario": scenario, "title": title}
+        return str(self._admin("POST", "/admin/forgeries", json=body).json()["code"])
+
+    def labels_html(self) -> str:
+        try:
+            with self._http() as c:
+                r = c.get("/labels")
+        except httpx.HTTPError as e:
+            raise OemUnavailable(f"labels: {type(e).__name__}") from None
+        if r.status_code != 200:
+            raise OemUnavailable(f"labels: HTTP {r.status_code}")
+        return r.text

@@ -7,7 +7,9 @@ third-party service sits behind the port and is never pretended). A maker integr
 
 from __future__ import annotations
 
-from field_oem.ports.oem_port import OemKeySet, OemNotConfigured, UnitCheck
+from datetime import date
+
+from field_oem.ports.oem_port import OemKeySet, OemNotConfigured, SeedUnit, UnitCheck
 
 REFUSAL = "No maker is configured: a real OEM must sign its seals and open its registry (M5_C3_CONTRACT.md 9)."
 
@@ -21,3 +23,12 @@ class RealOemAdapter:
 
     def check_unit(self, oem: str, serial: str, checker: str, area: str | None) -> UnitCheck:
         raise OemNotConfigured(REFUSAL)
+
+    def seed_unit(self, unit: SeedUnit) -> str:
+        raise OemNotConfigured("Seeding scenarios is a simulator capability; a maker is never seeded.")
+
+    def seed_forgery(self, serial: str, sku: str, sealed_at: date, scenario: str | None, title: str | None) -> str:
+        raise OemNotConfigured("Seeding scenarios is a simulator capability; a maker is never seeded.")
+
+    def labels_html(self) -> str:
+        raise OemNotConfigured("The label sheet is a simulator page.")

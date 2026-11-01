@@ -1091,3 +1091,60 @@
     null for kind authenticity (the M5 app must accept it). Migration field_0067_m5_c3 revises
     field_0066_m5_look_stage; the integrator re-points it if a try-page 0067 lands first. Partial until proven on
     the owner's phone and glasses.
+- id: M5-T06
+  title: >-
+    C3 scenario seed: field_api.tools.seed_c3 seeds the five scenarios (L1 genuine new, L2 returned and resold, L3
+    counterfeit on the label sheet only, L4 cloned code printed twice, L5 tampered seal) through the OEM port's seed
+    capability (the simulator's admin API; a real maker refuses); `stack c3` writes var/c3_labels.html
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/tools/seed_c3.py
+  - tools/dev_stack/c3.py
+  - tools/dev_stack/stack.py
+  - connectors/oem/src/field_oem/sim/adapter.py
+  tests:
+  - tests/e2e/test_m5_c3_seed_e2e.py::test_m5_t06_seed_makes_every_scenario_and_the_label_sheet
+  - tests/e2e/test_m5_c3_seed_e2e.py::test_m5_t06_seed_refuses_on_a_real_maker
+  - tools/dev_stack/tests/test_c3.py::test_m5_t06_stack_has_the_c3_command_and_the_smoke_flag
+  frs: []
+  verified_at: null
+  note: >-
+    Idempotent: units are upserted with their stable nonce (printed labels stay valid) and their first checks
+    reset, so the cloned-code scenario starts over on a re-run. `stack c3` ran on a private stack (1 Nov 2026): five
+    scenarios, a six-label sheet; all six QR codes decoded from the sheet's SVG paths (zxing-cpp, outside the repo),
+    the two L4 copies identical. Not yet printed on paper and scanned by the glasses or the phone.
+- id: M5-T07
+  title: >-
+    C3 tests: the verdict rule table as Hypothesis properties, signature verification and forgery, the API, roles,
+    the first-check race (two concurrent first checks, one wins), the OpenAPI export, and `smoke --c3` on the dev
+    stack with the model stand-in for the visual part
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/field-api/tests/property/test_m5_c3_rules_property.py
+  - services/field-api/tests/authenticity/test_seal_code.py
+  - tools/dev_stack/c3.py
+  - tools/dev_stack/model_standin.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/property/test_m5_c3_rules_property.py::test_m5_t07_property_rule_table_first_match_wins
+  - services/field-api/tests/property/test_m5_c3_rules_property.py::test_m5_t07_property_genuine_new_only_for_a_clean_verified_unit
+  - services/field-api/tests/property/test_m5_c3_rules_property.py::test_m5_t07_property_every_spoken_number_comes_from_the_facts
+  - services/field-api/tests/property/test_m5_c3_rules_property.py::test_m5_t07_property_tamper_only_from_a_finished_visual_check
+  - services/field-api/tests/authenticity/test_seal_code.py::test_m5_t07_property_any_one_character_change_of_a_code_never_verifies
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t07_first_check_race_through_the_api_one_of_two_wins
+  - services/oem-sim/tests/test_oem_sim.py::test_m5_t07_first_check_race_one_of_many_concurrent_checks_wins
+  - tests/e2e/test_m5_c3_seal_code_e2e.py::test_m5_t07_two_concurrent_first_checks_through_field_api_one_wins
+  - tools/dev_stack/tests/test_c3.py::test_m5_t07_standin_answers_the_seal_check_from_the_scene
+  frs: []
+  verified_at: null
+  note: >-
+    `smoke --c3` PASSED on a private stack (uvicorn, Postgres 16, model stand-in; 1 Nov 2026): L1-L5 verdicts, the
+    contract's spoken example, the cloned code caught by a second phone, the L5 first answer in 0.1 s while the
+    stand-in held the seal answer 2 s, then tamper true; claim approved by a supervisor; the check's signed page
+    and pack (photo sha256 verified). The race is proven at the maker (8 threads on oemsim.first_check) and
+    through field-api (2 threads, in-process and with the sim adapter). Models: the stand-in only, never Meta;
+    partial until proven on the owner's phone and glasses against the real Meta API.

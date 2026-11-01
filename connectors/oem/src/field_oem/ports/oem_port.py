@@ -82,6 +82,30 @@ class UnitCheck:
     first_check: FirstCheck
 
 
+@dataclass(frozen=True)
+class SeedUnit:
+    """A unit for the C3 scenarios (M5_C3_CONTRACT.md section 6): its history and the label sheet's caption."""
+
+    serial: str
+    sku: str
+    sealed_at: date
+    events: tuple[UnitEvent, ...]
+    scenario: str | None = None
+    title: str | None = None
+    copies: int = 1
+
+
+@runtime_checkable
+class OemSeedPort(Protocol):
+    """Seeding the C3 scenarios: a simulator capability, never a maker's (the real-OEM adapter refuses)."""
+
+    def seed_unit(self, unit: SeedUnit) -> str: ...  # the unit's signed code
+
+    def seed_forgery(self, serial: str, sku: str, sealed_at: date, scenario: str | None, title: str | None) -> str: ...
+
+    def labels_html(self) -> str: ...
+
+
 @runtime_checkable
 class OemPort(Protocol):
     def knows(self, oem: str) -> bool: ...

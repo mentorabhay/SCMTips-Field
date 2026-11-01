@@ -11,7 +11,9 @@ field_api.vision.sam / field_api.vision.labels (META_FIELD rows 20, 23).
                             "label_delay_s": 0..10 (optional, default 0)}
          the scene the next looks see: boxes in reading order (n = index + 1), label fields as the label schema;
          label_delay_s holds every label answer that long, so the smoke can see the look answer before its labels
-         are read (M5-S01 two-step look)
+         are read (M5-S01 two-step look); "seal": {"seal_visible", "signs"} is the answer to the C3 visual seal
+         check (a chat with the SealInspection JSON schema), held as long
+
     GET  /_standin/requests -> {"responses": <n>, "chat": <n>, "models": [...]}  (counts, never a header)
     POST /v1/responses          SAM 3.1: server-sent events, text "<0f>" + box tokens of the scene (shuffled)
     POST /v1/chat/completions   with images: the label JSON for the numbered crops asked; without: a short JSON say
@@ -29,7 +31,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
 app = FastAPI(title="Model stand-in (dev stack only, not the Meta Model API)")
-SCENE: dict[str, Any] = {"boxes": [], "width": 0, "height": 0, "labels": {}, "label_delay_s": 0.0}
+SCENE: dict[str, Any] = {"boxes": [], "width": 0, "height": 0, "labels": {}, "label_delay_s": 0.0,
+                         "seal": {"seal_visible": True, "signs": []}}
 SEEN: dict[str, Any] = {"responses": 0, "chat": 0, "models": []}
 _N = re.compile(r"(\d+):$")
 
@@ -62,7 +65,8 @@ async def set_scene(request: Request) -> dict[str, Any]:
     body = await request.json()
     SCENE.update({"boxes": [list(map(int, b)) for b in body.get("boxes") or []], "width": int(body["width"]),
                   "height": int(body["height"]), "labels": {str(k): v for k, v in (body.get("labels") or {}).items()},
-                  "label_delay_s": max(0.0, min(10.0, float(body.get("label_delay_s") or 0)))})
+                  "label_delay_s": max(0.0, min(10.0, float(body.get("label_delay_s") or 0))),
+                  "seal": dict(body.get("seal") or {"seal_visible": True, "signs": []})})
     return {"boxes": len(SCENE["boxes"])}
 
 
@@ -86,6 +90,7 @@ async def responses(request: Request) -> Response:
 
 
 CLAIM_DRAFT_PROMPT_START = "You write the body of a short, polite claim message"
+SEAL_SCHEMA = "SealInspection"  # = field_api.authenticity.seal.SEAL_SCHEMA_NAME
 
 
 @app.post("/v1/chat/completions")
@@ -96,10 +101,14 @@ async def chat(request: Request) -> JSONResponse:
     messages = body.get("messages") or [{}]
     content = messages[-1].get("content")
     system = str(messages[0].get("content") or "") if messages[0].get("role") == "system" else ""
+    schema = ((body.get("response_format") or {}).get("json_schema") or {}).get("name")
     if isinstance(content, list) and any(p.get("type") == "image_url" for p in content):
         if SCENE["label_delay_s"]:
             await asyncio.sleep(SCENE["label_delay_s"])
-        answer = json.dumps({"items": label_items(content, SCENE["labels"])})
+        if schema == SEAL_SCHEMA:  # the C3 visual seal check (field_api.authenticity.seal): the scene's tamper signs
+            answer = json.dumps(SCENE["seal"])
+        else:
+            answer = json.dumps({"items": label_items(content, SCENE["labels"])})
     elif system.startswith(CLAIM_DRAFT_PROMPT_START) and isinstance(content, str):
         answer = content  # a claim draft (M5 claims): the facts as given, so field-api's number check passes
     else:

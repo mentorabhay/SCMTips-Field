@@ -35,6 +35,10 @@
         101A and 101Q in erp-sim -> the look linked (needs `up --model-standin`)
     uv run python -m tools.dev_stack.stack smoke --m5  # both M5 cases end to end: the look smoke, then claim ->
         supervisor approve + confirm -> evidence link, signed page and JSON pack (needs `up --model-standin`)
+    uv run python -m tools.dev_stack.stack c3  # M5 case C3: the five seal scenarios in the OEM simulator (erp-sim
+        /_oem) and var/c3_labels.html to print (tools/dev_stack/c3.py)
+    uv run python -m tools.dev_stack.stack smoke --c3  # C3: every scenario, the cloned code, the two-step seal check,
+        a claim and the check's evidence page (needs `up --model-standin`)
 
 Services (logs in var/log, pids in var/run):
   fake-core  :8011  dev identity provider (EdDSA tokens + JWKS) and the stand-in core (a dev double of the
@@ -1997,6 +2001,10 @@ def cmd_smoke(a: argparse.Namespace) -> int:
     if (getattr(a, "approver", False) or getattr(a, "core", False)) and core_target() == "core":
         return smoke_real_core(a, api)
     state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
+    if getattr(a, "c3", False):
+        from tools.dev_stack.c3 import smoke_c3
+
+        return smoke_c3(api, state)
     if getattr(a, "m5_look", False) or getattr(a, "m5", False):
         from tools.dev_stack.m5 import smoke_m5_look
 
@@ -2365,6 +2373,9 @@ def main(argv: list[str] | None = None) -> int:
     sm.add_argument("--m5", action="store_true",
                     help="M5 end to end: --m5-look along the app's paths, then claim -> supervisor approve + confirm"
                          " -> evidence link, signed page and JSON pack (needs up --model-standin)")
+    sm.add_argument("--c3", action="store_true",
+                    help="M5 case C3: the five seal scenarios, the cloned code, the two-step seal check, a claim and the"
+                         " check's evidence page (needs up --model-standin)")
     sm.add_argument("--erp-feed", action="store_true",
                     help="erp-sim's stock and open POs as a snapshot to the core's feeds; the core then equals erp-sim")
     ef = sub.add_parser("erp-feed", help="stage a snapshot of erp-sim's stock and open POs for the core's feeds now")
@@ -2384,6 +2395,7 @@ def main(argv: list[str] | None = None) -> int:
     hm.add_argument("--simulate-differences", action="store_true",
                     help="opt-in: give two SAMPLE materials a simulated book stock in HOME-A (documents marked simulated)")
     sub.add_parser("assistant-check", help="one real Field Assistant model call through the budget guard (track A)")
+    sub.add_parser("c3", help="M5 case C3: the five seal-label scenarios in the OEM simulator + var/c3_labels.html")
     m5 = sub.add_parser("m5-cases", help="M5: C1 grocery + C2 pharmacy receipts on the home sandbox site + labels")
     m5.add_argument("--reset", action="store_true", help="cancel the open case receipts and make new ones")
     m5.add_argument("--c1-units", type=int, metavar="N", help="C1 grocery: packs expected (default 20)")
@@ -2393,7 +2405,14 @@ def main(argv: list[str] | None = None) -> int:
     return {"up": cmd_up, "down": cmd_down, "status": cmd_status, "pair": cmd_pair, "smoke": cmd_smoke,
             "delivery": cmd_delivery, "outbound": cmd_outbound, "count": cmd_count, "tower": cmd_tower,
             "labels": cmd_labels, "home": cmd_home, "assistant-check": cmd_assistant_check,
-            "seed-core-export": cmd_seed_core_export, "erp-feed": cmd_erp_feed, "m5-cases": cmd_m5_cases}[a.cmd](a)
+            "seed-core-export": cmd_seed_core_export, "erp-feed": cmd_erp_feed, "m5-cases": cmd_m5_cases,
+            "c3": cmd_c3}[a.cmd](a)
+
+
+def cmd_c3(a: argparse.Namespace) -> int:
+    from tools.dev_stack.c3 import cmd_c3 as run
+
+    return run(a)
 
 
 def cmd_m5_cases(a: argparse.Namespace) -> int:
