@@ -52,7 +52,8 @@ import androidx.compose.ui.graphics.Color
 /**
  * 1.6 Your site (Site.dc.html): "Where are you working?" from field-api's [sites] (a sandbox site is marked), then
  * "What are you doing now?" with every home of [homes]; a view-only home can be picked (reviewers open every home)
- * and says so. A PC pairing has no list: its [pairedSiteName] is shown as the one site. Continue needs a site.
+ * and says so. A PC pairing has no list: its [pairedSiteName] is shown as the one site. Continue needs a site, unless
+ * field-api has answered with none ([listAnswered]).
  */
 @Composable
 fun SitePickScreen(
@@ -65,6 +66,8 @@ fun SitePickScreen(
     onHome: (Home) -> Unit,
     onContinue: () -> Unit,
     pairedSiteName: String? = null,
+    /** SitePick.canContinue: field-api has answered the site list (an empty list then does not block Continue). */
+    listAnswered: Boolean = false,
 ) {
     Column(
         Modifier.fillMaxSize().background(Ground).verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, top = 56.dp, bottom = 28.dp),
@@ -96,7 +99,7 @@ fun SitePickScreen(
                 }
             }
         }
-        GradientButton("Continue", onContinue, enabled = SitePick.canContinue(sites, currentSiteId, pairedSiteName), modifier = Modifier.padding(top = 8.dp))
+        GradientButton("Continue", onContinue, enabled = SitePick.canContinue(sites, currentSiteId, pairedSiteName, listAnswered), modifier = Modifier.padding(top = 8.dp))
     }
 }
 

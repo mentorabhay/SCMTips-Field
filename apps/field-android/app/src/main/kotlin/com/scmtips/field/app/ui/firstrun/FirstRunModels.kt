@@ -136,9 +136,14 @@ object SitePick {
             sandbox, s.id == currentSiteId)
     }
 
-    /** A sign-in needs a chosen site; a PC pairing (no list) already has its site. */
-    fun canContinue(sites: List<SiteRef>, currentSiteId: String?, pairedSiteName: String?): Boolean =
-        if (sites.isEmpty()) pairedSiteName != null else sites.any { it.id == currentSiteId }
+    /**
+     * A sign-in needs a chosen site; a PC pairing (no list) already has its site. [listAnswered]: field-api has
+     * answered (or there was nothing to ask, e.g. an approver-only account): an empty list then lets the person on to
+     * Home (approvals and the shell's "no field site linked" cards still work) instead of a Continue that never
+     * enables. While the list is still being asked for, an empty list waits.
+     */
+    fun canContinue(sites: List<SiteRef>, currentSiteId: String?, pairedSiteName: String?, listAnswered: Boolean = false): Boolean =
+        if (sites.isEmpty()) pairedSiteName != null || listAnswered else sites.any { it.id == currentSiteId }
 
     /** The line under "What are you doing now?": how many homes the account can act in. */
     fun roleNote(homes: List<HomeChoice>): String {
