@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.jobs.Tone
+import com.scmtips.field.app.ui.theme.BrandGradient
 import com.scmtips.field.app.ui.theme.CardBg
 import com.scmtips.field.app.ui.theme.Danger
 import com.scmtips.field.app.ui.theme.DangerBg
@@ -47,9 +48,15 @@ import com.scmtips.field.app.ui.theme.SuccessInk
 import com.scmtips.field.app.ui.theme.WarnBg
 import com.scmtips.field.app.ui.theme.WarnInk
 
-val Corner = RoundedCornerShape(8.dp)
+/** M5-U shapes and sizes (docs/design/M5_UI_CONTRACT.md §5): 16 dp cards, 14 dp buttons, 48 dp touch targets. */
+val CardShape = RoundedCornerShape(16.dp)
+val ButtonShape = RoundedCornerShape(14.dp)
+val MinTouch = 48.dp
 
-/** White card with a 1 dp line and 8 dp corners (design). */
+/** The card shape of every older screen (now the M5-U card radius). */
+val Corner = CardShape
+
+/** White card with a 1 dp line and 16 dp corners (design). */
 @Composable
 fun CardBox(
     modifier: Modifier = Modifier,
@@ -69,17 +76,31 @@ fun CardBox(
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
                   bg: Color = Primary, fg: Color = Color.White, height: Dp = 58.dp) {
     Button(
-        onClick = onClick, enabled = enabled, shape = Corner,
+        onClick = onClick, enabled = enabled, shape = ButtonShape,
         modifier = modifier.fillMaxWidth().height(height),
         colors = ButtonDefaults.buttonColors(containerColor = bg, contentColor = fg,
             disabledContainerColor = bg.copy(alpha = 0.45f), disabledContentColor = fg.copy(alpha = 0.8f)),
     ) { Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 }
 
+/**
+ * The one main action of a screen, on the brand gradient (#6D28D9 → #C2410C). Use it once per screen; every other
+ * button is [PrimaryButton] (solid) or [SecondaryButton].
+ */
+@Composable
+fun GradientButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, height: Dp = 56.dp) {
+    Button(
+        onClick = onClick, enabled = enabled, shape = ButtonShape,
+        modifier = modifier.fillMaxWidth().height(height).background(BrandGradient, ButtonShape, alpha = if (enabled) 1f else 0.45f),
+        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.White,
+            disabledContainerColor = Color.Transparent, disabledContentColor = Color.White.copy(alpha = 0.85f)),
+    ) { Text(text, fontSize = 17.sp, fontWeight = FontWeight.Bold) }
+}
+
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, ink: Color = Ink, line: Color = Line, enabled: Boolean = true) {
     OutlinedButton(
-        onClick = onClick, enabled = enabled, shape = Corner, border = BorderStroke(1.dp, line),
+        onClick = onClick, enabled = enabled, shape = ButtonShape, border = BorderStroke(1.dp, line),
         modifier = modifier.fillMaxWidth().height(52.dp),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = ink),
     ) { Text(text, fontSize = 17.sp, fontWeight = FontWeight.Bold) }
@@ -89,7 +110,7 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
 @Composable
 fun SmallButton(text: String, onClick: () -> Unit, enabled: Boolean = true) {
     OutlinedButton(
-        onClick = onClick, enabled = enabled, shape = RoundedCornerShape(6.dp), border = BorderStroke(1.dp, LineStrong),
+        onClick = onClick, enabled = enabled, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, LineStrong),
         modifier = Modifier.heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 12.dp),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
     ) { Text(text, fontWeight = FontWeight.Bold, fontSize = 15.sp) }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -31,9 +32,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.AppUi
+import com.scmtips.field.app.jobs.JobTask
 import com.scmtips.field.app.home.Link
 import com.scmtips.field.app.home.SandboxStart
 import com.scmtips.field.app.home.SandboxStarters
+import com.scmtips.field.app.home.Starter
 import com.scmtips.field.app.home.TaskCard
 import com.scmtips.field.app.home.TodayModel
 import com.scmtips.field.app.ui.theme.CardBg
@@ -57,10 +60,8 @@ import com.scmtips.field.app.ui.theme.WarnText
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TodayScreen(ui: AppUi, a: Actions) {
-    val cards = ui.tasks.map(TodayModel::card)
     var askShelf by remember { mutableStateOf(false) }
     if (askShelf) CountShelfDialog(onStart = { bin -> askShelf = false; a.startSandbox(SandboxStart.COUNT_SHELF, bin) }, onDismiss = { askShelf = false })
-    val sandbox = SandboxStarters.offered(ui.sandbox && ui.home.fieldWork && ui.pairing != null)
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 16.dp),
@@ -89,82 +90,118 @@ fun TodayScreen(ui: AppUi, a: Actions) {
                 }
             }
         }
-        if (ui.home.decisions) item { DecisionsCard(ui.decisions, ui.work.active, a) }
-        if (ui.claims.waiting != null) item { ClaimsCard(ui.claims, ui.work.active, a) }
-        // M5-T05: any Field role may check a box (field.authenticity.check); the server's 403 hides the card.
-        if (com.scmtips.field.app.check.CheckText.cardVisible(ui.pairing != null && ui.deviceId != null, ui.check.allowed)) {
-            item { CheckBoxCard(ui.work.active, a) }
-        }
-        item { WorkCard(ui.work, ui.glasses.session == "STARTED", a) }
-        // M5: the two test cases first on a sandbox site (contract §1), above the rest of the list.
-        val cases = com.scmtips.field.app.home.CaseStart.offered(ui.sandbox && ui.home.fieldWork && ui.pairing != null)
-        if (cases.isNotEmpty()) item { CaseStarterCards(cases, ui.work.active, a) }
-        if (ui.home.fieldWork && ui.pairing == null) {
-            item {
-                CardBox {
-                    Text(if (ui.connecting) "Connecting to the SCMTips Field server…" else "No field site linked", fontWeight = FontWeight.Bold, color = Ink)
-                    Text(ui.connectError ?: "Your jobs appear here once the field server knows your site.", color = Muted, fontSize = 14.sp)
-                }
+        decisionsSection(ui, a)
+        claimsSection(ui, a)
+        checkSection(ui, a)
+        workSection(ui, a)
+        caseSection(ui, a)
+        assignedSections(ui, a, ui.tasks, TodayModel.starters(ui.tasks)) { askShelf = true }
+    }
+}
+
+// The sections of Today, shared with the M5-U interim homes (ui/shell/InterimHomes.kt) so both draw the same cards.
+
+/** M4 F1: the approver's decisions card. */
+internal fun LazyListScope.decisionsSection(ui: AppUi, a: Actions) {
+    if (ui.home.decisions) item { DecisionsCard(ui.decisions, ui.work.active, a) }
+}
+
+/** M5: a supervisor's draft claims card. */
+internal fun LazyListScope.claimsSection(ui: AppUi, a: Actions) {
+    if (ui.claims.waiting != null) item { ClaimsCard(ui.claims, ui.work.active, a) }
+}
+
+/** M5-T05: any Field role may check a box (field.authenticity.check); the server's 403 hides the card. */
+internal fun LazyListScope.checkSection(ui: AppUi, a: Actions) {
+    if (com.scmtips.field.app.check.CheckText.cardVisible(ui.pairing != null && ui.deviceId != null, ui.check.allowed)) {
+        item { CheckBoxCard(ui.work.active, a) }
+    }
+}
+
+/** M3: the work session card ("Start work"). */
+internal fun LazyListScope.workSection(ui: AppUi, a: Actions) {
+    item { WorkCard(ui.work, ui.glasses.session == "STARTED", a) }
+}
+
+/** M5: the two test cases first on a sandbox site (contract §1), above the rest of the list. */
+internal fun LazyListScope.caseSection(ui: AppUi, a: Actions) {
+    val cases = com.scmtips.field.app.home.CaseStart.offered(ui.sandbox && ui.home.fieldWork && ui.pairing != null)
+    if (cases.isNotEmpty()) item { CaseStarterCards(cases, ui.work.active, a) }
+}
+
+/**
+ * The field-work part of Today: the no-site card, "Assigned to you" with [tasks], the sandbox starters and the
+ * [starters] tiles. [askShelf] opens the caller's CountShelfDialog; [sandboxStarters] false leaves the sandbox ones out.
+ */
+internal fun LazyListScope.assignedSections(
+    ui: AppUi, a: Actions, tasks: List<JobTask>, starters: List<Starter>, sandboxStarters: Boolean = true, askShelf: () -> Unit,
+) {
+    val cards = tasks.map(TodayModel::card)
+    val sandbox = SandboxStarters.offered(sandboxStarters && ui.sandbox && ui.home.fieldWork && ui.pairing != null)
+    if (ui.home.fieldWork && ui.pairing == null) {
+        item {
+            CardBox {
+                Text(if (ui.connecting) "Connecting to the SCMTips Field server…" else "No field site linked", fontWeight = FontWeight.Bold, color = Ink)
+                Text(ui.connectError ?: "Your jobs appear here once the field server knows your site.", color = Muted, fontSize = 14.sp)
             }
         }
-        if (ui.home.fieldWork && ui.pairing != null) item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Assigned to you", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Muted, modifier = Modifier.weight(1f))
-                if (ui.loading) CircularProgressIndicator(Modifier.size(20.dp), color = Primary, strokeWidth = 2.dp)
-                else SmallButton("Refresh", a.refresh)
-            }
+    }
+    if (ui.home.fieldWork && ui.pairing != null) item {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Assigned to you", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Muted, modifier = Modifier.weight(1f))
+            if (ui.loading) CircularProgressIndicator(Modifier.size(20.dp), color = Primary, strokeWidth = 2.dp)
+            else SmallButton("Refresh", a.refresh)
         }
-        if (ui.home.fieldWork && ui.pairing != null && cards.isEmpty()) {
-            item {
-                CardBox {
-                    Text("Nothing assigned to you right now.", fontWeight = FontWeight.Bold, color = Ink)
-                    Text(
-                        if (sandbox.isNotEmpty()) "This is a sandbox site: start a new home receipt or count a shelf right here."
-                        else "New jobs appear here by themselves. You can also start a practice task in Me.",
-                        color = Muted, fontSize = 14.sp,
-                    )
-                    if (sandbox.isNotEmpty()) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 6.dp)) {
-                            PrimaryButton(SandboxStart.HOME_RECEIPT.label, { a.startSandbox(SandboxStart.HOME_RECEIPT, null) }, Modifier.weight(1f), height = 52.dp)
-                            SecondaryButton(SandboxStart.COUNT_SHELF.label, { askShelf = true }, Modifier.weight(1f))
-                        }
+    }
+    if (ui.home.fieldWork && ui.pairing != null && cards.isEmpty()) {
+        item {
+            CardBox {
+                Text("Nothing assigned to you right now.", fontWeight = FontWeight.Bold, color = Ink)
+                Text(
+                    if (sandbox.isNotEmpty()) "This is a sandbox site: start a new home receipt or count a shelf right here."
+                    else "New jobs appear here by themselves. You can also start a practice task in Me.",
+                    color = Muted, fontSize = 14.sp,
+                )
+                if (sandbox.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 6.dp)) {
+                        PrimaryButton(SandboxStart.HOME_RECEIPT.label, { a.startSandbox(SandboxStart.HOME_RECEIPT, null) }, Modifier.weight(1f), height = 52.dp)
+                        SecondaryButton(SandboxStart.COUNT_SHELF.label, askShelf, Modifier.weight(1f))
                     }
                 }
             }
         }
-        if (ui.home.fieldWork && ui.pairing != null) items(cards, key = { it.taskId }) { c -> TaskCardRow(c) { a.openTask(c.taskId) } }
-        if (ui.home.fieldWork && ui.pairing != null) item {
-            Text("Start something else", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Muted, modifier = Modifier.padding(top = 8.dp))
-        }
-        if (sandbox.isNotEmpty()) item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                sandbox.forEach { st ->
-                    Column(
-                        Modifier.weight(1f).heightIn(min = 64.dp).background(WarnBg, Corner).border(1.dp, Line, Corner)
-                            .clickable(role = Role.Button) {
-                                if (st == SandboxStart.COUNT_SHELF) askShelf = true else a.startSandbox(st, null)
-                            }.padding(14.dp),
-                    ) {
-                        Text(st.label, fontWeight = FontWeight.Bold, color = Ink)
-                        Text(st.sub, fontSize = 13.sp, color = Muted)
-                    }
+    }
+    if (ui.home.fieldWork && ui.pairing != null) items(cards, key = { it.taskId }) { c -> TaskCardRow(c) { a.openTask(c.taskId) } }
+    if (ui.home.fieldWork && ui.pairing != null) item {
+        Text("Start something else", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Muted, modifier = Modifier.padding(top = 8.dp))
+    }
+    if (sandbox.isNotEmpty()) item {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            sandbox.forEach { st ->
+                Column(
+                    Modifier.weight(1f).heightIn(min = 64.dp).background(WarnBg, Corner).border(1.dp, Line, Corner)
+                        .clickable(role = Role.Button) {
+                            if (st == SandboxStart.COUNT_SHELF) askShelf() else a.startSandbox(st, null)
+                        }.padding(14.dp),
+                ) {
+                    Text(st.label, fontWeight = FontWeight.Bold, color = Ink)
+                    Text(st.sub, fontSize = 13.sp, color = Muted)
                 }
             }
         }
-        if (ui.home.fieldWork && ui.pairing != null) item {
-            val starters = TodayModel.starters(ui.tasks)
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                starters.chunked(2).forEach { pair ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        pair.forEach { s ->
-                            Box(
-                                Modifier.weight(1f).heightIn(min = 64.dp).background(CardBg, Corner).border(1.dp, Line, Corner)
-                                    .clickable(role = Role.Button) { a.openStarter(s.type) }.padding(14.dp),
-                                contentAlignment = Alignment.CenterStart,
-                            ) { Text(s.label, fontWeight = FontWeight.Bold, color = if (s.taskId != null) Ink else Muted) }
-                        }
-                        if (pair.size == 1) Box(Modifier.weight(1f))
+    }
+    if (ui.home.fieldWork && ui.pairing != null) item {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            starters.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { s ->
+                        Box(
+                            Modifier.weight(1f).heightIn(min = 64.dp).background(CardBg, Corner).border(1.dp, Line, Corner)
+                                .clickable(role = Role.Button) { a.openStarter(s.type) }.padding(14.dp),
+                            contentAlignment = Alignment.CenterStart,
+                        ) { Text(s.label, fontWeight = FontWeight.Bold, color = if (s.taskId != null) Ink else Muted) }
                     }
+                    if (pair.size == 1) Box(Modifier.weight(1f))
                 }
             }
         }

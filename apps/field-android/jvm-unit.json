@@ -65,6 +65,12 @@
     "app/src/main/kotlin/com/scmtips/field/app/ui/LookPanel.kt": "androidx.compose (the look photo with outlines; the scaling math is look/OutlineGeometry.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/M5Screens.kt": "androidx.compose, android.webkit (case starters, claims, evidence page, camera test)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/CheckScreen.kt": "androidx.compose, android.graphics (the C3 box check card; its words and rules are check/CheckText.kt)",
-    "app/src/test/kotlin/com/scmtips/field/app/signin/BuildVariantDefaultsTest.kt": "AGP's generated BuildConfig (runs per build type under Gradle: testDebugUnitTest, testHostedUnitTest)"
+    "app/src/test/kotlin/com/scmtips/field/app/signin/BuildVariantDefaultsTest.kt": "AGP's generated BuildConfig (runs per build type under Gradle: testDebugUnitTest, testHostedUnitTest)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/theme/Motion.kt": "androidx.compose (the reduce-motion CompositionLocal; the rule is shell/ShellNav.kt ShellText.reduceMotion)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellRoot.kt": "androidx.compose (the M5-U shell; its rules are shell/ShellNav.kt and shell/Homes.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellKit.kt": "androidx.compose (rows, switches, tab glyphs of the M5-U shell)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/shell/HomeContent.kt": "androidx.compose (the home seam and interim homes; the home rules are shell/Homes.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/shell/FirstRunContent.kt": "androidx.compose (the first-run seam and interim screens; the graph is shell/ShellNav.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellTabs.kt": "androidx.compose (the Activity and Inbox tabs)"
   }
 }

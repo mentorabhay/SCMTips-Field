@@ -35,7 +35,13 @@ import com.scmtips.field.feature.decisions.api.SignInMethod
 import com.scmtips.field.feature.decisions.api.StepUpMethod
 import com.scmtips.field.app.jobs.JobAction
 import com.scmtips.field.app.jobs.JobType
+import com.scmtips.field.app.jobs.ScannerKind
 import com.scmtips.field.app.navigation.Screen
+import com.scmtips.field.app.shell.PermissionStep
+import com.scmtips.field.app.shell.ShellAction
+import com.scmtips.field.app.ui.shell.ShellRoot
+import com.scmtips.field.app.ui.theme.LocalReduceMotion
+import androidx.compose.runtime.CompositionLocalProvider
 import com.scmtips.field.app.ui.theme.Background
 import com.scmtips.field.app.ui.theme.CardBg
 import com.scmtips.field.app.ui.theme.Line
@@ -104,10 +110,34 @@ class Actions(
     val closeProbe: () -> Unit = {},
     /** M5-T05: the C3 box check (Today's card, the check card's buttons). */
     val check: (CheckAction) -> Unit = {},
+    /** M5-U01: the shell's navigation (first run, tabs, pages, role switcher, classic layout); rules in ShellNav. */
+    val shell: (ShellAction) -> Unit = {},
+    /** M5-U01: open a web page (the SCMTIPS reset and sign-up pages) with Intent.ACTION_VIEW. */
+    val openUrl: (String) -> Unit = {},
+    /** M5-U01: first run's Permissions step "Allow". */
+    val requestPermission: (PermissionStep) -> Unit = {},
+    /** M5-U01/U05: pick a listed site (first run's Site and role, Profile). */
+    val chooseSite: (String) -> Unit = {},
+    /** M5-U05: Settings › Scanning with. */
+    val setScanner: (ScannerKind) -> Unit = {},
+    /** M5-U05: Settings › Connections while signed out (SCMTIPS address, field server address). */
+    val setServers: (String, String) -> Unit = { _, _ -> },
 )
 
+/**
+ * The app's root: the M5-U shell (first run, role homes, tab bar, profile pages; ui/shell/ShellRoot.kt), or the
+ * old Connect / Today · Scan · Me screens exactly as before when Settings › Diagnostics › Classic layout is on.
+ */
 @Composable
 fun AppRoot(ui: AppUi, a: Actions) {
+    CompositionLocalProvider(LocalReduceMotion provides ui.shell.reduceMotion) {
+        if (ui.shell.classic) ClassicRoot(ui, a) else ShellRoot(ui, a)
+    }
+}
+
+/** The M2 to M5 layout, unchanged (the owner's safety net until the redesign passes his device test). */
+@Composable
+fun ClassicRoot(ui: AppUi, a: Actions) {
     Box(Modifier.fillMaxSize().background(Background).safeDrawingPadding()) {
         val job = ui.job
         val signed = ui.signedIn
