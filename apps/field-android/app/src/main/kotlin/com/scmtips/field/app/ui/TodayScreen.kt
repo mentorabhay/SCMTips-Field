@@ -99,7 +99,7 @@ fun TodayScreen(ui: AppUi, a: Actions) {
     }
 }
 
-// The sections of Today, shared with the M5-U interim homes (ui/shell/InterimHomes.kt) so both draw the same cards.
+// The sections of Today (the classic layout). workSection is also the M5-U Warehouse and Tower homes' extra slot (ui/shell/HomeContent.kt).
 
 /** M4 F1: the approver's decisions card. */
 internal fun LazyListScope.decisionsSection(ui: AppUi, a: Actions) {

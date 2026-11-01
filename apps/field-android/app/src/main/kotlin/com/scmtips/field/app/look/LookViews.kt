@@ -11,6 +11,11 @@ data class ClaimsView(
     val card: DecisionCard? = null,
     val listening: Boolean = false,
     val last: String? = null,
+    /**
+     * M5-U06: field-api's draft claims as `GET /v1/claims?status=draft` last listed them for a supervisor (the same
+     * call that gives [waiting]); null when not asked or not a supervisor. Drawn only (the Approvals home's titles).
+     */
+    val drafts: List<Claim>? = null,
 )
 
 object ClaimsText {

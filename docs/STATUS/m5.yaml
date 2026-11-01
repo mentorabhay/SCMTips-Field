@@ -1341,8 +1341,8 @@
     build or device run was possible here (no Android SDK). FieldController's logic is unchanged: it gained AppUi.shell,
     shell(ShellAction), setReduceMotion, setServers, chooseSite (nextSite now goes through it) and setScanner
     (cycleScanner now goes through it); unpair() keeps welcome seen and the layout and resets setup and the home choice.
-    The home and first-run screens are builder A's interim composables (Today's own sections split by home) until
-    builder B's ui/firstrun and ui/homes are plugged into HomeContent / FirstRunContent. Tower "can act" means tower
+    The home and first-run screens were builder A's interim composables until M5-U06 plugged builder B's ui/firstrun
+    and ui/homes into FirstRunContent / HomeContent (the interim composables are deleted). Tower "can act" means tower
     jobs are assigned to the phone (the phone has no technician flag). The old M2 colour names are aliases of the new
     tokens, so the classic layout keeps its screens and order but takes the new colours and 16 dp corners; its Me screen
     gained a Layout row to come back. A new install asks for permissions on first run's Permissions step instead of at
@@ -1427,15 +1427,18 @@
     which step, the first-time rule keyed by task type and step, ring progress, verdict colours and signals, the
     decision layout, the two look answers) are JVM-tested against the real JobRunner, CardFormatter, DecisionText
     and check models; the Compose files are type-checked by tools/android_check/compile_check.py only (no Gradle
-    build, no device, no screenshot). Tokens in ui/kit/TaskChrome.kt copy builder A's names and values
-    (M5_UI_CONTRACT §5) for the integrator to delete. JobScreen, CheckScreen and DecisionScreen take
+    build, no device, no screenshot). Tokens in ui/kit/TaskChrome.kt copied builder A's names and values
+    (M5_UI_CONTRACT §5); M5-U06 deleted the copies and the screens import ui/theme. JobScreen, CheckScreen and DecisionScreen take
     classic=false (the old layouts moved unchanged to *Classic.kt), reduceMotion (default: the system animator
     scale; LocalReduceMotion to be passed), and JobScreen onEvidence / nextUp (null: rows left out). Known gaps,
     for the integrator: the confirm ring is anchored when the step starts listening with JobRunner's default 10 s
     window (StepView does not expose the deadline); the flag number has no touch stepper (no JobAction sets it,
     so it changes by voice as before); the brief has no replay button (no action; say "repeat"); option cards show
     "Option X" only (DecisionsView does not carry the option titles); the evidence page cannot be reopened from the
-    done screen. ScanScreen gained optional ManualCode ink/onDark parameters (defaults unchanged); SessionViews and
+    done screen. Closed in M5-U06: option cards add the core's option title and amounts (DecisionsView.next), the
+    done screen's "Evidence page" reopens the look's page (LookFlow.reopenEvidence) and its "Next up" is the next
+    assigned job (JobNextUp); ShellRoot passes LocalReduceMotion. Still open: the confirm ring anchor, the flag
+    stepper and the brief replay button (each needs a runner or flow change, not a screen change). ScanScreen gained optional ManualCode ink/onDark parameters (defaults unchanged); SessionViews and
     M5Screens are unchanged.
 - id: M5-U02
   title: >-
@@ -1486,9 +1489,12 @@
     the draw phase, animateDpAsState), no new dependency; with reduceMotion every drawing shows its still frame and no
     transition runs. shell/Homes.kt and shell/ShellNav.kt are verbatim copies of builder A's pure shell types (as
     committed in f50841b on feat/m5-ui-shell) so these screens compile; A's branch owns them and its tests cover
-    them; the integrator keeps A's copies. HomeTokens.kt mirrors A's theme tokens by name and value until the merge.
+    them; the integrator keeps A's copies. HomeTokens.kt mirrored A's theme tokens by name and value until the merge (removed in M5-U06; the screens
+    import ui/theme).
     Type-checked with tools/android_check/compile_check.py (Kotlin 2.2.21 + Compose plugin against the real AndroidX
-    jars), not a Gradle build; nothing drawn on a device yet. Partial until proven on the owner's phone.
+    jars), not a Gradle build; nothing drawn on a device yet. Partial until proven on the owner's phone. Integrated in
+    M5-U06: FirstRunContent now draws these screens (the interim ones are deleted); SitePick.canContinue gained
+    listAnswered so an account field-api lists no site for is no longer stuck on Site and role.
 - id: M5-U03
   title: >-
     Role homes of the app redesign (A-07, prototype WarehouseHome / TowerHome / ApprovalsInbox / ScanSeal .dc.html,
@@ -1541,4 +1547,87 @@
     drafts in turn), not a single chosen claim. Tower check-in opens the first tower job, whose runner step checks
     location and permit; the home shows no GPS or permit of its own. canAct false disables every act button; Refresh
     stays. Type-checked with tools/android_check/compile_check.py, not a Gradle build; nothing drawn on a device yet.
-    Partial until proven on the owner's phone.
+    Partial until proven on the owner's phone. Integrated in M5-U06: HomeContent draws these homes; AppUi now keeps
+    the core's next item (DecisionsView.next) and field-api's draft list (ClaimsView.drafts) and the Approvals home
+    gets both, so its cards show real titles instead of summary rows once fetched; a field supervisor who decides
+    claims can act on Approvals (Capabilities.claimsDecider).
+- id: M5-U06
+  title: >-
+    Integration and polish of the app redesign (A-07, M5_UI_CONTRACT §1 and §4): builder B's first-run screens and role
+    homes plugged into the shell's seams with their callbacks bound to Actions, the work session kept on the Warehouse
+    and Tower homes, the data gaps of the homes and task screens closed from state the app already fetches, and the
+    duplicated theme tokens removed
+  workstream: M5-U
+  role: Integrator
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/FirstRunContent.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/HomeContent.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/shell/Homes.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SitePickScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellRoot.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/DecisionScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskModel.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/decisions/DecisionsBridge.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookViews.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookFlow.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/AppRoot.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeTokens.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskChrome.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U06_site_anAnsweredEmptyList_letsTheAccountOnToHome_aListStillAskedForWaits
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/shell/HomeRulesTest.kt::m5U06_aFieldSupervisorWhoDecidesClaims_actsOnApprovals_withoutBecomingADecisionApprover
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U06_optionCards_takeTheCoresTitlesAndAmounts_onlyForTheDecisionOnTheCard
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U06_jobNextUp_isTheNextOtherJob_receiptsFirst_towerAfterTower_noneForPractice
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U06_approvals_fromTheKeptNextDecisionAndDraftList_haveRealTitles
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5U06_theDoneScreenReopensThisLooksEvidencePage_withoutAnotherRequest
+  frs: []
+  verified_at: null
+  note: >-
+    Partial until proven on the owner's phone. First run: FirstRunContent draws B's WelcomeScreen, SignInScreen,
+    ForgotScreen, PermissionsScreen, GlassesSetupScreen and SitePickScreen with LocalReduceMotion; the interim
+    composables are deleted. Bindings as contract §4: Get started and the judges' link → ShellAction.Welcomed (the
+    SAMPLE note on Sign in carries the judge accounts); Sign in → Actions.signIn; Forgot → Go(FORGOT), Back →
+    ShellAction.Back; Create account / reset → openUrl(AccountPages.signup / reset); "I have a code from my PC" →
+    scanPairingCode (ignored while connecting or signing in, as the interim button was disabled); Servers →
+    Open(CONNECTIONS); Allow → requestPermission, done → Go(GLASSES); glasses Set up → glassesSetUp, test photo →
+    testCamera (ui.probe ticks step 3), Skip / Continue → Go(SITE); site → chooseSite, home → PickHome, Continue →
+    FinishSetup. The sign-in state adds a PC-code pairing's connectError (signed out) and busy while connecting, which
+    the interim screen showed. Fixed with a test: SitePick.canContinue never enabled for an account field-api lists no
+    site for (an approver-only sign-in had no way out of first run); with the new listAnswered (= not connecting) an
+    empty answered list lets the person on to Home, a listed site must still be chosen. Homes: HomeContent draws B's
+    WarehouseHome, TowerHome, ApprovalsHome and ScanHome from HomeModelsFromUi with LocalReduceMotion; the interim
+    homes are deleted. onOpenTask → openTask, onOpenStarter → openStarter, onStartCase → startCase, onStartSandbox →
+    startSandbox (the shelf count's bin from B's CountShelfDialog), onRefresh → refresh (Approvals: refreshDecisions
+    and refreshClaims, the two counts it shows), onReviewDecisions → startReview, onReviewClaims → startClaims,
+    onCheckBox / onOpenCheck → check(CheckAction.START), Scan's "Choose a site" → the Profile tab (site Change) when
+    sites are listed. Warehouse and Tower keep the work session card (Today's workSection) in their extra slot, only
+    when the account can act there. canAct and the view-only banner come from the shell's HomeRules; every act button
+    of B's homes takes canAct (tiles, starters, next up, check-in, job rows, approval cards, Check a box); Refresh stays.
+    Fixed with a test: a field supervisor who decides claims but is not a SCMTIPS approver had a view-only Approvals
+    home (claims disabled, where Today's claims card worked); Capabilities.claimsDecider (= AppUi.claims.waiting
+    non-null, field-api's own supervisor rule) now lets that account act there. Approvals gets the kept next decision
+    and draft list (below), so its cards carry real titles once the counts are fetched. Data gaps closed with additive
+    state only, no new endpoint or request: DecisionsView.next keeps the item GET /v1/wearable/next already answers
+    when refreshDecisions counts what waits (the other callers still use the count only), ClaimsView.drafts keeps the
+    list GET /v1/claims?status=draft already returns to refreshClaims (same supervisor rule as the count);
+    DecisionScreen's option cards show "Option X · <title>" and the core's committed / net strings when the kept item
+    is the decision on the card (matched by the card's title as CardFormatter builds it; the card has no decision id;
+    another decision keeps "Option X"); AppUi.jobTaskId names the open job, and the done screen's "Next up" is
+    JobNextUp (B's WarehouseHomeModel next-up rule without the sandbox cases, or the next tower job after a tower
+    job; none in practice) opening it with openTask; "Evidence page" on the done screen reopens the look's evidence
+    page through LookFlow.reopenEvidence (LookView.evidenceSeenUrl, the signed link the posting already fetched;
+    forgotten on a new look or job) and Actions.reopenEvidence, shown only for the open job's own look.
+    FieldController's logic is unchanged: waitingDecisions now reads the same one call through nextDecision. Tokens:
+    the copies of builder A's tokens in ui/homes/HomeTokens.kt (Ink … DangerBg, CardShape, ButtonShape, MinTouch) and
+    ui/kit/TaskChrome.kt (Ink … BrandGradient, the shapes, and NightRaised, NightMuted, DangerBg, Divider, which have
+    the same values in ui/theme) are deleted and every user imports ui/theme and ui/Components.kt instead; each file
+    keeps only its own prototype colours (SandboxInk, AccentSelected, ArtInk, NightCard, StepDone, …). The three
+    GradientButton composables (A's, B's, C's) are components, not tokens, and stay: they differ (B and C centre
+    two-line labels, C's is 58 dp and SemiBold), so merging them would change a screen. The Compose files type-check
+    with tools/android_check/compile_check (Kotlin 2.2.21 + Compose against the real AndroidX jars); no Gradle build or
+    device run was possible here (no Android SDK).

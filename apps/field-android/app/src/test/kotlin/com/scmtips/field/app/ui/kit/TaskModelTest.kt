@@ -278,6 +278,29 @@ class TaskModelTest {
     }
 
     @Test
+    fun m5U06_optionCards_takeTheCoresTitlesAndAmounts_onlyForTheDecisionOnTheCard() {
+        val item = NextItem("d-1", "Magnet export curbs", "Choose the response.", "Brief.", options = listOf(
+            ItemOption("A", "o1", "Air-freight from Busan", committed = "₹ 4.2 L", net = "−₹ 1.1 L"),
+            ItemOption("B", "o2", "Wait two weeks"),
+            ItemOption("C", "o3", "  ", committed = "", net = "")))
+        val card = CardFormatter.decisionCard(item)
+        val d = DecisionLayout.optionDetails(card, item)
+        assertEquals(OptionDetail("Air-freight from Busan", "Commits ₹ 4.2 L · Net −₹ 1.1 L"), d["A"])
+        assertEquals(OptionDetail("Wait two weeks", null), d["B"])
+        assertNull("an option with nothing to add keeps \"Option C\" only", d["C"])
+        // The kept item is another decision (the review moved on): no titles borrowed from it.
+        val other = item.copy(decisionId = "d-2", title = "Reroute PO 4500 0007")
+        assertTrue(DecisionLayout.optionDetails(card, other).isEmpty())
+        assertTrue(DecisionLayout.optionDetails(card, null).isEmpty())
+        assertTrue(DecisionLayout.optionDetails(null, item).isEmpty())
+        // A long title is matched as CardFormatter truncated it on the card.
+        val long = item.copy(title = "Magnet export curbs ".repeat(8))
+        assertEquals("Air-freight from Busan", DecisionLayout.optionDetails(CardFormatter.decisionCard(long), long)["A"]?.title)
+        // The read-back card has no option cards, so no details either.
+        assertTrue(DecisionLayout.optionDetails(CardFormatter.confirmCard("Magnet export curbs", "Say confirm."), item).isEmpty())
+    }
+
+    @Test
     fun m5U04_lookAnswers_firstThenReadingThenSecond() {
         assertEquals(LookAnswers(null, null, false), LookAnswerRules.of(null, false, null))
         val first = look(say = "8 packs. Reading the labels.", final = false)

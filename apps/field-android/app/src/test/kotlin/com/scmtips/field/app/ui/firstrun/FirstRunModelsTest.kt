@@ -93,6 +93,17 @@ class FirstRunModelsTest {
     }
 
     @Test
+    fun m5U06_site_anAnsweredEmptyList_letsTheAccountOnToHome_aListStillAskedForWaits() {
+        // An approver-only account (nothing to ask) or a sign-in field-api answered with no site: Continue works.
+        assertTrue(SitePick.canContinue(emptyList(), null, null, listAnswered = true))
+        assertFalse(SitePick.canContinue(emptyList(), null, null, listAnswered = false))
+        // A listed site still has to be chosen; the answer does not skip the choice.
+        val sites = listOf(SiteRef("s1", "DC Milan", "production"))
+        assertFalse(SitePick.canContinue(sites, null, null, listAnswered = true))
+        assertTrue(SitePick.canContinue(sites, "s1", null, listAnswered = true))
+    }
+
+    @Test
     fun m5U02_site_roleNoteCountsTheHomesTheAccountCanActIn() {
         val two = listOf(HomeChoice(Home.WAREHOUSE, true), HomeChoice(Home.TOWER, false), HomeChoice(Home.APPROVALS, true), HomeChoice(Home.SCAN, false))
         assertTrue(SitePick.roleNote(two).startsWith("Your account can act in 2 of these"))

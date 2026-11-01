@@ -76,6 +76,8 @@ import com.scmtips.field.app.ui.ScanScreen
 import com.scmtips.field.app.ui.SecondaryButton
 import com.scmtips.field.app.ui.SessionStrip
 import com.scmtips.field.app.ui.StepUpDialog
+import com.scmtips.field.app.ui.homes.JobNextUp
+import com.scmtips.field.app.ui.kit.NextUp
 import com.scmtips.field.app.ui.theme.AccentInk
 import com.scmtips.field.app.ui.theme.Border
 import com.scmtips.field.app.ui.theme.BrandGradientDiagonal
@@ -110,7 +112,8 @@ internal fun connected(ui: AppUi): Boolean = ui.signedIn != null || ui.pairing !
 
 /** What this account may do, from the state the app already has (docs/design/M5_UI_CONTRACT.md §2). */
 internal fun capabilities(ui: AppUi): Capabilities =
-    Capabilities(fieldOperator = ui.home.fieldWork, approver = ui.home.decisions, towerTasks = HomeRules.towerTasks(ui.tasks).isNotEmpty())
+    Capabilities(fieldOperator = ui.home.fieldWork, approver = ui.home.decisions, towerTasks = HomeRules.towerTasks(ui.tasks).isNotEmpty(),
+        claimsDecider = ui.claims.waiting != null)
 
 internal fun whoOf(ui: AppUi): String? = HomeMemory.who(ui.signedIn?.email, ui.signedIn?.name, ui.pairing?.apiBaseUrl, ui.pairing?.tenantId)
 
@@ -172,7 +175,16 @@ private fun TaskScreens(task: TaskKind, ui: AppUi, a: Actions) {
                 TaskKind.LOOK_EVIDENCE -> ui.look.evidenceUrl?.let { EvidenceScreen(it, a) }
                 TaskKind.CHECK_EVIDENCE -> ui.check.evidenceUrl?.let { EvidenceScreen(it, a) }
                 TaskKind.CHECK -> CheckScreen(ui.check, ui.work.active, a, reduceMotion = LocalReduceMotion.current)
-                TaskKind.JOB -> ui.job?.let { JobScreen(it, ui.audioOnly, a, look = ui.look.takeIf { l -> l.taskId != null }, reduceMotion = LocalReduceMotion.current) }
+                TaskKind.JOB -> ui.job?.let { v ->
+                    JobScreen(
+                        v, ui.audioOnly, a, look = ui.look.takeIf { l -> l.taskId != null }, reduceMotion = LocalReduceMotion.current,
+                        // only this job's own look (a put-away after a receipt does not reopen the receipt's page)
+                        onEvidence = a.reopenEvidence.takeIf { ui.look.evidenceSeenUrl != null && ui.look.taskId == ui.jobTaskId },
+                        nextUp = JobNextUp.of(ui.tasks, ui.jobTaskId, v.practice, linked = ui.pairing != null)?.let { n ->
+                            NextUp(n.title, n.sub) { a.openTask(n.taskId) }
+                        },
+                    )
+                }
             }
         }
     }

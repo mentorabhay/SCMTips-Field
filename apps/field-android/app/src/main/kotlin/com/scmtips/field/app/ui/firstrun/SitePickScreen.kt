@@ -30,29 +30,30 @@ import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.shell.Home
 import com.scmtips.field.app.shell.HomeChoice
 import com.scmtips.field.app.signin.SiteRef
-import com.scmtips.field.app.ui.homes.AccentInk
+import com.scmtips.field.app.ui.theme.AccentInk
 import com.scmtips.field.app.ui.homes.AccentSelected
-import com.scmtips.field.app.ui.homes.AccentTint
-import com.scmtips.field.app.ui.homes.Border
-import com.scmtips.field.app.ui.homes.BrandStart
-import com.scmtips.field.app.ui.homes.CardShape
+import com.scmtips.field.app.ui.theme.AccentTint
+import com.scmtips.field.app.ui.theme.Border
+import com.scmtips.field.app.ui.theme.BrandStart
+import com.scmtips.field.app.ui.CardShape
 import com.scmtips.field.app.ui.homes.Glyph
 import com.scmtips.field.app.ui.homes.GlyphKind
 import com.scmtips.field.app.ui.homes.GradientButton
-import com.scmtips.field.app.ui.homes.Ground
-import com.scmtips.field.app.ui.homes.Ink
-import com.scmtips.field.app.ui.homes.Muted
+import com.scmtips.field.app.ui.theme.Ground
+import com.scmtips.field.app.ui.theme.Ink
+import com.scmtips.field.app.ui.theme.Muted
 import com.scmtips.field.app.ui.homes.QuietTint
 import com.scmtips.field.app.ui.homes.SandboxInk
-import com.scmtips.field.app.ui.homes.Surface
+import com.scmtips.field.app.ui.theme.Surface
 import com.scmtips.field.app.ui.homes.Tag
-import com.scmtips.field.app.ui.homes.WarnBg
+import com.scmtips.field.app.ui.theme.WarnBg
 import androidx.compose.ui.graphics.Color
 
 /**
  * 1.6 Your site (Site.dc.html): "Where are you working?" from field-api's [sites] (a sandbox site is marked), then
  * "What are you doing now?" with every home of [homes]; a view-only home can be picked (reviewers open every home)
- * and says so. A PC pairing has no list: its [pairedSiteName] is shown as the one site. Continue needs a site.
+ * and says so. A PC pairing has no list: its [pairedSiteName] is shown as the one site. Continue needs a site, unless
+ * field-api has answered with none ([listAnswered]).
  */
 @Composable
 fun SitePickScreen(
@@ -65,6 +66,8 @@ fun SitePickScreen(
     onHome: (Home) -> Unit,
     onContinue: () -> Unit,
     pairedSiteName: String? = null,
+    /** SitePick.canContinue: field-api has answered the site list (an empty list then does not block Continue). */
+    listAnswered: Boolean = false,
 ) {
     Column(
         Modifier.fillMaxSize().background(Ground).verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, top = 56.dp, bottom = 28.dp),
@@ -96,7 +99,7 @@ fun SitePickScreen(
                 }
             }
         }
-        GradientButton("Continue", onContinue, enabled = SitePick.canContinue(sites, currentSiteId, pairedSiteName), modifier = Modifier.padding(top = 8.dp))
+        GradientButton("Continue", onContinue, enabled = SitePick.canContinue(sites, currentSiteId, pairedSiteName, listAnswered), modifier = Modifier.padding(top = 8.dp))
     }
 }
 

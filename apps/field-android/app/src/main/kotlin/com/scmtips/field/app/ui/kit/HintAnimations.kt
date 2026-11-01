@@ -36,6 +36,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.scmtips.field.app.ui.theme.Ground
+import com.scmtips.field.app.ui.theme.Ink
+import com.scmtips.field.app.ui.theme.NightMuted
+import com.scmtips.field.app.ui.theme.NightRaised
+import com.scmtips.field.app.ui.theme.NightTask
 
 /*
  * The six hint animations of the M5-U task screens (blueprint; prototype ReceiveLook, ReceivePost, TowerHarness,

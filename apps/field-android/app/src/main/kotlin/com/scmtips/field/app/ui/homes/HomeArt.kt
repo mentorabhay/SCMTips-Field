@@ -22,6 +22,12 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.scmtips.field.app.ui.theme.AccentInk
+import com.scmtips.field.app.ui.theme.AccentTint
+import com.scmtips.field.app.ui.theme.Good
+import com.scmtips.field.app.ui.theme.Ink
+import com.scmtips.field.app.ui.theme.Surface
+import com.scmtips.field.app.ui.theme.WarnBg
 
 // Drawn art of the homes and first-run screens: the prototype's SVGs redrawn on a Canvas in their own viewBox
 // units (k = canvas px per unit). Decorative art is hidden from TalkBack; art that carries meaning has [desc].

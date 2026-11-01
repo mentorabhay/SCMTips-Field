@@ -53,6 +53,8 @@ data class LookView(
     val evidenceUrl: String? = null,
     /** M5-S01: the look's first answer is shown (count, outlines) and its labels are still being read. */
     val labelsPending: Boolean = false,
+    /** M5-U06: the evidence page this look's posting opened, kept after it is closed so the done screen can reopen it. */
+    val evidenceSeenUrl: String? = null,
 ) {
     val busy: Boolean get() = state == LookState.CAPTURING || state == LookState.UPLOADING || state == LookState.READING
     val camera: CameraUsed? get() = photo?.camera
@@ -246,12 +248,22 @@ class LookFlow(
             return null
         }
         val abs = baseUrl()?.let { LookApi.absolute(it, url) } ?: url
-        update { it.copy(evidenceUrl = abs) }
+        update { it.copy(evidenceUrl = abs, evidenceSeenUrl = abs) }
         speaker.queue("The evidence page is open on the phone.${if (_view.value.claim == null && lastLookId != null) " Say make a claim if something was wrong." else ""}")
         return abs
     }
 
     fun closeEvidence() = update { it.copy(evidenceUrl = null) }
+
+    /**
+     * M5-U06: the done screen's "Evidence page" opens the page this look's posting got again (the signed link
+     * already fetched; nothing is sent). False when no evidence page was opened for the current look.
+     */
+    fun reopenEvidence(): Boolean {
+        val url = _view.value.evidenceSeenUrl ?: return false
+        update { it.copy(evidenceUrl = url) }
+        return true
+    }
 
     private fun fail(text: String, spoken: String) {
         update { it.copy(state = LookState.FAILED, message = text) }

@@ -23,6 +23,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.scmtips.field.app.ui.theme.Ink
+import com.scmtips.field.app.ui.theme.NightMuted
+import com.scmtips.field.app.ui.theme.NightRaised
+import com.scmtips.field.app.ui.theme.NightTask
 
 /**
  * 5.1 Scan product home: a calm landing for "Is this unit really new?" with one big "Check a box" ([onCheckBox]; the

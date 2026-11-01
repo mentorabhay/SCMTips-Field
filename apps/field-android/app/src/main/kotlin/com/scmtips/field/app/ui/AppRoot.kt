@@ -97,6 +97,8 @@ class Actions(
     val makeClaim: () -> Unit = {},
     val agreePhotos: () -> Unit = {},
     val closeEvidence: () -> Unit = {},
+    /** M5-U06: the receipt's done screen reopens the look's evidence page (the link already fetched). */
+    val reopenEvidence: () -> Unit = {},
     /** M5: Today's case starters (grocery, pharmacy). */
     val startCase: (CaseStart) -> Unit = {},
     /** M5: supervisors' claims review. */

@@ -23,7 +23,16 @@ enum class Home(val key: String, val label: String, val menuLabel: String, val c
  * account with a Field role, or a QR pairing), [approver] is HomeSections.decisions, [towerTasks] is "tower jobs
  * (site visit, swap) are assigned to this phone" (there is no technician flag on the phone).
  */
-data class Capabilities(val fieldOperator: Boolean, val approver: Boolean, val towerTasks: Boolean)
+data class Capabilities(
+    val fieldOperator: Boolean,
+    val approver: Boolean,
+    val towerTasks: Boolean,
+    /**
+     * M5-U06: field-api lets this person decide draft claims (AppUi.claims.waiting is non-null only for a supervisor,
+     * field.claim.decide). A field supervisor who is not a SCMTIPS approver acts on the Approvals home's claims.
+     */
+    val claimsDecider: Boolean = false,
+)
 
 /** One line of the role switcher. */
 data class HomeChoice(val home: Home, val canAct: Boolean) {
@@ -37,7 +46,7 @@ object HomeRules {
     fun canAct(home: Home, c: Capabilities): Boolean = when (home) {
         Home.WAREHOUSE -> c.fieldOperator
         Home.TOWER -> c.towerTasks
-        Home.APPROVALS -> c.approver
+        Home.APPROVALS -> c.approver || c.claimsDecider
         Home.SCAN -> true // any Field role may check a box; the server's 403 hides the card itself
     }
 
