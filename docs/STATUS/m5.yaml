@@ -791,3 +791,38 @@
     switch, so on a tenant whose core site pack made sites earlier the phone opens one of those and Today shows no
     sandbox starters: the seed prints a WARNING phone line then. Not changed here (app behaviour, owner decision).
     UNVERIFIED: the real core's org_admin sign-in in demo mode, the hosted containers' ERPSIM_ADMIN_TOKEN match.
+- id: M5-H02
+  title: >-
+    Hosted APK: build type `hosted` (initWith debug, versionNameSuffix -hosted) whose BuildConfig defaults are the
+    SCMTIPS core https://api.scmtips.com and Field https://field.scmtips.com, wired into the sign-in screen's defaults;
+    CI builds and uploads field-hosted-apk beside the unchanged field-debug-apk
+  workstream: M5
+  role: Hosting readiness (M5 builder)
+  status: partial
+  evidence:
+  - apps/field-android/app/build.gradle.kts
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/CoreAccount.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - .github/workflows/ci.yml
+  - tools/android_check/compile_check.py
+  - apps/field-android/jvm-unit.json
+  - docs/SETUP/M5_DEVICE_TEST.md
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/BuildVariantDefaultsTest.kt::thisBuildTypesDefaultsAreItsServers_m5h02
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::aHostedBuildOffersTheHostedServers_m5h02
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::theSignInScreensAddressesDefaultFromWhatIsKnown
+  frs: []
+  verified_at: null
+  note: >-
+    Partial until run on the host (the hosted APK signing a SAMPLE member in at api.scmtips.com and reaching
+    field.scmtips.com from the owner's phone). A build type, not a product flavor, so assembleDebug /
+    testDebugUnitTest / lintDebug, the apk/debug/app-debug.apk path, the launch check and field-debug-apk are
+    unchanged; hosted falls back to the library modules' debug variant (matchingFallbacks) and shares the debug
+    manifest (plain http only to private LAN addresses). No applicationIdSuffix of its own (not needed; keeps the
+    debug id and its Meta toolkit registration; it installs over the debug APK with the same versionCode 7).
+    BuildVariantDefaultsTest reads AGP's BuildConfig, so it runs only under Gradle (testDebugUnitTest and the new CI
+    step testHostedUnitTest) and is excluded from kotlin_jvm with that reason; locally it was compiled and run with a
+    BuildConfig stub per build type (debug and hosted pass, hosted URLs on debug fail). The Gradle build itself
+    (DSL, manifest merge, APK) is proven only by CI: no Android SDK here. AppConfig.DEFAULT_BASE_URL
+    (10.0.2.2:8020) is not read by the running app (AppConfig / EffectiveConfigManager have no production caller)
+    and was left unchanged.

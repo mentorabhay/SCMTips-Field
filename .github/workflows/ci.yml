@@ -178,6 +178,16 @@ jobs:
         if: success() || failure()
         run: ../../scripts/ci/logged.sh testDebugUnitTest ./gradlew testDebugUnitTest --stacktrace --continue
 
+      # M5-H02: the same debug build with the hosted deployment's server defaults (api.scmtips.com,
+      # field.scmtips.com), version name suffix -hosted; its BuildConfig test runs on its own variant.
+      - name: Assemble hosted APK
+        if: success() || failure()
+        run: ../../scripts/ci/logged.sh assembleHosted ./gradlew :app:assembleHosted --stacktrace
+
+      - name: Unit tests, hosted build type (JUnit 4)
+        if: success() || failure()
+        run: ../../scripts/ci/logged.sh testHostedUnitTest ./gradlew :app:testHostedUnitTest --stacktrace --continue
+
       - name: Android lint
         if: success() || failure()
         run: ../../scripts/ci/logged.sh lintDebug ./gradlew lintDebug --stacktrace --continue
@@ -198,6 +208,14 @@ jobs:
         with:
           name: field-debug-apk
           path: apps/field-android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+      - name: Upload hosted APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: field-hosted-apk
+          path: apps/field-android/app/build/outputs/apk/hosted/*.apk
           if-no-files-found: warn
 
       - name: Upload test & lint reports

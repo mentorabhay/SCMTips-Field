@@ -113,6 +113,22 @@ class CoreAccountTest {
     }
 
     @Test
+    fun aHostedBuildOffersTheHostedServers_m5h02() {
+        val hosted = ServerDefaults("https://api.scmtips.com", "https://field.scmtips.com")
+        assertEquals("https://field.scmtips.com", SignInDefaults.fieldUrl(null, null, hosted))
+        assertEquals("https://api.scmtips.com", SignInDefaults.coreUrl(null, "https://field.scmtips.com", hosted))
+        assertEquals("https://api.scmtips.com", SignInDefaults.coreUrl(null, null, hosted))
+        // what was typed last and a QR pairing still win; a plain-http field-api keeps its stand-in core beside it
+        assertEquals("http://192.168.1.20:8020", SignInDefaults.fieldUrl(null, "http://192.168.1.20:8020", hosted))
+        assertEquals("https://core.example.test", SignInDefaults.coreUrl("https://core.example.test", null, hosted))
+        assertEquals("http://192.168.1.20:8011", SignInDefaults.coreUrl(null, "http://192.168.1.20:8020", hosted))
+        // the debug build's pair is the dev stack, as before
+        assertEquals(ServerDefaults(SignInDefaults.DEV_CORE_URL, SignInDefaults.DEV_FIELD_URL), ServerDefaults.DEV)
+        assertEquals(SignInDefaults.DEV_FIELD_URL, SignInDefaults.fieldUrl(null, null, ServerDefaults.DEV))
+        assertEquals(SignInDefaults.DEV_CORE_URL, SignInDefaults.coreUrl(null, "https://tunnel.example.test", ServerDefaults.DEV))
+    }
+
+    @Test
     fun fieldApiIsOn8020BesideTheCoreOn8000_m4b08() {
         // The core's reply (TO_FIELD, 31 Oct): the SCMTIPS core API keeps 8000, field-api is pinned at 8020.
         assertEquals("http://127.0.0.1:8020", SignInDefaults.DEV_FIELD_URL)

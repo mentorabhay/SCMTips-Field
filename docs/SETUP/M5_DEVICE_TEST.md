@@ -87,3 +87,8 @@ second run creates nothing and prints what exists; exit 1 with the reason on any
 and `org_admin`; `approver` (-> field.supervisor) cannot. **Check its `phone:` line**: the app opens the *first*
 site field-api lists (oldest first) and has no site switch, so if the tenant already had sites it prints a
 `WARNING phone:` naming the site the phone will open instead, and Today shows no grocery / pharmacy starters there.
+
+**Hosted APK (M5-H02):** CI's android job also uploads **field-hosted-apk** (`app-hosted.apk`, version `0.6.0-m5-hosted`):
+the same debug build, whose sign-in screen offers SCMTIPS `https://api.scmtips.com` and Field
+`https://field.scmtips.com` on a fresh install (field-debug-apk keeps the dev stack's addresses). Same application id
+and signing key, so it installs over the debug APK; addresses typed earlier still win, edit them on the sign-in screen.

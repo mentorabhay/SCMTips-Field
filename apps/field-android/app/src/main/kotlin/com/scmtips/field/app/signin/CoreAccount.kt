@@ -178,7 +178,18 @@ data class HomeSections(val decisions: Boolean, val fieldWork: Boolean) {
     }
 }
 
-/** The sign-in screen's addresses: what was typed last, else derived from the last QR pairing, else the dev default. */
+/**
+ * The addresses a fresh install offers on the sign-in screen, per build type (M5-H02): BuildConfig.DEFAULT_CORE_URL and
+ * DEFAULT_FIELD_URL from app/build.gradle.kts, i.e. the dev stack for debug and the hosted deployment
+ * (api.scmtips.com, field.scmtips.com) for the `hosted` build type. [DEV] is the debug build's pair.
+ */
+data class ServerDefaults(val coreUrl: String, val fieldUrl: String) {
+    companion object {
+        val DEV = ServerDefaults(SignInDefaults.DEV_CORE_URL, SignInDefaults.DEV_FIELD_URL)
+    }
+}
+
+/** The sign-in screen's addresses: what was typed last, else derived from the last QR pairing, else the build's default. */
 object SignInDefaults {
     /**
      * Dev defaults (the stand-in core on 8011, field-api on 8020; on a phone through `adb reverse`); editable on the
@@ -188,15 +199,16 @@ object SignInDefaults {
     const val DEV_CORE_URL = "http://127.0.0.1:8011"
     const val STAND_IN_CORE_PORT = 8011
 
-    fun fieldUrl(lastField: String?, pairedApi: String?): String = lastField ?: pairedApi ?: DEV_FIELD_URL
+    fun fieldUrl(lastField: String?, pairedApi: String?, defaults: ServerDefaults = ServerDefaults.DEV): String =
+        lastField ?: pairedApi ?: defaults.fieldUrl
 
-    /** The core stand-in runs on the same PC as field-api: same host, port 8011. */
-    fun coreUrl(lastCore: String?, fieldUrl: String?): String {
+    /** The core stand-in runs on the same PC as a plain-http field-api: same host, port 8011; else the build's core. */
+    fun coreUrl(lastCore: String?, fieldUrl: String?, defaults: ServerDefaults = ServerDefaults.DEV): String {
         lastCore?.let { return it }
-        val f = fieldUrl?.let(CoreUrls::normalise) ?: return DEV_CORE_URL
+        val f = fieldUrl?.let(CoreUrls::normalise) ?: return defaults.coreUrl
         val scheme = f.substringBefore("://")
         val host = f.substringAfter("://").substringBefore('/').substringBefore(':')
-        return if (scheme == "http") "http://$host:$STAND_IN_CORE_PORT" else DEV_CORE_URL
+        return if (scheme == "http") "http://$host:$STAND_IN_CORE_PORT" else defaults.coreUrl
     }
 
     /** A server address the app may use, or a reason: plain http only to the owner's own network (as the QR pairing). */
