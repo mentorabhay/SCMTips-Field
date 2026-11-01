@@ -136,6 +136,9 @@ object ShellNav {
 }
 
 /**
+ * M5-L (A-08): sign-in, reset and create account no longer open these pages; they happen inside the app
+ * (signin/AccountFlow.kt) and the e-mailed links come back as App Links. Kept for the web address of a SCMTIPS server.
+ *
  * Create account and forgot password open the SCMTIPS pages (A-07 decision): https://app.scmtips.com/signup and
  * /reset for the build's default core; for another SCMTIPS address the web app is derived from it: an "api." host
  * becomes "app." (https://api.acme.example → https://app.acme.example), any other address is used as it is.

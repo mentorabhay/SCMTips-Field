@@ -68,6 +68,19 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="scmtipsfield" />
             </intent-filter>
+            <!-- M5-L App Links (docs/design/M5_SIGNIN_CONTRACT.md §5, §6, §7): the reset and invite e-mails and the Field
+                 console's sign-in QR open the app, never the browser; app.scmtips.com/.well-known/assetlinks.json
+                 verifies them (autoVerify). Without verification Android offers the web page, the fallback. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="app.scmtips.com" />
+                <data android:path="/reset/confirm" />
+                <data android:pathPrefix="/invite/" />
+                <data android:path="/pair" />
+            </intent-filter>
         </activity>
 
         <!-- M5: the phone camera app writes a look photo into this app's cache (res/xml/look_files.xml) -->

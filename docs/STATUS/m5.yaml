@@ -1694,3 +1694,164 @@
     cleared, no cookie 401, cross-site 403, /phone 200). UNVERIFIED: the real core accepting the core app token as
     Bearer on /v1/wearable/pairing-codes (a core builder adds it in parallel, contract §4), the phone app's "Scan a
     code from your computer" redeeming the code, and the page in a real browser (no browser in this sandbox).
+- id: M5-L01
+  title: >-
+    Field app sign-in screen and ways in (A-08, M5_SIGNIN_CONTRACT §7, §1, §2): five ways on one card ("Continue with
+    e-mail" then "Use my password" or "E-mail me a code", "Scan a code from your computer", "I have an invite", "Try
+    the SAMPLE demo", "Forgot password?"), SignInMethod.EmailCode and .Demo with the §1 bodies, the §2 code request,
+    the 6-box code entry (paste, auto-submit, resend after 30 s), neutral errors (wrong details, locked, no Field role
+    with the demo, single sign-on, demo off, offline), judge note kept
+  workstream: M5-L
+  role: Field app builder (M5-L sign-in)
+  status: partial
+  evidence:
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreSignIn.kt
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApi.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/SignInLinks.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/AccountFlow.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SignInScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/FirstRunContent.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/AppRoot.kt
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_emailCode_sendsEmailAndEmailCode_only_withTheDeviceFields
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_demo_sendsDemoTrue_andNoCredentials
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_aCodeThatIsNotSixDigits_orNoEmail_isRefusedBeforeAnythingIsSent
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_refusalsOfTheNewWays_areNeutral_andKeepTheCoresCode
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_noAnswerAtAll_isMarkedOffline
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApiTest.kt::m5L01_codeRequest_postsEmailAndDevice_andIsAcceptedForEveryAnswerOfTheCore
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApiTest.kt::m5L01_aCoreWithoutTheRoute_orNoAnswer_saysSo_insteadOfWaitingForAnEmail
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/SignInLinksTest.kt::m5L01_aScan_isTheConsoleQr_aBareCode_orTheOldPcPairingQr
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/SignInLinksTest.kt::m5L01_codeEntry_digitsOnly_pasteTakesTheSixDigitRun_andAutoSubmitsOnce
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/SignInLinksTest.kt::m5L01_resend_waits30Seconds
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/SignInLinksTest.kt::m5L01_theDemo_isShownForTheHostedDemoAndStandIns_untilTheServerSaysDemoOff
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/SignInLinksTest.kt::m5L01_errorKinds_areNeutral_andOfferTheWayOn
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L01_continueWithEmail_thenPassword_signsInWithEmailAndPassword
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L01_emailMeACode_isNeutral_thenSixDigitsSignInByThemselves_once
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L01_resend_onlyAfter30Seconds_andAnOldCoreOrOfflineSaySo
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L01_demoAndScan_signInWithTheirMethods_andDemoOffHidesTheButtonForThatServer
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L01_backWalksTheStages_thenLeavesItToTheShell
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L01_noSecretIsKeptInTheView_orPrintedByAnEvent
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_aNullWearable_signsIn_butGivesNoDecisionCalls
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_aConsoleCodeInGroupsOfFour_isSentWithoutSpaces_andTheCoresLengthsAreKept
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_theDemosRateLimit_isSaid
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/SignInLinksTest.kt::m5L01_anAccountWithoutAWearableToken_isNoApprover_andHasNoDecisionToken
+  frs: []
+  verified_at: null
+  note: >-
+    Partial until proven on the owner's phone against the hosted core. Built against docs/design/M5_SIGNIN_CONTRACT.md
+    with test doubles (ScriptedHttp); the core's new routes (§1 email_code and demo on POST /v1/auth/app/token, §2 POST
+    /v1/auth/app/code/request, §3 the demo guest) are being built in parallel by the core builder and were not called
+    (docs/META_FIELD.md row 28). Bodies: e-mail code {email, email_code} (6 ASCII digits, spaces removed), demo
+    {demo: true}, always device_id, device_model, display_capable, client. The code request answers the same neutral
+    "If that e-mail has an account, a code is on its way" for every HTTP answer (202, 4xx, 5xx); only no answer
+    (offline) and a core without the route (404 / 405 / 501) are said differently, so a person is not left waiting.
+    Refusals: 401 invalid_code and 429 locked for a code, 403 sso_required (offers the scan, since SSO happens on the
+    computer), 403 demo_off (hides the demo button for that address); SignInException code "offline" with no answer.
+    The demo button shows for https://api.scmtips.com and for an http stand-in on a private address (DemoOffer). The
+    scan (Google code scanner, as the existing PC pairing) reads the console's App Link
+    https://app.scmtips.com/pair?code=... or a bare code into SignInMethod.PairingCode; a field-api PC pairing QR still
+    goes to FieldController.pair, so "I have a code from my PC" keeps working through the new button. The flow is the
+    pure reducer signin/AccountFlow.kt (AppUi.account; no password or code kept in AppUi); FieldController.onAccount runs
+    its effects (sign-in, the CoreAccountApi calls) and is additive: signIn, attachAccount and the clients keep their
+    behaviour, with one change for contract §7: a signed-in account that field-api refuses with
+    FIELD-AUTH-403-NO-FIELD-ROLE and that approves nothing is signed out again, so the sign-in screen shows the sentence
+    and "Try the SAMPLE demo" (before, the sentence was set on a screen that was not drawn). AccountPages (the A-07
+    browser pages) and ForgotText stay with their tests but are no longer used by any screen; the browser is never
+    opened for sign-in, reset or create account. Compose files are Android-only in jvm-unit.json; they type-check with
+    tools/android_check/compile_check --all; no Gradle build or device run was possible here (no Android SDK).
+    Aligned on 2 Nov with the core builder's commit 384c471 (hack/m5l-signin, read in its source, not called):
+    AppTokenIn takes exactly one way per body (email+password, email+email_code, pairing_code of 8 to 20 characters,
+    demo: true) plus device_id, device_model, display_capable, client, which is what the app sends; the code is tied
+    to the device_id, and the app uses its one install id for the code request and the token; a pairing code shown in
+    groups of four ("ABCD EFGH") is sent without its spaces; 429 rate_limited for the demo (10 per IP per hour) says
+    so; and AppTokenOut's `wearable: null` (no pairing permission) now signs in instead of failing with "SCMTIPS
+    answered without wearable": such an account gets no decision calls (CoreAccount.approver needs a wearable token,
+    AccountCredentials sends none, sign-out does not revoke an empty session). An answer without the `wearable` key
+    at all is still refused, as before.
+- id: M5-L02
+  title: >-
+    In-app invite and reset (A-08, M5_SIGNIN_CONTRACT §5, §7): invite from a pasted link or code (or its App Link) →
+    GET /v1/invites/{token} → organisation and role, name, password, Terms and DPDP consents with the versions the
+    core expects → POST accept → sign in with e-mail and password; reset by e-mail → "Check your e-mail" with "Open my
+    mail app" → the link opens "Set a new password" (twice, policy errors) → POST confirm → sign in with the e-mail
+    filled; "Create account" without an invite explains and offers the demo and "I have an invite"
+  workstream: M5-L
+  role: Field app builder (M5-L sign-in)
+  status: partial
+  evidence:
+  - apps/field-android/feature-decisions/src/main/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApi.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/AccountFlow.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/SignInLinks.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/AccountScreens.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SignInScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/FirstRunContent.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  tests:
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApiTest.kt::m5L02_resetRequest_postsTheEmail_andConfirm_postsTokenAndPassword
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApiTest.kt::m5L02_resetConfirm_mapsTheCoresAnswers_asTheWebPage
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApiTest.kt::m5L02_invite_readsTheWebPagesPublicInvite
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApiTest.kt::m5L02_acceptInvite_newAccount_sendsNameConsentsAndTheCoresVersions_existingOnlyThePassword
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApiTest.kt::m5L02_acceptInvite_refusesMissingConsents_locally_andMapsPolicyErrors
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreAccountApiTest.kt::m5L02_localPasswordRules_matchTheWebResetPage
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/SignInLinksTest.kt::m5L02_pastedInvite_isTheLink_theLinkInsideText_orTheBareToken
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L02_createAccount_withoutAnInvite_explains_andOffersTheInvite
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L02_invite_pastedOrOpenedByItsLink_readsTheInvite_acceptsIt_thenSignsInWithEmailAndPassword
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L02_invite_closedOrInvalid_saysWhy_andALateAnswerForAnotherInviteIsIgnored
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L02_reset_inTheApp_requestThenCheckYourEmail_thenTheLinkOpensSetANewPassword_thenSignIn
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L02_reset_answers_policyInvalidSso_andTheCoreWithoutTheRoute
+  frs: []
+  verified_at: null
+  note: >-
+    Partial until proven on the owner's phone against the hosted core. The bodies mirror the SCMTIPS web pages read in
+    the core repository (apps/web/src/auth/invite-actions.ts, actions.ts resetConfirmAction, api.ts POLICY_MSG and
+    resetConfirmOutcome): a new account sends {name, password, consent_terms: true, consent_dpdp: true, terms_version
+    "2026-01", dpdp_version "2026-01"} (signup-api.ts TERMS_VERSION / DPDP_VERSION), an existing account only
+    {password}; reset confirm {token, password} with the web's local rules (12 characters, both the same) and its
+    answer mapping (422 policy codes on body.password, 400 invalid link, sso_required, 429, else unavailable). The
+    consents show the versions and the addresses scmtips.com/legal/terms and /legal/privacy as text: there is no link,
+    because the browser is not opened in sign-in; reading the full terms in the app is not built. After an accepted
+    invite the app signs in with the invite's e-mail and the chosen password on the password stage; whether a new
+    account's unverified e-mail blocks the app token is the core builder's decision (contract §5), not tried. "Open my
+    mail app" is Intent.makeMainSelectorActivity(ACTION_MAIN, CATEGORY_APP_EMAIL), never a browser; with no e-mail app
+    it says so. The 43-character tokens are checked before anything is sent and are never printed by AppUi or an
+    event. GET /v1/invites, POST accept and the reset routes are unchanged core APIs (§5) that this app has not yet
+    called on a real core (docs/META_FIELD.md row 28). The reset e-mail itself (§5, sent by the core's outbox) is the
+    core builder's.
+- id: M5-L04
+  title: >-
+    Android App Links for the sign-in e-mails and the console QR (A-08, M5_SIGNIN_CONTRACT §5, §6, §7): intent filter
+    with android:autoVerify for https://app.scmtips.com /reset/confirm, /invite/ (prefix) and /pair; MainActivity
+    routes them into the shell (reset token → "Set a new password", invite token → the invite, pair code → sign in by
+    code); the existing intents keep working
+  workstream: M5-L
+  role: Field app builder (M5-L sign-in)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/AndroidManifest.xml
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/SignInLinks.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/AccountFlow.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AppLinksTest.kt::m5L04_theThreeAppLinks_parse_andNothingElseDoes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AppLinksTest.kt::m5L04_theManifest_hasTheAutoVerifiedAppLinkFilter_forTheThreePaths
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AppLinksTest.kt::m5L04_appLinks_openTheirScreens_andASignedInPhoneIsToldToSignOutFirst
+  frs: []
+  verified_at: null
+  note: >-
+    Partial until proven on the owner's phone against the hosted core: verification needs the core web app's
+    https://app.scmtips.com/.well-known/assetlinks.json (contract §6, the core builder's) with this build's signing
+    certificate fingerprint (FIELD_APP_CERT_SHA256), which was not reachable here (docs/META_FIELD.md row 29); until it
+    verifies, Android offers the web page for these links, the contract's fallback. One https filter, one attribute per
+    data element (scheme, host, path /reset/confirm, pathPrefix /invite/, path /pair), separate from the Meta AI
+    callback filter (scmtipsfield://), which is unchanged; the launcher filter and the glasses' voice launch are
+    unchanged. MainActivity passes intent.dataString on the first onCreate (not after a recreate) and on onNewIntent
+    (singleTop) to FieldController.openLink, which accepts only host app.scmtips.com and the three shapes
+    (SignInLinks.parse: a 43-character token, an 8 to 20 character code with its spaces removed); anything else is left alone. A phone that is
+    already signed in or paired gets "Sign out in Profile first" instead of a second sign-in. The test reads the
+    manifest source (not the merged manifest; CI's Gradle build merges and lints it). No Gradle build or device run was
+    possible here (no Android SDK).

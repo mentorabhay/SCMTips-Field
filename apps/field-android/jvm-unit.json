@@ -82,7 +82,7 @@
     "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeArt.kt": "androidx.compose (the drawn home art and glyphs; the motion curves are homes/HintMotion.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunArt.kt": "androidx.compose (welcome, envelope, permission and glasses drawings; curves in homes/HintMotion.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/WelcomeScreen.kt": "androidx.compose (the welcome pager; its cards are firstrun/FirstRunModels.kt)",
-    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SignInScreen.kt": "androidx.compose, SignInView from FieldController.kt (sign in and forgot password; rules in firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SignInScreen.kt": "androidx.compose, SignInView from FieldController.kt (M5-L sign-in: the five ways, e-mail, password, 6-box code, create-account sheet; rules in signin/AccountFlow.kt and signin/SignInLinks.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/PermissionsScreen.kt": "androidx.compose, android.os.Build (the permission steps; the plan is firstrun/FirstRunModels.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/GlassesSetupScreen.kt": "androidx.compose (glasses setup; its steps are GlassesSetupModel in firstrun/FirstRunModels.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SitePickScreen.kt": "androidx.compose (site and role; the rules are SitePick in firstrun/FirstRunModels.kt)",
@@ -90,6 +90,7 @@
     "app/src/main/kotlin/com/scmtips/field/app/ui/homes/TowerHome.kt": "androidx.compose (the tower home; its model and rules are homes/HomeModels.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/homes/ApprovalsHome.kt": "androidx.compose (the approvals home; its model, filter and order are homes/HomeModels.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/homes/ScanHome.kt": "androidx.compose (the scan product home; its states are homes/HomeModels.kt)",
-    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeModelsFromUi.kt": "reads AppUi from FieldController.kt (field reads only; the builders it calls are JVM-tested in HomeModels.kt)"
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeModelsFromUi.kt": "reads AppUi from FieldController.kt (field reads only; the builders it calls are JVM-tested in HomeModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/AccountScreens.kt": "androidx.compose (M5-L in-app invite and reset screens; rules in signin/AccountFlow.kt and feature-decisions CoreAccountApi.kt)"
   }
 }

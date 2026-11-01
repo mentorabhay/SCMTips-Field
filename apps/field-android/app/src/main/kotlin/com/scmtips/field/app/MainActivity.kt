@@ -92,6 +92,8 @@ class MainActivity : ComponentActivity() {
         }
         if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
         if (app.datInitError == null && DatGlasses.isVoiceLaunch(intent)) controller.onVoiceLaunch()
+        // M5-L: an App Link (reset, invite, console QR) that started the app.
+        if (savedInstanceState == null) controller.openLink(intent?.dataString)
         // M5-U01: a new install asks on first run's Permissions step instead, one permission at a time with its reason.
         val shellNow = controller.ui.value.shell
         if (shellNow.classic || shellNow.setupDone) {
@@ -134,6 +136,9 @@ class MainActivity : ComponentActivity() {
             pauseWork = controller::pauseWork,
             resumeWork = controller::resumeWork,
             signIn = controller::signIn,
+            account = controller::onAccount,
+            scanSignInCode = ::scanSignInQr,
+            openMailApp = ::openMailApp,
             startReview = controller::startReview,
             stopReview = { controller.stopReview() },
             refreshDecisions = controller::refreshDecisions,
@@ -195,6 +200,8 @@ class MainActivity : ComponentActivity() {
         if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
         // "Hey Meta, start SCMTips Field" from the glasses (M4): straight to the next decision for an approver.
         if (app.datInitError == null && DatGlasses.isVoiceLaunch(intent)) controller.onVoiceLaunch()
+        // M5-L: an App Link while the app is open (singleTop): reset, invite or the console's sign-in QR.
+        controller.openLink(intent.dataString)
     }
 
     /**
@@ -256,6 +263,26 @@ class MainActivity : ComponentActivity() {
         GmsBarcodeScanning.getClient(this, options).startScan()
             .addOnSuccessListener { code -> code.rawValue?.let(controller::pair) }
             .addOnFailureListener { e -> controller.toast(e.message ?: "The scan did not work. Try again.") }
+    }
+
+    /**
+     * M5-L "Scan a code from your computer": the Field console's QR (https://app.scmtips.com/pair?code=…), a bare
+     * code, or the field-api PC pairing QR (routed in signin/SignInLinks.kt).
+     */
+    private fun scanSignInQr() {
+        val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+        GmsBarcodeScanning.getClient(this, options).startScan()
+            .addOnSuccessListener { code -> code.rawValue?.let(controller::scannedSignInCode) }
+            .addOnFailureListener { e -> controller.toast(e.message ?: "The scan did not work. Try again.") }
+    }
+
+    /** M5-L "Open my mail app" after a reset or code e-mail: the phone's e-mail app (ACTION_MAIN, CATEGORY_APP_EMAIL), never a browser. */
+    private fun openMailApp() {
+        try {
+            startActivity(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_EMAIL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: ActivityNotFoundException) {
+            controller.toast("No e-mail app on this phone. Open your e-mail as you usually do; the link opens SCMTips Field.")
+        }
     }
 
     /**

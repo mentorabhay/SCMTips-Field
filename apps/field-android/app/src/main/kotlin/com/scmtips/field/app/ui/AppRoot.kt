@@ -114,7 +114,7 @@ class Actions(
     val check: (CheckAction) -> Unit = {},
     /** M5-U01: the shell's navigation (first run, tabs, pages, role switcher, classic layout); rules in ShellNav. */
     val shell: (ShellAction) -> Unit = {},
-    /** M5-U01: open a web page (the SCMTIPS reset and sign-up pages) with Intent.ACTION_VIEW. */
+    /** M5-U01: open a web page with Intent.ACTION_VIEW (M5-L: no longer used for sign-in, reset or create account). */
     val openUrl: (String) -> Unit = {},
     /** M5-U01: first run's Permissions step "Allow". */
     val requestPermission: (PermissionStep) -> Unit = {},
@@ -124,6 +124,12 @@ class Actions(
     val setScanner: (ScannerKind) -> Unit = {},
     /** M5-U05: Settings › Connections while signed out (SCMTIPS address, field server address). */
     val setServers: (String, String) -> Unit = { _, _ -> },
+    /** M5-L: the in-app sign-in, invite and reset flow (signin/AccountFlow.kt). */
+    val account: (com.scmtips.field.app.signin.AccountEvent) -> Unit = {},
+    /** M5-L: "Scan a code from your computer" (the Field console's QR). */
+    val scanSignInCode: () -> Unit = {},
+    /** M5-L: "Open my mail app" (ACTION_MAIN / CATEGORY_APP_EMAIL). */
+    val openMailApp: () -> Unit = {},
 )
 
 /**
