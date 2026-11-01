@@ -37,6 +37,17 @@ class HomeRulesTest {
     }
 
     @Test
+    fun m5U06_aFieldSupervisorWhoDecidesClaims_actsOnApprovals_withoutBecomingADecisionApprover() {
+        val supervisor = operator.copy(claimsDecider = true)
+        assertTrue(HomeRules.canAct(Home.APPROVALS, supervisor))
+        assertNull(HomeRules.viewOnlyBanner(Home.APPROVALS, supervisor))
+        assertEquals(Home.WAREHOUSE, HomeRules.defaultHome(supervisor)) // still an operator first
+        assertTrue(HomeRules.choices(supervisor).first { it.home == Home.APPROVALS }.canAct)
+        // Without the claims right an operator's Approvals stays view only, as before.
+        assertFalse(HomeRules.canAct(Home.APPROVALS, operator))
+    }
+
+    @Test
     fun m5_u01_viewOnlyHomesSayWhatTheAccountCannotDoAndWhoCan() {
         assertEquals(
             "View only: your account can't do warehouse work here. Sign in as an operator (e.g. tester01) to act.",

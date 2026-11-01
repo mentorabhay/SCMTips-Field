@@ -112,7 +112,8 @@ internal fun connected(ui: AppUi): Boolean = ui.signedIn != null || ui.pairing !
 
 /** What this account may do, from the state the app already has (docs/design/M5_UI_CONTRACT.md §2). */
 internal fun capabilities(ui: AppUi): Capabilities =
-    Capabilities(fieldOperator = ui.home.fieldWork, approver = ui.home.decisions, towerTasks = HomeRules.towerTasks(ui.tasks).isNotEmpty())
+    Capabilities(fieldOperator = ui.home.fieldWork, approver = ui.home.decisions, towerTasks = HomeRules.towerTasks(ui.tasks).isNotEmpty(),
+        claimsDecider = ui.claims.waiting != null)
 
 internal fun whoOf(ui: AppUi): String? = HomeMemory.who(ui.signedIn?.email, ui.signedIn?.name, ui.pairing?.apiBaseUrl, ui.pairing?.tenantId)
 

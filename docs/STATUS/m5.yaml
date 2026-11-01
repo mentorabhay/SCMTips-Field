@@ -1336,8 +1336,8 @@
     build or device run was possible here (no Android SDK). FieldController's logic is unchanged: it gained AppUi.shell,
     shell(ShellAction), setReduceMotion, setServers, chooseSite (nextSite now goes through it) and setScanner
     (cycleScanner now goes through it); unpair() keeps welcome seen and the layout and resets setup and the home choice.
-    The home and first-run screens are builder A's interim composables (Today's own sections split by home) until
-    builder B's ui/firstrun and ui/homes are plugged into HomeContent / FirstRunContent. Tower "can act" means tower
+    The home and first-run screens were builder A's interim composables until M5-U06 plugged builder B's ui/firstrun
+    and ui/homes into FirstRunContent / HomeContent (the interim composables are deleted). Tower "can act" means tower
     jobs are assigned to the phone (the phone has no technician flag). The old M2 colour names are aliases of the new
     tokens, so the classic layout keeps its screens and order but takes the new colours and 16 dp corners; its Me screen
     gained a Layout row to come back. A new install asks for permissions on first run's Permissions step instead of at
@@ -1541,7 +1541,10 @@
     drafts in turn), not a single chosen claim. Tower check-in opens the first tower job, whose runner step checks
     location and permit; the home shows no GPS or permit of its own. canAct false disables every act button; Refresh
     stays. Type-checked with tools/android_check/compile_check.py, not a Gradle build; nothing drawn on a device yet.
-    Partial until proven on the owner's phone.
+    Partial until proven on the owner's phone. Integrated in M5-U06: HomeContent draws these homes; AppUi now keeps
+    the core's next item (DecisionsView.next) and field-api's draft list (ClaimsView.drafts) and the Approvals home
+    gets both, so its cards show real titles instead of summary rows once fetched; a field supervisor who decides
+    claims can act on Approvals (Capabilities.claimsDecider).
 - id: M5-U06
   title: >-
     Integration and polish of the app redesign (A-07, M5_UI_CONTRACT §1 and §4): builder B's first-run screens and role
@@ -1553,6 +1556,8 @@
   status: partial
   evidence:
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/FirstRunContent.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/HomeContent.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/shell/Homes.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModels.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SitePickScreen.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellRoot.kt
@@ -1567,6 +1572,7 @@
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
   tests:
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U06_site_anAnsweredEmptyList_letsTheAccountOnToHome_aListStillAskedForWaits
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/shell/HomeRulesTest.kt::m5U06_aFieldSupervisorWhoDecidesClaims_actsOnApprovals_withoutBecomingADecisionApprover
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U06_optionCards_takeTheCoresTitlesAndAmounts_onlyForTheDecisionOnTheCard
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U06_jobNextUp_isTheNextOtherJob_receiptsFirst_towerAfterTower_noneForPractice
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U06_approvals_fromTheKeptNextDecisionAndDraftList_haveRealTitles
@@ -1585,7 +1591,19 @@
     FinishSetup. The sign-in state adds a PC-code pairing's connectError (signed out) and busy while connecting, which
     the interim screen showed. Fixed with a test: SitePick.canContinue never enabled for an account field-api lists no
     site for (an approver-only sign-in had no way out of first run); with the new listAnswered (= not connecting) an
-    empty answered list lets the person on to Home, a listed site must still be chosen. Data gaps closed with additive
+    empty answered list lets the person on to Home, a listed site must still be chosen. Homes: HomeContent draws B's
+    WarehouseHome, TowerHome, ApprovalsHome and ScanHome from HomeModelsFromUi with LocalReduceMotion; the interim
+    homes are deleted. onOpenTask → openTask, onOpenStarter → openStarter, onStartCase → startCase, onStartSandbox →
+    startSandbox (the shelf count's bin from B's CountShelfDialog), onRefresh → refresh (Approvals: refreshDecisions
+    and refreshClaims, the two counts it shows), onReviewDecisions → startReview, onReviewClaims → startClaims,
+    onCheckBox / onOpenCheck → check(CheckAction.START), Scan's "Choose a site" → the Profile tab (site Change) when
+    sites are listed. Warehouse and Tower keep the work session card (Today's workSection) in their extra slot, only
+    when the account can act there. canAct and the view-only banner come from the shell's HomeRules; every act button
+    of B's homes takes canAct (tiles, starters, next up, check-in, job rows, approval cards, Check a box); Refresh stays.
+    Fixed with a test: a field supervisor who decides claims but is not a SCMTIPS approver had a view-only Approvals
+    home (claims disabled, where Today's claims card worked); Capabilities.claimsDecider (= AppUi.claims.waiting
+    non-null, field-api's own supervisor rule) now lets that account act there. Approvals gets the kept next decision
+    and draft list (below), so its cards carry real titles once the counts are fetched. Data gaps closed with additive
     state only, no new endpoint or request: DecisionsView.next keeps the item GET /v1/wearable/next already answers
     when refreshDecisions counts what waits (the other callers still use the count only), ClaimsView.drafts keeps the
     list GET /v1/claims?status=draft already returns to refreshClaims (same supervisor rule as the count);
