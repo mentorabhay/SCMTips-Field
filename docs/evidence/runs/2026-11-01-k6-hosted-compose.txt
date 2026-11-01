@@ -166,3 +166,14 @@ worker-1	182.1MiB / 768MiB	0.55%
 TOTAL 959 MiB
 => about 1 GB of 8 GB in use at rest after the flows; the limits sum to about 5.5 GB for the long-running services,
 so VM-1 (8 GB + 2 GB swap) fits with room for the Next.js and Postgres peaks. Measure again on the VM under judges.
+
+Light walk on app. (the web's proxy checks the session with the API): judge signed in through /v1/auth/login
+login 200
+/home 200
+/decisions 200
+/signals 200
+/data 200
+/home without a session 307 /login?next=%2Fhome
+(the SAMPLE banner is rendered in the browser from GET /v1/auth/session, demo: true above; not visible in the server HTML)
+
+Teardown: docker compose -p scmtips-k6 down -v (this run's containers and volumes only), /etc/hosts restored, the throwaway env and credential files deleted, the test Postgres servers and dockerd stopped by pid.
