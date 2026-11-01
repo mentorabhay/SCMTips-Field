@@ -71,6 +71,18 @@ class PhoneBinding(private val store: Store, private val newId: () -> String) {
      */
     fun installId(): String = serial()
 
+    /**
+     * A SCMTIPS sign-in whose exchange field-api refused as revoked (403 FIELD-AUTH-403-DEVICE-REVOKED): a supervisor
+     * removed this phone in the console. The core binds every sign-in to [installId], so without a new one the phone
+     * could never sign in again. Returns true (and makes a new install id) only for that refusal; the person then has to
+     * sign in again with their password, and the phone appears as a new device (the revoke still ended the old one).
+     */
+    fun renewAfterRevoke(e: Throwable): Boolean {
+        if ((e as? HttpError)?.code != DEVICE_REVOKED) return false
+        newInstall()
+        return true
+    }
+
     private fun regKey(): String = store.get(KEY_REG_KEY) ?: newId().also { store.put(KEY_REG_KEY, it) }
 
     private fun newInstall() {

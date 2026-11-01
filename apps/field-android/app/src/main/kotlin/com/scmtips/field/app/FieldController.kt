@@ -594,6 +594,14 @@ class FieldController(private val context: Context, private val toolkitError: ()
                 startLoops(s)
                 refreshTasks()
             } catch (e: Exception) {
+                if (binding.renewAfterRevoke(e)) {
+                    // Removed in the console (M5-H06): sign out here; the next sign-in uses a new install id.
+                    log("⚠ field-api: this phone was removed in the console; sign in again to add it as a new device")
+                    signOutOfCore(a)
+                    _ui.value = _ui.value.copy(signedIn = null, pairing = null, connecting = false, connectError = null,
+                        home = HomeSections.of(null, paired = false), signIn = _ui.value.signIn.copy(busy = false, error = REVOKED_SIGN_IN_AGAIN))
+                    return@launch
+                }
                 val why = describe(e)
                 log("⚠ field-api: $why")
                 _ui.value = _ui.value.copy(connecting = false, connectError = why, link = if (e is IOException) Link.OFFLINE else _ui.value.link)
@@ -1459,6 +1467,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
     private fun JsonObject.s(k: String): String? = (this[k] as? JsonPrimitive)?.contentOrNull
 
     companion object {
+        /** The sign-in screen after a revoked phone (M5-H06). */
+        const val REVOKED_SIGN_IN_AGAIN = "This phone was removed in the SCMTips Field console. Sign in again to add it as a new device."
         private const val KEY_PAIRING = "pairing"
         private const val KEY_SCANNER = "scanner"
         private const val KEY_AUDIO_ONLY = "audio_only"

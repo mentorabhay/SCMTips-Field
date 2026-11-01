@@ -2,6 +2,7 @@ package com.scmtips.field.app.net
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -145,5 +146,19 @@ class PhoneBindingTest {
         store.remove(PhoneBinding.KEY_SCOPE) // older installs saved no scope
         assertEquals("dev-1", binding(store).connect(pc, fromScan = false, api))
         assertEquals(1, api.registrations)
+    }
+
+    @Test
+    fun m5_h06_aSignInRefusedAsRevokedGetsANewInstallIdAndNothingElseDoes() {
+        val store = MapStore(); val b = binding(store)
+        val before = b.installId()
+        assertEquals(before, b.installId()) // stable across sign-ins
+        assertFalse(b.renewAfterRevoke(HttpError(401, "FIELD-AUTH-401", "Unauthorized", null, "HTTP 401")))
+        assertFalse(b.renewAfterRevoke(java.io.IOException("offline")))
+        assertEquals(before, b.installId())
+        assertTrue(b.renewAfterRevoke(HttpError(403, PhoneBinding.DEVICE_REVOKED, "Device revoked", null, "HTTP 403")))
+        val after = b.installId()
+        assertNotEquals(before, after)
+        assertEquals(after, b.installId())
     }
 }

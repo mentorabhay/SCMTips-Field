@@ -946,3 +946,23 @@
     _settle_overdue became two fixed queries (no noqa). Proven with
     the model stand-in only (smoke --m5-look and --m5 PASS on a private stack); partial until proven on the owner's
     phone and glasses against the real Meta API.
+- id: M5-H06
+  title: >-
+    A phone revoked in the console can sign in again: the core binds every SCMTIPS sign-in to the phone's install id,
+    so after a revoke field-api's exchange refused it for ever (403 FIELD-AUTH-403-DEVICE-REVOKED, found by the
+    hosting session's device clean-up); the app now signs out, makes a new install id and asks the person to sign in
+    again, so the phone comes back as a new device
+  workstream: M5
+  role: Hosting readiness (M5 integrator)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/net/PhoneBinding.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/net/PhoneBindingTest.kt::m5_h06_aSignInRefusedAsRevokedGetsANewInstallIdAndNothingElseDoes
+  frs: []
+  verified_at: null
+  note: >-
+    The revoke still ends the old device: nothing re-registers by itself; only the person typing their password
+    again makes the new device, which the console then lists. Same rule as a QR pairing (PhoneBinding.connect with
+    fromScan). Partial until a revoked phone signs in again on the host.
