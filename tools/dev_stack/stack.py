@@ -33,6 +33,8 @@
         model stand-in (tools/dev_stack/model_standin.py, a dev double, never Meta), no key, zero prices
     uv run python -m tools.dev_stack.stack smoke --m5-look  # both M5 cases: look -> proposal -> post good + flagged ->
         101A and 101Q in erp-sim -> the look linked (needs `up --model-standin`)
+    uv run python -m tools.dev_stack.stack smoke --m5  # both M5 cases end to end: the look smoke, then claim ->
+        supervisor approve + confirm -> evidence link, signed page and JSON pack (needs `up --model-standin`)
 
 Services (logs in var/log, pids in var/run):
   fake-core  :8011  dev identity provider (EdDSA tokens + JWKS) and the stand-in core (a dev double of the
@@ -826,6 +828,7 @@ class Console:
 
     def __init__(self, api: str, tenant: str, principal: str = "smoke-sup") -> None:
         self.api = api.rstrip("/")
+        self.principal = principal
         r = httpx.post(local("fake-core") + "/api/v1/auth/token", json={
             "principal_id": principal, "tenant_id": tenant, "roles": ["field.supervisor"], "site_ids": ["*"],
             "ttl_seconds": 1800}, timeout=5)
@@ -1994,10 +1997,10 @@ def cmd_smoke(a: argparse.Namespace) -> int:
     if (getattr(a, "approver", False) or getattr(a, "core", False)) and core_target() == "core":
         return smoke_real_core(a, api)
     state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
-    if getattr(a, "m5_look", False):
+    if getattr(a, "m5_look", False) or getattr(a, "m5", False):
         from tools.dev_stack.m5 import smoke_m5_look
 
-        return smoke_m5_look(api, state, a.wait)
+        return smoke_m5_look(api, state, a.wait, full=bool(getattr(a, "m5", False)))
     if getattr(a, "approver", False):
         if core_target() != "standin":
             print("FAIL: smoke --approver runs against a core: set FIELD_CORE_TARGET=standin (the stand-in) or core"
@@ -2359,6 +2362,9 @@ def main(argv: list[str] | None = None) -> int:
                          " the core's `scmtips-scenario inject <name> --wait` reported (submitted first if a draft)")
     sm.add_argument("--m5-look", action="store_true",
                     help="M5: both test cases, look -> post good + flagged -> 101A + 101Q (needs up --model-standin)")
+    sm.add_argument("--m5", action="store_true",
+                    help="M5 end to end: --m5-look along the app's paths, then claim -> supervisor approve + confirm"
+                         " -> evidence link, signed page and JSON pack (needs up --model-standin)")
     sm.add_argument("--erp-feed", action="store_true",
                     help="erp-sim's stock and open POs as a snapshot to the core's feeds; the core then equals erp-sim")
     ef = sub.add_parser("erp-feed", help="stage a snapshot of erp-sim's stock and open POs for the core's feeds now")

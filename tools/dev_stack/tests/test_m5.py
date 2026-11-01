@@ -74,6 +74,11 @@ def test_m5_v07_case_labels_and_commands() -> None:
         stack.main(["m5-cases", "--help"])
     with pytest.raises(SystemExit):
         stack.main(["smoke", "--m5-look", "--help"])
+    with pytest.raises(SystemExit):
+        stack.main(["smoke", "--m5", "--help"])
+    # smoke --m5 (integrator): the claim lines each case must give and the reasons that count as flagged units
+    assert m5.CLAIM_REASONS == {"grocery": {"damaged", "pack_size"}, "pharmacy": {"damaged", "expired", "near_expiry"}}
+    assert m5.FLAG_REASONS == {"damaged", "expired", "near_expiry"}
 
 
 def test_m5_v08_model_standin_env_never_uses_the_real_key(monkeypatch: pytest.MonkeyPatch) -> None:
