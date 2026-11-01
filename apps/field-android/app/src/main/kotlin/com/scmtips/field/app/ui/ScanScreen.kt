@@ -89,12 +89,12 @@ fun ScanArea(howTo: String, height: Dp, onScan: () -> Unit) {
 
 /** When a label cannot be scanned: type the code. While the field has focus, keys are not a handheld scan. */
 @Composable
-fun ManualCode(a: Actions) {
+fun ManualCode(a: Actions, ink: Color = Primary, onDark: Boolean = false) {
     var open by remember { mutableStateOf(false) }
     var text by remember { mutableStateOf("") }
     if (!open) {
         TextButton(onClick = { open = true }, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text("Type the code instead", color = Primary, fontWeight = FontWeight.Bold)
+            Text("Type the code instead", color = ink, fontWeight = FontWeight.Bold)
         }
         return
     }
@@ -104,6 +104,10 @@ fun ManualCode(a: Actions) {
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { if (text.isNotBlank()) { a.manualCode(text); text = "" } }),
             modifier = Modifier.weight(1f).onFocusChanged { a.manualEntryOpen(it.isFocused) },
+            colors = if (onDark) androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLabelColor = ScanHint,
+                unfocusedLabelColor = ScanHint, cursorColor = Color.White, focusedBorderColor = ScanHint, unfocusedBorderColor = ScanHint,
+            ) else androidx.compose.material3.OutlinedTextFieldDefaults.colors(),
         )
         SmallButton("Use", { if (text.isNotBlank()) { a.manualCode(text); text = "" } })
     }
