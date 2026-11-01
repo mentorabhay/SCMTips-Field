@@ -203,3 +203,30 @@
     --reset cancels and remakes them), adds 101A and 101Q to plant HOME and the home site, and writes
     var/m5_cases.html with the delivery numbers and product labels as QR codes; run three times on the build
     sandbox's private stack (create, reuse, reset). Not yet run with real products, the phone or the glasses.
+- id: M5-V08
+  title: >-
+    stack smoke --m5-look on the stand-in stack: both cases (look -> proposal -> post good + flagged -> 101A and 101Q
+    in erp-sim -> the look linked), with the dev stack's local model stand-in (up --model-standin)
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - tools/dev_stack/m5.py
+  - tools/dev_stack/model_standin.py
+  - tools/dev_stack/model_standin_pricing.yaml
+  - tools/dev_stack/stack.py
+  - docs/evidence/runs/2026-11-01-m5-v-smokes.txt
+  tests:
+  - tools/dev_stack/tests/test_m5.py::test_m5_v08_standin_serves_sam_boxes_and_label_json
+  - tools/dev_stack/tests/test_m5.py::test_m5_v08_smoke_scenes_give_the_expected_proposals_on_any_day
+  - tools/dev_stack/tests/test_m5.py::test_m5_v08_smoke_photo_is_a_capture_sized_jpeg
+  - tools/dev_stack/tests/test_m5.py::test_m5_v08_model_standin_env_never_uses_the_real_key
+  frs: []
+  verified_at: null
+  note: >-
+    The model stand-in is a dev double of the two Meta calls (never Meta, never on field-api's import path): `up
+    --model-standin` points field-api's META_MODEL_API_BASE_URL at it, gives field-api a dev marker instead of
+    MODEL_API_KEY and a zero-price pricing file, so no key, route or spend is needed. Proven on the build sandbox's
+    private stack (run log in evidence): C1 receive 18 flag 2 -> GR with 101A 18 and 101Q 2, C2 receive 7 flag 3 ->
+    101A 7 and 101Q 3, both looks linked; smoke --home and --all passed on the same stack. Says nothing about the real
+    models; the claim and evidence steps of the full `smoke --m5` belong to stream X and the integrator.

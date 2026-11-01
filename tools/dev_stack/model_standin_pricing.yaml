@@ -1,0 +1,10 @@
+# Pricing file of the dev stack's MODEL STAND-IN only (tools/dev_stack/model_standin.py; `stack up --model-standin`).
+# The stand-in is a local double, not the Meta Model API: its calls cost nothing, so every price is 0 and confirmed.
+# Never used for the real provider: the real prices are config/ai_pricing.yaml (field-api reads this file only when
+# the stack sets FIELD_AI_PRICING_FILE for a stand-in run).
+llama: {}
+baseten: {}
+meta:
+  muse-spark-1.2: {input_per_mtok: 0, output_per_mtok: 0}
+  muse-spark-1.3: {input_per_mtok: 0, output_per_mtok: 0}
+  sam-3.1: {input_per_mtok: 0, output_per_mtok: 0, per_image_usd: 0}
