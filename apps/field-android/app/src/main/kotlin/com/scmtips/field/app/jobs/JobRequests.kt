@@ -30,10 +30,21 @@ object JobRequests {
             put("confidence", confidence.toDouble()); put("intent", intent); put("is_accepted", true)
         }, key)
 
-    fun countRecord(key: String, lineId: String, value: Double, unit: String, source: InputSource, voiceEventId: String?) =
+    /**
+     * A line's count. M5 (contract §2 posting): after a look, [flagQty] of the [value] units go to quality
+     * inspection (101 to 101Q) and the rest to unrestricted stock; [lookId] / [captureId] link the look.
+     * Without them the body is exactly the M2/M4 one.
+     */
+    fun countRecord(
+        key: String, lineId: String, value: Double, unit: String, source: InputSource, voiceEventId: String?,
+        flagQty: Int? = null, lookId: String? = null, captureId: String? = null,
+    ) =
         ApiRequest("POST", "/v1/count-records", buildJsonObject {
             put("task_line_id", lineId); put("value", value); put("unit", unit); put("source", source.wire)
             voiceEventId?.let { put("voice_event_id", it) }
+            flagQty?.let { put("flag_qty", it) }
+            lookId?.let { put("look_id", it) }
+            captureId?.let { put("capture_id", it) }
         }, key)
 
     fun confirmation(key: String, taskId: String, lineId: String, kind: ConfirmKind, code: String, source: InputSource, role: String? = null) =
@@ -49,19 +60,20 @@ object JobRequests {
         }, key)
 
     /** Touch confirmation: the operator saw the review screen and pressed "Yes" (contract §4). */
-    fun postTouch(key: String, taskId: String, lines: List<Pair<String, Double>>) =
+    fun postTouch(key: String, taskId: String, lines: List<Pair<String, Double>>, lookId: String? = null) =
         ApiRequest("POST", "/v1/tasks/${enc(taskId)}/post-requests", buildJsonObject {
             put("operation", "post")
             put("lines", buildJsonArray { lines.forEach { add(JsonPrimitive(it.first)) } })
             put("staged_hash", stagedHash(lines))
             put("confirm", buildJsonObject { put("method", "touch") })
+            lookId?.let { put("look_id", it) }
         }, key)
 
     /**
      * Voice confirmation ("post" … "yes"). The top-level voice ids are sent as well: the contract keeps
      * them accepted, and today's field-api requires them.
      */
-    fun postVoice(key: String, taskId: String, lines: List<Pair<String, Double>>, postVoiceId: String, confirmVoiceId: String) =
+    fun postVoice(key: String, taskId: String, lines: List<Pair<String, Double>>, postVoiceId: String, confirmVoiceId: String, lookId: String? = null) =
         ApiRequest("POST", "/v1/tasks/${enc(taskId)}/post-requests", buildJsonObject {
             put("operation", "post")
             put("lines", buildJsonArray { lines.forEach { add(JsonPrimitive(it.first)) } })
@@ -70,6 +82,7 @@ object JobRequests {
                 put("method", "voice"); put("post_voice_event_id", postVoiceId); put("confirm_voice_event_id", confirmVoiceId)
             })
             put("post_voice_event_id", postVoiceId); put("confirm_voice_event_id", confirmVoiceId)
+            lookId?.let { put("look_id", it) }
         }, key)
 
     fun checkIn(key: String, siteId: String, permitRef: String, permitValidUntil: String, lat: Double, lon: Double, accuracyM: Double, capturedAt: String) =

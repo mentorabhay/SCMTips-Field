@@ -46,7 +46,37 @@ fun interface AssistantPort {
 }
 
 /** How one utterance was handled (logged, and pinned by ConductorTest). */
-enum class Route { GRAMMAR, ASSISTANT, LOCAL, FALLBACK, IGNORED, DECISIONS }
+enum class Route { GRAMMAR, ASSISTANT, LOCAL, FALLBACK, IGNORED, DECISIONS, LOOK, CLAIMS }
+
+/**
+ * M5 look-and-act as the work session sees it (FieldController implements it over LookFlow and
+ * ClaimReview). The phone never decides who may decide claims: the server answers 403.
+ */
+interface LookPort {
+    /** A claims review is running: the session's words go to it. */
+    val reviewingClaims: Boolean
+
+    /** The last upload waits for the operator's photo consent ("I agree"). */
+    val consentPending: Boolean
+
+    /** Words for the running claims review. */
+    fun heardForClaims(text: String, confidence: Float)
+
+    /** "look", "take a look", "count again", "look again": a look for the open receive job. */
+    suspend fun look()
+
+    /** "make a claim": a claim from the last look. */
+    suspend fun claim()
+
+    /** "claims", "next claim": the supervisor's claims review (returns at once). */
+    fun startClaims()
+
+    /** "new grocery delivery", "new pharmacy delivery". */
+    suspend fun startCase(case: com.scmtips.field.app.look.LookCase)
+
+    /** "I agree": the site's photo consent, then the waiting photo is sent. */
+    suspend fun agree()
+}
 
 /**
  * The approver flow as the work session sees it (M4, F1; FieldController implements it over
@@ -78,6 +108,15 @@ object LocalIntents {
 
         /** "decisions", "next decision": the approver flow (only for approvers, M4). */
         data object Decisions : Intent
+
+        /** M5: "claims", "next claim": the supervisor's claims review. */
+        data object Claims : Intent
+
+        /** M5: "new grocery delivery", "new pharmacy delivery": a case on the sandbox site. */
+        data class NewCase(val case: com.scmtips.field.app.look.LookCase) : Intent
+
+        /** M5: "I agree": photo consent for the site, only while an upload waits for it. */
+        data object Agree : Intent
     }
 
     private val STOP = setOf("stop work", "end work", "finish work", "stop listening", "end session", "stop the session")
@@ -85,6 +124,12 @@ object LocalIntents {
     private val DECISIONS = setOf(
         "decisions", "decision", "next decision", "the next decision", "my decisions", "review decisions", "open decisions",
         "approvals", "my approvals", "decisions waiting", "hear the decision", "hear decisions",
+    )
+    private val CLAIMS = setOf("claims", "next claim", "the next claim", "my claims", "review claims", "open claims", "claims waiting", "hear the claims")
+    private val AGREE = setOf("i agree", "agree", "i consent", "yes i agree", "ok i agree", "okay i agree")
+    private val CASES = listOf(
+        com.scmtips.field.app.look.LookCase.GROCERY to listOf("grocery delivery", "a grocery delivery", "the grocery delivery", "grocery receipt", "grocery"),
+        com.scmtips.field.app.look.LookCase.PHARMACY to listOf("pharmacy delivery", "a pharmacy delivery", "the pharmacy delivery", "pharmacy receipt", "pharmacy"),
     )
     private val TYPES = listOf(
         JobType.RECEIVE to listOf("receive", "receiving", "the delivery", "delivery", "a delivery"),
@@ -100,6 +145,10 @@ object LocalIntents {
         if (t in STOP) return Intent.StopWork
         if (t in LIST) return Intent.ListWork
         if (t in DECISIONS) return Intent.Decisions
+        if (t in CLAIMS) return Intent.Claims
+        if (t in AGREE) return Intent.Agree
+        val case = listOf("new ", "start a new ", "start new ", "start ", "open a new ").firstOrNull { t.startsWith(it) }?.let { t.removePrefix(it).trim() }
+        CASES.firstOrNull { (_, words) -> case in words }?.let { return Intent.NewCase(it.first) }
         val rest = listOf("start ", "open ", "begin ", "lets do ", "do ").firstOrNull { t.startsWith(it) }?.let { t.removePrefix(it).trim() } ?: return null
         return TYPES.firstOrNull { (_, words) -> rest in words }?.let { Intent.Start(it.first) }
     }
@@ -139,6 +188,7 @@ class Conductor(
     private val log: (String) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
     private val decisions: DecisionPort? = null,
+    private val looks: LookPort? = null,
 ) {
     private val mutex = Mutex()
     private var hinted = false
@@ -206,7 +256,18 @@ class Conductor(
             d.startReview()
             return@withLock Route.DECISIONS
         }
+        val lk = looks
+        if (lk != null) {
+            if (lk.reviewingClaims) { lk.heardForClaims(words, confidence); return@withLock Route.CLAIMS }
+            when {
+                local == LocalIntents.Intent.Claims -> { lk.startClaims(); return@withLock Route.CLAIMS }
+                local is LocalIntents.Intent.NewCase -> { lk.startCase(local.case); return@withLock Route.LOOK }
+                local == LocalIntents.Intent.Agree && lk.consentPending && confidence >= JobGrammar.FLOOR -> { lk.agree(); return@withLock Route.LOOK }
+            }
+        }
+        // Without the M5 port (M4 callers) the M5 words stay unparsed and go to the assistant, as before.
         val cmd = JobGrammar.parse(words, confidence)
+            ?.takeUnless { lk == null && (it == Command.Look || it == Command.Claim || it is Command.Receive) }
         val free = session.view.listenMode == "free"
         val staged = desk.jobState.step == "confirm"
         // "free": the assistant asked a question (an item's name, a quantity): the answer goes to it as
@@ -217,6 +278,8 @@ class Conductor(
         val toRunner = desk.jobOpen && cmd != null && if (yesNo) staged else !free
         when {
             cmd == Command.Capture -> { desk.capture(); return@withLock Route.LOCAL }
+            lk != null && cmd == Command.Look && !free -> { lk.look(); return@withLock Route.LOOK }
+            lk != null && cmd == Command.Claim && !free -> { lk.claim(); return@withLock Route.LOOK }
             cmd == Command.WhatIsThis && !free -> return@withLock whatIsThis(words, confidence)
             toRunner -> {
                 desk.act(JobAction.Heard(words, confidence))
