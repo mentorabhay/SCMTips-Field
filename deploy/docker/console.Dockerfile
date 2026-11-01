@@ -36,6 +36,8 @@ ENV NODE_ENV=production \
 WORKDIR /app
 COPY --from=build --chown=node:node /repo/apps/field-console/.next/standalone ./
 COPY --from=build --chown=node:node /repo/apps/field-console/.next/static ./apps/field-console/.next/static
+# Next's standalone output leaves public/ out; the Try page's SAMPLE photos (public/samples) live there (M5-W01).
+COPY --from=build --chown=node:node /repo/apps/field-console/public ./apps/field-console/public
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
