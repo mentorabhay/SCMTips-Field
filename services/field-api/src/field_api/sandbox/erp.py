@@ -19,12 +19,14 @@ from typing import Any
 from field_sap.ports.erp_port import ErpSandboxPort
 
 
-def get_sandbox_port() -> ErpSandboxPort:
+def get_sandbox_port(sim_url: str | None = None) -> ErpSandboxPort:
+    """``sim_url`` (the hosted sandbox seed's --erp-sim-url) overrides FIELD_ERP_SIM_URL for the simulator."""
     kind = os.getenv("FIELD_ERP_ADAPTER", "sim")
     if kind == "sim":
         from field_sap.sim.adapter import SimAdapter
 
-        return SimAdapter(base_url=os.getenv("FIELD_ERP_SIM_URL", "http://127.0.0.1:8002"))
+        url = sim_url if sim_url else os.getenv("FIELD_ERP_SIM_URL", "http://127.0.0.1:8002")
+        return SimAdapter(base_url=url)
     from field_sap.s4.adapter import S4Config, S4ODataAdapter
 
     return S4ODataAdapter(S4Config(base_url=os.getenv("FIELD_S4_BASE_URL", "")))

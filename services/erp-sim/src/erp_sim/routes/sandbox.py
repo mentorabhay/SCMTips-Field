@@ -10,6 +10,9 @@ POST /_sim/sandbox/inbound-deliveries                 {Plant, StorageLocation, S
      -> 201 an open inbound delivery with no items, header ``sandbox: true``.
 POST /_sim/sandbox/inbound-deliveries/{doc}/items     {Material, DeliveryQuantity?, DeliveryQuantityUnit?}
      (Idempotency-Key) -> 201 the next item (10, 20, ...); the same key returns the first item.
+POST /_sim/sandbox/plants                             {Plant, Name, StorageLocations: [{StorageLocation, Name}]}
+     (M5-H01, the hosted sandbox seed) -> 201 when the plant or a storage location was added, 200 when all of them
+        were there already. Existing rows are never renamed or removed; each one says whether it was Created.
 """
 
 from __future__ import annotations
@@ -66,6 +69,17 @@ class SandboxItemIn(BaseModel):
     Material: str = Field(min_length=1, max_length=40)
     DeliveryQuantity: Decimal = Field(default=Decimal(0), ge=0)
     DeliveryQuantityUnit: str = "EA"
+
+
+class SandboxStorageLocationIn(BaseModel):
+    StorageLocation: str = Field(min_length=1, max_length=4)
+    Name: str = Field(default="", max_length=40)
+
+
+class SandboxPlantIn(BaseModel):
+    Plant: str = Field(min_length=1, max_length=4)
+    Name: str = Field(min_length=1, max_length=40)
+    StorageLocations: list[SandboxStorageLocationIn] = Field(default_factory=list, max_length=20)
 
 
 def _material_out(cur: Any, client: str, material_no: str, barcode: str, created: bool) -> dict[str, Any]:
@@ -209,3 +223,35 @@ async def add_sandbox_delivery_item(
     return {"d": {"DeliveryDocument": delivery_document, "DeliveryDocumentItem": item_no, "Material": body.Material,
                   "ActualDeliveryQuantity": str(body.DeliveryQuantity), "DeliveryQuantityUnit": body.DeliveryQuantityUnit,
                   "LastChangeDateTime": changed.isoformat()}}
+
+
+@router.post("/plants", status_code=201)
+async def ensure_sandbox_plant(
+    body: SandboxPlantIn,
+    response: Response,
+    x_sim_admin_token: str | None = Header(None, alias="X-Sim-Admin-Token"),
+    sap_client: str = Header("100", alias="sap-client"),
+) -> dict[str, Any]:
+    """A plant and its storage locations for a sandbox site, idempotent (M5-H01): what is missing is added."""
+    verify_admin(x_sim_admin_token)
+    slocs = list({s.StorageLocation: s for s in body.StorageLocations}.values())
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (f"sbx-plant:{sap_client}:{body.Plant}",))
+        cur.execute("INSERT INTO erpsim.plant (client, plant, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING"
+                    " RETURNING plant", (sap_client, body.Plant, body.Name))
+        plant_created = cur.fetchone() is not None
+        out: list[dict[str, Any]] = []
+        for sl in slocs:
+            cur.execute("INSERT INTO erpsim.storage_location (client, plant, storage_location, name)"
+                        " VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING RETURNING storage_location",
+                        (sap_client, body.Plant, sl.StorageLocation, sl.Name or sl.StorageLocation))
+            created = cur.fetchone() is not None
+            cur.execute("SELECT name FROM erpsim.storage_location WHERE client = %s AND plant = %s"
+                        " AND storage_location = %s", (sap_client, body.Plant, sl.StorageLocation))
+            out.append({"StorageLocation": sl.StorageLocation, "Name": str(_one(cur)[0] or ""), "Created": created})
+        cur.execute("SELECT name FROM erpsim.plant WHERE client = %s AND plant = %s", (sap_client, body.Plant))
+        name = str(_one(cur)[0] or "")
+        conn.commit()
+    if not plant_created and not any(o["Created"] for o in out):
+        response.status_code = 200
+    return {"d": {"Plant": body.Plant, "Name": name, "Created": plant_created, "StorageLocations": out}}

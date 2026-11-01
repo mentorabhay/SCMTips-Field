@@ -751,3 +751,43 @@
     new browser tab needs a new sign-in (session info is per tab, as with the dev sign-in); browsers without
     Sec-Fetch-Site (Safari before 16.4) get no cookie bearer on GET calls; the core's per-IP sign-in rate limit sees
     the console container's address for every person.
+- id: M5-H01
+  title: >-
+    Hosted sandbox seed: `python -m field_api.tools.seed_sandbox` in the field-api container signs in at the core as
+    the org admin, exchanges at field-api, and through real APIs only ensures plant HOME with storage locations
+    HM01 / 101A / 101Q in erp-sim (new sandbox port operation, erp-sim POST /_sim/sandbox/plants), the site HOME-SBX
+    "Home (sandbox)" (mode sandbox), its zone and bins; idempotent
+  workstream: M5
+  role: Hosting readiness (M5 builder)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/tools/seed_sandbox.py
+  - services/erp-sim/src/erp_sim/routes/sandbox.py
+  - connectors/sap/src/field_sap/ports/erp_port.py
+  - connectors/sap/src/field_sap/sim/adapter.py
+  - connectors/sap/src/field_sap/s4/adapter.py
+  - services/field-api/src/field_api/sandbox/erp.py
+  - docs/SETUP/M5_DEVICE_TEST.md
+  tests:
+  - services/field-api/tests/unit/test_m5_h01_seed_sandbox.py::test_m5_h01_first_run_creates_plant_site_slocs_zone_and_bins
+  - services/field-api/tests/unit/test_m5_h01_seed_sandbox.py::test_m5_h01_second_run_creates_nothing_and_prints_what_exists
+  - services/field-api/tests/unit/test_m5_h01_seed_sandbox.py::test_m5_h01_an_existing_site_gains_missing_storage_locations_with_if_match
+  - services/field-api/tests/unit/test_m5_h01_seed_sandbox.py::test_m5_h01_the_phone_opening_another_site_is_a_warning
+  - services/field-api/tests/unit/test_m5_h01_seed_sandbox.py::test_m5_h01_a_production_site_with_the_code_is_never_changed
+  - tests/e2e/test_m5_h01_seed_sandbox_e2e.py::test_m5_h01_seed_then_the_operator_starts_both_cases_on_the_sandbox_site
+  - tests/e2e/test_m5_h01_seed_sandbox_e2e.py::test_m5_h01_second_seed_creates_nothing
+  - connectors/sap/tests/contract/test_sandbox_port_contract.py::test_m5_h01_sim_ensure_sandbox_plant_adds_only_what_is_missing
+  - connectors/sap/tests/contract/test_sandbox_port_contract.py::test_s4_adapter_refuses_sandbox_operations
+  frs: []
+  verified_at: null
+  note: >-
+    Partial until run on the host. Proven in process (field-api, erp-sim through the simulator adapter, the stand-in
+    core with an org_admin member added in the test, Postgres with RLS): the seed, then a core-signed-in procurement
+    member (field.operator, sites ["*"]) starts both cases (deliveries in HOME / 101A), an approver
+    (field.supervisor) is refused, and a second seed creates nothing. Also run as `python -m` against a dev stack's
+    running processes (stand-in core with FIELD_CORE_ROLE_MAP approver -> field.admin): created, then "existed".
+    Site access: the core issues `sites: ["*"]` (lr_api identity/core_tokens.py), so no site mapping is needed; but
+    the app opens the first site GET /v1/sites lists (SiteChoice.pick; UUIDv7 ids, so the oldest) and has no site
+    switch, so on a tenant whose core site pack made sites earlier the phone opens one of those and Today shows no
+    sandbox starters: the seed prints a WARNING phone line then. Not changed here (app behaviour, owner decision).
+    UNVERIFIED: the real core's org_admin sign-in in demo mode, the hosted containers' ERPSIM_ADMIN_TOKEN match.
