@@ -26,7 +26,8 @@ def _v_row(look: dict[str, Any], *, capture_in_image: bool = True) -> tuple[Any,
     image = dict(look["image"]) if capture_in_image else {k: v for k, v in look["image"].items() if k != "capture_id"}
     return (uuid.UUID(look["look_id"]), uuid.UUID(look["task_id"]), None, uuid.UUID(look["image"]["capture_id"]),
             "grocery", "pack", look["source"], image, inst, raw, look["counts"], look["pack"], look["expiry"],
-            look["proposal"], look["say"], look["models"], look["reasons"], None, datetime.now(UTC), 0, 0)
+            look["proposal"], look["say"], look["models"], look["reasons"], None, datetime.now(UTC), 0, 0,
+            look.get("final", True), look.get("say_next"))
 
 
 def _insert_look(h: SimpleNamespace, env: dict[str, Any], look: dict[str, Any]) -> str:

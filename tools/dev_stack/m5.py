@@ -18,7 +18,10 @@ flagged ones to 101Q (FIELD_CASE_SLOC / FIELD_QUALITY_SLOC).
 ``smoke --m5-look`` needs a field-api started with ``up --model-standin`` (the stand-in answers SAM 3.1 and the
 label reads from a scene the smoke sets; tools/dev_stack/model_standin.py): no real model, no key, no spend. It
 makes fresh case receipts, draws a synthetic photo of the scene, uploads it through the captures API (consent and
-blur gates as the app meets them) and checks every step through the real API and erp-sim.
+blur gates as the app meets them) and checks every step through the real API and erp-sim. The look is two-step
+(M5-S01): the stand-in holds every label answer LABEL_DELAY_S (2 s), the POST must answer the count first (final
+false, source partial, "... Reading the labels.") in less than that, and the smoke then polls
+``GET /v1/vision/looks/{id}`` every second, like the app (at most 40 polls), until the look is final.
 
 ``smoke --m5`` runs the same two cases along the phone app's own paths (C1 started by the Today starter
 ``POST /v1/sandbox/receipts {site_id, case}``, C2 photo sent through the upload session the app uses) and then the
@@ -283,7 +286,8 @@ def smoke_case(phone: Any, state: dict[str, Any], case: str, scene: dict[str, An
         c = create_case(s._operator(state, site), site, case, units=scene["n"])
     boxes = grid(scene["n"], scene["cols"])
     r = httpx.post(standin_url() + "/_standin/scene", json={"boxes": boxes, "width": W, "height": H,
-                                                            "labels": scene["labels"]}, timeout=10)
+                                                            "labels": scene["labels"],
+                                                            "label_delay_s": LABEL_DELAY_S}, timeout=10)
     s._expect(r.status_code == 200, f"model stand-in: HTTP {r.status_code}; start the stack with `up --model-standin`")
     before = httpx.get(standin_url() + "/_standin/requests", timeout=10).json()
     photo = draw(boxes, c["object"])
@@ -296,9 +300,12 @@ def smoke_case(phone: Any, state: dict[str, Any], case: str, scene: dict[str, An
             "code_value": f"look-{uuid.uuid4()}", "readability": 0.9})},
             files={"crop": ("look.jpg", photo, "image/jpeg")}, headers=phone._h(True), timeout=15)
         capture = s._accepted(cap, "capture upload", 201)["id"]
-    look = s._accepted(httpx.post(f"{api}/v1/vision/looks", json={
+    t0 = time.monotonic()
+    first = s._accepted(httpx.post(f"{api}/v1/vision/looks", json={
         "task_id": c["task_id"], "line_id": c["line_id"], "capture_id": capture, "case": case},
         headers=phone._h(True), timeout=30), "look")
+    answered_s = time.monotonic() - t0
+    look = two_step(phone, case, first, scene["n"], answered_s)
     after = httpx.get(standin_url() + "/_standin/requests", timeout=10).json()
     s._expect(look["source"] == "model", f"{case} look source {look['source']} {look['reasons']}: is field-api"
                                          " running with `up --model-standin`?")
@@ -332,6 +339,30 @@ def smoke_case(phone: Any, state: dict[str, Any], case: str, scene: dict[str, An
     print(f"         {said}, post, confirm -> GR {ev['doc_number']}/{ev['doc_year']} {moves}, look linked")
     if full:
         claim_and_evidence(phone, sup, case, look, scene, photo, ev)
+
+
+LABEL_DELAY_S = 2.0  # the stand-in holds each label answer this long: the look must answer before it (M5-S01)
+POLL_S, POLL_MAX = 1.0, 40  # as the app polls GET /v1/vision/looks/{id}
+
+
+def two_step(phone: Any, case: str, first: dict[str, Any], n: int, answered_s: float) -> dict[str, Any]:
+    """M5-S01 as the app sees it: the POST answer is the count only (final false, partial, "Reading the labels."),
+    sooner than the stand-in answers a label read; then GET every second until final (at most 40 s)."""
+    s = _stack()
+    s._expect(first.get("final") is False and first["source"] == "partial",
+              f"{case} first answer final={first.get('final')} source={first['source']}: expected the count first")
+    s._expect(first["counts"]["seen"] == n and first["proposal"]["receive"] is None
+              and first["say"].endswith("Reading the labels."), f"{case} first answer {first['counts']} {first['say']!r}")
+    s._expect(answered_s < LABEL_DELAY_S, f"{case} first answer took {answered_s:.1f} s: it waited for the labels")
+    for i in range(POLL_MAX):
+        time.sleep(POLL_S)
+        look: dict[str, Any] = s._accepted(httpx.get(f"{phone.api}/v1/vision/looks/{first['look_id']}",
+                                                     headers=phone._h(), timeout=10), "look poll")
+        if look.get("final"):
+            print(f"m5 {case:8s} first answer in {answered_s:.1f} s: {first['say']!r}; final after {i + 1} poll(s):"
+                  f" {look['say_next']!r}")
+            return look
+    raise s.SmokeFailure(f"{case} look {first['look_id']} not final after {POLL_MAX} polls")
 
 
 CLAIM_REASONS = {"grocery": {"damaged", "pack_size"}, "pharmacy": {"damaged", "expired", "near_expiry"}}

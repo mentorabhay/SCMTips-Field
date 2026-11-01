@@ -17,8 +17,19 @@ Small instances (many items in one view, or a small camera photo): when labels w
 and the instances' median short side is under VISION_LABEL_MIN_INSTANCE_PX (200 pixels), ``reasons`` gets ``labels:close_look_needed`` and
 ``labels:small_image:<w>x<h>:instance_px=<n>``, and ``say`` ends by asking for a close look at a label.
 
+Two steps (M5-S01): with instances and a label reader, POST answers as soon as SAM's instances are counted:
+``final: false``, ``source: partial``, counts.expected/seen set, counts.damaged/good null, proposal receive/flag null,
+instances with ``label.read: false``, and ``say`` "<count>. Reading the labels." (number-checked). The label read
+(stages b-e) runs after the answer, in the route's background task (``finish_labels``), and writes the final look:
+``final: true``, ``say`` as in one step, ``say_next`` = what to speak after the first answer. When no label batch is
+answered (or anything fails) the look ends ``partial`` with the label-free check and ``say`` LABELS_FAILED_SAY. A
+look whose read is still unfinished at ``labels_due_at`` (labels + fallback deadlines + 15 s; e.g. field-api
+restarted) is ended the same way, reason ``labels:not_finished``, by the next read of it (GET, an idempotent POST
+replay, a claim, the evidence page). Without instances or without a reader the look is final in one step.
+
 ``source``: ``model`` when the instances and every label batch were answered, ``partial`` when the instances were but
-some label batch was not (those instances are ``read: false``), ``rules`` otherwise. The look never stages or posts
+some label batch was not (those instances are ``read: false``) or while the labels are being read, ``rules``
+otherwise. The look never stages or posts
 anything; a receipt posted with ``look_id`` links it (tasks/api.py). On a count task the line's expected quantity is
 the book quantity, so it is never used (blind count, FR3.029): counts.expected is null there.
 """
@@ -29,7 +40,7 @@ import time
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from statistics import median
 from types import MappingProxyType
@@ -57,7 +68,7 @@ from field_api.vision.labels import ChatLabelReader
 from field_api.vision.ports import CallContext, FoundInstance, LabelRead, LabelReader, VisionPorts
 from field_api.vision.reconcile import Check, Expectation, Seen, reconcile
 from field_api.vision.sam import Sam31Instances
-from field_api.vision.say import say_for
+from field_api.vision.say import LABELS_FAILED_SAY, first_say, next_say, say_for
 
 logger = structlog.get_logger(__name__)
 
@@ -240,13 +251,14 @@ def _instance_body(n: int, f: FoundInstance, r: LabelRead | None) -> dict[str, A
 
 # --------------------------------------------------------------------------- the look
 LOOK_COLS = ("id, task_id, line_id, capture_id, \"case\", object, source, image, instances, raw_labels, counts, pack,"
-             " expiry, proposal, say, models, reasons, erp_document_id, created_at, cost_usd, latency_ms")
+             " expiry, proposal, say, models, reasons, erp_document_id, created_at, cost_usd, latency_ms, final,"
+             " say_next")
 
 
 def look_body(row: tuple[Any, ...]) -> dict[str, Any]:
     """The response body (contract §2) from a vision_look row (LOOK_COLS order), with label.raw while kept."""
     (look_id, task_id, line_id, capture_id, case, obj, source, image, instances, raw, counts, pack, expiry, proposal,
-     say, models, reasons, erp_doc, created_at, _cost, _latency) = row
+     say, models, reasons, erp_doc, created_at, _cost, _latency, final, say_next) = row
     raw_map: dict[str, Any] = raw or {}
     inst = []
     for i in instances or []:
@@ -254,19 +266,138 @@ def look_body(row: tuple[Any, ...]) -> dict[str, Any]:
         inst.append({**i, "label": label})
     return {"look_id": str(look_id), "source": source, "image": image, "instances": inst, "counts": counts,
             "pack": pack, "expiry": expiry, "proposal": proposal, "say": say, "models": models, "reasons": reasons,
+            "final": bool(final), "say_next": say_next,
             "task_id": str(task_id), "line_id": str(line_id) if line_id else None, "capture_id": str(capture_id),
             "case": case, "object": obj, "erp_document_id": str(erp_doc) if erp_doc else None,
             "created_at": created_at.isoformat()}
 
 
+# A label read still unfinished this long after its deadlines (labels + fallback) is given up on any read of the look:
+# a field-api restart in the middle of a read never leaves the look waiting (M5-S01).
+LABELS_GRACE_S = 15.0
+_GIVE_UP = """
+    UPDATE field.vision_look
+       SET final = true, source = 'partial', say = %(say)s, say_next = %(say)s,
+           counts = labels_fallback->'counts', pack = NULLIF(labels_fallback->'pack', 'null'::jsonb),
+           expiry = NULLIF(labels_fallback->'expiry', 'null'::jsonb), proposal = labels_fallback->'proposal',
+           reasons = CASE WHEN reasons @> jsonb_build_array(%(reason)s::text) THEN reasons
+                          ELSE reasons || jsonb_build_array(%(reason)s::text) END
+     WHERE id::text = %(id)s AND NOT final
+"""
+
+
+def _settle_overdue(cur: Any, where: str, value: str) -> None:
+    """Ends a look whose label read is past its due time (reason labels:not_finished): read paths call this first."""
+    cur.execute(f"SELECT id FROM field.vision_look WHERE {where} = %s AND NOT final AND labels_due_at < NOW()",  # noqa: S608
+                (value,))
+    row = cur.fetchone()
+    if row:
+        cur.execute(_GIVE_UP, {"say": LABELS_FAILED_SAY, "reason": "labels:not_finished", "id": str(row[0])})
+        logger.info("vision_look_labels_given_up", look_id=str(row[0]))
+
+
 def _existing(cur: Any, key: str) -> dict[str, Any] | None:
+    _settle_overdue(cur, "idempotency_key", key)
     cur.execute(f"SELECT {LOOK_COLS} FROM field.vision_look WHERE idempotency_key = %s", (key,))  # noqa: S608
     row = cur.fetchone()
     return look_body(row) if row else None
 
 
+@dataclass
+class Outcome:
+    """The columns a look's stages b-e produce (stage a's instances given)."""
+    source: str
+    instances: list[dict[str, Any]]
+    raw: dict[str, str]
+    check: Check
+    say: str
+    models: list[dict[str, Any]]
+    cost: Decimal
+
+
+def _outcome(cap: Capture | None, found: list[FoundInstance] | None, reads: dict[int, LabelRead], answered: bool,
+             lc: LookContext, ctx: CallContext, reasons: list[str], today: date) -> Outcome:
+    """Stages d-e from the instances and the label reads: the check, source, ``say`` (number-checked)."""
+    close_look = False
+    if found and cap is not None and reads:
+        unread = sum(1 for n in range(1, len(found) + 1) if not (reads.get(n) or LabelRead(False)).read)
+        px = int(median(min(f.box[2] - f.box[0], f.box[3] - f.box[1]) for f in found))
+        if unread and px < settings.label_min_instance_px():
+            close_look = True
+            reasons += ["labels:close_look_needed", f"labels:small_image:{cap.width}x{cap.height}:instance_px={px}"]
+    seen = None if found is None else [_seen(n, reads.get(n)) for n in range(1, len(found) + 1)]
+    check: Check = reconcile(seen, lc.expectation, today)
+    source = "rules" if found is None else ("model" if answered else "partial")
+    instances = [] if found is None else [_instance_body(n, f, reads.get(n)) for n, f in enumerate(found, start=1)]
+    raw = {str(n): r.raw for n, r in reads.items() if r.raw}
+    models = [{"model": c.model, "purpose": c.purpose, "latency_ms": c.latency_ms, "cost_usd": float(c.cost_usd),
+               "outcome": c.outcome} for c in ctx.calls]
+    cost = sum((c.cost_usd for c in ctx.calls), Decimal(0))
+    say = say_for(check, lc.expectation) + (CLOSE_LOOK_SAY if close_look else "")
+    return Outcome(source, instances, raw, check, say, models, cost)
+
+
+@dataclass(frozen=True)
+class LabelStage:
+    """What the label read needs after the first answer of a two-step look (M5-S01)."""
+    principal: Principal
+    look_id: str
+    first_say: str
+    cap: Capture
+    found: list[FoundInstance]
+    lc: LookContext
+    ctx: CallContext
+    reasons: list[str]
+    readers: tuple[LabelReader, ...]
+    t0: float
+    today: date
+
+
+def finish_labels(stage: LabelStage) -> None:
+    """Stages b-e of a two-step look, after its first answer: reads the labels within the deadlines and writes the
+    final look (``final`` true, ``say_next``). If no batch was answered, or anything fails, the look ends ``partial``
+    with the label-free check of its first answer and says LABELS_FAILED_SAY. Only a look still unfinished is
+    written: one already given up (past its due time) stays as it is."""
+    try:
+        reads, answered = read_labels(stage.readers, stage.cap, stage.found, stage.lc.expectation, stage.ctx,
+                                      stage.reasons)
+        out = _outcome(stage.cap, stage.found, reads, answered, stage.lc, stage.ctx, stage.reasons, stage.today)
+        say = LABELS_FAILED_SAY if not answered and not reads else out.say
+        latency = int((time.perf_counter() - stage.t0) * 1000)
+        with principal_tx(stage.principal) as cur:
+            cur.execute(
+                """
+                UPDATE field.vision_look
+                   SET source = %s, instances = %s, raw_labels = %s, counts = %s, pack = %s, expiry = %s,
+                       proposal = %s, say = %s, say_next = %s, models = %s, reasons = %s, cost_usd = %s,
+                       latency_ms = %s, final = true
+                 WHERE id::text = %s AND NOT final
+                """,
+                (out.source, Jsonb(out.instances), Jsonb(out.raw) if out.raw else None, Jsonb(out.check.counts),
+                 _jsonb(out.check.pack), _jsonb(out.check.expiry), Jsonb(out.check.proposal), say,
+                 next_say(say, stage.first_say), Jsonb(out.models), Jsonb(stage.reasons), out.cost, latency,
+                 stage.look_id),
+            )
+            written = cur.rowcount == 1
+        logger.info("vision_look_labels", look_id=stage.look_id, source=out.source, written=written,
+                    calls=len(out.models), latency_ms=latency)  # never the label text
+    except Exception:  # the look must end in a definite state whatever failed
+        logger.exception("vision_look_labels_failed", look_id=stage.look_id)
+        with principal_tx(stage.principal) as cur:
+            cur.execute(_GIVE_UP, {"say": LABELS_FAILED_SAY, "reason": "labels:error", "id": stage.look_id})
+
+
+Defer = Callable[[Callable[[], None]], None]
+
+
 def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports: VisionPorts,
-                today: Callable[[], date] = lambda: datetime.now(UTC).date()) -> dict[str, Any]:
+                today: Callable[[], date] = lambda: datetime.now(UTC).date(), defer: Defer | None = None
+                ) -> dict[str, Any]:
+    """The look. When there are instances and a label reader, it is two-step (M5-S01): the first answer is written and
+    returned at once (``final`` false, source ``partial``, the count only, ``say`` "<count>. Reading the labels.")
+    and the label read is handed to ``defer`` (the route's background task). Without ``defer`` the label read runs
+    before returning and the final look is returned. Otherwise (no photo, no instances, no reader) it is final in
+    one step, as before."""
     t0 = time.perf_counter()
     with principal_tx(principal) as cur:
         again = _existing(cur, idempotency_key)
@@ -295,51 +426,85 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
                                                              timeout_s=settings.instances_deadline_s(), ctx=ctx))
             except ModelError as e:
                 reasons.append(f"instances:{ports.instances.model}:{e.code}")
+    day = today()
+    image = {"capture_id": body.capture_id, "width": cap.width if cap else None, "height": cap.height if cap else None}
+    if found and cap is not None and ports.readers:
+        return _first_answer(principal, body, idempotency_key, lc, cap, found, ctx, reasons, ports, image, day, t0,
+                             defer)
     reads: dict[int, LabelRead] = {}
     answered = False
     if found is not None and cap is not None:
         reads, answered = read_labels(ports.readers, cap, found, lc.expectation, ctx, reasons)
-    close_look = False
-    if found and cap is not None and reads:
-        unread = sum(1 for n in range(1, len(found) + 1) if not (reads.get(n) or LabelRead(False)).read)
-        px = int(median(min(f.box[2] - f.box[0], f.box[3] - f.box[1]) for f in found))
-        if unread and px < settings.label_min_instance_px():
-            close_look = True
-            reasons += ["labels:close_look_needed", f"labels:small_image:{cap.width}x{cap.height}:instance_px={px}"]
-    seen = None if found is None else [_seen(n, reads.get(n)) for n in range(1, len(found) + 1)]
-    check: Check = reconcile(seen, lc.expectation, today())
-    source = "rules" if found is None else ("model" if answered else "partial")
-    instances = [] if found is None else [_instance_body(n, f, reads.get(n)) for n, f in enumerate(found, start=1)]
-    raw = {str(n): r.raw for n, r in reads.items() if r.raw}
+    out = _outcome(cap, found, reads, answered, lc, ctx, reasons, day)
+    latency = int((time.perf_counter() - t0) * 1000)
+    row = _insert(principal, body, idempotency_key, lc, out.source, image, out.instances, out.raw, out.check.counts,
+                  out.check.pack, out.check.expiry, out.check.proposal, out.say, out.models, reasons, out.cost,
+                  latency, final=True, due=None, fallback=None)
+    row.pop("_replayed", None)
+    logger.info("vision_look", look_id=row["look_id"], source=out.source, seen=out.check.counts["seen"],
+                calls=len(out.models), latency_ms=latency, final=True)  # never the label text
+    return row
+
+
+def _first_answer(principal: Principal, body: LookIn, key: str, lc: LookContext, cap: Capture,
+                  found: list[FoundInstance], ctx: CallContext, reasons: list[str], ports: VisionPorts,
+                  image: dict[str, Any], day: date, t0: float, defer: Defer | None) -> dict[str, Any]:
+    """Writes the first answer of a two-step look and starts (or runs) its label read."""
+    blank = reconcile([_seen(n, None) for n in range(1, len(found) + 1)], lc.expectation, day)  # every label unread
+    counts = {"expected": blank.counts["expected"], "seen": len(found), "damaged": None, "good": None}
+    proposal: dict[str, Any] = {"receive": None, "flag": None, "reasons": []}  # nothing proposed before the labels
+    say = first_say(len(found), blank.counts["expected"], lc.expectation)
+    instances = [_instance_body(n, f, None) for n, f in enumerate(found, start=1)]
     models = [{"model": c.model, "purpose": c.purpose, "latency_ms": c.latency_ms, "cost_usd": float(c.cost_usd),
                "outcome": c.outcome} for c in ctx.calls]
     cost = sum((c.cost_usd for c in ctx.calls), Decimal(0))
-    image = {"capture_id": body.capture_id, "width": cap.width if cap else None, "height": cap.height if cap else None}
-    say = say_for(check, lc.expectation) + (CLOSE_LOOK_SAY if close_look else "")
+    due = datetime.now(UTC) + timedelta(seconds=settings.labels_deadline_s() + settings.fallback_deadline_s()
+                                        + LABELS_GRACE_S)
+    fallback = {"counts": blank.counts, "pack": blank.pack, "expiry": blank.expiry, "proposal": blank.proposal}
     latency = int((time.perf_counter() - t0) * 1000)
+    row = _insert(principal, body, key, lc, "partial", image, instances, {}, counts, None, None, proposal, say, models,
+                  list(reasons), cost, latency, final=False, due=due, fallback=fallback)
+    logger.info("vision_look", look_id=row["look_id"], source="partial", seen=len(found), calls=len(models),
+                latency_ms=latency, final=False)
+    if row["final"] or row.get("_replayed"):  # a concurrent create with this key won: its own read is running
+        row.pop("_replayed", None)
+        return row
+    stage = LabelStage(principal, row["look_id"], say, cap, found, lc, ctx, reasons, ports.readers, t0, day)
+    if defer is None:
+        finish_labels(stage)
+        return get_look(principal, row["look_id"])
+    defer(lambda: finish_labels(stage))
+    return row
+
+
+def _insert(principal: Principal, body: LookIn, key: str, lc: LookContext, source: str, image: dict[str, Any],
+            instances: list[dict[str, Any]], raw: dict[str, str], counts: dict[str, Any], pack: dict[str, Any] | None,
+            expiry: dict[str, Any] | None, proposal: dict[str, Any], say: str, models: list[dict[str, Any]],
+            reasons: list[str], cost: Decimal, latency: int, *, final: bool, due: datetime | None,
+            fallback: dict[str, Any] | None) -> dict[str, Any]:
     with principal_tx(principal) as cur:
         cur.execute(
             f"""
             INSERT INTO field.vision_look (tenant_id, site_id, task_id, line_id, capture_id, "case", object, source,
                    idempotency_key, principal_id, device_id, image, instances, raw_labels, counts, pack, expiry,
-                   proposal, say, models, reasons, cost_usd, latency_ms)
+                   proposal, say, models, reasons, cost_usd, latency_ms, final, labels_due_at, labels_fallback)
             VALUES (%s, %s, %s::uuid, %s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s)
+                    %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
             RETURNING {LOOK_COLS}
             """,  # noqa: S608 - fixed column list
             (principal.tenant_id, lc.site_id, body.task_id, lc.line_id, body.capture_id, lc.expectation.case,
-             lc.expectation.object_noun, source, idempotency_key, principal.id, principal.device_id, Jsonb(image),
-             Jsonb(instances), Jsonb(raw) if raw else None, Jsonb(check.counts), _jsonb(check.pack),
-             _jsonb(check.expiry), Jsonb(check.proposal), say, Jsonb(models), Jsonb(reasons), cost, latency),
+             lc.expectation.object_noun, source, key, principal.id, principal.device_id, Jsonb(image),
+             Jsonb(instances), Jsonb(raw) if raw else None, Jsonb(counts), _jsonb(pack), _jsonb(expiry),
+             Jsonb(proposal), say, Jsonb(models), Jsonb(reasons), cost, latency, final, due, _jsonb(fallback)),
         )
         row = cur.fetchone()
-        out = look_body(row) if row else _existing(cur, idempotency_key)
+        if row:
+            return look_body(row)
+        out = _existing(cur, key)
     if out is None:  # pragma: no cover - the conflicting row is visible in the same tenant
         raise ERR_LOOK
-    logger.info("vision_look", look_id=out["look_id"], source=source, seen=check.counts["seen"],
-                calls=len(models), latency_ms=latency)  # never the label text
-    return out
+    return {**out, "_replayed": True}
 
 
 def _jsonb(v: dict[str, Any] | None) -> Jsonb | None:
@@ -347,7 +512,9 @@ def _jsonb(v: dict[str, Any] | None) -> Jsonb | None:
 
 
 def get_look(principal: Principal, look_id: str) -> dict[str, Any]:
+    """The look as it is now; a label read past its due time is given up first (``final`` true, partial)."""
     with principal_tx(principal) as cur:
+        _settle_overdue(cur, "id::text", look_id)
         cur.execute(f"SELECT {LOOK_COLS} FROM field.vision_look WHERE id::text = %s", (look_id,))  # noqa: S608
         row = cur.fetchone()
     if not row:

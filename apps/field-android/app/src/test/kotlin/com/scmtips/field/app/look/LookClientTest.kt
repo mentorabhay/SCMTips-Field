@@ -237,4 +237,20 @@ class LookClientTest {
         assertEquals(75, look.readTimeoutSeconds)
         assertNull(LookApi.consent("k", "s-1", "d-1").readTimeoutSeconds)
     }
+
+    @Test
+    fun m5S01_finalAndSayNextAreRead_andTheLookIsPolledByGet() = runBlocking {
+        val api = ScriptedFieldApi().apply {
+            ok("GET /v1/vision/looks/lk-1", """{"look_id":"lk-1","source":"partial","final":false,"say_next":null,
+              "counts":{"expected":20,"seen":20,"damaged":null,"good":null},"proposal":{"receive":null,"flag":null,"reasons":[]},
+              "say":"20 of 20 packs. Reading the labels."}""")
+        }
+        val l = (client(api).lookNow("lk-1") as LookResult.Ok).look
+        assertEquals(false, l.final); assertNull(l.sayNext); assertNull(l.counts.damaged); assertNull(l.proposal!!.receive)
+        val req = api.last("/v1/vision/looks/lk-1")
+        assertEquals("GET", req.method); assertNull(req.body)
+        val old = (client(ScriptedFieldApi().apply { scriptLook() }).look("t", null, "c", LookCase.GROCERY) as LookResult.Ok).look
+        assertEquals("a body without final (an older server) is final", true, old.final)
+        assertTrue(client(ScriptedFieldApi()).lookNow("lk-9") is LookResult.Failed)
+    }
 }

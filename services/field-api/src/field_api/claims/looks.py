@@ -1,7 +1,8 @@
 """The look port: how claims and the evidence page read a vision look (M5 contract section 2).
 
 ``get_look(principal, look_id) -> dict | None`` returns the look in the section 2 response shape (``look_id,
-source, image, instances, counts, pack, expiry, proposal, say, models, reasons``) plus ``task_id`` and ``line_id``;
+source, image, instances, counts, pack, expiry, proposal, say, models, reasons``) plus ``task_id``, ``line_id`` and
+``final`` (M5-S01: false while the look's label read is still running; a body without it is final);
 None when there is no such look for this principal (tenant RLS and site scope) or the id is not a uuid.
 
 The database port reads stream V's look through ``field_api.vision.service.get_look`` (one column per top-level
@@ -46,6 +47,7 @@ def look_from_body(body: dict[str, Any]) -> dict[str, Any]:
     for k in ("task_id", "line_id"):
         v = body.get(k)
         out[k] = str(v) if v else None
+    out["final"] = body.get("final") is not False  # M5-S01: false while the look's labels are being read
     return out
 
 

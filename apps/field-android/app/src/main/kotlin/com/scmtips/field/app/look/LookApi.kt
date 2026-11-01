@@ -75,9 +75,13 @@ object LookApi {
     const val CODE_TYPE = "look"
     const val NO_CONSENT = "FIELD-CAP-403-NO-CONSENT"
     const val CONSENT_VERSION = "f1-2026-11"
-    /** The look waits up to SAM 3.1 (15 s) + Muse label reads (30 s) on the server (vision/settings.py); 75 s leaves
-     *  room for the upload and the reconciliation. Only the look call gets it. */
+    /** M5-S01: the look answers once SAM 3.1 has counted (its deadline 15 s, vision/settings.py) and the labels are
+     *  read after it; 75 s is kept so a server that still reads the labels before answering (15 s + 30 s) fits.
+     *  Only the look call gets it. */
     const val LOOK_READ_TIMEOUT_S = 75
+    /** The poll of a two-step look: GET every [POLL_MS] until final, at most [POLL_MAX] times (40 s). */
+    const val POLL_MS = 1_000L
+    const val POLL_MAX = 40
 
     fun uploadSession(key: String, deviceId: String, jpeg: ByteArray) =
         ApiRequest("POST", "/v1/captures/uploads", buildJsonObject {
@@ -106,6 +110,9 @@ object LookApi {
             put("object", case.noun)
             put("case", case.wire)
         }, key, readTimeoutSeconds = LOOK_READ_TIMEOUT_S)
+
+    /** The look as it is now (M5-S01: poll until `final`). */
+    fun lookById(lookId: String) = ApiRequest("GET", "/v1/vision/looks/${enc(lookId)}")
 
     fun consent(key: String, siteId: String, deviceId: String) =
         ApiRequest("POST", "/v1/consents", buildJsonObject {
@@ -186,6 +193,13 @@ class LookClient(
             is ApiResult.Problem -> LookResult.Failed(if (r.status == 404) NOT_YET else r.plain)
             is ApiResult.Offline -> LookResult.Failed(OFFLINE)
         }
+
+    /** `GET /v1/vision/looks/{id}`: the look now (final, or still reading labels). */
+    suspend fun lookNow(lookId: String): LookResult = when (val r = transport.send(LookApi.lookById(lookId))) {
+        is ApiResult.Ok -> LookJson.look(r.body)?.let { LookResult.Ok(it) } ?: LookResult.Failed("The look came back empty.")
+        is ApiResult.Problem -> LookResult.Failed(r.plain)
+        is ApiResult.Offline -> LookResult.Failed(OFFLINE)
+    }
 
     /** 201 a new claim, or 200 the look's existing one (one claim per look). */
     suspend fun claim(lookId: String): ClaimResult = when (val r = transport.send(LookApi.claim(newKey(), lookId))) {

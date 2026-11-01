@@ -61,6 +61,11 @@ data class Look(
     val say: String,
     val models: List<ModelCall>,
     val reasons: List<String>,
+    /** M5-S01: false on the first answer of a two-step look (counted, labels still being read); a body without the
+     *  field (an older server) is final. */
+    val final: Boolean = true,
+    /** What to speak when the look is final, after the first answer was spoken (null on a one-step look). */
+    val sayNext: String? = null,
 ) {
     /** No model answered (no key, budget refused, timeout): the operator counts aloud (contract §2). */
     val rulesOnly: Boolean get() = source == "rules"
@@ -114,6 +119,8 @@ object LookJson {
                 (m as? JsonObject)?.let { ModelCall(it.s("model") ?: "?", it.s("purpose"), it.d("latency_ms")?.toLong(), it.s("outcome")) }
             },
             reasons = o.arr("reasons").mapNotNull { (it as? JsonPrimitive)?.contentOrNull },
+            final = o.b("final") ?: true,
+            sayNext = o.s("say_next")?.ifBlank { null },
         )
     }
 

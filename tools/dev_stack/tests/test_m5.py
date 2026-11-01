@@ -130,3 +130,56 @@ def test_m5_cases_options_set_what_the_delivery_expects() -> None:
     assert m5.case_options(a, "grocery") == {"units": 8, "pieces_per_unit": 6}
     assert m5.case_options(a, "pharmacy") == {"units": 5}
     assert m5.case_options(SimpleNamespace(c1_units=None, c1_pieces=None, c2_units=None), "grocery") == {}
+
+
+def test_m5_s01_standin_holds_label_answers_for_the_scene_delay() -> None:
+    """The scene's label_delay_s holds label answers (not SAM's), so the smoke can see the look answer first."""
+    import time
+
+    api = TestClient(model_standin.app)
+    try:
+        api.post("/_standin/scene", json={"boxes": m5.grid(2, 2), "width": 1000, "height": 800, "labels": {},
+                                          "label_delay_s": 0.3})
+        t0 = time.monotonic()
+        api.post("/v1/responses", json={"model": "sam-3.1", "input": []})
+        sam_s = time.monotonic() - t0
+        t0 = time.monotonic()
+        api.post("/v1/chat/completions", json={"model": "muse-spark-1.3", "messages": [{"role": "user", "content": [
+            {"type": "text", "text": "pack 1:"}, {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,"}}]}]})
+        assert time.monotonic() - t0 >= 0.3 and sam_s < 0.3
+        api.post("/_standin/scene", json={"boxes": [], "width": 1, "height": 1, "label_delay_s": 99})
+        assert model_standin.SCENE["label_delay_s"] == 10.0  # capped
+    finally:
+        api.post("/_standin/scene", json={"boxes": [], "width": 1, "height": 1})
+    assert model_standin.SCENE["label_delay_s"] == 0.0
+
+
+def test_m5_s01_smoke_checks_the_first_answer_then_polls_until_final(monkeypatch: pytest.MonkeyPatch) -> None:
+    """smoke's two_step: a first answer that is already final (labels read before answering) or slower than the
+    stand-in's label delay fails; otherwise it polls GET until final, at most 40 times."""
+    from types import SimpleNamespace
+
+    import httpx
+
+    first = {"look_id": "lk-1", "final": False, "source": "partial", "counts": {"seen": 20},
+             "proposal": {"receive": None, "flag": None}, "say": "20 of 20 packs. Reading the labels."}
+    answers = [{**first}, {**first}, {**first, "final": True, "source": "model", "say_next": "2 damaged."}]
+    gets: list[str] = []
+
+    def fake_get(url: str, **_: object) -> httpx.Response:
+        gets.append(url)
+        return httpx.Response(200, json=answers.pop(0) if answers else {**first})
+
+    monkeypatch.setattr(m5.httpx, "get", fake_get)
+    monkeypatch.setattr(m5.time, "sleep", lambda _s: None)
+    phone = SimpleNamespace(api="http://field", _h=lambda *_a: {})
+    assert m5.two_step(phone, "grocery", first, 20, 0.2)["final"] is True
+    assert gets == ["http://field/v1/vision/looks/lk-1"] * 3
+    for bad, took in (({**first, "final": True}, 0.2), (first, m5.LABEL_DELAY_S + 0.1),
+                      ({**first, "counts": {"seen": 19}}, 0.2)):
+        with pytest.raises(stack.SmokeFailure):
+            m5.two_step(phone, "grocery", bad, 20, took)
+    gets.clear()
+    with pytest.raises(stack.SmokeFailure, match="not final after 40 polls"):
+        m5.two_step(phone, "grocery", first, 20, 0.2)
+    assert len(gets) == m5.POLL_MAX == 40

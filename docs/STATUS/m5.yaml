@@ -788,3 +788,63 @@
     estimate logic is unchanged; config/ai_pricing.yaml notes it must be re-measured at the new crop size. The Android
     FaceDetector on a 1600 px bitmap is slower than at 640 (not measured) and the glasses' own photo size through the
     toolkit is unknown (a smaller photo is kept as is). Partial until proven on the owner's phone and glasses.
+- id: M5-S01
+  title: >-
+    Two-step speech: POST /v1/vision/looks answers once SAM's instances are counted (final false, source partial, the
+    count only, "Reading the labels."); the label read continues in field-api; GET /v1/vision/looks/{id} answers the
+    final look (labels, checks, proposal, full say, say_next); the app speaks the first answer, polls GET every 1 s up
+    to 40 s and speaks the second part once
+  workstream: M5-S
+  role: Builder (photo and speech)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/vision/service.py
+  - services/field-api/src/field_api/vision/api.py
+  - services/field-api/src/field_api/vision/say.py
+  - services/field-api/alembic/versions/field_0066_m5_look_stage.py
+  - services/field-api/src/field_api/claims/service.py
+  - services/field-api/src/field_api/claims/looks.py
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookFlow.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookApi.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookModels.kt
+  - tools/dev_stack/m5.py
+  - tools/dev_stack/model_standin.py
+  - docs/design/M5_CONTRACT.md
+  - docs/SETUP/M5_DEVICE_TEST.md
+  tests:
+  - services/field-api/tests/vision/test_vision_two_step.py::test_m5_s01_first_answer_counts_then_get_answers_the_final_look
+  - services/field-api/tests/vision/test_vision_two_step.py::test_m5_s01_route_answers_first_and_reads_labels_after_the_answer
+  - services/field-api/tests/vision/test_vision_two_step.py::test_m5_s01_label_failure_ends_partial_and_asks_for_the_numbers
+  - services/field-api/tests/vision/test_vision_two_step.py::test_m5_s01_an_error_in_the_label_read_still_ends_the_look
+  - services/field-api/tests/vision/test_vision_two_step.py::test_m5_s01_an_unfinished_read_past_its_due_time_is_given_up_on_the_next_read
+  - services/field-api/tests/vision/test_vision_two_step.py::test_m5_s01_a_claim_waits_for_the_final_look
+  - services/field-api/tests/vision/test_vision_two_step.py::test_m5_s01_first_and_next_say_are_number_checked
+  - tools/dev_stack/tests/test_m5.py::test_m5_s01_standin_holds_label_answers_for_the_scene_delay
+  - tools/dev_stack/tests/test_m5.py::test_m5_s01_smoke_checks_the_first_answer_then_polls_until_final
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5S01_firstAnswerIsSpokenAtOnce_thenThePollSpeaksTheSecondPartOnce
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5S01_noFinalLookWithin40Polls_saysTheLabelsWereNotRead
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5S01_aFailedPollIsRetried_andTheServersOwnLabelFailureIsSpokenOnce
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5S01_leavingTheScreenOrANewLook_cancelsThePoll_andNothingMoreIsSaid
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5S01_aClaimWaitsForTheFinalLook
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5S01_finalAndSayNextAreRead_andTheLookIsPolledByGet
+  frs: []
+  verified_at: null
+  note: >-
+    Contract §2 extended, not broken: the body gains final (bool; absent = final) and say_next (str|null). First
+    answer: counts.damaged/good null (damage comes from the label read), pack/expiry null, proposal receive/flag
+    null, say "<count>. Reading the labels." (number-checked against the count). The label read runs in the POST's
+    FastAPI background task, after the response is sent (verified on uvicorn by smoke --m5-look: first answer in
+    0.1 s while the stand-in held every label answer 2 s), and writes the final look only while it is still
+    unfinished. No answered label batch, or any error -> final, partial, the label-free check, say = say_next = "I
+    couldn't read the labels. Say your numbers.". Robust to restarts: labels_due_at = labels + fallback deadlines +
+    15 s; the next read past it (GET, POST replay, claim, evidence) ends the look (labels:not_finished); a late
+    read then writes nothing. Migration field_0066_m5_look_stage (down_revision field_0065; columns only, the
+    forced RLS of field_0064 applies). Idempotency-Key: the middleware replays the stored first answer and no
+    second read starts. Claims: POST /v1/claims on a look that is not final -> 409 FIELD-CLM-409-LOOK-PENDING
+    (picked over waiting); posting with a pending look is allowed (the operator's numbers post). App: speaks the
+    first answer, pre-fills nothing, polls GET every 1 s up to 40 times, speaks say_next (else say) + hint once via
+    queue; a new look, another job, leaving the job screen (FieldController.closeJob -> leave) or clear cancels
+    the poll; a claim waits; LOOK_READ_TIMEOUT_S stays 75 for an older server. The server's labels + fallback
+    deadlines (30 + 15 s) can exceed the app's 40 s poll; the app then says the labels were not read. Proven with
+    the model stand-in only (smoke --m5-look and --m5 PASS on a private stack); partial until proven on the owner's
+    phone and glasses against the real Meta API.

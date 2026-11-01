@@ -89,13 +89,17 @@ fun LookPanel(v: LookView, a: Actions) {
             CircularProgressIndicator(Modifier.size(22.dp), color = Primary, strokeWidth = 2.dp)
             Text(v.state.text, color = Muted)
         }
+        if (v.labelsPending) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 6.dp)) {
+            CircularProgressIndicator(Modifier.size(22.dp), color = Primary, strokeWidth = 2.dp)
+            Text("Counted. Reading the labels…", color = Muted)
+        }
         v.look?.let { LookFacts(it) }
         v.message?.let { Text(it, color = if (v.state == LookState.FAILED) Danger else Muted, fontSize = 15.sp, modifier = Modifier.padding(top = 4.dp)) }
         if (v.state == LookState.CONSENT) PrimaryButton("Agree for this site", a.agreePhotos, height = 56.dp)
         if (v.look != null) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 6.dp)) {
                 SecondaryButton(if (v.claim != null) "Claim drafted" else if (v.claimBusy) "Making claim…" else "Make a claim",
-                    a.makeClaim, Modifier.weight(1f), enabled = v.claim == null && !v.claimBusy)
+                    a.makeClaim, Modifier.weight(1f), enabled = v.claim == null && !v.claimBusy && !v.labelsPending)
             }
         }
         v.claim?.let { c ->

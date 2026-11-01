@@ -38,7 +38,15 @@ def _look(client: TestClient, s: dict[str, Any], v: SimpleNamespace, double: Any
     finally:
         app.dependency_overrides.pop(get_vision_ports, None)
     assert r.status_code == 200, r.text
-    return dict(r.json())
+    first = dict(r.json())
+    if first["final"]:
+        return first
+    # M5-S01: the first answer came once the instances were counted; the label read ran after it (the test client
+    # returns once the request's background task is done), so the look is final now.
+    assert first["source"] == "partial" and first["say"].endswith("Reading the labels.")
+    got = client.get(f"/v1/vision/looks/{first['look_id']}", headers={"Authorization": f"Bearer {s['dev']}"})
+    assert got.status_code == 200 and got.json()["final"] is True, got.text
+    return dict(got.json())
 
 
 def test_m5_v01_grocery_look_counts_damage_and_pack_size(client: TestClient, site: dict[str, Any], v: SimpleNamespace,
