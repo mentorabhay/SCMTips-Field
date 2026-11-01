@@ -1190,12 +1190,15 @@
   - services/field-worker/src/field_worker/core_feeds/publisher.py
   - services/field-worker/src/field_worker/core_feeds/snapshot.py
   - tools/dev_stack/stack.py
+  - tools/dev_stack/core_smoke.py
   - README.md
+  - docs/evidence/runs/2026-11-01-k6-hosted-compose.txt
   tests:
   - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c18_only_the_configured_tenants_receipts_reach_the_core
   - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c18_the_real_core_needs_its_tenant_named_else_nothing_is_sent
   - services/field-worker/tests/unit/test_core_feeds.py::test_m4_c18_feed_tenants_and_target_from_the_environment
   - tools/dev_stack/tests/test_stack.py::test_m4_c18_hosted_service_urls_and_the_phones_public_field_url
+  - tools/dev_stack/tests/test_core_smoke.py::test_m4_c18_a_secure_session_cookie_is_sent_to_a_hosted_core_over_its_internal_http_address
   frs: []
   verified_at: null
   note: >-
@@ -1209,6 +1212,12 @@
     FIELD_CORE_FEED_TENANTS (else FIELD_CORE_SNAPSHOT_TENANTS, else every tenant for back-compat) and, with
     FIELD_CORE_TARGET=core and no tenant named, sends nothing and reports FIELD_CORE_FEED_TENANTS. `stack` reaches
     hosted containers through FIELD_STACK_API_URL / FIELD_STACK_ERPSIM_URL / FIELD_STACK_CORE_URL and the pairing QR
-    carries FIELD_PUBLIC_URL. Partial: the image build and compose run on this container are recorded in
-    docs/evidence/runs/2026-11-01-k6-hosted-compose.txt once done; not run on GCP (VM-1, Cloud Build), not behind
-    real DNS and Let's Encrypt certificates, and not with the phone or the glasses against field.scmtips.com.
+    carries FIELD_PUBLIC_URL; the smoke's core web session sends the core's Secure cookie itself over the host's
+    internal http address. Local proof (docs/evidence/runs/2026-11-01-k6-hosted-compose.txt): all 8 images built
+    from the two repositories (base images replaced by local stand-ins: no Docker Hub in this container), the hosting
+    kit's compose stack up behind Caddy with a local CA, every one-shot exited 0 and every service healthy; probes on
+    all 7 hostnames (HSTS, www redirect, /metrics 404, erp. basic auth 401/200); the strict SAMPLE sign-up, demo setup,
+    demo mode, judges, the core's two feeds, seed-core-export, and smoke --erp-feed, --core (PO-26-1002, re-plan) and
+    --approver --scenario magnet-export-curbs all PASS against the containers; about 1 GB in use. Partial: not run on
+    GCP (VM-1, Cloud Build, Docker Hub images), not behind real DNS and Let's Encrypt certificates, the Meta model not
+    reached (rules-mode brief; G-E open), and not with the phone or the glasses against field.scmtips.com.

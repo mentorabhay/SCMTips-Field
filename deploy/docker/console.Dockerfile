@@ -7,11 +7,14 @@
 # core sign-in is not connected to the console yet (M4 ledger). Runs as the non-root `node` user.
 
 ARG NODE_IMAGE=node:22.23.4-slim
+# The pnpm that wrote pnpm-lock.yaml (the repository pins no packageManager; a newer pnpm refuses ignored builds).
+ARG PNPM_VERSION=10.28.0
 
 FROM ${NODE_IMAGE} AS build
+ARG PNPM_VERSION
 ENV NEXT_TELEMETRY_DISABLED=1 \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable
+RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages ./packages
