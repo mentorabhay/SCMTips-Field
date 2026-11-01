@@ -87,9 +87,10 @@ second run creates nothing and prints what exists; exit 1 with the reason on any
 `--field-url` (default `FIELD_SEED_FIELD_API_URL`, else `http://127.0.0.1:8020`), `--erp-sim-url`, `--password-env`
 (the NAME of the password variable; the value is never printed). Who can then start a case: core tokens carry
 `sites: ["*"]`, so every Field role with `field.task.execute` sees the site: core `procurement` (-> field.operator)
-and `org_admin`; `approver` (-> field.supervisor) cannot. **Check its `phone:` line**: the app opens the *first*
-site field-api lists (oldest first) and has no site switch, so if the tenant already had sites it prints a
-`WARNING phone:` naming the site the phone will open instead, and Today shows no grocery / pharmacy starters there.
+and `org_admin`; `approver` (-> field.supervisor) cannot. **Check its `phone:` line**: the app first opens the *first*
+site field-api lists (oldest first), so if the tenant already had sites it prints a `NOTE phone:` naming that site.
+On the phone, **Me → Site → Change** until it reads "Home (sandbox) · sandbox" (M5-H05); the choice is kept until
+sign-out, and Today then shows the grocery / pharmacy starters.
 
 **Hosted APK (M5-H02):** CI's android job also uploads **field-hosted-apk** (`app-hosted.apk`, version `0.6.0-m5-hosted`):
 the same debug build, whose sign-in screen offers SCMTIPS `https://api.scmtips.com` and Field

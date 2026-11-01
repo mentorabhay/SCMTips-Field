@@ -210,7 +210,8 @@ def test_m5_h01_the_phone_opening_another_site_is_a_warning() -> None:
                    site_id="00000000-0000-4000-8000-000000000001")  # sorts before any random id
     code, out, err = run(world)
     assert code == 0, err
-    assert "WARNING phone: a member signed in through SCMTIPS opens 'Goa plant' (PLANT-GOA, mode production)" in out
+    assert "NOTE phone: a member signed in through SCMTIPS first opens 'Goa plant' (PLANT-GOA, mode production)" in out
+    assert "Me -> Site -> Change to 'Home (sandbox)'" in out
 
 
 @pytest.mark.parametrize(("world", "port", "env", "why"), [

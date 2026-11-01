@@ -21,8 +21,9 @@ command makes the same things on a real deployment through real APIs only:
    HOME-A / HOME-B (``POST /v1/locations``, erp_ref HOME/HM01/<bin>);
 5. prints what exists, and which site a phone signed in through the core opens: the first one GET /v1/sites lists
    (apps/field-android SiteChoice; the core's tokens carry ``sites: ["*"]``, and site ids are UUIDv7, so that is the
-   tenant's oldest site). A tenant that already had sites gets a ``WARNING phone:`` line: the app has no site switch,
-   and Today's grocery / pharmacy starters show only on a sandbox site.
+   tenant's oldest site). A tenant that already had sites gets a ``NOTE phone:`` line: the phone opens that site
+   first, and Me -> Site -> Change (M5-H05) switches it to the sandbox site, where Today's grocery / pharmacy
+   starters show.
 
 Idempotent: a second run creates nothing and prints what is there. Exit 0 when everything exists afterwards, 1 on any
 failure (the reason on stderr). No database is written directly; no dev stand-in is called.
@@ -245,10 +246,10 @@ class Seeder:
             report.say(f"phone: a member signed in through SCMTIPS opens {SITE_NAME!r} (the first site listed)")
         else:
             others = len(items) - 1
-            report.say(f"WARNING phone: a member signed in through SCMTIPS opens {pick.get('name')!r}"
-                       f" ({pick.get('code')}, mode {pick.get('mode')}), not {SITE_NAME!r}: the app opens the first of"
-                       f" the {others + 1} sites listed (the oldest) and has no site switch; the grocery / pharmacy starters show"
-                       " only on a sandbox site")
+            report.say(f"NOTE phone: a member signed in through SCMTIPS first opens {pick.get('name')!r}"
+                       f" ({pick.get('code')}, mode {pick.get('mode')}), the oldest of the {others + 1} sites listed;"
+                       f" on the phone, Me -> Site -> Change to {SITE_NAME!r} (the choice is kept until sign-out) to see"
+                       " the grocery / pharmacy starters")
 
     def run(self, email: str, password: str) -> Report:
         report = Report()
