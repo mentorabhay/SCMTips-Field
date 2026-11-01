@@ -88,7 +88,9 @@ object LookApi {
             put("device_id", deviceId); put("sha256", sha256(jpeg)); put("bytes", jpeg.size); put("content_type", "image/jpeg")
         }, key)
 
-    fun capture(key: String, deviceId: String, taskId: String?, siteId: String, photo: LookPhoto, uploadId: String, objectClass: String) =
+    /** [codeType] / [codeValue]: a look's by default; the C3 seal photo sends `seal_photo` / `authenticity` (M5_C3_CONTRACT §7). */
+    fun capture(key: String, deviceId: String, taskId: String?, siteId: String, photo: LookPhoto, uploadId: String, objectClass: String,
+                codeType: String = CODE_TYPE, codeValue: String = "look-$key") =
         ApiRequest("POST", "/v1/captures", buildJsonObject {
             put("device_id", deviceId)
             taskId?.let { put("task_id", it) }
@@ -96,8 +98,8 @@ object LookApi {
             put("shutter_timestamp", photo.takenAtMs)
             put("blur_applied", true)
             put("bystander_count", photo.facesBlurred)
-            put("code_type", CODE_TYPE)
-            put("code_value", "look-$key") // unique per photo: a second look is never a duplicate capture
+            put("code_type", codeType)
+            put("code_value", codeValue) // a look's is unique per photo: a second look is never a duplicate capture
             put("object_class", objectClass.take(32))
             put("crop_upload_id", uploadId)
         }, key)
@@ -165,8 +167,12 @@ class LookClient(
     private val deviceId: () -> String?,
     private val newKey: () -> String = UUIDv7::generate,
 ) {
-    /** Uploads the photo through the captures API (upload session → PUT bytes → capture). */
-    suspend fun upload(photo: LookPhoto, taskId: String?, siteId: String, objectClass: String): UploadResult {
+    /**
+     * Uploads the photo through the captures API (upload session → PUT bytes → capture). [codeType] / [codeValue]
+     * default to a look's (`look`, `look-<key>`); the C3 seal photo passes its own.
+     */
+    suspend fun upload(photo: LookPhoto, taskId: String?, siteId: String, objectClass: String,
+                       codeType: String = LookApi.CODE_TYPE, codeValue: String? = null): UploadResult {
         val dev = deviceId() ?: return UploadResult.Failed("This phone is not registered yet.")
         if (photo.jpeg.size > LookApi.MAX_BYTES) return UploadResult.Failed("The photo is too large to send.")
         val session = when (val r = transport.send(LookApi.uploadSession(newKey(), dev, photo.jpeg))) {
@@ -175,7 +181,9 @@ class LookClient(
         }
         val put = bytes.put("/v1/captures/uploads/$session", photo.jpeg, "image/jpeg")
         if (put !is ApiResult.Ok) return failed(put)
-        return when (val r = transport.send(LookApi.capture(newKey(), dev, taskId, siteId, photo, session, objectClass))) {
+        val key = newKey()
+        val capture = LookApi.capture(key, dev, taskId, siteId, photo, session, objectClass, codeType, codeValue ?: "look-$key")
+        return when (val r = transport.send(capture)) {
             is ApiResult.Ok -> r.body.s("id")?.let { UploadResult.Uploaded(it) } ?: UploadResult.Failed("The server did not keep the photo.")
             is ApiResult.Problem -> if (r.code == LookApi.NO_CONSENT) UploadResult.NeedsConsent else UploadResult.Failed(r.plain)
             is ApiResult.Offline -> UploadResult.Failed(OFFLINE)

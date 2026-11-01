@@ -293,14 +293,28 @@ object ClaimText {
         "pack_size" -> "wrong pack size"
         "expired" -> "expired"
         "near_expiry" -> "near expiry"
+        // M5-T05, a box check's lines (one unit each, pieces 0: M5_C3_CONTRACT §4.4)
+        "not_new" -> "not a new unit"
+        "counterfeit" -> "likely counterfeit"
+        "copied_code" -> "seal code copied"
+        "cannot_verify" -> "cannot be verified"
+        "tampered_seal" -> "seal tampered"
         else -> r.replace('_', ' ')
     }
 
-    /** "2 damaged, 4 pieces wrong pack size": the lines as words (numbers straight from the server). */
-    fun lines(c: Claim): String = c.lines.joinToString(", ") { l ->
+    /**
+     * "2 damaged, 4 pieces wrong pack size": the lines as words (numbers straight from the server). A box check's
+     * claim is about one unit, so its lines are its reasons only ("not a new unit, seal tampered").
+     */
+    fun lines(c: Claim): String = if (c.authenticity) {
+        c.lines.joinToString(", ") { reason(it.reason) }.ifEmpty { "no lines" }
+    } else c.lines.joinToString(", ") { l ->
         listOfNotNull(l.units?.let { "$it ${if (it == 1) "unit" else "units"}" }, l.pieces?.let { "$it ${if (it == 1) "piece" else "pieces"}" })
             .joinToString(", ").ifEmpty { "some" } + " " + reason(l.reason)
     }.ifEmpty { "no lines" }
 
-    fun drafted(c: Claim): String = "Claim drafted. ${sentence(c.text.ifBlank { lines(c) })} A supervisor approves it before it is sent."
+    fun drafted(c: Claim): String = "Claim drafted. ${sentence(body(c))} A supervisor approves it before it is sent."
+
+    /** The claim's text, else its lines; a box check's lines start a sentence ("Not a new unit, ..."). */
+    fun body(c: Claim): String = c.text.ifBlank { lines(c).let { if (c.authenticity) it.replaceFirstChar(Char::uppercaseChar) else it } }
 }

@@ -176,4 +176,18 @@ class ClaimReviewTest {
         assertTrue(s.voice.said.contains("The claim changed meanwhile. Nothing was decided. Say approve or reject again."))
         assertTrue(s.voice.said.contains("Too late to confirm. Nothing changed. Say approve or reject again."))
     }
+
+    @Test
+    fun m5T05_anAuthenticityClaimIsReadWithItsKind_andDecidedTheSameWay() = runBlocking {
+        val card = Card()
+        val s = Setup(Ear("approve", "confirm", "stop"), display = card, drafts = """{"items":[
+            {"claim_id":"cl-1","status":"draft","etag":"1-c1","kind":"authenticity","check_id":"ck-1","look_id":null,
+             "lines":[{"reason":"not_new","units":1,"pieces":0},{"reason":"tampered_seal","units":1,"pieces":0}],"text":""}]}""")
+        assertEquals(ClaimFlowState.Finished(ClaimOutcome.DONE, 1), s.flow.run())
+        assertEquals("SAMPLE claim 1 of 1 · Box check", card.shown[0].title)
+        assertEquals("Not a new unit, seal tampered.", card.shown[0].body)
+        assertEquals("Claim 1 of 1. Box check. Not a new unit, seal tampered. Say approve, reject, next claim, or stop.", s.voice.said[0])
+        assertEquals("1-c1", s.decisions().single().headers["If-Match"])
+        assertEquals(1, s.confirms().size)
+    }
 }

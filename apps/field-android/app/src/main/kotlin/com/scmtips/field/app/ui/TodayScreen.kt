@@ -91,6 +91,10 @@ fun TodayScreen(ui: AppUi, a: Actions) {
         }
         if (ui.home.decisions) item { DecisionsCard(ui.decisions, ui.work.active, a) }
         if (ui.claims.waiting != null) item { ClaimsCard(ui.claims, ui.work.active, a) }
+        // M5-T05: any Field role may check a box (field.authenticity.check); the server's 403 hides the card.
+        if (com.scmtips.field.app.check.CheckText.cardVisible(ui.pairing != null && ui.deviceId != null, ui.check.allowed)) {
+            item { CheckBoxCard(ui.work.active, a) }
+        }
         item { WorkCard(ui.work, ui.glasses.session == "STARTED", a) }
         // M5: the two test cases first on a sandbox site (contract §1), above the rest of the list.
         val cases = com.scmtips.field.app.home.CaseStart.offered(ui.sandbox && ui.home.fieldWork && ui.pairing != null)

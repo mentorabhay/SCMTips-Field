@@ -983,3 +983,84 @@
     Contract only. Everything in C3 is SAMPLE (fictional OEM Kestrel Optics (SAMPLE), OEM simulator); a real OEM
     would have to sign its seals and open its registry, which none does for this build. Partial until proven on the
     owner's phone and glasses.
+- id: M5-T05
+  title: >-
+    C3 phone flow, "Is this unit really new?" (M5_C3_CONTRACT §7): "check this box" / "is this new" / "check the
+    seal" in a work session or Today's "Check a delivered box" card; "Show me the seal code."; a photo from the
+    glasses (phone camera fallback, the card says which); the QR read on the phone from that photo (else "hold the
+    seal closer" or a direct phone scan); the seal photo through the captures API (seal_photo / authenticity, no
+    task; consent and blur gates as for looks; code only when it cannot be sent); POST /v1/authenticity/checks;
+    say spoken at once, GET every 1 s up to 45 s and say_next once; the verdict card (colour, seal tampered chip,
+    signature, history timeline, first check, seal photo with its box); make a claim (POST /v1/claims {check_id}),
+    evidence page (POST .../link), check again, try again, done; authenticity claims in the supervisor's review
+  workstream: M5-T
+  role: Builder (C3 app)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/check/CheckModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/check/CheckApi.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/check/CheckFlow.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/check/CheckText.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/CheckScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/Conductor.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookApi.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/ClaimReview.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookFlow.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/AppRoot.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/TodayScreen.kt
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityClientTest.kt::m5T05_theCheckRequest_carriesTheCodeAndNullsButNoArea
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityClientTest.kt::m5T05_theSealPhotoGoesThroughTheCapturesApi_asASealPhotoWithoutATask
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityClientTest.kt::m5T05_theContractBodyIsReadInFull
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityClientTest.kt::m5T05_allFiveVerdictsParse_withTheirColours
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityClientTest.kt::m5T05_errorCodesBecomeTheContractsWords
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityClientTest.kt::m5T05_aClaimFromACheck_isAnAuthenticityClaimWithANullLookId
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityClientTest.kt::m5T05_lookClaimsParseAsBefore_andListsMixBothKinds
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityClientTest.kt::m5T05_theEvidenceLinkIsSigned_andMadeAbsoluteByTheFlow
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_aOneStepCheck_isAskedForSpokenAndShown
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_twoSteps_theVerdictAtOnce_thenThePollSpeaksTheSealOnce
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_noFinalCheckWithin45Polls_saysTheSealWasNotChecked_andAFailedPollIsRetried
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_leavingDoneOrANewCheck_cancelsThePoll_andNothingMoreIsSaid
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_noQrInThePhoto_asksToHoldCloser_thenAPhoneScanChecksWithThatPhoto
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_noPhotoOrNoScan_isSaid_andNothingIsSent
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_aPersonWhoMayNotUploadPhotos_isCheckedByCodeOnly
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_photoConsentIsAskedOnce_thenAgreeOrCodeOnly
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_networkFailure_tryAgainSendsTheSameKey_checkAgainANewOne
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_forbiddenSiteAndAMissingPhoto_saySoAndActSensibly
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_makeAClaim_readsTheDraft_orSaysThereIsNothingToClaim_andTheEvidencePageOpens
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityFlowTest.kt::m5T05_aClaimWaitsForTheSealCheck
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityGrammarTest.kt::m5T05_startPhrasesWorkAnyTime_withTheContractsVariants
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityGrammarTest.kt::m5T05_afterTheAnswer_claimEvidenceDoneRetryAndPhoneScan_onlyWhileTheCardIsOpen
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityGrammarTest.kt::m5T05_mumbledOrOtherWords_areNeverActedOn
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityGrammarTest.kt::m5T05_theSealCodeIsPicked_andAnythingElseIsStillSent
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityGrammarTest.kt::m5T05_theSignalsInPlainWords
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/check/AuthenticityGrammarTest.kt::m5T05_whatCanBeClaimed_followsTheContract
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorCheckTest.kt::m5T05_checkThisBox_startsACheck_withOrWithoutAJob_neverTheAssistant
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorCheckTest.kt::m5T05_withTheCardOpen_claimEvidenceAgainAndDone_areTheChecks
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorCheckTest.kt::m5T05_aMumbledCheckIsNothing_andWithoutThePortTheWordsGoOnAsBefore
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5T05_anAuthenticityClaimIsReadWithItsKind_andDecidedTheSameWay
+  frs: []
+  verified_at: null
+  note: >-
+    Coded against M5_C3_CONTRACT §4 and §7 with a scripted field-api in test code (ScriptedFieldApi); the server side
+    (feat/m5-c3-authenticity, built in parallel) was not called. Decisions where the contract left room: the Today
+    card shows whenever the phone is linked to a Field site (any role; the app does not know Field roles, so the
+    server decides: a 403 hides the card until another site or sign-in, and says "You are not allowed to check
+    boxes here."); "Show me the seal code." is followed by 2.5 s to turn the seal to the camera, then one photo; the
+    QR is read from the full-size photo before it is blurred; a SEAL1. code is preferred, else the first code read
+    is sent (the server answers "It is not a seal code."); a code over 1024 characters is not sent; capture_id and
+    site_id are sent as explicit null when absent and area is never sent (owner has not decided); a seal photo
+    that cannot be uploaded (no field.capture.create, or a failed face check) means a code-only check, said aloud;
+    consent asks once per site with Agree or Check by code only; 404 FIELD-AUT-404-CAPTURE re-checks by code only
+    with a new key; a network failure keeps the request for "try again" with the same Idempotency-Key, "check
+    again" is a new photo and a new key; an app-side poll timeout says "I couldn't check the seal."; "make a claim",
+    "show evidence", "done", "try again" and "scan with the phone" are the check's only while its card is open, so a
+    look's claim is unchanged otherwise. Claims: list items with kind authenticity and look_id null parse (kind,
+    check_id, look_id), their lines read as reasons ("not a new unit, seal tampered"), the supervisor's card and
+    read-out add "Box check"; look claims unchanged. The Android wiring (FieldController, MainActivity, CheckScreen,
+    Today card) is type-checked by tools/android_check/compile_check.py only, not a Gradle build. Nothing ran on the
+    owner's phone or the glasses, and the glasses photo path is unproven on real glasses (META_FIELD row 5).

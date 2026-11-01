@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.scmtips.field.app.AppUi
+import com.scmtips.field.app.check.CheckAction
 import com.scmtips.field.app.home.CaseStart
 import com.scmtips.field.app.home.SandboxStart
 import com.scmtips.field.feature.decisions.api.SignInMethod
@@ -101,6 +102,8 @@ class Actions(
     val testCamera: () -> Unit = {},
     val uploadProbe: (Boolean) -> Unit = {},
     val closeProbe: () -> Unit = {},
+    /** M5-T05: the C3 box check (Today's card, the check card's buttons). */
+    val check: (CheckAction) -> Unit = {},
 )
 
 @Composable
@@ -123,6 +126,15 @@ fun AppRoot(ui: AppUi, a: Actions) {
             ui.look.evidenceUrl != null -> Column(Modifier.fillMaxSize()) {
                 if (ui.work.active) SessionStrip(ui.work, a)
                 Box(Modifier.weight(1f)) { EvidenceScreen(ui.look.evidenceUrl, a) }
+            }
+            // M5-T05: a box check's evidence page, then its card (over an open job: no task is needed for a check).
+            ui.check.evidenceUrl != null -> Column(Modifier.fillMaxSize()) {
+                if (ui.work.active) SessionStrip(ui.work, a)
+                Box(Modifier.weight(1f)) { EvidenceScreen(ui.check.evidenceUrl, a) }
+            }
+            ui.check.open -> Column(Modifier.fillMaxSize()) {
+                if (ui.work.active) SessionStrip(ui.work, a)
+                Box(Modifier.weight(1f)) { CheckScreen(ui.check, ui.work.active, a) }
             }
             job != null -> Column(Modifier.fillMaxSize()) {
                 if (ui.work.active) SessionStrip(ui.work, a)
