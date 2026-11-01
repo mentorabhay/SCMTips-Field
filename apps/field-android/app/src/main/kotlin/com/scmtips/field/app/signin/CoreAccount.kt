@@ -35,8 +35,11 @@ class CoreAccount(
     /** The core's permission keys (the sign-in claims, then field-api's `core_permissions` echo). */
     val permissions: List<String> = emptyList(),
 ) {
-    /** May approve decisions: the core's capability, or its `voice.approve` permission (stand-in and real core). */
-    val approver: Boolean get() = capabilities.approveDecisions || APPROVE in permissions
+    /**
+     * May approve decisions: the core's capability, or its `voice.approve` permission (stand-in and real core), and a
+     * wearable token to approve with (the core answers `wearable: null` without a pairing permission, 384c471).
+     */
+    val approver: Boolean get() = (capabilities.approveDecisions || APPROVE in permissions) && wearable.present
 
     /** Does field work: the core's capability, or its `field.operate` permission. */
     val fieldOperator: Boolean get() = capabilities.fieldOperator || OPERATE in permissions
@@ -171,7 +174,7 @@ class AccountStore(private val store: PhoneBinding.Store) {
 /** The core calls' credentials, read fresh from the store each time (an expired wearable token is no token). */
 class AccountCredentials(private val account: () -> CoreAccount?, private val now: () -> Long = System::currentTimeMillis) : CoreCredentials {
     override val deviceId: String get() = account()?.wearable?.deviceId.orEmpty()
-    override val token: String? get() = account()?.takeUnless { it.wearableExpired(now()) }?.wearable?.token
+    override val token: String? get() = account()?.takeUnless { it.wearableExpired(now()) }?.wearable?.token?.takeIf { it.isNotEmpty() }
 }
 
 /** Which homes Today shows (handover 01 F1 step 1). Only the core's capabilities decide; a QR pairing is field work. */

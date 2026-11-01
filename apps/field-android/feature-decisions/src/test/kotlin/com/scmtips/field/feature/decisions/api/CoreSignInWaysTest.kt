@@ -82,4 +82,39 @@ class CoreSignInWaysTest {
         assertEquals(0, e.status)
         assertEquals(CoreSignIn.OFFLINE, e.code)
     }
+
+    /** Core 384c471 AppTokenOut: `wearable` is null for an account without a pairing permission. */
+    @Test
+    fun m5L01_aNullWearable_signsIn_butGivesNoDecisionCalls() = runBlocking {
+        http.reply(200, """{"access_token":"x.e30.y","token_type":"Bearer","expires_in":900,
+            "claims":{"tenant_id":"t-1","sites":["*"],"permissions":["voice.approve"],"device_id":"$deviceId"},
+            "wearable":null,"user":{"id":"u-1","display_name":"Demo Guest","email":"demo-guest@sample-drone-oem.example"},
+            "capabilities":{"approve_decisions":true,"field_operator":true}}""")
+        val t = CoreSignIn("http://core.test", http).signIn(SignInMethod.Demo, deviceId, DeviceModel.PHONE_ONLY)
+        assertFalse(t.wearable.present)
+        assertEquals(deviceId, t.wearable.deviceId)
+        assertFalse(t.capabilities.approveDecisions) // nothing to approve with
+        assertTrue(t.capabilities.fieldOperator)
+        assertEquals("demo-guest@sample-drone-oem.example", t.user.email)
+    }
+
+    /** Contract §4 and core 384c471: the console shows the 8-character code in groups of four; spaces are stripped. */
+    @Test
+    fun m5L01_aConsoleCodeInGroupsOfFour_isSentWithoutSpaces_andTheCoresLengthsAreKept() = runBlocking {
+        assertEquals("ABCDEFGH", body(SignInMethod.PairingCode(" ABCD EFGH "))["pairing_code"]!!.jsonPrimitive.content)
+        assertEquals("ABCDEFGH", body(SignInMethod.PairingCode("ABCD\u00A0EFGH"))["pairing_code"]!!.jsonPrimitive.content)
+        for (bad in listOf("ABC DEF", "A".repeat(21), "ABCD\tEFGH")) {
+            val e = runCatching { CoreSignIn("http://core.test", http).signIn(SignInMethod.PairingCode(bad), deviceId, DeviceModel.PHONE_ONLY) }.exceptionOrNull()
+            assertTrue(bad, e is SignInException && e.status == 0)
+        }
+        assertTrue(http.calls.isEmpty())
+    }
+
+    @Test
+    fun m5L01_theDemosRateLimit_isSaid() = runBlocking {
+        http.reply(429, """{"status":429,"code":"rate_limited"}""")
+        val e = runCatching { CoreSignIn("http://core.test", http).signIn(SignInMethod.Demo, deviceId, DeviceModel.PHONE_ONLY) }.exceptionOrNull() as SignInException
+        assertEquals("rate_limited", e.code)
+        assertTrue(e.message!!, e.message!!.contains("SAMPLE demo"))
+    }
 }

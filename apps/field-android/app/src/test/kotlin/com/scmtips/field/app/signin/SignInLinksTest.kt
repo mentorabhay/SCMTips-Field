@@ -90,4 +90,16 @@ class SignInLinksTest {
         assertTrue(SignInProblem.SSO.offersScan)
         assertFalse(SignInProblem.WRONG.offersDemo || SignInProblem.WRONG.offersScan)
     }
+
+    /** Core 384c471: `wearable: null` without a pairing permission. Such an account approves nothing and sends no token. */
+    @Test
+    fun m5L01_anAccountWithoutAWearableToken_isNoApprover_andHasNoDecisionToken() {
+        val none = com.scmtips.field.feature.decisions.api.WearableSession("", "", "", "3f1c2a9e-5b7d-4c11-9e2f-0a1b2c3d4e5f")
+        val a = CoreAccount("https://api.scmtips.com", "https://field.scmtips.com", "jwt", Long.MAX_VALUE, "t-1", listOf("*"), "u-1",
+            "Demo Guest", "demo-guest@sample-drone-oem.example", none,
+            com.scmtips.field.feature.decisions.api.Capabilities(approveDecisions = true, fieldOperator = true), listOf(CoreAccount.APPROVE))
+        assertFalse(a.approver)
+        assertTrue(a.fieldOperator)
+        assertNull(AccountCredentials({ a }).token)
+    }
 }

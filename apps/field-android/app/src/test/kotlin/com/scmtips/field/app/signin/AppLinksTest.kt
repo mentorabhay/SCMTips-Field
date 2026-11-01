@@ -68,4 +68,17 @@ class AppLinksTest {
         assertEquals(AccountText.SIGNED_IN_ALREADY, busy.error)
         assertTrue(none.isEmpty())
     }
+
+    /** The console shows the pairing code in groups of four (contract §4, core 384c471): its spaces are not part of it. */
+    @Test
+    fun m5L04_aPairLinkOrScanWithTheCodeInGroupsOfFour_givesTheCodeWithoutSpaces() {
+        for (link in listOf("https://app.scmtips.com/pair?code=ABCD%20EFGH", "https://app.scmtips.com/pair?code=ABCD+EFGH")) {
+            val p = SignInLinks.parse(link, setOf(SignInLinks.WEB_HOST))
+            assertTrue(link, p is AppLink.Pair && p.code == "ABCDEFGH")
+        }
+        val scan = SignInLinks.scanned("ABCD EFGH")
+        assertTrue(scan is SignInLinks.Scanned.Code && scan.code == "ABCDEFGH")
+        assertNull(SignInLinks.parse("https://app.scmtips.com/pair?code=ABC", setOf(SignInLinks.WEB_HOST))) // under 8
+        assertEquals(SignInLinks.Scanned.NotACode, SignInLinks.scanned("A".repeat(21)))
+    }
 }

@@ -4,6 +4,7 @@ import com.scmtips.field.app.slice.PairingPayload
 import com.scmtips.field.feature.decisions.api.CoreSignIn
 import com.scmtips.field.feature.decisions.api.CoreUrls
 import com.scmtips.field.feature.decisions.api.AccountTokens
+import com.scmtips.field.feature.decisions.api.PairingCodes
 import java.net.URI
 import java.net.URLDecoder
 
@@ -32,7 +33,19 @@ sealed interface AppLink {
 object SignInLinks {
     /** The verified App Link host (AndroidManifest.xml intent filters with android:autoVerify). */
     const val WEB_HOST = "app.scmtips.com"
-    private val PAIR_CODE = Regex("^[A-Za-z0-9-]{4,64}$")
+    /** A pairing code (8 to 20 characters, the core's AppTokenIn), or the console's groups of four with spaces. */
+    private val PAIR_CODE = Regex("^[A-Za-z0-9-]{8,20}$")
+    private val GROUPED = Regex("^[A-Za-z0-9]{4}( [A-Za-z0-9]{4})+$")
+
+    /**
+     * The code in [raw]: as it is, or the console's "ABCD EFGH" without its spaces (PairingCodes.clean). Spaces are
+     * removed only between groups of four, so words such as "hello there" never become a code.
+     */
+    fun pairCode(raw: String): String? {
+        val t = raw.replace('\u00A0', ' ').trim()
+        val code = if (GROUPED.matches(t)) PairingCodes.clean(t) else t
+        return code.takeIf(PAIR_CODE::matches)
+    }
 
     /**
      * The link in [raw], or null when it is none of the three. [hosts]: the hosts accepted (MainActivity passes the
@@ -49,7 +62,7 @@ object SignInLinks {
         return when {
             path == "/reset/confirm" -> query["token"]?.takeIf(AccountTokens::valid)?.let(AppLink::Reset)
             path.startsWith("/invite/") -> path.removePrefix("/invite/").takeIf(AccountTokens::valid)?.let(AppLink::Invite)
-            path == "/pair" -> query["code"]?.trim()?.takeIf(PAIR_CODE::matches)?.let(AppLink::Pair)
+            path == "/pair" -> query["code"]?.let(::pairCode)?.let(AppLink::Pair)
             else -> null
         }
     }
@@ -75,7 +88,7 @@ object SignInLinks {
         val t = raw.trim()
         parse(t)?.let { return Scanned.Link(it) }
         if (t.startsWith("{") && runCatching { PairingPayload.parse(t) }.isSuccess) return Scanned.PcPairing(t)
-        return if (PAIR_CODE.matches(t)) Scanned.Code(t) else Scanned.NotACode
+        return pairCode(t)?.let { Scanned.Code(it) } ?: Scanned.NotACode
     }
 
     /** "I have an invite": a pasted invite link, its 43-character code, or (helpfully) a reset or console link. */

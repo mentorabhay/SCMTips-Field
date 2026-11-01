@@ -684,7 +684,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
     private fun signOutOfCore(a: CoreAccount) {
         val api = CoreClient(a.coreBaseUrl, coreCredentials, coreHttp)
         val sid = a.wearable.sessionId
-        scope.launch { runCatching { api.revoke(sid) }.onFailure { log("sign-out: the core was not told (${it.javaClass.simpleName})") } }
+        if (a.wearable.present) scope.launch { runCatching { api.revoke(sid) }.onFailure { log("sign-out: the core was not told (${it.javaClass.simpleName})") } }
         stopLaunches()
         accounts.clear()
         account = null

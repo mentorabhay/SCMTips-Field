@@ -36,11 +36,26 @@ sealed interface SignInMethod {
     data object Demo : SignInMethod
 }
 
+/**
+ * Pairing codes (the web's and the Field console's QR): the console shows them in groups of four ("ABCD EFGH"), and
+ * the spaces are not part of the code; the core takes 8 to 20 characters (core 384c471, AppTokenIn.pairing_code).
+ */
+object PairingCodes {
+    val LENGTHS = 8..20
+    fun clean(raw: String): String = raw.filterNot { it == ' ' || it == '\u00A0' }.trim()
+}
+
 /** `device_model` of the sign-in body. */
 enum class DeviceModel(val wire: String) { RAYBAN_META_GEN2("RAYBAN_META_GEN2"), PHONE_ONLY("PHONE_ONLY") }
 
-/** The wearable (device) session: its token goes only to the core's decision calls, with [deviceId]. */
+/**
+ * The wearable (device) session: its token goes only to the core's decision calls, with [deviceId]. The core answers
+ * `wearable: null` for an account without a pairing permission (core 384c471, AppTokenOut): then [present] is false,
+ * every field is empty but [deviceId], and the account has no decision calls.
+ */
 class WearableSession(val sessionId: String, val token: String, val expiresAt: String, val deviceId: String) {
+    val present: Boolean get() = token.isNotEmpty()
+
     override fun toString(): String = "WearableSession($sessionId, device=$deviceId, expiresAt=$expiresAt, token=<redacted>)"
 }
 
@@ -113,8 +128,10 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
                         put("password", method.password)
                     }
                     is SignInMethod.PairingCode -> {
-                        val code = method.code.trim()
-                        if (code.isEmpty() || code.length > 64 || code.any { it.isWhitespace() }) {
+                        // The console shows the code in groups of four ("ABCD EFGH"): spaces are not part of it. The core
+                        // takes 8 to 20 characters (core 384c471, AppTokenIn.pairing_code).
+                        val code = PairingCodes.clean(method.code)
+                        if (code.length !in PairingCodes.LENGTHS || code.any { it.isWhitespace() }) {
                             throw SignInException(0, "pairing_code", "Enter the pairing code shown in SCMTIPS on the web.")
                         }
                         put("pairing_code", code)
@@ -144,7 +161,9 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
         fun parse(body: JsonObject): AppToken {
             val access = body.req("access_token")
             val claims = body.o("claims") ?: jwtClaims(access) ?: JsonObject(emptyMap())
-            val w = body.o("wearable") ?: throw IllegalArgumentException("missing 'wearable'")
+            // `wearable` is required in the answer but may be null (no pairing permission): no decision calls then.
+            if (!body.containsKey("wearable")) throw IllegalArgumentException("missing 'wearable'")
+            val w = body.o("wearable")
             val u = body.o("user") ?: throw IllegalArgumentException("missing 'user'")
             val caps = body.o("capabilities")
             return AppToken(
@@ -153,9 +172,11 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
                 tenantId = claims.s("tenant_id"),
                 sites = claims.strings("sites"),
                 permissions = claims.strings("permissions"),
-                wearable = WearableSession(w.req("session_id"), w.req("token"), w.s("expires_at").orEmpty(), w.req("device_id")),
+                wearable = w?.let { WearableSession(it.req("session_id"), it.req("token"), it.s("expires_at").orEmpty(), it.req("device_id")) }
+                    ?: WearableSession("", "", "", claims.s("device_id").orEmpty()),
                 user = CoreUser(u.req("id"), u.s("display_name") ?: u.s("email") ?: "Signed in", u.s("email")),
-                capabilities = Capabilities(caps?.b("approve_decisions") ?: false, caps?.b("field_operator") ?: false),
+                // Without a wearable token there is nothing to approve with, whatever the capability says.
+                capabilities = Capabilities((caps?.b("approve_decisions") ?: false) && w != null, caps?.b("field_operator") ?: false),
             )
         }
 
@@ -180,6 +201,8 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
                 reply.status == 403 && code == "demo_off" -> "The SAMPLE demo is not available on this SCMTIPS server."
                 reply.status == 403 -> "SCMTIPS does not allow this sign-in (${code ?: "403"})."
                 reply.status == 429 && code == "locked" -> "Too many wrong tries for that code. Ask for a new code."
+                reply.status == 429 && method is SignInMethod.Demo ->
+                    "The SAMPLE demo has had many sign-ins from this network. Try again in an hour, or use a judge account."
                 reply.status == 429 -> "Too many tries. Wait a minute, then try again."
                 reply.status == 503 -> "SCMTIPS cannot sign anyone in right now (${code ?: "503"}). Try again later."
                 else -> "SCMTIPS refused the sign-in (HTTP ${reply.status}${code?.let { " $it" } ?: ""})."
@@ -193,7 +216,7 @@ class CoreSignIn(baseUrl: String, private val http: CoreHttp) {
          * token); the app uses it when a core does not serve `/v1/auth/app/token`.
          */
         suspend fun pairWearable(baseUrl: String, http: CoreHttp, code: String, deviceId: String, model: DeviceModel): Pair<WearableSession, String> {
-            val c = code.trim()
+            val c = PairingCodes.clean(code)
             if (c.length != 8) throw SignInException(0, "pairing_code", "The pairing code has 8 characters.")
             if (!DEVICE_ID.matches(deviceId)) throw SignInException(0, "device_id", "This phone's device id is not valid. Reinstall the app.")
             val url = CoreUrls.join(CoreUrls.v1(baseUrl), "wearable", "sessions")

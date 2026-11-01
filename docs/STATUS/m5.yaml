@@ -1671,6 +1671,10 @@
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L01_demoAndScan_signInWithTheirMethods_andDemoOffHidesTheButtonForThatServer
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L01_backWalksTheStages_thenLeavesItToTheShell
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AccountFlowTest.kt::m5L01_noSecretIsKeptInTheView_orPrintedByAnEvent
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_aNullWearable_signsIn_butGivesNoDecisionCalls
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_aConsoleCodeInGroupsOfFour_isSentWithoutSpaces_andTheCoresLengthsAreKept
+  - apps/field-android/feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/CoreSignInWaysTest.kt::m5L01_theDemosRateLimit_isSaid
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/SignInLinksTest.kt::m5L01_anAccountWithoutAWearableToken_isNoApprover_andHasNoDecisionToken
   frs: []
   verified_at: null
   note: >-
@@ -1695,6 +1699,15 @@
     browser pages) and ForgotText stay with their tests but are no longer used by any screen; the browser is never
     opened for sign-in, reset or create account. Compose files are Android-only in jvm-unit.json; they type-check with
     tools/android_check/compile_check --all; no Gradle build or device run was possible here (no Android SDK).
+    Aligned on 2 Nov with the core builder's commit 384c471 (hack/m5l-signin, read in its source, not called):
+    AppTokenIn takes exactly one way per body (email+password, email+email_code, pairing_code of 8 to 20 characters,
+    demo: true) plus device_id, device_model, display_capable, client, which is what the app sends; the code is tied
+    to the device_id, and the app uses its one install id for the code request and the token; a pairing code shown in
+    groups of four ("ABCD EFGH") is sent without its spaces; 429 rate_limited for the demo (10 per IP per hour) says
+    so; and AppTokenOut's `wearable: null` (no pairing permission) now signs in instead of failing with "SCMTIPS
+    answered without wearable": such an account gets no decision calls (CoreAccount.approver needs a wearable token,
+    AccountCredentials sends none, sign-out does not revoke an empty session). An answer without the `wearable` key
+    at all is still refused, as before.
 - id: M5-L02
   title: >-
     In-app invite and reset (A-08, M5_SIGNIN_CONTRACT §5, §7): invite from a pasted link or code (or its App Link) →
@@ -1775,7 +1788,7 @@
     callback filter (scmtipsfield://), which is unchanged; the launcher filter and the glasses' voice launch are
     unchanged. MainActivity passes intent.dataString on the first onCreate (not after a recreate) and on onNewIntent
     (singleTop) to FieldController.openLink, which accepts only host app.scmtips.com and the three shapes
-    (SignInLinks.parse: a 43-character token, a 4 to 64 character code); anything else is left alone. A phone that is
+    (SignInLinks.parse: a 43-character token, an 8 to 20 character code with its spaces removed); anything else is left alone. A phone that is
     already signed in or paired gets "Sign out in Profile first" instead of a second sign-in. The test reads the
     manifest source (not the merged manifest; CI's Gradle build merges and lints it). No Gradle build or device run was
     possible here (no Android SDK).
