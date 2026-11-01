@@ -23,6 +23,7 @@ from field_api.errors import (
     FieldError,
     problem_json_response,
 )
+from field_api.evidence.api import router as evidence_router
 from field_api.graph.api import router as graph_router
 from field_api.installed_base.api import router as installed_base_router
 from field_api.jobs.confirmations import router as job_confirmations_router
@@ -240,6 +241,7 @@ def create_app() -> FastAPI:
     app.include_router(assistant_router)
     app.include_router(briefs_router)
     app.include_router(claims_router)  # M5 stream X
+    app.include_router(evidence_router)  # M5 stream X
 
     return app
 

@@ -97,6 +97,54 @@
     the supplier is SIMULATED: one claim.sent outbox record (simulated true, channel none), no e-mail. Additions to
     the contract response (look_id, task_id, site_id, decision fields, sent, version) are additive;
     evidence_url is the JSON pack path of the posted receipt, an empty string until it is posted.
+- id: M5-X04
+  title: >-
+    Evidence pack GET /v1/evidence/documents/{doc_number}?year= assembled from erp_document, posting jobs, outbox
+    events, task lines, voice events, assistant turns, the claim and the look, with photo and pack sha256
+  workstream: M5-X
+  role: Stream X (claims and evidence)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/evidence/pack.py
+  - services/field-api/src/field_api/evidence/api.py
+  tests:
+  - services/field-api/tests/claims/test_evidence.py::test_pack_holds_document_look_models_check_confirm_claim_and_hashes
+  - services/field-api/tests/claims/test_evidence.py::test_pack_hash_is_stable_and_follows_the_content
+  - services/field-api/tests/claims/test_evidence.py::test_canonical_json_ignores_key_order
+  - services/field-api/tests/claims/test_evidence.py::test_pack_roles_tenants_and_unknown_documents
+  - services/field-api/tests/claims/test_evidence.py::test_pack_without_a_look_still_shows_the_document
+  frs: []
+  verified_at: null
+  note: >-
+    The look is found by erp_document.payload.look_id (ASSUMPTION: stream V's receive extension puts the look_id
+    there, as the voice gate puts its confirm fields) or else by the latest claim of the document's task. Movements
+    are the posting steps as staged for the ERP plus the erp.posted events (no read of erp-sim from field-api); the
+    101A / 101Q split shows as whatever V stages. Label raw text is left out of the pack (contract section 6).
+    Tested on records inserted the way Field writes them, not yet on a real V posting.
+- id: M5-X05
+  title: >-
+    Signed evidence link (POST /v1/evidence/documents/{doc}/link) and the self-contained evidence page
+    GET /evidence/{token} (embedded photo, numbered SVG outlines, SAMPLE banner, model calls, check, confirm, claim,
+    hashes)
+  workstream: M5-X
+  role: Stream X (claims and evidence)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/evidence/signing.py
+  - services/field-api/src/field_api/evidence/page.py
+  - tools/checks/route_auth.py
+  tests:
+  - services/field-api/tests/claims/test_evidence.py::test_signed_link_opens_a_self_contained_page
+  - services/field-api/tests/claims/test_evidence.py::test_link_tamper_expiry_and_other_tenant
+  - services/field-api/tests/claims/test_evidence.py::test_signing_round_trip_and_key
+  - services/field-api/tests/claims/test_evidence.py::test_page_escapes_every_value
+  frs: []
+  verified_at: null
+  note: >-
+    Token = base64url(JSON {v, t tenant, d doc, y year, e expiry}) + "." + hex HMAC-SHA256 with FIELD_EVIDENCE_SECRET
+    over a domain prefix + payload (the audit-report key, domain-separated); default 24 h (FIELD_EVIDENCE_LINK_TTL_S,
+    60 s..7 d). GET /evidence/{token} is listed in route_auth PUBLIC (the token is the credential). Page: no external
+    asset, CSP default-src 'none', photo as a data URI, outlines in image pixels. Not yet opened on the owner's phone.
 - id: M5-X06
   title: >-
     Claims by voice in the Field Assistant rules (no model call to classify): "make a claim" (operator, needs

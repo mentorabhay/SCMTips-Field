@@ -5301,6 +5301,170 @@
           }
         }
       }
+    },
+    "/v1/evidence/documents/{doc_number}": {
+      "get": {
+        "tags": [
+          "Evidence (M5)"
+        ],
+        "summary": "Get Evidence Pack",
+        "operationId": "get_evidence_pack_v1_evidence_documents__doc_number__get",
+        "parameters": [
+          {
+            "name": "doc_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,40}$",
+              "title": "Doc Number"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Evidence Pack V1 Evidence Documents  Doc Number  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/evidence/documents/{doc_number}/link": {
+      "post": {
+        "tags": [
+          "Evidence (M5)"
+        ],
+        "summary": "Post Evidence Link",
+        "operationId": "post_evidence_link_v1_evidence_documents__doc_number__link_post",
+        "parameters": [
+          {
+            "name": "doc_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,40}$",
+              "title": "Doc Number"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceLinkOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/evidence/{token}": {
+      "get": {
+        "tags": [
+          "Evidence (M5)"
+        ],
+        "summary": "Get Evidence Page",
+        "operationId": "get_evidence_page_evidence__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6850,6 +7014,29 @@
           "reachable"
         ],
         "title": "ErpStatus"
+      },
+      "EvidenceLinkOut": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "path",
+          "expires_at"
+        ],
+        "title": "EvidenceLinkOut"
       },
       "ExchangeRequest": {
         "properties": {
