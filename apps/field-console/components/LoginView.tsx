@@ -58,7 +58,8 @@ function CoreSignInForm() {
       const s = await coreSignIn((input, init) => fetch(input, init), email, password, Date.now());
       setPassword("");
       sessionStore.set(s);
-      router.push("/");
+      // M5-L03: the sign-in success page offers "Sign in your phone" (contract §8)
+      router.push("/phone?signedin=1");
     } catch (err) {
       setError(err instanceof CoreSignInError ? err.message : "Sign-in did not complete.");
     } finally {

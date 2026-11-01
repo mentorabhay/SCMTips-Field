@@ -17,6 +17,7 @@ The login page offers what is configured; it decides on the server at request ti
 |---|---|---|
 | `FIELD_CONSOLE_CORE_URL` | console server, run time | Sign-in through SCMTIPS: e-mail + password. Example `https://api.scmtips.com`, or `http://api:8000` next to the core. |
 | `FIELD_CONSOLE_FIELD_API_URL` | console server, run time | field-api for the sign-in exchange. Default: `NEXT_PUBLIC_FIELD_API_URL`, else `http://127.0.0.1:8020`. |
+| `FIELD_CONSOLE_APP_LINK_BASE` | console server, run time | The App Link host in the "Sign in your phone" QR (M5-L03). Default `https://app.scmtips.com`. |
 | `FIELD_CONSOLE_COOKIE_SECURE` | console server, run time | `0` drops the cookies' Secure flag, for a plain-http test host only. A production build sets Secure by default. |
 | `NEXT_PUBLIC_DEV_SIGNIN=1` | build time | The development sign-in (fake-core issues a token for a chosen role). For the dev stack on one PC only. |
 | `NEXT_PUBLIC_FIELD_API_URL`, `NEXT_PUBLIC_FAKE_CORE_URL` | build time | The rewrite targets for `/v1/*` and the development sign-in. |
@@ -46,6 +47,24 @@ Refusals are shown in words: wrong e-mail or password (401), pairing code needed
 hosted demo only members of the SAMPLE organisation sign in with a password, while the core runs in demo mode),
 too many tries (429), no Field role (field-api's 403 `FIELD-AUTH-403-NO-FIELD-ROLE` sentence), SCMTIPS or
 SCMTips Field unreachable.
+
+### Sign in your phone (M5-L03)
+
+"Sign in your phone" (`/phone`, in the header, and the page a SCMTIPS sign-in lands on as `/phone?signedin=1`)
+shows a QR code the phone app scans with "Scan a code from your computer":
+
+1. The page posts to `POST /api/console-auth/pairing` (a route handler on this server, same-origin only).
+2. The server reads the core token cookie and calls `POST {FIELD_CONSOLE_CORE_URL}/v1/wearable/pairing-codes`
+   with `Authorization: Bearer <core token>` and `X-Requested-With: lr` (contract `docs/design/M5_SIGNIN_CONTRACT.md`
+   §4; redirects are not followed, so the token goes nowhere else).
+3. It answers `{code, expires_at, expires_in, link}`, `link` = `{FIELD_CONSOLE_APP_LINK_BASE}/pair?code=<code>`. No
+   token is in the answer. Refusals in words: not signed in through SCMTIPS (401), the core token has ended (401,
+   cookies cleared), "Your account can't sign in phones" (core 403), too many codes (429), SCMTIPS unavailable (5xx).
+4. The page draws the QR itself (`lib/qr.ts`, byte mode, level M, versions 1-10, no library), with the code in text
+   under it, a countdown and "New code". The phone redeems the code at the core's `/v1/auth/app/token`
+   (`pairing_code`); the code is single use and short-lived.
+
+With the development sign-in (fake-core) there is no core token: the page says it needs SCMTIPS sign-in.
 
 The development sign-in keeps working as before: its field token stays in the tab's sessionStorage and is sent as a
 bearer header, which the middleware leaves alone.
