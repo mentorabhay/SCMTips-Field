@@ -26,11 +26,14 @@ class ScriptedFieldApi : JobTransport, BytesPort {
     val puts = mutableListOf<Pair<String, ByteArray>>()
     private val script = mutableMapOf<String, ArrayDeque<ApiResult>>()
 
+    /** Replaces whatever [route] answered so far. */
+    fun reset(route: String) { script.remove(route) }
+
     fun on(route: String, vararg answers: ApiResult) {
         script.getOrPut(route) { ArrayDeque() }.addAll(answers)
     }
 
-    fun ok(route: String, json: String) = on(route, ApiResult.Ok(200, Json.parseToJsonElement(json).jsonObject))
+    fun ok(route: String, json: String, etag: String? = null) = on(route, ApiResult.Ok(200, Json.parseToJsonElement(json).jsonObject, etag))
 
     override suspend fun send(request: ApiRequest): ApiResult {
         sent += request
@@ -176,41 +179,50 @@ class LookClientTest {
         val api = ScriptedFieldApi()
         api.ok("POST /v1/claims", """{"claim_id":"cl-1","status":"draft","lines":[{"reason":"damaged","units":2,"pieces":null},
             {"reason":"pack_size","units":2,"pieces":4}],"text":"Two packs damaged; two packs hold 10, not 12.","source":"model","reasons":[],
-            "evidence_url":"/evidence/abc"}""")
-        api.ok("GET /v1/claims?status=draft", """{"items":[{"claim_id":"cl-1","status":"draft","lines":[],"text":"t"}]}""")
-        api.ok("POST /v1/claims/cl-1/decision", """{"status":"pending_confirm","say":"Approve the claim for 2 damaged packs? Say confirm.","confirm_by":"2026-11-01T10:00:10Z"}""")
-        api.ok("POST /v1/claims/cl-1/confirm", """{"status":"approved","say":"Claim approved. Sent to the supplier (simulated)."}""")
+            "evidence_url":"","look_id":"lk-1","version":1}""", etag = "1-aa11")
+        api.ok("GET /v1/claims?status=draft&limit=50", """{"items":[{"claim_id":"cl-1","status":"draft","lines":[],"text":"t"}],"count":1}""")
+        api.ok("GET /v1/claims/cl-1", """{"claim_id":"cl-1","status":"draft"}""", etag = "1-aa11")
+        api.ok("POST /v1/claims/cl-1/decision", """{"status":"pending_confirm","say":"Approve the claim for 2 damaged packs? Say confirm.","confirm_by":"2026-11-01T10:00:10Z"}""", etag = "2-bb22")
+        api.ok("POST /v1/claims/cl-1/confirm", """{"status":"approved","say":"Claim approved. Sent to the supplier (simulated)."}""", etag = "3-cc33")
         val c = client(api)
         val claim = (c.claim("lk-1") as ClaimResult.Ok).claim
         assertEquals("lk-1", api.last("/v1/claims").str("look_id"))
         assertEquals(listOf(ClaimLine("damaged", 2, null), ClaimLine("pack_size", 2, 4)), claim.lines)
-        assertEquals("/evidence/abc", claim.evidenceUrl)
+        assertNull("an empty evidence path is no path", claim.evidenceUrl)
+        assertEquals("the ETag header is kept", "1-aa11", claim.etag)
         assertEquals(1, (c.drafts() as ClaimsList.Ok).claims.size)
-        val d = (c.decide("cl-1", approve = false, reason = "photo too dark") as StepResult.Ok).step
+        assertEquals("1-aa11", c.etag("cl-1"))
+        val d = (c.decide("cl-1", approve = false, reason = "photo too dark", etag = "1-aa11") as StepResult.Ok).step
         val dreq = api.last("/decision")
         assertEquals("reject", dreq.str("decision")); assertEquals("photo too dark", dreq.str("reason"))
-        assertEquals("pending_confirm", d.status); assertEquals("2026-11-01T10:00:10Z", d.confirmBy)
-        c.decide("cl-1", approve = true, reason = null)
+        assertEquals(mapOf("If-Match" to "1-aa11"), dreq.headers)
+        assertEquals("pending_confirm", d.status); assertEquals("2026-11-01T10:00:10Z", d.confirmBy); assertEquals("2-bb22", d.etag)
+        c.decide("cl-1", approve = true, reason = null, etag = "1-aa11")
         assertEquals("approve", api.last("/decision").str("decision")); assertNull(api.last("/decision").str("reason"))
-        assertEquals("approved", (c.confirm("cl-1") as StepResult.Ok).step.status)
+        assertEquals("approved", (c.confirm("cl-1", "2-bb22", "confirm") as StepResult.Ok).step.status)
+        val creq = api.last("/confirm")
+        assertEquals(mapOf("If-Match" to "2-bb22"), creq.headers); assertEquals("confirm", creq.str("words"))
         assertTrue(api.sent.filter { it.method == "POST" }.all { it.idempotencyKey != null })
         assertNull("GET carries no key", api.last("?status=draft").idempotencyKey)
+        assertTrue("only decisions and confirms carry If-Match", api.sent.filter { it.headers.isNotEmpty() }.all { it.path.endsWith("/decision") || it.path.endsWith("/confirm") })
     }
 
     @Test
     fun m5B03_aPersonWhoDoesNotDecideClaimsGetsNoList() = runBlocking {
-        val api = ScriptedFieldApi().apply { on("GET /v1/claims?status=draft", ApiResult.Problem(403, "FIELD-AUTH-403", "Forbidden", null)) }
+        val api = ScriptedFieldApi().apply { on("GET /v1/claims?status=draft&limit=50", ApiResult.Problem(403, "FIELD-AUTH-403", "Forbidden", null)) }
         assertEquals(ClaimsList.NotAllowed, client(api).drafts())
-        val late = ScriptedFieldApi().apply { on("POST /v1/claims/c/confirm", ApiResult.Problem(409, "FIELD-CLM-409-LATE", "Confirm window passed", null)) }
-        assertEquals(StepResult.Failed("Confirm window passed", 409), client(late).confirm("c"))
+        val late = ScriptedFieldApi().apply { on("POST /v1/claims/c/confirm", ApiResult.Problem(422, "FIELD-CLM-422-CONFIRM-EXPIRED", "Confirm window passed", null)) }
+        assertEquals(StepResult.Failed("Confirm window passed", 422, "FIELD-CLM-422-CONFIRM-EXPIRED"), client(late).confirm("c", "2-x", null))
     }
 
     @Test
     fun m5B02_evidenceLinkIsSignedByTheServer_andMadeAbsolute() = runBlocking {
-        val api = ScriptedFieldApi().apply { ok("POST /v1/evidence/documents/4900000101/link", """{"url":"/evidence/tok.sig"}""") }
+        val api = ScriptedFieldApi().apply {
+            ok("POST /v1/evidence/documents/4900000101/link?year=2026", """{"url":"/evidence/tok.sig","path":"/evidence/tok.sig","expires_at":"x"}""")
+        }
         val (url, why) = client(api).evidenceLink("4900000101", "2026")
         assertEquals("/evidence/tok.sig", url); assertNull(why)
-        assertEquals("2026", api.last("/link").str("year"))
+        assertNull("year is a query parameter", api.last("/link").str("year"))
         assertEquals("http://192.168.1.5:8080/evidence/tok.sig", LookApi.absolute("http://192.168.1.5:8080/", "/evidence/tok.sig"))
         assertEquals("https://x.example/e/1", LookApi.absolute("http://pc:8080", "https://x.example/e/1"))
         val missing = client(ScriptedFieldApi()).evidenceLink("1", null)

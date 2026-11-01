@@ -89,9 +89,9 @@
     the integrator (contract §2 names look_id and a per-line flag_qty but no field placement): POST /v1/count-records
     carries value = good + flagged, flag_qty, look_id and capture_id (only after a look or a spoken flag; without them
     the body is the M4 one), and POST /v1/tasks/{id}/post-requests carries look_id at top level; staged_hash is
-    unchanged (over counted_qty). The evidence link is POST /v1/evidence/documents/{doc}/link with {year} when erp.posted
-    carried doc_year or year; the answer's url (or evidence_url / link) is opened in an in-app WebView (platform
-    android.webkit, JavaScript off). Numbers said as words parse through core-voice's NumberWordParser. Nothing ran on
+    unchanged (over counted_qty). The evidence link is POST /v1/evidence/documents/{doc}/link?year= (year when
+    erp.posted carried doc_year or year) answering {url, path, expires_at}; url is opened in an in-app WebView
+    (platform android.webkit, JavaScript off). A claim's evidence_url (the authenticated JSON path) is never opened. Numbers said as words parse through core-voice's NumberWordParser. Nothing ran on
     the phone or the glasses.
 - id: M5-B03
   title: >-
@@ -115,15 +115,24 @@
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B03_claimsDecisionsConfirmAndList
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookClientTest.kt::m5B03_aPersonWhoDoesNotDecideClaimsGetsNoList
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/M5GrammarTest.kt::m5B03_claimReviewWords
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/ClaimReviewTest.kt::m5B03_aStaleETagOrAnExpiredConfirm_changesNothingAndFetchesAgain
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B03_approveOrRejectOutsideAReview_startsTheClaimsReview_neverTheAssistant
   frs: []
   verified_at: null
   note: >-
     The M4 approval flow's structure on Field's own API (contract §3, no core): it reuses feature-decisions' DecisionEar
     (UtteranceInbox), DecisionDisplay (the phone card) and AudioOut (SpeechWaiter); no DAT wrapper is duplicated. The
     phone keeps its own 10 s window from the read-back and never sends a late confirm; the server's confirm_by is the
-    authority. Who decides claims is the server's: GET /v1/claims?status=draft answering 403 (or 404 on an older
-    server) hides the Today card. Coded against the contract with a scripted field-api; stream X's routes were not
-    called. Nothing ran on the phone or the glasses.
+    authority. Aligned with stream X's deviations (lead, 1 Nov): If-Match on /decision and /confirm (the list item's
+    etag, else GET /v1/claims/{id}'s ETag header; the confirm uses the ETag the decision answered; 412 drops it and
+    fetches again; 422 FIELD-CLM-422-CONFIRM-EXPIRED and 403 other-supervisor are spoken, nothing changes), confirm
+    body {words}, GET /v1/claims?status=draft&limit=50 {items, count}, POST /v1/claims 200 or 201. ASSUMPTION: GET
+    /v1/claims/{id} exists and answers the claim's ETag (the list may carry no per-item ETag). One path per flow: the
+    claims endpoints directly; the app never sends look_id in the assistant's client_state, and "approve" / "reject"
+    outside a review start the review instead of reaching the assistant's server-side claim intents. Who decides is
+    the server's: operators may list (field.claim.read), so the Today card hides after a decision answers 403, or when
+    the list answers 403/404. Coded against a scripted field-api; stream X's routes were not called. Nothing ran on the
+    phone or the glasses.
 - id: M5-B04
   title: >-
     The two cases on a sandbox site's Today ("New grocery delivery", "New pharmacy delivery", also by voice), each with

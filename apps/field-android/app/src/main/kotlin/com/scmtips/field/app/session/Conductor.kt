@@ -263,6 +263,11 @@ class Conductor(
                 local == LocalIntents.Intent.Claims -> { lk.startClaims(); return@withLock Route.CLAIMS }
                 local is LocalIntents.Intent.NewCase -> { lk.startCase(local.case); return@withLock Route.LOOK }
                 local == LocalIntents.Intent.Agree && lk.consentPending && confidence >= JobGrammar.FLOOR -> { lk.agree(); return@withLock Route.LOOK }
+                // "approve" / "reject" outside a review start the claims review (one path: the claims endpoints,
+                // never the assistant's server-side claim intents as well).
+                !desk.jobOpen && com.scmtips.field.app.look.ClaimGrammar.parse(words, confidence).let {
+                    it == com.scmtips.field.app.look.ClaimGrammar.Said.Approve || it is com.scmtips.field.app.look.ClaimGrammar.Said.Reject
+                } -> { lk.startClaims(); return@withLock Route.CLAIMS }
             }
         }
         // Without the M5 port (M4 callers) the M5 words stay unparsed and go to the assistant, as before.

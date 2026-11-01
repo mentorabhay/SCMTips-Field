@@ -56,7 +56,7 @@ sealed interface ClaimsList {
 
 sealed interface StepResult {
     data class Ok(val step: ClaimStep) : StepResult
-    data class Failed(val text: String, val status: Int?) : StepResult
+    data class Failed(val text: String, val status: Int?, val code: String? = null) : StepResult
 }
 
 /**
@@ -107,18 +107,26 @@ object LookApi {
 
     fun claim(key: String, lookId: String) = ApiRequest("POST", "/v1/claims", buildJsonObject { put("look_id", lookId) }, key)
 
-    fun drafts() = ApiRequest("GET", "/v1/claims?status=draft")
+    /** Oldest first, `{items, count}` (stream X). */
+    fun drafts() = ApiRequest("GET", "/v1/claims?status=draft&limit=50")
 
-    fun decision(key: String, claimId: String, approve: Boolean, reason: String?) =
+    fun claimById(claimId: String) = ApiRequest("GET", "/v1/claims/${enc(claimId)}")
+
+    /** If-Match is required (428 without, 412 when stale). */
+    fun decision(key: String, claimId: String, approve: Boolean, reason: String?, etag: String) =
         ApiRequest("POST", "/v1/claims/${enc(claimId)}/decision", buildJsonObject {
             put("decision", if (approve) "approve" else "reject")
             reason?.takeIf { it.isNotBlank() }?.let { put("reason", it.take(200)) }
-        }, key)
+        }, key, mapOf("If-Match" to etag))
 
-    fun confirm(key: String, claimId: String) = ApiRequest("POST", "/v1/claims/${enc(claimId)}/confirm", buildJsonObject { }, key)
+    /** With the ETag the decision answered; [words] are the supervisor's own confirm words. */
+    fun confirm(key: String, claimId: String, etag: String, words: String?) =
+        ApiRequest("POST", "/v1/claims/${enc(claimId)}/confirm", buildJsonObject {
+            words?.takeIf { it.isNotBlank() }?.let { put("words", it.take(200)) }
+        }, key, mapOf("If-Match" to etag))
 
     fun evidenceLink(key: String, docNumber: String, year: String?) =
-        ApiRequest("POST", "/v1/evidence/documents/${enc(docNumber)}/link", buildJsonObject { year?.let { put("year", it) } }, key)
+        ApiRequest("POST", "/v1/evidence/documents/${enc(docNumber)}/link${year?.let { "?year=${enc(it)}" } ?: ""}", buildJsonObject { }, key)
 
     /** The signed evidence URL as an absolute address (field-api may answer a path such as /evidence/<token>). */
     fun absolute(base: String, url: String): String = when {
@@ -171,8 +179,10 @@ class LookClient(
             is ApiResult.Offline -> LookResult.Failed(OFFLINE)
         }
 
+    /** 201 a new claim, or 200 the look's existing one (one claim per look). */
     suspend fun claim(lookId: String): ClaimResult = when (val r = transport.send(LookApi.claim(newKey(), lookId))) {
-        is ApiResult.Ok -> LookJson.claim(r.body)?.let { ClaimResult.Ok(it) } ?: ClaimResult.Failed("The server did not make the claim.")
+        is ApiResult.Ok -> LookJson.claim(r.body)?.let { ClaimResult.Ok(it.copy(etag = r.etag ?: it.etag)) }
+            ?: ClaimResult.Failed("The server did not make the claim.")
         is ApiResult.Problem -> ClaimResult.Failed(if (r.status == 404) "Claims are not available on this server yet." else r.plain)
         is ApiResult.Offline -> ClaimResult.Failed(OFFLINE)
     }
@@ -183,10 +193,17 @@ class LookClient(
         is ApiResult.Offline -> ClaimsList.Failed(OFFLINE)
     }
 
-    suspend fun decide(claimId: String, approve: Boolean, reason: String?): StepResult =
-        step(transport.send(LookApi.decision(newKey(), claimId, approve, reason)))
+    /** The claim's current ETag (the list may not carry one): `GET /v1/claims/{id}`. */
+    suspend fun etag(claimId: String): String? = when (val r = transport.send(LookApi.claimById(claimId))) {
+        is ApiResult.Ok -> r.etag ?: LookJson.claim(r.body)?.etag
+        else -> null
+    }
 
-    suspend fun confirm(claimId: String): StepResult = step(transport.send(LookApi.confirm(newKey(), claimId)))
+    suspend fun decide(claimId: String, approve: Boolean, reason: String?, etag: String): StepResult =
+        step(transport.send(LookApi.decision(newKey(), claimId, approve, reason, etag)))
+
+    suspend fun confirm(claimId: String, etag: String, words: String?): StepResult =
+        step(transport.send(LookApi.confirm(newKey(), claimId, etag, words)))
 
     /** The signed evidence link for a posted document; null with the reason when there is none. */
     suspend fun evidenceLink(docNumber: String, year: String?): Pair<String?, String?> =
@@ -198,8 +215,8 @@ class LookClient(
         }
 
     private fun step(r: ApiResult): StepResult = when (r) {
-        is ApiResult.Ok -> StepResult.Ok(LookJson.step(r.body))
-        is ApiResult.Problem -> StepResult.Failed(r.plain, r.status)
+        is ApiResult.Ok -> StepResult.Ok(LookJson.step(r.body, r.etag))
+        is ApiResult.Problem -> StepResult.Failed(r.plain, r.status, r.code)
         is ApiResult.Offline -> StepResult.Failed(OFFLINE, null)
     }
 

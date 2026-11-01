@@ -50,11 +50,12 @@ class ClaimReviewTest {
 
     private class Setup(ear: Ear, display: DecisionDisplay = NoCard(), drafts: String = TWO_DRAFTS) {
         val api = ScriptedFieldApi().apply {
-            ok("GET /v1/claims?status=draft", drafts)
-            ok("POST /v1/claims/cl-1/decision", """{"status":"pending_confirm","say":"Approve claim for 2 damaged packs, delivery 1800 0000 22? Say confirm.","confirm_by":"x"}""")
-            ok("POST /v1/claims/cl-1/confirm", """{"status":"approved","say":"Claim approved. Sent to the supplier, simulated."}""")
-            ok("POST /v1/claims/cl-2/decision", """{"status":"pending_confirm","say":"Reject claim for 1 expired box? Say confirm."}""")
-            ok("POST /v1/claims/cl-2/confirm", """{"status":"rejected","say":"Claim rejected."}""")
+            ok("GET /v1/claims?status=draft&limit=50", drafts)
+            ok("GET /v1/claims/cl-2", """{"claim_id":"cl-2","status":"draft"}""", etag = "1-c2")
+            ok("POST /v1/claims/cl-1/decision", """{"status":"pending_confirm","say":"Approve claim for 2 damaged packs, delivery 1800 0000 22? Say confirm.","confirm_by":"x"}""", etag = "2-c1")
+            ok("POST /v1/claims/cl-1/confirm", """{"status":"approved","say":"Claim approved. Sent to the supplier, simulated."}""", etag = "3-c1")
+            ok("POST /v1/claims/cl-2/decision", """{"status":"pending_confirm","say":"Reject claim for 1 expired box? Say confirm."}""", etag = "2-c2")
+            ok("POST /v1/claims/cl-2/confirm", """{"status":"rejected","say":"Claim rejected."}""", etag = "3-c2")
         }
         var now = 1_000L
         val voice = Voice()
@@ -65,7 +66,7 @@ class ClaimReviewTest {
 
     companion object {
         const val TWO_DRAFTS = """{"items":[
-            {"claim_id":"cl-1","status":"draft","title":"Delivery 1800000022","lines":[{"reason":"damaged","units":2}],"text":"Two packs arrived damaged."},
+            {"claim_id":"cl-1","status":"draft","etag":"1-c1","title":"Delivery 1800000022","lines":[{"reason":"damaged","units":2}],"text":"Two packs arrived damaged."},
             {"claim_id":"cl-2","status":"draft","lines":[{"reason":"expired","units":1}],"text":""}]}"""
     }
 
@@ -79,7 +80,10 @@ class ClaimReviewTest {
         assertEquals("Claim approved. Sent to the supplier, simulated.", s.voice.said[2])
         assertTrue("the next draft is read", s.voice.said[3].startsWith("Claim 2 of 2. 1 unit expired."))
         assertEquals("approve", s.decisions().single().str("decision"))
+        assertEquals("If-Match from the list item", mapOf("If-Match" to "1-c1"), s.decisions().single().headers)
         assertEquals(listOf("/v1/claims/cl-1/confirm"), s.confirms().map { it.path })
+        assertEquals("the decision's new ETag confirms", mapOf("If-Match" to "2-c1"), s.confirms().single().headers)
+        assertEquals("confirm", s.confirms().single().str("words"))
         assertEquals(EarconCue.CAPTURED, s.voice.earcons.last())
     }
 
@@ -91,6 +95,8 @@ class ClaimReviewTest {
         val d = s.decisions().single()
         assertEquals("/v1/claims/cl-2/decision", d.path)
         assertEquals("reject", d.str("decision")); assertEquals("the box is fine", d.str("reason"))
+        assertEquals("no ETag in the list: fetched first", mapOf("If-Match" to "1-c2"), d.headers)
+        assertTrue(s.api.paths().contains("GET /v1/claims/cl-2"))
         assertEquals("Claim rejected.", s.voice.said[s.voice.said.size - 2])
         assertEquals("That was the last claim.", s.voice.said.last())
     }
@@ -134,7 +140,7 @@ class ClaimReviewTest {
         assertEquals(ClaimFlowState.Finished(ClaimOutcome.NOTHING_WAITING, 0), none.flow.run())
         assertEquals(listOf(ClaimReview.SAY_NONE), none.voice.said)
 
-        val forbiddenApi = ScriptedFieldApi().apply { on("GET /v1/claims?status=draft", ApiResult.Problem(403, "FIELD-AUTH-403", "Forbidden", null)) }
+        val forbiddenApi = ScriptedFieldApi().apply { on("GET /v1/claims?status=draft&limit=50", ApiResult.Problem(403, "FIELD-AUTH-403", "Forbidden", null)) }
         val voice = Voice()
         val forbidden = ClaimReview(LookClient(forbiddenApi, forbiddenApi, { "dev-1" }), voice, Ear(), NoCard())
         assertEquals(ClaimFlowState.Finished(ClaimOutcome.NOT_ALLOWED, 0), forbidden.run())
@@ -152,5 +158,22 @@ class ClaimReviewTest {
         s.flow.run()
         assertTrue(s.decisions().isEmpty())
         assertEquals(2, s.voice.said.count { it == ClaimReview.SAY_OPTIONS })
+    }
+
+    @Test
+    fun m5B03_aStaleETagOrAnExpiredConfirm_changesNothingAndFetchesAgain() = runBlocking {
+        val s = Setup(Ear("approve", "approve", "confirm", "stop"))
+        s.api.reset("POST /v1/claims/cl-1/decision"); s.api.reset("POST /v1/claims/cl-1/confirm")
+        s.api.on("POST /v1/claims/cl-1/decision",
+            ApiResult.Problem(412, "FIELD-CLM-412-STALE", "Precondition failed", null),
+            ApiResult.Ok(200, kotlinx.serialization.json.Json.parseToJsonElement("""{"status":"pending_confirm","say":"Approve? Say confirm."}""") as kotlinx.serialization.json.JsonObject, "5-c1"))
+        s.api.ok("GET /v1/claims/cl-1", """{"claim_id":"cl-1","status":"draft"}""", etag = "4-c1")
+        s.api.on("POST /v1/claims/cl-1/confirm", ApiResult.Problem(422, ClaimReview.CONFIRM_EXPIRED, "Confirm window passed", null))
+        s.flow.run()
+        val d = s.api.sent.filter { it.path.endsWith("/v1/claims/cl-1/decision") }
+        assertEquals(listOf("1-c1", "4-c1"), d.map { it.headers["If-Match"] })
+        assertEquals("5-c1", s.confirms().single().headers["If-Match"])
+        assertTrue(s.voice.said.contains("The claim changed meanwhile. Nothing was decided. Say approve or reject again."))
+        assertTrue(s.voice.said.contains("Too late to confirm. Nothing changed. Say approve or reject again."))
     }
 }

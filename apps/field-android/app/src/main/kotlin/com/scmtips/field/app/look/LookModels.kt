@@ -75,12 +75,15 @@ data class Claim(
     val lines: List<ClaimLine>,
     val text: String,
     val source: String?,
+    /** Stream X: the authenticated JSON pack path (empty until posted), never the signed page. */
     val evidenceUrl: String?,
     val title: String?,
+    /** The claim's ETag ("<version>-<hash>"): If-Match on /decision and /confirm. From the ETag header, else the body. */
+    val etag: String? = null,
 )
 
-/** The answer to `/decision` (a read-back to confirm) or `/confirm` (the result). */
-data class ClaimStep(val status: String, val say: String, val confirmBy: String?)
+/** The answer to `/decision` (a read-back to confirm) or `/confirm` (the result); [etag] is the claim's new one. */
+data class ClaimStep(val status: String, val say: String, val confirmBy: String?, val etag: String? = null)
 
 /** Hand-written readers (the JVM gate has no serialization plugin), tolerant of nulls and extra fields. */
 object LookJson {
@@ -137,8 +140,9 @@ object LookJson {
             },
             text = o.s("text").orEmpty(),
             source = o.s("source"),
-            evidenceUrl = o.s("evidence_url"),
+            evidenceUrl = o.s("evidence_url")?.ifBlank { null },
             title = o.s("title") ?: o.s("ref_doc_no")?.let { "Delivery $it" },
+            etag = o.s("etag"),
         )
     }
 
@@ -146,7 +150,8 @@ object LookJson {
     fun claims(o: JsonObject): List<Claim> =
         (o.arr("items").ifEmpty { o.arr("claims") }).mapNotNull { (it as? JsonObject)?.let(::claim) }
 
-    fun step(o: JsonObject): ClaimStep = ClaimStep(o.s("status") ?: "", o.s("say").orEmpty(), o.s("confirm_by"))
+    fun step(o: JsonObject, etag: String? = null): ClaimStep =
+        ClaimStep(o.s("status") ?: "", o.s("say").orEmpty(), o.s("confirm_by"), etag ?: o.s("etag"))
 
     internal fun JsonObject.s(k: String): String? = (this[k] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.contentOrNull
     internal fun JsonObject.i(k: String): Int? = (this[k] as? JsonPrimitive)?.let { it.intOrNull ?: it.doubleOrNull?.toInt() }

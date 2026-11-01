@@ -88,9 +88,10 @@ enum class ClaimOutcome { DONE, NOTHING_WAITING, NOT_ALLOWED, STOPPED, ABANDONED
 
 /**
  * The supervisor's claims by voice (contract §3, M4 approval-flow structure on Field's own API):
- * `GET /v1/claims?status=draft` → each draft read out → "approve" / "reject [reason]" → `/decision` →
- * the server's read-back spoken → "confirm" within [confirmWindowMs] → `/confirm` → the result spoken →
- * the next draft. "next claim" skips, "repeat" reads again, "stop" ends. Nothing is approved without the
+ * `GET /v1/claims?status=draft` → each draft read out → "approve" / "reject [reason]" → `/decision`
+ * (If-Match: the claim's ETag) → the server's read-back spoken → "confirm" within [confirmWindowMs] →
+ * `/confirm` (If-Match: the ETag the decision answered; body {words}) → the result spoken → the next draft.
+ * The claims endpoints are called directly; the assistant's server-side claim intents are not used. "next claim" skips, "repeat" reads again, "stop" ends. Nothing is approved without the
  * spoken (or tapped) confirm; a late or missing confirm changes nothing. Sending to the supplier is the
  * server's (simulated) outbox.
  *
@@ -110,6 +111,10 @@ class ClaimReview(
     val state: StateFlow<ClaimFlowState> = _state.asStateFlow()
     private val buttons = Channel<String>(Channel.CONFLATED)
     private var shown = false
+
+    /** The newest ETag per claim (If-Match); a 412 drops it so the next decision fetches a fresh one. */
+    private val etags = mutableMapOf<String, String>()
+    private val stale = mutableSetOf<String>()
 
     suspend fun run(): ClaimFlowState = try {
         runInner()
@@ -170,15 +175,22 @@ class ClaimReview(
     /** One decision: the server's read-back, then the supervisor's confirm within the window. */
     private suspend fun decide(c: Claim, approve: Boolean, reason: String?): Decided {
         _state.value = ClaimFlowState.Sending(if (approve) "approve" else "reject")
-        val readBack = when (val r = client.decide(c.claimId, approve, reason)) {
+        val etag = etags[c.claimId] ?: c.etag?.takeIf { c.claimId !in stale } ?: client.etag(c.claimId)
+            ?: run { speak("This claim could not be read. Try again."); return Decided.NO }
+        val readBack = when (val r = client.decide(c.claimId, approve, reason, etag)) {
             is StepResult.Failed -> {
                 voice.playEarcon(EarconCue.ERROR)
                 if (r.status == 403) return Decided.NOT_ALLOWED
-                speak("Not sent. ${r.text}")
+                if (r.status == 412) {
+                    etags.remove(c.claimId); stale += c.claimId
+                    speak("The claim changed meanwhile. Nothing was decided. Say approve or reject again.")
+                } else speak("Not sent. ${r.text}")
                 return Decided.NO
             }
             is StepResult.Ok -> r.step
         }
+        val confirmEtag = readBack.etag ?: etag
+        etags[c.claimId] = confirmEtag
         val asked = clock()
         speak(readBack.say.ifBlank { if (approve) "Approve this claim? Say confirm or cancel." else "Reject this claim? Say confirm or cancel." })
         show(DecisionCard(if (approve) "Approve this claim?" else "Reject this claim?", readBack.say.take(240), listOf(
@@ -186,6 +198,7 @@ class ClaimReview(
         )))
         _state.value = ClaimFlowState.AwaitingConfirm(c.claimId, readBack.say)
         val answer = nextInput()
+        val words = (answer as? Input.Said)?.words
         if ((answer as? Input.Said)?.said != ClaimGrammar.Said.Confirm) {
             speak(if (answer == Input.Silence) "No confirm heard. Nothing changed." else "Not confirmed. Nothing changed.")
             return Decided.NO
@@ -195,15 +208,21 @@ class ClaimReview(
             return Decided.NO
         }
         _state.value = ClaimFlowState.Sending("confirm")
-        return when (val r = client.confirm(c.claimId)) {
+        return when (val r = client.confirm(c.claimId, confirmEtag, words)) {
             is StepResult.Ok -> {
+                r.step.etag?.let { etags[c.claimId] = it }
                 voice.playEarcon(EarconCue.CAPTURED)
                 speak(r.step.say.ifBlank { if (r.step.status == "approved") "Claim approved." else "Claim rejected." })
                 Decided.YES
             }
             is StepResult.Failed -> {
                 voice.playEarcon(EarconCue.ERROR)
-                speak("Not confirmed. ${r.text}")
+                etags.remove(c.claimId); stale += c.claimId // the claim is back to draft or changed: fetch again next time
+                speak(when {
+                    r.code == CONFIRM_EXPIRED || r.status == 422 -> "Too late to confirm. Nothing changed. Say approve or reject again."
+                    r.status == 403 -> "Only the supervisor who decided can confirm. Nothing changed."
+                    else -> "Not confirmed. ${r.text}"
+                })
                 Decided.NO
             }
         }
@@ -223,7 +242,7 @@ class ClaimReview(
         data object Silence : Input
         /** Words below the 0.80 floor or outside [ClaimGrammar]: never acted on. */
         data object Unclear : Input
-        data class Said(val said: ClaimGrammar.Said) : Input
+        data class Said(val said: ClaimGrammar.Said, val words: String? = null) : Input
     }
 
     /** The next words or button press. */
@@ -235,7 +254,7 @@ class ClaimReview(
         }
         when (r) {
             is String -> ClaimGrammar.button(r)?.let { Input.Said(it) } ?: Input.Unclear
-            is AsrCandidate -> ClaimGrammar.parse(r.transcript, r.confidence)?.let { Input.Said(it) } ?: Input.Unclear
+            is AsrCandidate -> ClaimGrammar.parse(r.transcript, r.confidence)?.let { Input.Said(it, r.transcript) } ?: Input.Unclear
             else -> Input.Silence
         }
     }
@@ -262,6 +281,7 @@ class ClaimReview(
     }
 
     companion object {
+        const val CONFIRM_EXPIRED = "FIELD-CLM-422-CONFIRM-EXPIRED"
         const val SAY_NONE = "No claims are waiting."
         const val SAY_NOT_ALLOWED = "Your role does not decide claims."
         const val SAY_OPTIONS = "Say approve, reject, next claim, or stop."

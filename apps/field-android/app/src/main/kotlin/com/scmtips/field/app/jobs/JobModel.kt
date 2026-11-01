@@ -126,10 +126,12 @@ data class ApiRequest(
     val body: JsonObject? = null,
     /** UUIDv7; the same key on a retry returns the first result (contract §1). Null for GET. */
     val idempotencyKey: String? = null,
+    /** M5: extra request headers (If-Match on claim decisions); empty for every earlier call. */
+    val headers: Map<String, String> = emptyMap(),
 )
 
 sealed interface ApiResult {
-    data class Ok(val status: Int, val body: JsonObject) : ApiResult
+    data class Ok(val status: Int, val body: JsonObject, val etag: String? = null) : ApiResult
 
     /** problem+json from field-api: `code` (FIELD-…), `title`, `detail`. */
     data class Problem(val status: Int, val code: String?, val title: String?, val detail: String?) : ApiResult {

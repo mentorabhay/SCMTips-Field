@@ -25,8 +25,8 @@ class ConductorLookTest {
         override suspend fun agree() { calls += "agree" }
     }
 
-    private class Setup(withLooks: Boolean = true) {
-        val d = DeskRig(Tasks.receive)
+    private class Setup(withLooks: Boolean = true, job: Boolean = true) {
+        val d = DeskRig(if (job) Tasks.receive else null)
         val ai = ScriptedAssistant()
         val looks = Looks()
         val session = WorkSession().also { it.start(MicSource.GLASSES, glassesStarted = true) }
@@ -79,5 +79,14 @@ class ConductorLookTest {
         s.ai.answer("I can only count by voice here.")
         assertEquals(Route.ASSISTANT, s.c.heard("take a look", 0.9f))
         assertEquals("take a look", s.ai.turns.single().text)
+    }
+
+    @Test
+    fun m5B03_approveOrRejectOutsideAReview_startsTheClaimsReview_neverTheAssistant() = runBlocking {
+        val s = Setup(job = false)
+        assertEquals(Route.CLAIMS, s.c.heard("approve", 0.9f))
+        assertEquals(Route.CLAIMS, s.c.heard("reject because it is fine", 0.9f))
+        assertEquals(listOf("start-claims", "start-claims"), s.looks.calls)
+        assertTrue(s.ai.turns.isEmpty())
     }
 }
