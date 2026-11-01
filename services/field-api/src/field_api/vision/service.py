@@ -445,6 +445,46 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
                     ports, today, defer, t0)
 
 
+# SAM 3.1 prompt words tried after the case's own noun finds nothing (hosted 1 Nov: "pack" found 0 of 8 packs, and at
+# Gate 0 "pack" found 0 where "box" found 7 of 7 on the same table). One retry at most, inside the same deadline; the
+# spoken unit stays the case's noun.
+SAM_FALLBACK: Mapping[str, str] = MappingProxyType({"pack": "box", "box": "package", "carton": "box", "item": "box",
+                                                     "package": "box", "packet": "box", "bottle": "box"})
+MIN_RETRY_S = 1.0
+
+
+def sam_prompts(noun: str) -> list[str]:
+    """The prompt words for SAM 3.1, in order: the case's noun, then at most one fallback."""
+    first = noun.strip().lower()
+    alt = SAM_FALLBACK.get(first)
+    return [first] if alt is None or alt == first else [first, alt]
+
+
+def find_instances(port: Any, cap: Capture, noun: str, deadline_s: float, ctx: CallContext,
+                   reasons: list[str]) -> list[FoundInstance]:
+    """SAM 3.1 instances for ``noun``; when none come back, one more try with ``sam_prompts`` 's fallback word if at
+    least MIN_RETRY_S of the deadline is left (reason ``instances:retry:<word>``; a found retry adds
+    ``instances:prompt:<word>``). A model error on the first word propagates as before."""
+    t0 = time.perf_counter()
+    words = sam_prompts(noun)
+    found: list[FoundInstance] = port.find(cap.jpeg, cap.width, cap.height, words[0], timeout_s=deadline_s, ctx=ctx)
+    if found or len(words) < 2:
+        return found
+    left = deadline_s - (time.perf_counter() - t0)
+    if left < MIN_RETRY_S:
+        reasons.append("instances:retry:no_time")
+        return found
+    reasons.append(f"instances:retry:{words[1]}")
+    try:
+        again: list[FoundInstance] = port.find(cap.jpeg, cap.width, cap.height, words[1], timeout_s=left, ctx=ctx)
+    except ModelError as e:
+        reasons.append(f"instances:retry:{e.code}")
+        return found
+    if again:
+        reasons.append(f"instances:prompt:{words[1]}")
+    return again
+
+
 def run_look(principal: Principal, target: LookTarget, lc: LookContext, cap: Capture | None, reasons: list[str],
              idempotency_key: str, ports: VisionPorts, today: Callable[[], date], defer: Defer | None, t0: float,
              image_extra: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -457,8 +497,8 @@ def run_look(principal: Principal, target: LookTarget, lc: LookContext, cap: Cap
             reasons.append("instances:no_model")
         else:
             try:
-                found = order_instances(ports.instances.find(cap.jpeg, cap.width, cap.height, lc.expectation.object_noun,
-                                                             timeout_s=settings.instances_deadline_s(), ctx=ctx))
+                found = order_instances(find_instances(ports.instances, cap, lc.expectation.object_noun,
+                                                       settings.instances_deadline_s(), ctx, reasons))
             except ModelError as e:
                 reasons.append(f"instances:{ports.instances.model}:{e.code}")
     day = today()

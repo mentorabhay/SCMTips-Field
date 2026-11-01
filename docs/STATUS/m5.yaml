@@ -50,6 +50,7 @@
   - services/field-api/src/field_api/vision/ports.py
   - services/field-api/src/field_api/vision/settings.py
   tests:
+  - services/field-api/tests/vision/test_vision_sam_fallback.py::test_m5_v02_pack_finds_nothing_so_box_is_tried_and_counted
   - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v02_no_model_answer_is_rules_never_an_error
   - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v02_labels_fall_back_to_baseten_then_partial
   - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v02_small_photo_with_unread_labels_asks_for_a_close_look
@@ -69,6 +70,8 @@
     real call. Small instances (many items in one look; the app's look photo was 640 px until M5-P01): unread labels with a median instance short side under
     VISION_LABEL_MIN_INSTANCE_PX (200) add reasons labels:close_look_needed and labels:small_image:WxH:instance_px=N
     and ask for a close look in say; the 200 px figure is an estimate, UNVERIFIED until Gate 0.
+    1 Nov hosted fix: SAM 3.1 found 0 of 8 packs for the prompt "pack" (Gate 0 had the same with "pack" while "box" found 7 of 7); the instances stage now retries once with a fallback word (pack -> box, box -> package, ...) inside the same deadline (find_instances, reasons instances:retry:<word> / instances:prompt:<word>); the spoken unit stays the case's noun.
+
 - id: M5-V03
   title: >-
     Label text (raw) kept 30 days like assistant turns: field.worker_purge_vision_raw(days) run by the worker, never
@@ -1287,6 +1290,8 @@
     repeated Idempotency-Key is 422 KEY-REUSED from the middleware (as for captures); the service itself replays a
     key's stored look. Proven with the Meta API test double and the SAMPLE scene only; partial until the hosted stack
     runs the page with the real Meta key (META_FIELD rows 20, 23 UNVERIFIED) and a judge's browser speaks it.
+    1 Nov hosted fixes: the console image now copies apps/field-console/public (the SAMPLE photos 404'd: Next's standalone output leaves public/ out); with no label read the findings no longer say "Pack size N on every label read" or "Nothing expires"; the Look button says "Speaking the answer…" after the final answer instead of "Reading the labels…".
+
 - id: M5-U01
   title: >-
     App redesign shell and navigation (A-07): blueprint theme tokens (SCMTIPS purple-orange, system sans, 16 dp cards,
