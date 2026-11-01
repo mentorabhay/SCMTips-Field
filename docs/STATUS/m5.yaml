@@ -1339,3 +1339,53 @@
     them; the integrator keeps A's copies. HomeTokens.kt mirrors A's theme tokens by name and value until the merge.
     Type-checked with tools/android_check/compile_check.py (Kotlin 2.2.21 + Compose plugin against the real AndroidX
     jars), not a Gradle build; nothing drawn on a device yet. Partial until proven on the owner's phone.
+- id: M5-U03
+  title: >-
+    Role homes of the app redesign (A-07, prototype WarehouseHome / TowerHome / ApprovalsInbox / ScanSeal .dc.html,
+    M5_UI_CONTRACT §3): Warehouse (NEXT UP = oldest open receipt or a sandbox case, real tile counts for receive,
+    put away, pick, count, "Test at home" on a sandbox site), Tower (check-in state, tower jobs), Approvals (All /
+    Decisions / Claims filter, decisions by time left, claims newest first, box-check claims marked), Scan product (a
+    calm landing with one "Check a box"); each with a designed empty state and canAct (view only) honoured
+  workstream: M5-U
+  role: Builder B (UI screens)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeModelsFromUi.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/WarehouseHome.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/TowerHome.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/ApprovalsHome.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/ScanHome.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeArt.kt
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_warehouse_nextUpIsTheOldestReceive_tilesCountRealJobs_towerJobsLeftOut
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_warehouse_aStartedJobComesFirst_elseTheOldestOfAnyKind
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_warehouse_sandboxWithoutAReceive_offersTheFirstHomeCase_andTheStarters
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_warehouse_emptyAndUnlinked_areSaidAsTheyAre
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_tower_jobsAndCheckIn_fromTheOpenVisitAtThisSite
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_approvals_countsOnly_giveHonestSummaryRows
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_approvals_realItems_decisionByTimeLeft_thenClaimsNewestFirst_boxChecksAreMarked
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_approvals_timeLeft_wordsAndUrgency
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_approvals_emptyAndChecking
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U03_scan_followsTodaysCardRule_andAnOpenCheck
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HintMotionTest.kt::m5U03_theScanFrameClosesIn_andTheCodeReadTagShowsOnlyAfter
+  frs: []
+  verified_at: null
+  note: >-
+    Homes draw only the content under the shell's header (A's switcher, status pill, greeting, connection card and
+    view-only banner). Signatures: WarehouseHome(model, canAct, reduceMotion, onOpenTask, onOpenStarter, onStartCase,
+    onStartSandbox, onRefresh), TowerHome(model, canAct, reduceMotion, onOpenTask, onRefresh), ApprovalsHome(model,
+    canAct, reduceMotion, onReviewDecisions, onReviewClaims, onRefresh), ScanHome(model, canAct, reduceMotion,
+    onCheckBox, onOpenCheck, onLinkSite?). Models come from real state only: HomeModelsFromUi reads AppUi (Android-bound
+    because AppUi is in FieldController.kt) into the JVM-tested builders; they reuse TodayModel.card / starters,
+    CaseStart / SandboxStarters.offered, HomeRules.warehouseTasks / towerTasks, ClaimText.lines and Today's box-check
+    card rule. "Oldest" is the smallest task id (field.task ids are UUIDv7, so they sort by creation); a started job
+    comes first. Approvals: AppUi holds only the waiting counts, so the cards are honest summaries ("2 decisions
+    waiting") until FieldController keeps the core's next item (title, options, deadline_at) and field-api's draft
+    list (HomeModelsFromUi.approvals takes both); the app's Claim has no created_at, so "newest first" reverses
+    field-api's created_at order. A tap starts the existing voice review of that kind (one decision at a time, all
+    drafts in turn), not a single chosen claim. Tower check-in opens the first tower job, whose runner step checks
+    location and permit; the home shows no GPS or permit of its own. canAct false disables every act button; Refresh
+    stays. Type-checked with tools/android_check/compile_check.py, not a Gradle build; nothing drawn on a device yet.
+    Partial until proven on the owner's phone.
