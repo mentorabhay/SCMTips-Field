@@ -423,3 +423,37 @@ labels: var/m5_cases.html
 On the phone (paired with `stack pair --home`): say "new grocery delivery" / "new pharmacy delivery" for another one, or open these receipts; lay the items out in one layer and say look.
 exit 0
 
+== 4. verify_all (Postgres :5450) ==
+.venv/bin/python scripts/verify_all.py at 588e918 (the commit that adds this run log; report
+reports/verify-all/20261101T034729Z.json, not committed; dirty: true only from untracked earlier report files in
+reports/verify-all/, none of them M5's). An earlier run at 4bdb10c gave the same 22 / 3.
+lint             | Lint checks (Ruff & ESLint)            | PASS   | 0.06s
+no-fake-gates    | Fake gate & simulated pass scanner     | PASS   | 0.1s
+orphans          | Orphan Kotlin & Python code check      | PASS   | 1.04s
+firewall         | Architectural firewall & boundary check | PASS   | 0.19s
+names            | Naming denylist & sample data check    | PASS   | 0.77s
+conventions      | Branch & commit conventions check      | PASS   | 0.07s
+no-inmemory-stores | No module-level state stores in API code | PASS   | 0.16s
+route-auth       | Every API route enforces auth          | PASS   | 0.82s
+db-roles         | No superuser DB defaults in production code | PASS   | 0.07s
+tests-exercise-prod | Tests exercise production code         | PASS   | 0.47s
+openapi-drift    | Committed OpenAPI matches the app      | PASS   | 1.24s
+semgrep          | Semgrep static security analysis       | FAIL   | 98.41s
+trivy            | Trivy filesystem vulnerability scan    | FAIL   | 0.0s
+typecheck        | Strict Python & TypeScript type checking | PASS   | 5.14s
+alembic          | Database migration round-trip          | PASS   | 3.2s
+test-collection  | Pytest suite collection completeness check | PASS   | 10.11s
+unit             | Unit tests (Pytest)                    | PASS   | 51.89s
+property         | Property invariant tests (Hypothesis)  | PASS   | 85.73s
+contract         | Contract verification tests            | PASS   | 4.22s
+vitest           | Console/package tests (vitest + fast-check) | PASS   | 3.71s
+compat           | Core contract compatibility tests      | PASS   | 0.74s
+kotlin-jvm       | Kotlin JVM unit tests (kotlinc + JUnit 4) | PASS   | 38.65s
+android-compile-check | All Android modules type-check against real library class files | PASS   | 85.39s
+field-android    | Android multi-module compile, unit tests & lint | FAIL   | 1.04s
+trace            | Spec requirement status trace check    | PASS   | 0.71s
+ SUMMARY: FAILED (25 jobs executed: 22 passed, 3 failed, 0 skipped)
+Test counts: unit 618, property 97, contract 45, vitest 9, compat 4 passed, 0 failed, 0 skipped.
+The three failures are this sandbox's, as in the earlier run logs: semgrep cannot download its rules (semgrep.dev
+blocked by the proxy, HTTP 403), trivy is not installed, and field-android has no Gradle distribution / Android SDK
+here (android-compile-check and kotlin-jvm compile and test the app modules instead). CI runs all three.
