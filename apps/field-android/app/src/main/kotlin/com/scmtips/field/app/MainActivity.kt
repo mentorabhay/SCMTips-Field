@@ -92,6 +92,8 @@ class MainActivity : ComponentActivity() {
         }
         if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
         if (app.datInitError == null && DatGlasses.isVoiceLaunch(intent)) controller.onVoiceLaunch()
+        // M5-L: an App Link (reset, invite, console QR) that started the app.
+        if (savedInstanceState == null) controller.openLink(intent?.dataString)
         // M5-U01: a new install asks on first run's Permissions step instead, one permission at a time with its reason.
         val shellNow = controller.ui.value.shell
         if (shellNow.classic || shellNow.setupDone) {
@@ -198,6 +200,8 @@ class MainActivity : ComponentActivity() {
         if (app.datInitError == null) runCatching { Wearables.handleIntent(intent) { _ -> } }
         // "Hey Meta, start SCMTips Field" from the glasses (M4): straight to the next decision for an approver.
         if (app.datInitError == null && DatGlasses.isVoiceLaunch(intent)) controller.onVoiceLaunch()
+        // M5-L: an App Link while the app is open (singleTop): reset, invite or the console's sign-in QR.
+        controller.openLink(intent.dataString)
     }
 
     /**

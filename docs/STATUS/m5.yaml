@@ -1745,3 +1745,37 @@
     event. GET /v1/invites, POST accept and the reset routes are unchanged core APIs (§5) that this app has not yet
     called on a real core (docs/META_FIELD.md row 28). The reset e-mail itself (§5, sent by the core's outbox) is the
     core builder's.
+- id: M5-L04
+  title: >-
+    Android App Links for the sign-in e-mails and the console QR (A-08, M5_SIGNIN_CONTRACT §5, §6, §7): intent filter
+    with android:autoVerify for https://app.scmtips.com /reset/confirm, /invite/ (prefix) and /pair; MainActivity
+    routes them into the shell (reset token → "Set a new password", invite token → the invite, pair code → sign in by
+    code); the existing intents keep working
+  workstream: M5-L
+  role: Field app builder (M5-L sign-in)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/AndroidManifest.xml
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/SignInLinks.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/AccountFlow.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AppLinksTest.kt::m5L04_theThreeAppLinks_parse_andNothingElseDoes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AppLinksTest.kt::m5L04_theManifest_hasTheAutoVerifiedAppLinkFilter_forTheThreePaths
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/AppLinksTest.kt::m5L04_appLinks_openTheirScreens_andASignedInPhoneIsToldToSignOutFirst
+  frs: []
+  verified_at: null
+  note: >-
+    Partial until proven on the owner's phone against the hosted core: verification needs the core web app's
+    https://app.scmtips.com/.well-known/assetlinks.json (contract §6, the core builder's) with this build's signing
+    certificate fingerprint (FIELD_APP_CERT_SHA256), which was not reachable here (docs/META_FIELD.md row 29); until it
+    verifies, Android offers the web page for these links, the contract's fallback. One https filter, one attribute per
+    data element (scheme, host, path /reset/confirm, pathPrefix /invite/, path /pair), separate from the Meta AI
+    callback filter (scmtipsfield://), which is unchanged; the launcher filter and the glasses' voice launch are
+    unchanged. MainActivity passes intent.dataString on the first onCreate (not after a recreate) and on onNewIntent
+    (singleTop) to FieldController.openLink, which accepts only host app.scmtips.com and the three shapes
+    (SignInLinks.parse: a 43-character token, a 4 to 64 character code); anything else is left alone. A phone that is
+    already signed in or paired gets "Sign out in Profile first" instead of a second sign-in. The test reads the
+    manifest source (not the merged manifest; CI's Gradle build merges and lints it). No Gradle build or device run was
+    possible here (no Android SDK).

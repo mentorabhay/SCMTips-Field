@@ -704,6 +704,18 @@ class FieldController(private val context: Context, private val toolkitError: ()
         step.effects.forEach(::runAccountEffect)
     }
 
+    /**
+     * MainActivity: an App Link (https://app.scmtips.com/reset/confirm, /invite/…, /pair) opened the app. Other
+     * links are left alone (the Meta AI callback and the glasses' voice launch have their own handling).
+     */
+    fun openLink(uri: String?) {
+        val link = SignInLinks.parse(uri, setOf(SignInLinks.WEB_HOST)) ?: return
+        val signedIn = _ui.value.signedIn != null || _ui.value.pairing != null
+        log("App Link: ${link.javaClass.simpleName}")
+        if (signedIn) return toast(com.scmtips.field.app.signin.AccountText.SIGNED_IN_ALREADY)
+        onAccount(AccountEvent.Link(link, signedIn = false))
+    }
+
     /** "Scan a code from your computer": the scanner's text (a console App Link, a bare code or the PC pairing QR). */
     fun scannedSignInCode(text: String) = onAccount(AccountEvent.Scanned(text))
 
