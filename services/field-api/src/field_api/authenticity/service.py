@@ -208,8 +208,9 @@ def gather(code: str, port: OemPort, tenant_id: str, principal_id: str, area: st
                 rules.Inputs(cr.status, registry=reg, today=today))
     fc = uc.first_check
     fstatus = "first" if fc.first else "same_checker" if fc.same_checker else "other_checker"
+    # the first checker's area is theirs: another checker learns when, never where
     first = {"status": fstatus, "first_checked_at": fc.at.astimezone(UTC).isoformat().replace("+00:00", "Z"),
-             "area": fc.area}
+             "area": fc.area if fc.same_checker else None}
     inputs = rules.Inputs(cr.status, registry=reg, events=tuple((e.type, e.at) for e in uc.unit.events),
                           first_check=fstatus, first_checked_at=fc.at, today=today)
     return cr, registry_signal(reg, uc), first, inputs

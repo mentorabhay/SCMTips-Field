@@ -197,7 +197,10 @@ def test_m5_t04_roles_sites_and_validation(client: TestClient, env: dict[str, An
     assert r.status_code == 404 and r.json()["code"] == "FIELD-AUT-404-CAPTURE"
     assert h.check(client, env["op"], env["new"], area="18.52 73.85").status_code == 422  # no coordinates
     assert h.check(client, env["op"], "x" * 1025).status_code == 422
-    assert h.check(client, env["op"], env["new"], area="Pune").status_code == 200
+    pune = h.check(client, env["op"], env["activated"], area="Pune").json()
+    assert pune["signals"]["first_check"]["area"] == "Pune"  # the first checker sees their own area
+    later = h.check(client, env["op2"], env["activated"]).json()
+    assert later["signals"]["first_check"]["status"] == "other_checker" and later["signals"]["first_check"]["area"] is None
     with_capture = h.check(client, env["sup"], env["new"], capture_id=env["capture"])
     assert with_capture.status_code == 200 and with_capture.json()["site_id"] == env["site"]  # the capture's site
 
