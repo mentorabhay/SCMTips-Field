@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,7 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 3.1 Tower home (TowerHome.dc.html), under the shell's header: the check-in card while no site visit is open here
+ * 3.1 Tower home (TowerHome.dc.html), under the shell's header: Refresh, the integrator's [extra]
+ * items (e.g. the work-session card), the check-in card while no site visit is open here
  * (it opens the first tower job, whose first step checks the location and the work permit; the home shows no GPS
  * or permit of its own), then the tower jobs. Empty: a mast drawing, one sentence, Refresh.
  */
@@ -38,10 +40,12 @@ fun TowerHome(
     onOpenTask: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
+    contentPadding: PaddingValues = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+    extra: LazyListScope.() -> Unit = {},
 ) {
     LazyColumn(modifier.fillMaxSize(), contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { HomeHeadline(model.headline, model.loading, onRefresh) }
+        item { RefreshRow(model.loading, onRefresh) }
+        extra()
         when {
             !model.linked -> item {
                 EmptyState("Tower jobs appear here once this phone is linked to a Field site.", "Refresh", onRefresh, enabled = true) {

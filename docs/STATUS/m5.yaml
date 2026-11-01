@@ -1334,8 +1334,8 @@
     connected glasses), steps 2 and 3 tick only from GlassesHelp's advice and the camera probe; a toolkit that did not
     start leaves "Continue with the phone camera". Animations are Compose-native (rememberInfiniteTransition read in
     the draw phase, animateDpAsState), no new dependency; with reduceMotion every drawing shows its still frame and no
-    transition runs. shell/Homes.kt and shell/ShellNav.kt are verbatim copies of builder A's uncommitted pure shell
-    types (feat/m5-ui-shell working tree, 1 Nov) so these screens compile; A's branch owns them and its tests cover
+    transition runs. shell/Homes.kt and shell/ShellNav.kt are verbatim copies of builder A's pure shell types (as
+    committed in f50841b on feat/m5-ui-shell) so these screens compile; A's branch owns them and its tests cover
     them; the integrator keeps A's copies. HomeTokens.kt mirrors A's theme tokens by name and value until the merge.
     Type-checked with tools/android_check/compile_check.py (Kotlin 2.2.21 + Compose plugin against the real AndroidX
     jars), not a Gradle build; nothing drawn on a device yet. Partial until proven on the owner's phone.
@@ -1373,8 +1373,11 @@
   frs: []
   verified_at: null
   note: >-
-    Homes draw only the content under the shell's header (A's switcher, status pill, greeting, connection card and
-    view-only banner). Signatures: WarehouseHome(model, canAct, reduceMotion, onOpenTask, onOpenStarter, onStartCase,
+    Homes draw only the content under the shell's header (A's switcher, status pill, greeting, headline from
+    HomeRules.headline, connection card and view-only banner): a Refresh row, then an optional `extra: LazyListScope.()
+    -> Unit` slot (last parameter) where the integrator can keep Today's work-session, decisions-review or claims-review
+    sections, then the home's own cards. The models still carry their own headline (tested) in case the shell wants it.
+    Signatures: WarehouseHome(model, canAct, reduceMotion, onOpenTask, onOpenStarter, onStartCase,
     onStartSandbox, onRefresh), TowerHome(model, canAct, reduceMotion, onOpenTask, onRefresh), ApprovalsHome(model,
     canAct, reduceMotion, onReviewDecisions, onReviewClaims, onRefresh), ScanHome(model, canAct, reduceMotion,
     onCheckBox, onOpenCheck, onLinkSite?). Models come from real state only: HomeModelsFromUi reads AppUi (Android-bound

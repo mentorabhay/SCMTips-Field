@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -22,8 +24,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -34,9 +34,9 @@ import com.scmtips.field.app.jobs.JobType
 import com.scmtips.field.app.ui.CountShelfDialog
 
 /**
- * 2.1 Warehouse home (WarehouseHome.dc.html), the content under the shell's header: the headline, NEXT UP (the
- * oldest open receipt, else a sandbox case, else the oldest other job) with its one main action, the four work tiles
- * with real counts, and on a sandbox site "Test at home". Empty: a drawing, one sentence, Refresh. With [canAct]
+ * 2.1 Warehouse home (WarehouseHome.dc.html), the content under the shell's header: Refresh, the integrator's
+ * [extra] items (e.g. Today's work-session card), NEXT UP (the oldest open receipt, else a sandbox case, else the
+ * oldest other job) with its one main action, the four work tiles with real counts, and on a sandbox site "Test at home". Empty: a drawing, one sentence, Refresh. With [canAct]
  * false every act button is disabled (the shell's view-only banner says why); nothing is invented.
  */
 @Composable
@@ -50,12 +50,14 @@ fun WarehouseHome(
     onStartSandbox: (SandboxStart, String?) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 24.dp),
+    contentPadding: PaddingValues = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+    extra: LazyListScope.() -> Unit = {},
 ) {
     var askShelf by rememberSaveable { mutableStateOf(false) }
     if (askShelf) CountShelfDialog(onStart = { bin -> askShelf = false; onStartSandbox(SandboxStart.COUNT_SHELF, bin) }, onDismiss = { askShelf = false })
     LazyColumn(modifier.fillMaxSize(), contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item { HomeHeadline(model.headline, model.loading, onRefresh) }
+        item { RefreshRow(model.loading, onRefresh) }
+        extra()
         when {
             !model.linked -> item {
                 EmptyState("Your jobs appear here once this phone is linked to a Field site.", "Refresh", onRefresh, enabled = true) {
@@ -100,12 +102,14 @@ fun WarehouseHome(
     }
 }
 
-/** The headline of a home ("6 tasks today") with Refresh, or a spinner while loading. */
+/**
+ * Refresh (or a spinner while loading), right-aligned at the top of a home; [lead] fills the left (the approvals
+ * filter). The headline itself ("6 tasks today") is the shell header's (HomeRules.headline).
+ */
 @Composable
-internal fun HomeHeadline(text: String, loading: Boolean, onRefresh: () -> Unit) {
+internal fun RefreshRow(loading: Boolean, onRefresh: () -> Unit, lead: @Composable RowScope.() -> Unit = { Box(Modifier.weight(1f)) }) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, color = Ink, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f).semantics { heading() })
+        lead()
         if (loading) Box(Modifier.size(MinTouch), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(Modifier.size(22.dp), color = BrandStart, strokeWidth = 2.5.dp)
         } else LinkButton("Refresh", onRefresh, size = 14)

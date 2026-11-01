@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +28,8 @@ import androidx.compose.ui.unit.sp
  * 5.1 Scan product home: a calm landing for "Is this unit really new?" with one big "Check a box" ([onCheckBox]; the
  * camera step itself is builder C's ScanSeal screen). The drawing shows the frame closing on a seal, never a "Code
  * read" claim. An open check offers [onOpenCheck]; a phone not linked to a site, or a site where field-api said 403,
- * says so instead of the button ([onLinkSite], when given, is the one action then).
+ * says so instead of the button ([onLinkSite], when given, is the one action then). [extra] items follow
+ * (e.g. the Scan tab's "scan anything" card).
  */
 @Composable
 fun ScanHome(
@@ -39,12 +40,19 @@ fun ScanHome(
     onOpenCheck: () -> Unit,
     modifier: Modifier = Modifier,
     onLinkSite: (() -> Unit)? = null,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
+    contentPadding: PaddingValues = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+    extra: LazyListScope.() -> Unit = {},
 ) {
-    Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(contentPadding),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
+    LazyColumn(modifier.fillMaxSize(), contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item { ScanBody(model, canAct, reduceMotion, onCheckBox, onOpenCheck, onLinkSite) }
+        extra()
+    }
+}
+
+@Composable
+private fun ScanBody(model: ScanHomeModel, canAct: Boolean, reduceMotion: Boolean, onCheckBox: () -> Unit, onOpenCheck: () -> Unit,
+                     onLinkSite: (() -> Unit)?) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         when (model.state) {
             ScanHomeState.NOT_LINKED -> EmptyState(ScanHomeModel.NOT_LINKED, onLinkSite?.let { "Choose a site" }, { onLinkSite?.invoke() }, enabled = true) {
                 SealArt(reduceMotion = true, width = 120.dp, desc = null)

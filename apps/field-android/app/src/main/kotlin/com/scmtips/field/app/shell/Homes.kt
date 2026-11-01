@@ -58,6 +58,26 @@ object HomeRules {
         return "View only: your account can't do ${home.cannotDo} here. Sign in as $who (e.g. tester01) to act."
     }
 
+    /** The big line of a home's header, from real counts only (null counts: not asked yet). */
+    fun headline(home: Home, warehouseTasks: Int, towerTasks: Int, decisionsWaiting: Int?, claimsWaiting: Int?, canAct: Boolean): String {
+        fun n(k: Int, one: String, many: String) = "$k ${if (k == 1) one else many}"
+        if (!canAct && home != Home.SCAN) return home.menuLabel
+        return when (home) {
+            Home.WAREHOUSE -> if (warehouseTasks == 0) "Nothing assigned yet" else n(warehouseTasks, "task", "tasks") + " today"
+            Home.TOWER -> if (towerTasks == 0) "No tower jobs yet" else n(towerTasks, "tower job", "tower jobs") + " today"
+            Home.APPROVALS -> {
+                val d = decisionsWaiting ?: 0
+                val c = claimsWaiting ?: 0
+                when {
+                    decisionsWaiting == null && claimsWaiting == null -> "Your decisions"
+                    d + c == 0 -> "Nothing waiting"
+                    else -> n(d + c, "item", "items") + " waiting"
+                }
+            }
+            Home.SCAN -> "Scan a product"
+        }
+    }
+
     /** Tower homes show site visits and swaps; warehouse homes show the rest. */
     fun towerTasks(tasks: List<JobTask>): List<JobTask> = tasks.filter { it.type.isTower }
     fun warehouseTasks(tasks: List<JobTask>): List<JobTask> = tasks.filterNot { it.type.isTower }

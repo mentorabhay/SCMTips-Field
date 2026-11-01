@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -32,10 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 4.1 Approvals home (ApprovalsInbox.dc.html), under the shell's header: the headline, the All / Decisions / Claims
- * filter with real counts, and one card per waiting item (decisions by time left, then claims newest first; box-check
- * claims are marked BOX CHECK). A tap starts the voice review of that kind ([onReviewDecisions] / [onReviewClaims]),
- * as Today's cards do. When AppUi has only counts the cards are honest summaries ("2 decisions waiting").
+ * 4.1 Approvals home (ApprovalsInbox.dc.html), under the shell's header: Refresh, the All / Decisions / Claims
+ * filter with real counts, the integrator's [extra] items (e.g. the running review's card), then one card per waiting
+ * item (decisions by time left, then claims newest first; box-check claims are marked BOX CHECK). A tap starts the
+ * voice review of that kind ([onReviewDecisions] / [onReviewClaims]), as Today's cards do. When AppUi has only counts the cards are honest summaries ("2 decisions waiting").
  */
 @Composable
 fun ApprovalsHome(
@@ -46,17 +47,19 @@ fun ApprovalsHome(
     onReviewClaims: () -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
+    contentPadding: PaddingValues = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+    extra: LazyListScope.() -> Unit = {},
 ) {
     var filter by rememberSaveable { mutableStateOf(ApprovalFilter.ALL) }
     val shown = model.shown(filter)
     LazyColumn(modifier.fillMaxSize(), contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { HomeHeadline(model.headline, loading = false, onRefresh = onRefresh) }
+        item { RefreshRow(loading = false, onRefresh = onRefresh) }
         if (!model.empty || model.checking) item {
             Row(Modifier.selectableGroup().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ApprovalFilter.entries.forEach { f -> FilterChip(model.chip(f), f == filter) { filter = f } }
             }
         }
+        extra()
         when {
             model.checking -> item {
                 Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically,
