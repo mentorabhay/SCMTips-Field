@@ -966,3 +966,20 @@
     The revoke still ends the old device: nothing re-registers by itself; only the person typing their password
     again makes the new device, which the console then lists. Same rule as a QR pairing (PhoneBinding.connect with
     fromScan). Partial until a revoked phone signs in again on the host.
+- id: M5-T01
+  title: >-
+    C3 authenticity contract (docs/design/M5_C3_CONTRACT.md): signals, the seal code and signature format, the
+    verdict rule table, the field-api checks / evidence / claim APIs and error codes, the OEM port and simulator, the
+    five label scenarios, the phone flow for the app builder, privacy, and what C3 does not prove
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - docs/design/M5_C3_CONTRACT.md
+  tests: []
+  frs: []
+  verified_at: null
+  note: >-
+    Contract only. Everything in C3 is SAMPLE (fictional OEM Kestrel Optics (SAMPLE), OEM simulator); a real OEM
+    would have to sign its seals and open its registry, which none does for this build. Partial until proven on the
+    owner's phone and glasses.
