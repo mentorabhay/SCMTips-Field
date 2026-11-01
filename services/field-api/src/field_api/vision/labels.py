@@ -26,6 +26,7 @@ from decimal import Decimal
 from typing import Any
 
 from field_api.assistant.model import CallLog, ChatModel, ModelError
+from field_api.vision import settings
 from field_api.vision.ports import CallContext, LabelRead, ModelCall
 from field_api.vision.sam import data_url
 from field_api.vision.settings import VISION_CALL_CAP_S
@@ -179,12 +180,16 @@ class ChatLabelReader:
     def read(self, crops: Sequence[tuple[int, bytes]], *, case: str, object_noun: str, timeout_s: float,
              ctx: CallContext) -> dict[int, LabelRead]:
         log = CallLog()
-        max_tokens = min(4096, 1024 + 160 * len(crops))  # reasoning tokens count as output (META_FIELD row 19)
+        # Reasoning tokens count against max_tokens (dev.meta.ai/docs/reasoning). Gate 0 from India (1 Nov 2026,
+        # docs/evidence/2026-11-01-m5-gate0-094501.txt): one image, max_tokens 1184, 1182 spent on reasoning, no answer.
+        # Reading a label needs little reasoning: low effort on Meta, and room for both.
+        max_tokens = min(settings.labels_max_tokens_cap(), settings.labels_max_tokens_base() + 512 * len(crops))
+        effort = settings.labels_reasoning_effort() if self.chat.cfg.provider == "meta" else None
         try:
             res = self.chat.chat(messages(crops, case, object_noun), timeout_s=timeout_s, max_tokens=max_tokens,
                                  purpose="vision", tenant_id=ctx.tenant_id, request_id=ctx.request_id, log=log,
                                  response_format=response_format() if self.use_response_format else None,
-                                 images=len(crops), timeout_cap_s=VISION_CALL_CAP_S)
+                                 images=len(crops), timeout_cap_s=VISION_CALL_CAP_S, reasoning_effort=effort)
         except ModelError as e:
             ctx.calls.append(self._call(log, e.code))
             raise

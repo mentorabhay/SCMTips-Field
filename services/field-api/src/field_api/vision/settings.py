@@ -7,6 +7,10 @@ it is looking. The assistant's own 6 s cap is unchanged.
   VISION_INSTANCES_DEADLINE_S  default 15    SAM 3.1 instances
   VISION_LABELS_DEADLINE_S     default 30    Muse Spark label + damage reads, all batches together
   VISION_FALLBACK_DEADLINE_S   default 15    the Baseten (Llama 3.2 Vision) fallback for label reads
+Muse label reads (reasoning tokens count against max_tokens, dev.meta.ai/docs/reasoning; Gate 0 1 Nov 2026):
+  VISION_LABELS_REASONING_EFFORT  default low    Meta's reasoning_effort for label reads (minimal|low|medium|high|xhigh|max)
+  VISION_LABELS_MAX_TOKENS        default 4096   base output allowance per call (+512 per crop), 1024..16384
+  VISION_LABELS_MAX_TOKENS_CAP    default 12288  the most one label call may use, 2048..16384
 Other settings:
   VISION_EXPIRY_WINDOW_DAYS    default 90    a site's "expiring soon" window when the line names none (C2)
   VISION_CROPS_PER_CALL        default 8     instance crops sent in one Muse call (1..20; the API takes up to 50)
@@ -97,3 +101,19 @@ def baseten_base_url() -> str:
 
 def label_min_instance_px() -> int:
     return _int("VISION_LABEL_MIN_INSTANCE_PX", 200, 8, 5000)
+
+
+REASONING_EFFORTS = ("minimal", "low", "medium", "high", "xhigh", "max")  # "none" is refused by Muse Spark (HTTP 400)
+
+
+def labels_reasoning_effort() -> str:
+    v = os.getenv("VISION_LABELS_REASONING_EFFORT", "").strip().lower()
+    return v if v in REASONING_EFFORTS else "low"
+
+
+def labels_max_tokens_base() -> int:
+    return _int("VISION_LABELS_MAX_TOKENS", 4096, 1024, 16384)
+
+
+def labels_max_tokens_cap() -> int:
+    return _int("VISION_LABELS_MAX_TOKENS_CAP", 12288, 2048, 16384)

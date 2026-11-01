@@ -115,6 +115,25 @@ def test_m5_v02_label_reader_truncated_answer_is_an_error_and_billed(v: SimpleNa
     assert e.value.code == "AI_TRUNCATED" and ctx.calls[0].cost_usd > 0
 
 
+def test_m5_v02_meta_label_request_asks_low_reasoning_with_room_to_answer(v: SimpleNamespace, ai_on: None) -> None:
+    """Gate 0 from India (docs/evidence/2026-11-01-m5-gate0-094501.txt): max_tokens 1184, 1182 reasoning tokens, no
+    answer. A Meta label read now sends reasoning_effort "low" and at least 4096 + 512 per crop."""
+    sent: list[dict[str, object]] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(req.content))
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(
+            {"items": [{"n": 1, "label_readable": False, "pieces_per_unit": None, "batch": None, "expiry": None,
+                        "damaged": False, "damage_note": None, "label_text": None}]})}}],
+            "usage": {"prompt_tokens": 2797, "completion_tokens": 300}})
+
+    guard = BudgetGuard(prices=v.PRICES)
+    meta = ChatLabelReader(ChatModel(ProviderConfig("meta", "https://api.meta.ai/v1", "muse-spark-1.3",
+                                                    "MODEL_API_KEY"), guard, httpx.MockTransport(handler)))
+    meta.read([(1, b"\xff\xd8\xff")], case="grocery", object_noun="pack", timeout_s=2, ctx=CallContext(None, "r"))
+    assert sent[0]["reasoning_effort"] == "low" and int(str(sent[0]["max_tokens"])) >= 4096 + 512
+
+
 # --------------------------------------------------------------------------- budget guard (M5-V05)
 def _spend_caps(v: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
     v.caps_above_spend(monkeypatch)

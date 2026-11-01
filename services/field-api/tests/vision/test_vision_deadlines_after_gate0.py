@@ -5,7 +5,6 @@ assistant keeps its 6 s per-call cap."""
 from __future__ import annotations
 
 import pytest
-
 from field_api.assistant.model import CALL_TIMEOUT_S
 from field_api.vision import settings
 
@@ -27,3 +26,15 @@ def test_look_deadlines_are_clamped_to_the_vision_cap(monkeypatch: pytest.Monkey
 
 def test_the_assistant_keeps_its_own_six_second_cap() -> None:
     assert CALL_TIMEOUT_S == 6.0 < settings.VISION_CALL_CAP_S
+
+
+def test_label_reads_ask_for_low_reasoning_and_room_to_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Gate 0 (docs/evidence/2026-11-01-m5-gate0-094501.txt): max_tokens 1184, 1182 reasoning tokens, no answer."""
+    for name in ("VISION_LABELS_REASONING_EFFORT", "VISION_LABELS_MAX_TOKENS", "VISION_LABELS_MAX_TOKENS_CAP"):
+        monkeypatch.delenv(name, raising=False)
+    assert settings.labels_reasoning_effort() == "low"
+    assert settings.labels_max_tokens_base() == 4096 > 1184
+    monkeypatch.setenv("VISION_LABELS_REASONING_EFFORT", "none")  # refused by Muse Spark: never sent
+    assert settings.labels_reasoning_effort() == "low"
+    monkeypatch.setenv("VISION_LABELS_REASONING_EFFORT", "MINIMAL")
+    assert settings.labels_reasoning_effort() == "minimal"

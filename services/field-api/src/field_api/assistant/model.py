@@ -205,12 +205,14 @@ class ChatModel:
              timeout_s: float = CALL_TIMEOUT_S, max_tokens: int | None = None, purpose: str = "assistant",
              tenant_id: str | None = None, request_id: str | None = None, log: CallLog | None = None,
              response_format: dict[str, Any] | None = None, images: int = 0,
-             timeout_cap_s: float = CALL_TIMEOUT_S) -> ChatResult:
+             timeout_cap_s: float = CALL_TIMEOUT_S, reasoning_effort: str | None = None) -> ChatResult:
         """One call. ``response_format`` (M5 vision look: a JSON schema answer) and ``images`` (the number of input
         images, so the budget guard applies its image-input rules) are sent only when given; without them the
         request and the reservation are exactly the M3/M4 ones. ``timeout_cap_s`` lets the vision look allow image
         calls longer than the assistant's 6 s cap (owner's Gate 0 from India, 1 Nov 2026: SAM 3.1 took about 5 s and a
-        Muse image read more than 7.7 s); the assistant and the brief router keep the default."""
+        Muse image read more than 7.7 s); the assistant and the brief router keep the default. ``reasoning_effort``
+        (Meta's top-level parameter: minimal, low, medium, high, xhigh, max; dev.meta.ai/docs/reasoning) is sent only
+        when given: at Gate 0 a Muse image read spent 1182 of 1184 output tokens on reasoning and returned nothing."""
         if os.getenv("AI_CLOUD_ENABLED", "false").strip().lower() != "true":
             raise ModelError("AI_CLOUD_DISABLED")
         key = os.environ.get(self.cfg.key_env, "").strip()
@@ -226,6 +228,8 @@ class ChatModel:
             body["tool_choice"] = "auto"
         if response_format is not None:
             body["response_format"] = response_format
+        if reasoning_effort is not None:
+            body["reasoning_effort"] = reasoning_effort
         try:
             if images > 0:  # the guard reserves the images itself (its tokens_per_image), not the flat estimate
                 est = max(0, estimate_tokens(messages, tools) - images * IMAGE_TOKEN_ESTIMATE)
