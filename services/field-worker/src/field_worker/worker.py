@@ -44,6 +44,7 @@ from field_worker.material_sync import MaterialCacheSynchronizer
 from field_worker.posting.equipment_queue import process_next_tower_job
 from field_worker.posting.queue import PostingQueueWorker
 from field_worker.retention.assistant import purge_assistant_content
+from field_worker.retention.vision import purge_vision_raw
 from field_worker.warehouse.ibd_import import poll_and_import_inbound_deliveries
 from field_worker.warehouse.obd_import import poll_and_import_outbound_deliveries
 
@@ -172,6 +173,10 @@ class FieldWorker:
         """Field Assistant retention (30 days); returns the number of photo files deleted."""
         return purge_assistant_content(self.db_url).photos_deleted
 
+    def purge_vision_raw(self) -> int:
+        """Vision look label text retention (30 days, M5); returns the number of looks cleared."""
+        return purge_vision_raw(self.db_url)
+
     async def tick(self, now: float) -> None:
         """One pass over every loop. A failing loop is logged and must not starve the others."""
         await self._guard("posting", self.process_posting_queue())
@@ -191,6 +196,7 @@ class FieldWorker:
         if self._last_assistant_purge is None or now - self._last_assistant_purge >= ASSISTANT_PURGE_S:
             self._last_assistant_purge = now
             await self._guard("assistant_retention", asyncio.to_thread(self.purge_assistant_content))
+            await self._guard("vision_retention", asyncio.to_thread(self.purge_vision_raw))
         self.last_heartbeat = datetime.now(UTC).isoformat()
         await asyncio.to_thread(self.record_heartbeat)
 

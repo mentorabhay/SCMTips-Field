@@ -13,3 +13,119 @@
   note: >-
     Contract only. Nothing in M5 is done until proven on the owner's phone and glasses with the two cases (C1 grocery
     delivery, C2 pharmacy receipt).
+- id: M5-V01
+  title: >-
+    Vision look API: POST /v1/vision/looks and GET /v1/vision/looks/{id} (contract §2), table field.vision_look with
+    forced RLS and idempotency, migration field_0064_m5_vision
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/vision/api.py
+  - services/field-api/src/field_api/vision/service.py
+  - services/field-api/alembic/versions/field_0064_m5_vision.py
+  tests:
+  - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v01_grocery_look_counts_damage_and_pack_size
+  - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v01_pharmacy_look_flags_expired_near_and_reports_batches
+  - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v02_idempotent_and_validated
+  frs: []
+  verified_at: null
+  note: >-
+    Built and tested against a test double of the Meta Model API in test code only. The body has every key of
+    contract §2 plus task_id, line_id, capture_id, case, object, created_at and erp_document_id (additive). A count
+    task's book quantity is never used (counts.expected null). Not proven on the real API, the owner's phone or the
+    glasses (META_FIELD rows 20, 23).
+- id: M5-V02
+  title: >-
+    Look orchestrator and model adapters: SAM 3.1 instances (Responses API), Muse Spark 1.3 label and damage reads on
+    numbered crops (chat completions, JSON schema), the Baseten Llama 3.2 Vision fallback, per-stage deadlines,
+    source model / partial / rules
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/vision/sam.py
+  - services/field-api/src/field_api/vision/labels.py
+  - services/field-api/src/field_api/vision/image.py
+  - services/field-api/src/field_api/vision/ports.py
+  - services/field-api/src/field_api/vision/settings.py
+  tests:
+  - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v02_no_model_answer_is_rules_never_an_error
+  - services/field-api/tests/vision/test_vision_look_api.py::test_m5_v02_labels_fall_back_to_baseten_then_partial
+  - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v02_sam_box_tokens_scaled_clipped_and_scored
+  - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v02_sam_accepts_json_answer_and_bills_per_image
+  - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v02_sam_failures_raise_and_close_the_reservation
+  - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v02_label_reads_are_validated_never_guessed
+  - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v02_label_reader_truncated_answer_is_an_error_and_billed
+  frs: []
+  verified_at: null
+  note: >-
+    UNVERIFIED dependency (rule 2.4): request and answer shapes are taken from Meta's docs read on 2026-11-01
+    (dev.meta.ai/docs/media-segmentation, /docs/models, /docs/image-understanding, /docs/structured-output,
+    /docs/pricing-rate-limits) and Meta's meta-sam-parser package description; /docs/sam/segmenting and
+    /docs/sam/reading-segmentation could not be fetched. No call reached api.meta.ai (no key, no route from the
+    build sandbox). The SAM mask is not decoded (polygon null). Gate 0 (tools/probes/m5_gate0.py) is the first
+    real call.
+- id: M5-V03
+  title: >-
+    Label text (raw) kept 30 days like assistant turns: field.worker_purge_vision_raw(days) run by the worker, never
+    logged
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - services/field-worker/src/field_worker/retention/vision.py
+  - services/field-worker/src/field_worker/worker.py
+  tests:
+  - services/field-worker/tests/unit/test_vision_retention.py::test_m5_v03_purge_clears_label_text_of_old_looks_only
+  - services/field-worker/tests/unit/test_vision_retention.py::test_m5_v03_worker_role_cannot_read_looks_directly
+  frs: []
+  verified_at: null
+  note: >-
+    Same window as the assistant (FIELD_ASSISTANT_RETENTION_DAYS, default 30). The look record itself (instances,
+    counts, the check, model calls, document link) is kept as evidence. Not yet run on the owner's PC.
+- id: M5-V04
+  title: >-
+    Deterministic check of a look (vision/reconcile.py): counts vs the line, pieces per unit vs expected (pieces
+    difference), expiry vs the site window (default 90 days), batches; proposal and a number-checked say
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/vision/reconcile.py
+  - services/field-api/src/field_api/vision/say.py
+  tests:
+  - services/field-api/tests/vision/test_vision_reconcile_property.py::test_m5_v04_property_good_plus_flagged_is_seen_and_pieces_difference
+  - services/field-api/tests/vision/test_vision_reconcile_property.py::test_m5_v04_property_expiry_windows
+  - services/field-api/tests/vision/test_vision_reconcile_property.py::test_m5_v04_rules_mode_and_contract_example
+  frs: []
+  verified_at: null
+  note: >-
+    Hypothesis property: good + flagged = seen; pieces difference = sum of read pieces - expected x reads; every
+    number of say is one of the look's figures (briefs.numbers). Flagged = damaged, and on a pharmacy case also
+    expired or near expiry; pack-size differences are received and claimed, not flagged. Partial until the two
+    cases are proven on the owner's phone and glasses.
+- id: M5-V05
+  title: >-
+    Budget guard keeps placeholder prices honest: confirmed false and image_input confirmed false are refused
+    (AI_PRICE_UNCONFIRMED) unless AI_ALLOW_UNCONFIRMED_PRICES=true; per-image prices (SAM 3.1)
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/ai/budget.py
+  - config/ai_pricing.yaml
+  - services/field-api/src/field_api/assistant/model.py
+  tests:
+  - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v05_pricing_file_marks_sam_and_muse_image_input_unconfirmed
+  - services/field-api/tests/vision/test_vision_adapters.py::test_m5_v05_guard_refuses_unconfirmed_prices_unless_allowed
+  - services/field-api/tests/unit/test_ai_budget.py::test_pricing_file_loads_with_non_negative_prices
+  - services/field-api/tests/unit/test_ai_budget.py::test_reserve_settle_and_cap
+  frs: []
+  verified_at: null
+  note: >-
+    sam-3.1 at 0.005 USD per image (twice the 2.50 per 1,000 images on dev.meta.ai/docs/pricing-rate-limits, read
+    2026-11-01) and Muse image input at 3000 tokens per image are placeholders (confirmed false) until the owner
+    checks the console. Entries without the keys are confirmed, and text calls (and the assistant's M4 photo turn,
+    which passes no image count) are unchanged. The owner sets confirmed true after checking, or
+    AI_ALLOW_UNCONFIRMED_PRICES=true for Gate 0 only.

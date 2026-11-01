@@ -203,7 +203,11 @@ class ChatModel:
 
     def chat(self, messages: Sequence[dict[str, Any]], *, tools: Sequence[dict[str, Any]] | None = None,
              timeout_s: float = CALL_TIMEOUT_S, max_tokens: int | None = None, purpose: str = "assistant",
-             tenant_id: str | None = None, request_id: str | None = None, log: CallLog | None = None) -> ChatResult:
+             tenant_id: str | None = None, request_id: str | None = None, log: CallLog | None = None,
+             response_format: dict[str, Any] | None = None, images: int = 0) -> ChatResult:
+        """One call. ``response_format`` (M5 vision look: a JSON schema answer) and ``images`` (the number of input
+        images, so the budget guard applies its image-input rules) are sent only when given; without them the
+        request and the reservation are exactly the M3/M4 ones."""
         if os.getenv("AI_CLOUD_ENABLED", "false").strip().lower() != "true":
             raise ModelError("AI_CLOUD_DISABLED")
         key = os.environ.get(self.cfg.key_env, "").strip()
@@ -217,10 +221,18 @@ class ChatModel:
         if tools:
             body["tools"] = list(tools)
             body["tool_choice"] = "auto"
+        if response_format is not None:
+            body["response_format"] = response_format
         try:
-            res = self.guard.reserve(self.cfg.provider, self.cfg.model, input_tokens=estimate_tokens(messages, tools),
-                                     max_output_tokens=max_tokens, purpose=purpose, tenant_id=tenant_id,
-                                     request_id=request_id)
+            if images > 0:  # the guard reserves the images itself (its tokens_per_image), not the flat estimate
+                est = max(0, estimate_tokens(messages, tools) - images * IMAGE_TOKEN_ESTIMATE)
+                res = self.guard.reserve(self.cfg.provider, self.cfg.model, input_tokens=est,
+                                         max_output_tokens=max_tokens, purpose=purpose, tenant_id=tenant_id,
+                                         request_id=request_id, images=images)
+            else:
+                res = self.guard.reserve(self.cfg.provider, self.cfg.model,
+                                         input_tokens=estimate_tokens(messages, tools), max_output_tokens=max_tokens,
+                                         purpose=purpose, tenant_id=tenant_id, request_id=request_id)
         except BudgetRefused as e:
             raise ModelError(e.code, str(e)) from None
         t0 = time.perf_counter()

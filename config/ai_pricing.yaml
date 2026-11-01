@@ -2,6 +2,14 @@
 # USD per million tokens. A model that is not listed here is refused: the guard never guesses a price.
 # cached_input_per_mtok (optional): rate for prompt tokens the provider reports as cache hits
 # (usage.prompt_tokens_details.cached_tokens); without it cached tokens are billed at input_per_mtok.
+# per_image_usd (optional, M5): a model billed per input image (SAM 3.1); added per image to the reservation and
+# the settled cost.
+# confirmed (optional, M5, default true): false marks a PLACEHOLDER the owner has not checked on the provider's
+# console. The guard refuses such a model (AI_PRICE_UNCONFIRMED) unless AI_ALLOW_UNCONFIRMED_PRICES=true.
+# image_input (optional, M5): {confirmed: false, tokens_per_image: N} on a token-priced model: how many prompt
+# tokens one input image costs is not published, so a call that sends images (the vision look) is refused unless
+# AI_ALLOW_UNCONFIRMED_PRICES=true; N is the worst case reserved per image (settled by the provider's real count).
+# Owner: after checking the console, set confirmed: true (and correct the figure); the flag is then not needed.
 #
 # OWNER-CHECKABLE. These are owner-supplied figures, UNVERIFIED by any build, and must be re-checked in the
 # provider console whenever the provider changes pricing.
@@ -20,4 +28,15 @@ meta:
   muse-spark-1.2: {input_per_mtok: 1.25, cached_input_per_mtok: 0.15, output_per_mtok: 4.25}
   # Owner's choice of default (31 Oct 2026, A-04). Its Standard price is not published where we could read it;
   # set equal to muse-spark-1.2 Standard so the guard can run it. Owner: confirm on the console (META_FIELD row 20).
-  muse-spark-1.3: {input_per_mtok: 1.25, cached_input_per_mtok: 0.15, output_per_mtok: 4.25}
+  # 2026-11-01 (M5 stream V): the page dev.meta.ai/docs/pricing-rate-limits, read through a web fetch from the build
+  # sandbox, lists muse-spark-1.3 Standard at these same rates (cached 0.15, input 1.25, output 4.25 per 1M tokens).
+  # Not yet confirmed by the owner on the console (META_FIELD row 20).
+  # image_input: the docs do not say how many prompt tokens an input image costs. Placeholder 3000 tokens per image
+  # (worst case reserved; the provider's own prompt-token count is what is settled). UNVERIFIED, owner to confirm.
+  muse-spark-1.3: {input_per_mtok: 1.25, cached_input_per_mtok: 0.15, output_per_mtok: 4.25,
+                   image_input: {confirmed: false, tokens_per_image: 3000}}
+  # SAM 3.1 (M5 vision look, instances from a text prompt). Billed per image, not per token: the same docs page lists
+  # "Image segmentation: $2.50 per 1,000 images" (= $0.0025 per image), read 2026-11-01 through a web fetch, never
+  # billed to us yet. Conservative placeholder at twice that until the owner confirms it on the console
+  # (META_FIELD row 23). confirmed: false -> refused unless AI_ALLOW_UNCONFIRMED_PRICES=true.
+  sam-3.1: {input_per_mtok: 0, output_per_mtok: 0, per_image_usd: 0.005, confirmed: false}
