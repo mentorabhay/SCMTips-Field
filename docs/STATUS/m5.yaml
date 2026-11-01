@@ -1287,3 +1287,55 @@
     repeated Idempotency-Key is 422 KEY-REUSED from the middleware (as for captures); the service itself replays a
     key's stored look. Proven with the Meta API test double and the SAMPLE scene only; partial until the hosted stack
     runs the page with the real Meta key (META_FIELD rows 20, 23 UNVERIFIED) and a judge's browser speaks it.
+- id: M5-U02
+  title: >-
+    First-run screens of the app redesign (A-07, prototype Main / SignIn / Forgot / Permissions / Glasses / Site
+    .dc.html, M5_UI_CONTRACT §3): Welcome with three swipeable cards and looping drawn hints, Sign in (e-mail, password
+    Show/Hide, busy and error states, Forgot password?, Create an account, "I have a code from my PC", SAMPLE note),
+    Forgot password through the SCMTIPS reset page, Permissions one at a time with why, optional Glasses setup in three
+    steps from the real toolkit state, Site and "what are you doing now" home choice
+  workstream: M5-U
+  role: Builder B (UI screens)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/WelcomeScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SignInScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/PermissionsScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/GlassesSetupScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SitePickScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunArt.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HintMotion.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeTokens.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeArt.kt
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_welcome_threeCardsInOrder_nextStopsOnTheLast_andDotsAreLabelled
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_permissions_onlyThisAndroidsSteps_minusGranted_oneAtATime
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_glasses_stepsFollowTheRealToolkitState
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_glasses_aToolkitThatDidNotStart_isSaid_andOnlySkipLeads_on
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_site_sandboxIsMarked_selectionAndContinueFollowTheList
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_site_roleNoteCountsTheHomesTheAccountCanActIn
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U02_signIn_needsBothFields_andNotWhileBusy_forgotSaysWhatHappensNext
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HintMotionTest.kt::m5U02_pulseAndPop_followThePrototypeKeyframes
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HintMotionTest.kt::m5U02_waveRingFlyBreatheTapBlink_stayInTheirRanges
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HintMotionTest.kt::m5U02_reduceMotionStills_areRestingFrames_neverAClaim
+  frs: []
+  verified_at: null
+  note: >-
+    Signatures as M5_UI_CONTRACT §3 (WelcomeScreen, SignInScreen, ForgotScreen, PermissionsScreen, GlassesSetupScreen,
+    SitePickScreen), each taking explicit values and lambdas, no Actions / AppUi / FieldController import (SignInView,
+    the contract's state type, is the only FieldController.kt type). Extra trailing parameters with defaults:
+    SignInScreen onServers (null hides the testers' "Servers" link), ForgotScreen reduceMotion, PermissionsScreen steps
+    (default: this Android version's steps), GlassesSetupScreen probe (the Me camera test result ticks step 3),
+    SitePickScreen pairedSiteName. Decisions: "Keep me signed in" is said as a fact (the app already keeps the phone
+    signed in until Sign out) rather than a switch that would do nothing; Forgot opens the SCMTIPS reset page and then
+    says to finish there (the app cannot know a mail was sent); glasses step 1 is the person's own "They are on" (or
+    connected glasses), steps 2 and 3 tick only from GlassesHelp's advice and the camera probe; a toolkit that did not
+    start leaves "Continue with the phone camera". Animations are Compose-native (rememberInfiniteTransition read in
+    the draw phase, animateDpAsState), no new dependency; with reduceMotion every drawing shows its still frame and no
+    transition runs. shell/Homes.kt and shell/ShellNav.kt are verbatim copies of builder A's uncommitted pure shell
+    types (feat/m5-ui-shell working tree, 1 Nov) so these screens compile; A's branch owns them and its tests cover
+    them; the integrator keeps A's copies. HomeTokens.kt mirrors A's theme tokens by name and value until the merge.
+    Type-checked with tools/android_check/compile_check.py (Kotlin 2.2.21 + Compose plugin against the real AndroidX
+    jars), not a Gradle build; nothing drawn on a device yet. Partial until proven on the owner's phone.

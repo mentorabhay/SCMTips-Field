@@ -65,6 +65,14 @@
     "app/src/main/kotlin/com/scmtips/field/app/ui/LookPanel.kt": "androidx.compose (the look photo with outlines; the scaling math is look/OutlineGeometry.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/M5Screens.kt": "androidx.compose, android.webkit (case starters, claims, evidence page, camera test)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/CheckScreen.kt": "androidx.compose, android.graphics (the C3 box check card; its words and rules are check/CheckText.kt)",
-    "app/src/test/kotlin/com/scmtips/field/app/signin/BuildVariantDefaultsTest.kt": "AGP's generated BuildConfig (runs per build type under Gradle: testDebugUnitTest, testHostedUnitTest)"
+    "app/src/test/kotlin/com/scmtips/field/app/signin/BuildVariantDefaultsTest.kt": "AGP's generated BuildConfig (runs per build type under Gradle: testDebugUnitTest, testHostedUnitTest)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeTokens.kt": "androidx.compose (local copy of builder A's M5-U tokens and the shared buttons and cards; the loop curves are homes/HintMotion.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeArt.kt": "androidx.compose (the drawn home art and glyphs; the motion curves are homes/HintMotion.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunArt.kt": "androidx.compose (welcome, envelope, permission and glasses drawings; curves in homes/HintMotion.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/WelcomeScreen.kt": "androidx.compose (the welcome pager; its cards are firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SignInScreen.kt": "androidx.compose, SignInView from FieldController.kt (sign in and forgot password; rules in firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/PermissionsScreen.kt": "androidx.compose, android.os.Build (the permission steps; the plan is firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/GlassesSetupScreen.kt": "androidx.compose (glasses setup; its steps are GlassesSetupModel in firstrun/FirstRunModels.kt)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SitePickScreen.kt": "androidx.compose (site and role; the rules are SitePick in firstrun/FirstRunModels.kt)"
   }
 }
