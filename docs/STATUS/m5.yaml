@@ -1287,3 +1287,21 @@
     repeated Idempotency-Key is 422 KEY-REUSED from the middleware (as for captures); the service itself replays a
     key's stored look. Proven with the Meta API test double and the SAMPLE scene only; partial until the hosted stack
     runs the page with the real Meta key (META_FIELD rows 20, 23 UNVERIFIED) and a judge's browser speaks it.
+- id: M5-U01
+  title: >-
+    App redesign shell and navigation (A-07): blueprint theme tokens (SCMTIPS purple-orange, system sans, 16 dp cards,
+    14 dp buttons, 48 dp targets), first-run graph (welcome, sign in, forgot / create account through the SCMTIPS pages,
+    permissions, glasses, site and role), role homes with a role switcher that always lists Warehouse, Tower, Approvals
+    and Scan product (can act / view only, remembered), tab bar Home · Activity · Scan · Inbox · Profile, status pill,
+    full-screen task screens, "Classic layout" safety switch; the seam for builder B's screens (M5_UI_CONTRACT)
+  workstream: M5-U
+  role: Builder A (UI shell)
+  status: partial
+  evidence:
+  - docs/design/M5_UI_CONTRACT.md
+  tests: []
+  frs: []
+  verified_at: null
+  note: >-
+    Contract first (so builder B can align); the shell follows in the same task. Partial until proven on the owner's
+    phone.
