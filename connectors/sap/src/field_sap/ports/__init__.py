@@ -12,6 +12,8 @@ from field_sap.ports.erp_port import (
     SandboxDelivery,
     SandboxDeliveryItem,
     SandboxMaterial,
+    SandboxPlant,
+    SandboxStorageLocation,
 )
 
 __all__ = [
@@ -28,4 +30,6 @@ __all__ = [
     "SandboxDelivery",
     "SandboxDeliveryItem",
     "SandboxMaterial",
+    "SandboxPlant",
+    "SandboxStorageLocation",
 ]

@@ -63,6 +63,7 @@
     "feature-decisions/src/test/kotlin/com/scmtips/field/feature/decisions/api/OkHttpCoreHttpTest.kt": "okhttp3 (runs in the Gradle unit tests only)",
     "app/src/main/kotlin/com/scmtips/field/app/look/LookPhotos.kt": "android.graphics, android.media (scaling, the platform face finder, JPEG, EXIF); its rules are FacePixels.kt",
     "app/src/main/kotlin/com/scmtips/field/app/ui/LookPanel.kt": "androidx.compose (the look photo with outlines; the scaling math is look/OutlineGeometry.kt)",
-    "app/src/main/kotlin/com/scmtips/field/app/ui/M5Screens.kt": "androidx.compose, android.webkit (case starters, claims, evidence page, camera test)"
+    "app/src/main/kotlin/com/scmtips/field/app/ui/M5Screens.kt": "androidx.compose, android.webkit (case starters, claims, evidence page, camera test)",
+    "app/src/test/kotlin/com/scmtips/field/app/signin/BuildVariantDefaultsTest.kt": "AGP's generated BuildConfig (runs per build type under Gradle: testDebugUnitTest, testHostedUnitTest)"
   }
 }

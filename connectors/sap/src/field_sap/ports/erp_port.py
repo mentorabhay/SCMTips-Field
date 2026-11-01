@@ -6,6 +6,7 @@ and ErpResult; ErpError with kind LOCK, TRANSIENT, TIMEOUT, BUSINESS, AUTH,
 NOT_FOUND, CONFLICT and retryable flag.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -108,6 +109,23 @@ class SandboxDeliveryItem:
     delivery_document: str
     item_no: str
     last_change: str | None = None
+
+
+@dataclass(frozen=True)
+class SandboxStorageLocation:
+    storage_location: str
+    name: str
+    created: bool
+
+
+@dataclass(frozen=True)
+class SandboxPlant:
+    """A sandbox site's plant and storage locations in the simulator (M5-H01); ``created`` says what was added."""
+
+    plant: str
+    name: str
+    created: bool
+    storage_locations: tuple[SandboxStorageLocation, ...]
 
 
 SANDBOX_NOT_SAP = "FIELD_SANDBOX_NOT_SAP"
@@ -228,6 +246,11 @@ class ErpSandboxPort(Protocol):
     async def add_sandbox_inbound_delivery_item(self, delivery_document: str, material: str, quantity: str,
                                                 uom: str, idempotency_key: str) -> SandboxDeliveryItem:
         """The next item of a sandbox delivery; the same key returns the first item."""
+        ...
+
+    async def ensure_sandbox_plant(self, plant: str, name: str,
+                                   storage_locations: Sequence[tuple[str, str]]) -> SandboxPlant:
+        """The plant and its (code, name) storage locations exist afterwards; existing rows are kept as they are."""
         ...
 
 

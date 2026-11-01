@@ -111,6 +111,7 @@ class MainActivity : ComponentActivity() {
             startLocation = ::startLocation,
             stopLocation = controller::stopLocation,
             cycleScanner = controller::cycleScanner,
+            nextSite = controller::nextSite,
             glassesSetUp = ::glassesSetUp,
             toggleGlassesMic = controller::toggleGlassesSpeech,
             toggleAudioOnly = controller::toggleAudioOnly,

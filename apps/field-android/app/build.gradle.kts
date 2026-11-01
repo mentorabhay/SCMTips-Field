@@ -28,6 +28,10 @@ android {
         // "Failed to read metadata from manifest: ...APPLICATION_ID, the app might be misconfigured".)
         manifestPlaceholders["mwdat_application_id"] = localProperties.getProperty("mwdat_application_id", "")
         manifestPlaceholders["mwdat_client_token"] = localProperties.getProperty("mwdat_client_token", "")
+        // The sign-in screen's server addresses on a fresh install (M5-H02; SignInDefaults, ServerDefaults): the dev
+        // stack on the owner's PC (stand-in core 8011, field-api 8020, through `adb reverse`). Editable on the screen.
+        buildConfigField("String", "DEFAULT_CORE_URL", "\"http://127.0.0.1:8011\"")
+        buildConfigField("String", "DEFAULT_FIELD_URL", "\"http://127.0.0.1:8020\"")
     }
 
     // One fixed DEBUG key for every build (CI and PCs alike), so a newer debug APK installs over the
@@ -48,10 +52,23 @@ android {
             applicationIdSuffix = ".debug"
             signingConfig = signingConfigs.getByName("debug")
         }
+        // M5-H02: the debug build pointed at the hosted deployment (the SCMTIPS core at api.scmtips.com, field-api at
+        // field.scmtips.com). Same application id, signing key and debug manifest as debug, so it installs over the
+        // debug APK and behaves the same; only the sign-in screen's default addresses and the version name differ.
+        create("hosted") {
+            initWith(getByName("debug"))
+            signingConfig = signingConfigs.getByName("debug")
+            versionNameSuffix = "-hosted"
+            matchingFallbacks += listOf("debug") // the library modules have debug and release only
+            buildConfigField("String", "DEFAULT_CORE_URL", "\"https://api.scmtips.com\"")
+            buildConfigField("String", "DEFAULT_FIELD_URL", "\"https://field.scmtips.com\"")
+        }
         release {
             isMinifyEnabled = false
         }
     }
+    // The hosted build type shares the debug manifest (plain http only to private LAN addresses, as debug).
+    sourceSets.maybeCreate("hosted").manifest.srcFile("src/debug/AndroidManifest.xml")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

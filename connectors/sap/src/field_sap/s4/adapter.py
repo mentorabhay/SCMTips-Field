@@ -8,6 +8,7 @@ M3: the sandbox operations (ErpSandboxPort) are not SAP capabilities. This adapt
 ErpError(BUSINESS, FIELD_SANDBOX_NOT_SAP): a sandbox site never creates materials or deliveries in S/4.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -25,6 +26,7 @@ from field_sap.ports.erp_port import (
     SandboxDelivery,
     SandboxDeliveryItem,
     SandboxMaterial,
+    SandboxPlant,
     StockLine,
 )
 
@@ -131,3 +133,7 @@ class S4ODataAdapter:
     async def add_sandbox_inbound_delivery_item(self, delivery_document: str, material: str, quantity: str,
                                                 uom: str, idempotency_key: str) -> SandboxDeliveryItem:
         raise self._not_sap("add_sandbox_inbound_delivery_item")
+
+    async def ensure_sandbox_plant(self, plant: str, name: str,
+                                   storage_locations: Sequence[tuple[str, str]]) -> SandboxPlant:
+        raise self._not_sap("ensure_sandbox_plant")

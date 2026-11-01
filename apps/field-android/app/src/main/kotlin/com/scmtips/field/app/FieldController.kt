@@ -71,8 +71,10 @@ import com.scmtips.field.app.signin.AccountStore
 import com.scmtips.field.app.signin.CoreAccount
 import com.scmtips.field.app.signin.FieldAccess
 import com.scmtips.field.app.signin.HomeSections
+import com.scmtips.field.app.signin.ServerDefaults
 import com.scmtips.field.app.signin.SignInDefaults
 import com.scmtips.field.app.signin.SiteChoice
+import com.scmtips.field.app.signin.SiteRef
 import com.scmtips.field.feature.decisions.api.CoreClient
 import com.scmtips.field.feature.decisions.api.CoreSignIn
 import com.scmtips.field.feature.decisions.api.OkHttpCoreHttp
@@ -166,6 +168,8 @@ data class AppUi(
     val decisions: DecisionsView = DecisionsView(),
     /** The paired site is a sandbox: Today offers a new home receipt and a shelf count. */
     val sandbox: Boolean = false,
+    /** The sites field-api lists for a SCMTIPS sign-in (Me → Site), in its order. */
+    val sites: List<SiteRef> = emptyList(),
     /** Me → Attention word: only words starting with "Field" are acted on (off by default). */
     val attentionWord: Boolean = false,
     /** M5: the current look (photo, outlines, proposal), its claim and the evidence page. */
@@ -181,8 +185,8 @@ data class SignedIn(val name: String, val email: String?, val coreBaseUrl: Strin
 
 /** The sign-in form's addresses and state. */
 data class SignInView(
-    val coreUrl: String = SignInDefaults.DEV_CORE_URL,
-    val fieldUrl: String = SignInDefaults.DEV_FIELD_URL,
+    val coreUrl: String = BuildConfig.DEFAULT_CORE_URL,
+    val fieldUrl: String = BuildConfig.DEFAULT_FIELD_URL,
     val email: String = "",
     val busy: Boolean = false,
     val error: String? = null,
@@ -408,9 +412,10 @@ class FieldController(private val context: Context, private val toolkitError: ()
             attentionWord = prefs.getBoolean(KEY_ATTENTION, false),
         )
         val pairedApi = prefs.getString(KEY_PAIRING, null)?.let { runCatching { PairingPayload.parse(it).apiBaseUrl }.getOrNull() }
-        val fieldUrl = SignInDefaults.fieldUrl(accounts.lastFieldUrl, pairedApi)
+        val servers = ServerDefaults(BuildConfig.DEFAULT_CORE_URL, BuildConfig.DEFAULT_FIELD_URL) // per build type (M5-H02)
+        val fieldUrl = SignInDefaults.fieldUrl(accounts.lastFieldUrl, pairedApi, servers)
         _ui.value = _ui.value.copy(signIn = SignInView(
-            coreUrl = SignInDefaults.coreUrl(accounts.lastCoreUrl, fieldUrl), fieldUrl = fieldUrl, email = accounts.lastEmail.orEmpty(),
+            coreUrl = SignInDefaults.coreUrl(accounts.lastCoreUrl, fieldUrl, servers), fieldUrl = fieldUrl, email = accounts.lastEmail.orEmpty(),
         ))
         val saved = accounts.load()
         when {
@@ -574,7 +579,9 @@ class FieldController(private val context: Context, private val toolkitError: ()
                 }
                 _ui.value = _ui.value.copy(deviceId = id, connecting = false, link = Link.ONLINE)
                 val sites = (s.send(SiteModes.sites()) as? com.scmtips.field.app.jobs.ApiResult.Ok)?.body ?: JsonObject(emptyMap())
-                val site = SiteChoice.pick(a.sites, sites)
+                val listed = SiteChoice.all(sites)
+                val site = SiteChoice.pick(a.sites, listed, accounts.chosenSite)
+                _ui.value = _ui.value.copy(sites = listed)
                 if (site == null) {
                     log("Signed in; field-api lists no site for ${a.displayName}")
                     _ui.value = _ui.value.copy(pairing = null)
@@ -1280,6 +1287,18 @@ class FieldController(private val context: Context, private val toolkitError: ()
     }
 
     // --- Me ------------------------------------------------------------------------------------
+
+    /** Me → Site → Change (signed in with SCMTIPS): the next site field-api lists; Today reloads for it (M5-H05). */
+    fun nextSite() {
+        val a = account ?: return
+        val current = _ui.value.pairing?.siteId
+        val site = SiteChoice.next(_ui.value.sites, current) ?: return
+        accounts.chosenSite = site.id
+        siteModes?.remember(site.id, site.mode)
+        _ui.value = _ui.value.copy(pairing = a.pairing(site.id, site.name), sandbox = site.mode == SiteModes.SANDBOX, tasks = emptyList())
+        log("Site: ${site.name}")
+        refreshTasks()
+    }
 
     fun cycleScanner() {
         val all = ScannerKind.entries

@@ -57,6 +57,7 @@ def test_s4_adapter_refuses_sandbox_operations() -> None:
         s4.create_sandbox_material("1010", "x", "EA", "123"),
         s4.create_sandbox_inbound_delivery("1010", "0001", "HOME"),
         s4.add_sandbox_inbound_delivery_item("180000001", "M", "1.000", "EA", "k"),
+        s4.ensure_sandbox_plant("HOME", "Home (sandbox)", [("101A", "Home shelf")]),
     )
     for coro in calls:
         with pytest.raises(ErpError) as e:
@@ -103,3 +104,30 @@ def test_sim_sandbox_material_delivery_and_561(plant: str) -> None:
     assert _erp("SELECT quantity FROM erpsim.stock WHERE plant = %s AND material_no = %s", (plant, m.material_no)) == [(4,)]
     assert _erp("SELECT movement_type, header_data->>'sandbox' FROM erpsim.document WHERE doc_number = %s",
                 (r1.document_number,)) == [("561", "true")]
+
+
+def test_m5_h01_sim_ensure_sandbox_plant_adds_only_what_is_missing() -> None:
+    """M5-H01: the plant and its storage locations through the port; a second call creates nothing and renames
+    nothing; a storage location added later is the only one created."""
+    sim = SimAdapter(app=erp_app)
+    p = "H" + "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=3))
+    first = asyncio.run(sim.ensure_sandbox_plant(p, "Home (sandbox)", [("HM01", "Home shelf"), ("101A", "Unrestricted")]))
+    assert (first.plant, first.name, first.created) == (p, "Home (sandbox)", True)
+    assert [(s.storage_location, s.name, s.created) for s in first.storage_locations] == [
+        ("HM01", "Home shelf", True), ("101A", "Unrestricted", True)]
+    again = asyncio.run(sim.ensure_sandbox_plant(p, "another name", [("HM01", "x"), ("101A", "y"), ("101Q", "Quality")]))
+    assert (again.name, again.created) == ("Home (sandbox)", False)
+    assert [(s.storage_location, s.name, s.created) for s in again.storage_locations] == [
+        ("HM01", "Home shelf", False), ("101A", "Unrestricted", False), ("101Q", "Quality", True)]
+    assert sorted(_erp("SELECT storage_location FROM erpsim.storage_location WHERE plant = %s", (p,))) == [
+        ("101A",), ("101Q",), ("HM01",)]
+    d = asyncio.run(sim.create_sandbox_inbound_delivery(p, "101A", "HOME"))  # the plant is usable at once
+    assert d.delivery_document.startswith("19")
+
+
+def test_m5_h01_sandbox_plants_route_needs_the_admin_token() -> None:
+    from fastapi.testclient import TestClient
+
+    r = TestClient(erp_app).post("/_sim/sandbox/plants", json={"Plant": "HOME", "Name": "Home (sandbox)"},
+                                 headers={"X-Sim-Admin-Token": "wrong"})
+    assert r.status_code == 401 and r.json()["error"]["code"] == "ZSIM/ADMIN"

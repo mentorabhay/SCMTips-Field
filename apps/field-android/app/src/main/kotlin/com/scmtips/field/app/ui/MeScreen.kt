@@ -51,6 +51,9 @@ fun MeScreen(ui: AppUi, a: Actions) {
                 SettingRow("Signed in to SCMTIPS", listOfNotNull(signed.name, signed.email, ui.pairing?.siteName).joinToString(" · ") +
                     "\n" + listOfNotNull("decisions".takeIf { signed.approver }, "field work".takeIf { signed.fieldOperator }).ifEmpty { listOf("no app roles") }
                         .joinToString(" and ").replaceFirstChar { it.uppercase() }, "Sign out", a.unpair)
+                if (ui.sites.size > 1) {
+                    SettingRow("Site", "${ui.pairing?.siteName ?: "—"}${if (ui.sandbox) " · sandbox" else ""} · ${ui.sites.size} sites", "Change", a.nextSite)
+                }
             } else {
                 SettingRow("Connected to", "${ui.pairing?.siteName ?: "—"} · ${ui.person.name}", "Change", a.unpair)
             }

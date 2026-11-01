@@ -7,6 +7,7 @@ on timeout calls find_by_idempotency_key before reporting failure.
 """
 
 import os
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -28,6 +29,8 @@ from field_sap.ports.erp_port import (
     SandboxDelivery,
     SandboxDeliveryItem,
     SandboxMaterial,
+    SandboxPlant,
+    SandboxStorageLocation,
     StockLine,
 )
 
@@ -502,6 +505,16 @@ class SimAdapter:
                                      idempotency_key)
         return SandboxDeliveryItem(delivery_document=str(d["DeliveryDocument"]), item_no=str(d["DeliveryDocumentItem"]),
                                    last_change=d.get("LastChangeDateTime"))
+
+    async def ensure_sandbox_plant(self, plant: str, name: str,
+                                   storage_locations: Sequence[tuple[str, str]]) -> SandboxPlant:
+        d = await self._sandbox_post("plants", {"Plant": plant, "Name": name[:40], "StorageLocations": [
+            {"StorageLocation": code, "Name": sl_name[:40]} for code, sl_name in storage_locations]})
+        return SandboxPlant(plant=str(d["Plant"]), name=str(d.get("Name") or ""), created=bool(d.get("Created")),
+                            storage_locations=tuple(
+                                SandboxStorageLocation(storage_location=str(s["StorageLocation"]),
+                                                       name=str(s.get("Name") or ""), created=bool(s.get("Created")))
+                                for s in d.get("StorageLocations") or []))
 
     # --- ErpReadPort (M4 F4): what the goods-receipt feed rows are read from ----------------------------
     async def _get_d(self, url: str, params: dict[str, str]) -> dict[str, Any]:

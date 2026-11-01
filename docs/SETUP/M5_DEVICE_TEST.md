@@ -68,3 +68,27 @@ always what you said, never the proposal. Then do the other case.
   the evidence page, and whether the counts, flags and expiry were right.
 - `Me → Send feedback` text from the app, and the last 50 lines of `var\log\field-api.log` and
   `<workspace>\field-test\stack-output.log`.
+
+## Hosted (scmtips.com): the Home (sandbox) site (M5-H01)
+On the hosted deployment the tenant is the real core's SAMPLE organisation; the dev stack's `m5-cases` / `home`
+commands (fake-core tokens, direct database writes) do not apply there. Once per deployment, inside the **field-api
+container** (its environment already holds `FIELD_CORE_BASE_URL`, `FIELD_ERP_SIM_URL`, `ERPSIM_ADMIN_TOKEN`):
+```sh
+SEED_ADMIN_PASSWORD='<the org admin password, from the secret store>' \
+  python -m field_api.tools.seed_sandbox --admin-email <the SAMPLE org_admin e-mail>
+```
+It signs in at the core as that org admin (core role `org_admin` -> `field.admin`), exchanges at field-api like the
+console's server, and through the APIs only ensures plant **HOME** with storage locations HM01, **101A** and
+**101Q** in erp-sim, the site **HOME-SBX "Home (sandbox)"** (mode sandbox) and its zone/bins. Safe to re-run: the
+second run creates nothing and prints what exists; exit 1 with the reason on any failure. Options: `--core-url`,
+`--field-url` (default `FIELD_SEED_FIELD_API_URL`, else `http://127.0.0.1:8020`), `--erp-sim-url`, `--password-env`
+(the NAME of the password variable; the value is never printed). Who can then start a case: core tokens carry
+`sites: ["*"]`, so every Field role with `field.task.execute` sees the site: core `procurement` (-> field.operator)
+and `org_admin`; `approver` (-> field.supervisor) cannot. **Check its `phone:` line**: the app opens the *first*
+site field-api lists (oldest first) and has no site switch, so if the tenant already had sites it prints a
+`WARNING phone:` naming the site the phone will open instead, and Today shows no grocery / pharmacy starters there.
+
+**Hosted APK (M5-H02):** CI's android job also uploads **field-hosted-apk** (`app-hosted.apk`, version `0.6.0-m5-hosted`):
+the same debug build, whose sign-in screen offers SCMTIPS `https://api.scmtips.com` and Field
+`https://field.scmtips.com` on a fresh install (field-debug-apk keeps the dev stack's addresses). Same application id
+and signing key, so it installs over the debug APK; addresses typed earlier still win, edit them on the sign-in screen.
