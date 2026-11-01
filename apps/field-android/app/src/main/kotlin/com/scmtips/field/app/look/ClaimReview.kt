@@ -230,12 +230,14 @@ class ClaimReview(
 
     private suspend fun present(c: Claim, i: Int, n: Int) {
         _state.value = ClaimFlowState.Presenting(c.claimId, i, n)
-        val body = sentence(c.text.ifBlank { ClaimText.lines(c) })
-        show(DecisionCard("SAMPLE claim ${i + 1} of $n${c.title?.let { " · $it" } ?: ""}", body.take(240), listOf(
+        val body = sentence(ClaimText.body(c))
+        // M5-T05: an authenticity claim names its kind ("Box check"); a look claim's card and words are unchanged.
+        val heading = listOfNotNull(c.kindLabel, c.title)
+        show(DecisionCard("SAMPLE claim ${i + 1} of $n${heading.joinToString("") { " · $it" }}", body.take(240), listOf(
             CardButton(ClaimGrammar.APPROVE_ID, "Approve", primary = true), CardButton(ClaimGrammar.REJECT_ID, "Reject"),
             CardButton(ClaimGrammar.NEXT_ID, "Next claim"), CardButton(ClaimGrammar.STOP_ID, "Stop"),
         )))
-        speak("Claim ${i + 1} of $n. ${c.title?.let { sentence(it) + " " } ?: ""}$body $SAY_OPTIONS")
+        speak("Claim ${i + 1} of $n. ${heading.joinToString("") { sentence(it) + " " }}$body $SAY_OPTIONS")
     }
 
     private sealed interface Input {

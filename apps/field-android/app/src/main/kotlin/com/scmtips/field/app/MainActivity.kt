@@ -143,6 +143,7 @@ class MainActivity : ComponentActivity() {
             testCamera = ::testGlassesCamera,
             uploadProbe = { agree -> controller.uploadProbe(agree) },
             closeProbe = controller::closeProbe,
+            check = controller::checkButton,
         )
         setContent {
             val ui by controller.ui.collectAsState()
@@ -294,8 +295,9 @@ class MainActivity : ComponentActivity() {
     private fun scanWithCamera() {
         val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS).build()
         GmsBarcodeScanning.getClient(this, options).startScan()
-            .addOnSuccessListener { code -> code.rawValue?.let { controller.onCode(it, InputSource.SCAN) } }
-            .addOnFailureListener { e -> controller.toast(e.message ?: "The scan did not work. Try again.") }
+            .addOnSuccessListener { code -> code.rawValue?.let { controller.onCode(it, InputSource.SCAN) } ?: controller.scanCancelled() }
+            .addOnCanceledListener { controller.scanCancelled() } // a box check waiting for this scan gets no code (M5-T05)
+            .addOnFailureListener { e -> controller.scanCancelled(); controller.toast(e.message ?: "The scan did not work. Try again.") }
     }
 
     private fun sendFeedback() {

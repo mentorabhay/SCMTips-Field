@@ -85,7 +85,23 @@ data class Claim(
     val title: String?,
     /** The claim's ETag ("<version>-<hash>"): If-Match on /decision and /confirm. From the ETag header, else the body. */
     val etag: String? = null,
-)
+    /** M5-T05: `look` (an M5 look's claim; a body without `kind` is one) or `authenticity` (a C3 box check's). */
+    val kind: String = KIND_LOOK,
+    /** The look the claim was made from; null for an authenticity claim (M5_C3_CONTRACT §4.4). */
+    val lookId: String? = null,
+    /** The box check the claim was made from (authenticity claims only). */
+    val checkId: String? = null,
+) {
+    val authenticity: Boolean get() = kind == KIND_AUTHENTICITY
+
+    /** What the supervisor's card and read-out call the claim's kind; null for a look claim (its card is unchanged). */
+    val kindLabel: String? get() = if (authenticity) "Box check" else null
+
+    companion object {
+        const val KIND_LOOK = "look"
+        const val KIND_AUTHENTICITY = "authenticity"
+    }
+}
 
 /** The answer to `/decision` (a read-back to confirm) or `/confirm` (the result); [etag] is the claim's new one. */
 data class ClaimStep(val status: String, val say: String, val confirmBy: String?, val etag: String? = null)
@@ -150,6 +166,9 @@ object LookJson {
             evidenceUrl = o.s("evidence_url")?.ifBlank { null },
             title = o.s("title") ?: o.s("ref_doc_no")?.let { "Delivery $it" },
             etag = o.s("etag"),
+            kind = o.s("kind") ?: Claim.KIND_LOOK,
+            lookId = o.s("look_id"),
+            checkId = o.s("check_id"),
         )
     }
 

@@ -46,7 +46,19 @@ fun interface AssistantPort {
 }
 
 /** How one utterance was handled (logged, and pinned by ConductorTest). */
-enum class Route { GRAMMAR, ASSISTANT, LOCAL, FALLBACK, IGNORED, DECISIONS, LOOK, CLAIMS }
+enum class Route { GRAMMAR, ASSISTANT, LOCAL, FALLBACK, IGNORED, DECISIONS, LOOK, CLAIMS, CHECK }
+
+/**
+ * M5-T05, the C3 box check as the work session sees it (FieldController implements it over CheckFlow). No task
+ * is needed; the server decides who may check (403).
+ */
+interface CheckPort {
+    /** The check card is on screen: "done", "show evidence", "make a claim"... are its words. */
+    val open: Boolean
+
+    /** Runs the action on its own (camera, upload, the maker's registry: seconds), so the session keeps hearing. */
+    suspend fun act(a: com.scmtips.field.app.check.CheckAction)
+}
 
 /**
  * M5 look-and-act as the work session sees it (FieldController implements it over LookFlow and
@@ -189,6 +201,7 @@ class Conductor(
     private val clock: () -> Long = System::currentTimeMillis,
     private val decisions: DecisionPort? = null,
     private val looks: LookPort? = null,
+    private val checks: CheckPort? = null,
 ) {
     private val mutex = Mutex()
     private var hinted = false
@@ -268,6 +281,15 @@ class Conductor(
                 !desk.jobOpen && com.scmtips.field.app.look.ClaimGrammar.parse(words, confidence).let {
                     it == com.scmtips.field.app.look.ClaimGrammar.Said.Approve || it is com.scmtips.field.app.look.ClaimGrammar.Said.Reject
                 } -> { lk.startClaims(); return@withLock Route.CLAIMS }
+            }
+        }
+        // M5-T05: "check this box" any time; "make a claim", "show evidence", "done"... only while its card is open
+        // (then "make a claim" is the check's, not the last look's). Without the port the words go on as before.
+        val ck = checks
+        if (ck != null) {
+            com.scmtips.field.app.check.CheckGrammar.action(words, confidence, ck.open)?.let { a ->
+                ck.act(a)
+                return@withLock Route.CHECK
             }
         }
         // Without the M5 port (M4 callers) the M5 words stay unparsed and go to the assistant, as before.

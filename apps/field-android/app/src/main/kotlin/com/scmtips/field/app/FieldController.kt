@@ -110,6 +110,15 @@ import com.scmtips.field.app.look.Shot
 import com.scmtips.field.app.look.UploadResult
 import com.scmtips.field.app.session.LookPort
 import com.scmtips.field.app.session.LocalIntents
+import com.scmtips.field.app.check.CheckAction
+import com.scmtips.field.app.check.CheckClient
+import com.scmtips.field.app.check.CheckFlow
+import com.scmtips.field.app.check.CheckGrammar
+import com.scmtips.field.app.check.CheckView
+import com.scmtips.field.app.check.CodeScanner
+import com.scmtips.field.app.check.SealCamera
+import com.scmtips.field.app.check.SealShot
+import com.scmtips.field.app.session.CheckPort
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -178,6 +187,8 @@ data class AppUi(
     val claims: ClaimsView = ClaimsView(),
     /** M5: Me → Test glasses camera (Gate 0 probe G0-5). */
     val probe: CameraProbe? = null,
+    /** M5-T05: the C3 box check (photo, seal code, verdict, signals, its claim and evidence page). */
+    val check: CheckView = CheckView(),
 )
 
 /** Who is signed in against the core (no tokens here: AppUi is drawn and logged freely). */
@@ -325,7 +336,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
         },
         looks = object : LookPort {
             override val reviewingClaims: Boolean get() = claimJob?.isActive == true
-            override val consentPending: Boolean get() = lookFlow.consentPending
+            // "I agree" answers whichever photo waits for the site's consent: a look's or a box check's (M5-T05).
+            override val consentPending: Boolean get() = lookFlow.consentPending || checkFlow.consentPending
             override fun heardForClaims(text: String, confidence: Float) { claimInbox.offer(text, confidence) }
             // The look runs on its own (camera, upload, models: seconds; the phone camera app: up to 2 min), so
             // the session keeps hearing words such as "stop work" meanwhile.
@@ -333,7 +345,11 @@ class FieldController(private val context: Context, private val toolkitError: ()
             override suspend fun claim() = lookFlow.claim()
             override fun startClaims() = startClaimReview()
             override suspend fun startCase(case: LookCase) { CaseStart.of(case)?.let { startCaseNow(it) } }
-            override suspend fun agree() { scope.launch { lookFlow.agree() } }
+            override suspend fun agree() { scope.launch { agreeNow() } }
+        },
+        checks = object : CheckPort {
+            override val open: Boolean get() = checkFlow.view.value.open
+            override suspend fun act(a: CheckAction) = checkAction(a)
         },
     )
 
@@ -355,6 +371,21 @@ class FieldController(private val context: Context, private val toolkitError: ()
         log = ::log,
         scope = scope,
     )
+    // --- M5-T05: the C3 box check ("Is this unit really new?", docs/design/M5_C3_CONTRACT.md §7) ----------
+    private val checkClient = CheckClient(liveTransport, liveTransport, { _ui.value.deviceId })
+    private val checkFlow = CheckFlow(
+        camera = SealCamera { takeSealPhoto() },
+        scanner = CodeScanner { scanSealWithPhone() },
+        client = checkClient,
+        speaker = speaker,
+        baseUrl = { session?.apiBaseUrl },
+        log = ::log,
+        scope = scope,
+    )
+
+    /** A direct phone scan of a seal QR waits here; [onCode] hands the scanned code to it instead of a job. */
+    private var sealScan: CompletableDeferred<String?>? = null
+
     private val caseByTask = mutableMapOf<String, LookCase>()
     private val claimInbox = UtteranceInbox { if (workSession.view.active) REVIEW_LISTEN_SESSION_MS else REVIEW_LISTEN_PHONE_MS }
     private val claimCard = PhoneCardDisplay { !_ui.value.audioOnly }
@@ -396,6 +427,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
 
     init {
         scope.launch { lookFlow.view.collect { v -> _ui.value = _ui.value.copy(look = v) } }
+        scope.launch { checkFlow.view.collect { v -> _ui.value = _ui.value.copy(check = v) } }
         scope.launch {
             glasses.status.collect { g ->
                 _ui.value = _ui.value.copy(glasses = g, glassesAdvice = GlassesHelp.advise(g, toolkitError()))
@@ -456,6 +488,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         stopReview(silent = true)
         stopClaimReview(silent = true)
         lookFlow.clear()
+        checkFlow.reset()
         claimsDecider = true
         account?.let { a -> signOutOfCore(a) }
         loops?.cancel()
@@ -895,6 +928,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
         val code = raw.trim()
         if (code.isEmpty()) return
         log("scan: $code")
+        // M5-T05: a direct phone scan of a seal QR asked for by the box check goes to it, not to a job.
+        sealScan?.let { waiting -> if (waiting.complete(code)) return }
         val r = runner
         if (r != null) {
             runnerAct(JobAction.Scanned(code, source))
@@ -951,8 +986,11 @@ class FieldController(private val context: Context, private val toolkitError: ()
         log("🎤 [$source ${"%.2f".format(java.util.Locale.ROOT, confidence)}] $text")
         if (reviewJob?.isActive == true) { reviewInbox.offer(text, confidence); return }
         if (claimJob?.isActive == true) { claimInbox.offer(text, confidence); return }
+        CheckGrammar.action(text, confidence, checkFlow.view.value.open)?.let { a -> scope.launch { checkAction(a) }; return }
         val local = LocalIntents.parse(text)
-        if (local == LocalIntents.Intent.Agree && lookFlow.consentPending && confidence >= JobGrammar.FLOOR) { scope.launch { lookFlow.agree() }; return }
+        if (local == LocalIntents.Intent.Agree && (lookFlow.consentPending || checkFlow.consentPending) && confidence >= JobGrammar.FLOOR) {
+            scope.launch { agreeNow() }; return
+        }
         if (local == LocalIntents.Intent.Claims) return startClaimReview()
         if (local is LocalIntents.Intent.NewCase) { CaseStart.of(local.case)?.let(::startCase); return }
         when (JobGrammar.parse(text, confidence)) {
@@ -1092,6 +1130,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
     /** A code held in view for two frames: a scan for the open job's scan step, or for the assistant. */
     private fun onLookScan(codes: List<String>) {
         if (!workSession.view.active || workSession.view.paused != null) return
+        // M5-T05: the box check reads the seal from its own photo; the same QR in the video is not a second scan.
+        if (checkFlow.view.value.open) return
         val r = runner
         when {
             r == null -> onCode(codes.first())
@@ -1115,7 +1155,10 @@ class FieldController(private val context: Context, private val toolkitError: ()
         scope.launch { lookFlow.agree() }
     }
 
-    fun closeEvidence() = lookFlow.closeEvidence()
+    fun closeEvidence() {
+        lookFlow.closeEvidence()
+        checkFlow.closeEvidence()
+    }
 
     private suspend fun lookNow() {
         val r = runner
@@ -1131,27 +1174,103 @@ class FieldController(private val context: Context, private val toolkitError: ()
      * A look photo: the glasses camera through the Meta toolkit when the glasses are connected; else (or when
      * they give none) the phone's camera app, only while the app is on screen. Faces are blurred on the phone.
      */
-    private suspend fun takeLookPhoto(): Shot {
+    private suspend fun takeLookPhoto(): Shot = when (val g = grabPhoto("look", "Take the photo with the phone.")) {
+        is Grab.None -> Shot.Failed(g.text)
+        is Grab.Got -> prepared(g.bmp, g.camera, g.at, g.ms, g.note)
+    }
+
+    /** A camera's full-size photo before blurring (the seal's QR is read from it), or why there is none. */
+    private sealed interface Grab {
+        class Got(val bmp: android.graphics.Bitmap, val camera: CameraUsed, val at: Long, val ms: Long, val note: String?) : Grab
+        class None(val text: String) : Grab
+    }
+
+    /** The glasses camera when connected; else (or when they give none) the phone's camera app, only on screen. */
+    private suspend fun grabPhoto(what: String, phonePrompt: String): Grab {
         val glassesOn = glasses.status.value.session == "STARTED"
         if (glassesOn) {
             val t0 = System.currentTimeMillis()
             val bmp = glasses.capturePhoto()
             val ms = System.currentTimeMillis() - t0
             if (bmp != null) {
-                log("look photo from the glasses: ${bmp.width}x${bmp.height} in $ms ms")
-                return prepared(bmp, CameraUsed.GLASSES, t0, ms, null)
+                log("$what photo from the glasses: ${bmp.width}x${bmp.height} in $ms ms")
+                return Grab.Got(bmp, CameraUsed.GLASSES, t0, ms, null)
             }
         }
-        if (!inForeground) return Shot.Failed(if (glassesOn) "No photo from the glasses. Open the app on the phone to use its camera." else "Connect the glasses, or open the app on the phone to use its camera.")
-        speaker.say(if (glassesOn) "No photo from the glasses. Take it with the phone." else "Take the photo with the phone.")
+        if (!inForeground) return Grab.None(if (glassesOn) "No photo from the glasses. Open the app on the phone to use its camera." else "Connect the glasses, or open the app on the phone to use its camera.")
+        speaker.say(if (glassesOn) "No photo from the glasses. Take it with the phone." else phonePrompt)
         val t0 = System.currentTimeMillis()
         val waiting = CompletableDeferred<android.graphics.Bitmap?>()
         phoneShot = waiting
         _photoRequests.tryEmit(Unit)
         val bmp = kotlinx.coroutines.withTimeoutOrNull(PHONE_PHOTO_MS) { waiting.await() }
         phoneShot = null
-        return if (bmp == null) Shot.Failed("No photo was taken.")
-        else prepared(bmp, CameraUsed.PHONE, t0, System.currentTimeMillis() - t0, if (glassesOn) "Used the phone camera." else null)
+        return if (bmp == null) Grab.None("No photo was taken.")
+        else Grab.Got(bmp, CameraUsed.PHONE, t0, System.currentTimeMillis() - t0, if (glassesOn) "Used the phone camera." else null)
+    }
+
+    // --- M5-T05: the C3 box check ------------------------------------------------------------------
+
+    /** Today's card, its buttons, and the words of CheckGrammar (session or hold-to-talk). Runs on its own. */
+    fun checkButton(a: CheckAction) {
+        scope.launch { checkAction(a) }
+    }
+
+    private suspend fun checkAction(a: CheckAction) {
+        when (a) {
+            CheckAction.START, CheckAction.AGAIN -> scope.launch { checkNow() } // camera and registry: seconds
+            CheckAction.CLAIM -> checkFlow.claim()
+            CheckAction.EVIDENCE -> checkFlow.evidence()
+            CheckAction.DONE -> checkFlow.done()
+            CheckAction.RETRY -> scope.launch { checkFlow.retry() }
+            CheckAction.PHONE_SCAN -> scope.launch { checkFlow.scanWithPhone() }
+            CheckAction.AGREE -> scope.launch { checkFlow.agree() }
+            CheckAction.CODE_ONLY -> scope.launch { checkFlow.codeOnly() }
+        }
+    }
+
+    /** No task is needed (contract §7); the site is the linked one (the server defaults it when there is none). */
+    private suspend fun checkNow() {
+        if (session == null) {
+            toast("Connect this phone to the PC first.")
+            return speaker.say("Connect this phone to Field first.")
+        }
+        checkFlow.start(_ui.value.pairing?.siteId)
+    }
+
+    /** "I agree": the photo that waits for the site's consent (a box check's first, else a look's). */
+    private suspend fun agreeNow() = if (checkFlow.consentPending) checkFlow.agree() else lookFlow.agree()
+
+    /** The seal photo: the QR read on the phone from the full-size photo, then the photo blurred for upload. */
+    private suspend fun takeSealPhoto(): SealShot = when (val g = grabPhoto("seal", "Take a photo of the seal code with the phone.")) {
+        is Grab.None -> SealShot.Failed(g.text)
+        is Grab.Got -> {
+            val codes = barcodes.read(g.bmp)
+            log("seal photo ${g.bmp.width}x${g.bmp.height}: ${if (codes.isEmpty()) "no code" else "${codes.size} code(s)"}")
+            val photo = withContext(Dispatchers.Default) { LookPhotos.prepare(g.bmp, g.camera, g.at, g.ms) }
+            if (photo == null) log("seal photo: the face check failed, so the photo is not sent (code only)")
+            else if (photo.facesBlurred > 0) log("seal photo: ${photo.facesBlurred} face(s) blurred on the phone")
+            SealShot.Taken(photo, codes, g.camera, g.note)
+        }
+    }
+
+    /** The phone's code scanner for the seal QR (MainActivity: Google's scanner UI), only while the app is on screen. */
+    private suspend fun scanSealWithPhone(): String? {
+        if (!inForeground) {
+            speaker.say("Open the app on the phone to scan the code.")
+            return null
+        }
+        val waiting = CompletableDeferred<String?>()
+        sealScan = waiting
+        _cameraRequests.tryEmit(Unit)
+        val code = kotlinx.coroutines.withTimeoutOrNull(PHONE_PHOTO_MS) { waiting.await() }
+        sealScan = null
+        return code
+    }
+
+    /** MainActivity: the phone scanner was closed without a code (a waiting seal scan gets none). */
+    fun scanCancelled() {
+        sealScan?.complete(null)
     }
 
     private suspend fun prepared(bmp: android.graphics.Bitmap, camera: CameraUsed, at: Long, ms: Long, note: String?): Shot {
@@ -1306,6 +1425,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         accounts.chosenSite = site.id
         siteModes?.remember(site.id, site.mode)
         _ui.value = _ui.value.copy(pairing = a.pairing(site.id, site.name), sandbox = site.mode == SiteModes.SANDBOX, tasks = emptyList())
+        checkFlow.reset() // another site: the server is asked again whether box checks are allowed there
         log("Site: ${site.name}")
         refreshTasks()
     }
