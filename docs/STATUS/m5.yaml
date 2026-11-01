@@ -230,3 +230,24 @@
     private stack (run log in evidence): C1 receive 18 flag 2 -> GR with 101A 18 and 101Q 2, C2 receive 7 flag 3 ->
     101A 7 and 101Q 3, both looks linked; smoke --home and --all passed on the same stack. Says nothing about the real
     models; the claim and evidence steps of the full `smoke --m5` belong to stream X and the integrator.
+- id: M5-V09
+  title: >-
+    Gate 0 probe tools/probes/m5_gate0.py for the owner's PC: G0-1 Muse Spark 1.3 image read and G0-2 SAM 3.1
+    instances through field-api's own adapters and the budget guard; status, latency, usage, the parsed answer and
+    request / answer shapes; a redacted evidence file under docs/evidence/
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - tools/probes/m5_gate0.py
+  tests:
+  - tools/probes/tests/test_m5_gate0.py::test_m5_v09_probe_runs_both_and_writes_redacted_evidence
+  - tools/probes/tests/test_m5_gate0.py::test_m5_v09_probe_without_the_flag_is_blocked_and_calls_nothing
+  - tools/probes/tests/test_m5_gate0.py::test_m5_v09_shapes_keep_keys_and_drop_values
+  frs: []
+  verified_at: null
+  note: >-
+    Not run against the real API (no key, no route from the build sandbox); the owner runs it. MODEL_API_KEY is read
+    from .env.local by name and never printed or written; the report refuses to print if it would contain the key.
+    Label text is reduced to its length in the output (contract §6). Both prices are placeholders, so the probe
+    needs --allow-unconfirmed-prices (that run only).
