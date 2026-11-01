@@ -252,6 +252,7 @@
   status: partial
   evidence:
   - tools/probes/m5_gate0.py
+  - docs/evidence/2026-11-01-m5-gate0-095316.txt
   tests:
   - tools/probes/tests/test_m5_gate0.py::test_m5_v09_probe_runs_both_and_writes_redacted_evidence
   - tools/probes/tests/test_m5_gate0.py::test_m5_v09_probe_without_the_flag_is_blocked_and_calls_nothing
@@ -259,6 +260,10 @@
   frs: []
   verified_at: null
   note: >-
+    Run by the owner from India on 1 Nov 2026, four times: SAM 3.1 instances PASS (7 of 7 boxes, about 5 s, 0.005
+    USD a photo); the Muse Spark 1.3 image read PASS on the fourth run (strict JSON answer, about 9 s, 0.011 USD)
+    after two fixes the runs exposed: longer look deadlines and reasoning_effort low with a larger output
+    allowance. Evidence docs/evidence/2026-11-01-m5-gate0-095316.txt. Earlier text:
     Not run against the real API (no key, no route from the build sandbox); the owner runs it. MODEL_API_KEY is read
     from .env.local by name and never printed or written; the report refuses to print if it would contain the key.
     Label text is reduced to its length in the output (contract §6). Both prices are placeholders, so the probe
