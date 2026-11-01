@@ -1342,3 +1342,37 @@
     tokens, so the classic layout keeps its screens and order but takes the new colours and 16 dp corners; its Me screen
     gained a Layout row to come back. A new install asks for permissions on first run's Permissions step instead of at
     launch; an install already connected before the update skips first run (FirstRun.initialFlag).
+- id: M5-U05
+  title: >-
+    Profile and settings split from daily use (A-07): Profile (name, e-mail, role chips, site with Change, glasses,
+    Settings, Help and practice, Sign out), Settings (glasses microphone, attention word, audio only, language; scanning
+    with glasses / phone camera / handheld; privacy and data; advanced), Connections (server addresses read only while
+    connected and editable when signed out, pair with a PC code, glasses camera test), Diagnostics (classic layout
+    switch, app log, send feedback, version); Android's "Remove animations" as AppUi.shell.reduceMotion and
+    LocalReduceMotion
+  workstream: M5-U
+  role: Builder A (UI shell)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/ProfilePages.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellRoot.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/shell/ShellNav.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/theme/Motion.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - docs/design/M5_UI_CONTRACT.md
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/shell/ShellNavTest.kt::m5_u05_profileRolesGreetingAndRemoveAnimations
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/shell/ShellNavTest.kt::m5_u05_connectionsStateAndEveryScannerStayReachable
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/shell/ShellNavTest.kt::m5_u01_backWalksPagesTabsAndTheFirstRunGraph
+  frs: []
+  verified_at: null
+  note: >-
+    Partial until proven on the owner's phone. Everything Me did is reachable in the new layout: sign out / disconnect
+    and site (Profile), glasses set-up (Profile › Glasses), scanner, glasses microphone, attention word, language,
+    audio only (Settings), camera test (Connections), "Talking to the glasses" and the practice task (Profile › Help
+    and practice), feedback and the app log (Diagnostics). Settings offers the handheld scanner too (the prototype shows
+    two choices; Me cycled three). Server addresses are saved through FieldController.setServers with the sign-in's
+    own checks (AccountStore.rememberServers) and only while signed out. Reduce motion is read from
+    Settings.Global.ANIMATOR_DURATION_SCALE in MainActivity.onResume. The Compose pages type-check with the real
+    compiler; no Gradle build or device run was possible here.

@@ -40,6 +40,7 @@ import com.scmtips.field.app.shell.HomeMemory
 import com.scmtips.field.app.shell.HomeRules
 import com.scmtips.field.app.shell.PermissionStep
 import com.scmtips.field.app.shell.ShellAction
+import com.scmtips.field.app.shell.ShellPage
 import com.scmtips.field.app.ui.Actions
 import com.scmtips.field.app.ui.CameraTestCard
 import com.scmtips.field.app.ui.CardBox
@@ -141,6 +142,9 @@ internal fun InterimSignIn(ui: AppUi, a: Actions) = Page {
     }
     ui.connectError?.takeIf { ui.signedIn == null }?.let { Notice(it, Tone.BAD) }
     SecondaryButton("I have a code from my PC", a.scanPairingCode, enabled = !ui.connecting && !ui.signIn.busy)
+    TextButton(onClick = { a.shell(ShellAction.Open(ShellPage.CONNECTIONS)) }, modifier = Modifier.heightIn(min = MinTouch)) {
+        Text("Servers and connections", color = Muted)
+    }
     Text("SAMPLE data only. Judges: use the judge01 to judge05 accounts from the submission notes.", color = WarnInk, fontSize = 14.sp,
         modifier = Modifier.fillMaxWidth().background(WarnBg, CardShape).padding(14.dp))
 }

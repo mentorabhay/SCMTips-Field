@@ -116,6 +116,18 @@ class ShellNavTest {
     }
 
     @Test
+    fun m5_u05_connectionsStateAndEveryScannerStayReachable() {
+        assertEquals("Connecting" to PillTone.NEUTRAL, ShellText.serverState(connecting = true, offline = true, error = true, deviceKnown = true))
+        assertEquals("Offline" to PillTone.WARN, ShellText.serverState(false, offline = true, error = true, deviceKnown = true))
+        assertEquals("Problem" to PillTone.WARN, ShellText.serverState(false, false, error = true, deviceKnown = true))
+        assertEquals("Connected" to PillTone.GOOD, ShellText.serverState(false, false, false, deviceKnown = true))
+        assertEquals("Not linked" to PillTone.NEUTRAL, ShellText.serverState(false, false, false, deviceKnown = false))
+        // Me's "Scanning with → Change" went round all three scanners; Settings offers all three.
+        assertEquals(com.scmtips.field.app.jobs.ScannerKind.entries.toSet(), ShellText.scannerChoices.map { it.first }.toSet())
+        assertEquals("Glasses", ShellText.scannerChoices.first().second)
+    }
+
+    @Test
     fun m5_u01_permissionStepsAreInThePrototypesOrder() {
         assertEquals(listOf("Camera", "Microphone", "Nearby devices", "Notifications"), PermissionStep.entries.map { it.title })
         assertEquals("android.permission.BLUETOOTH_CONNECT", PermissionStep.NEARBY.androidPermission)

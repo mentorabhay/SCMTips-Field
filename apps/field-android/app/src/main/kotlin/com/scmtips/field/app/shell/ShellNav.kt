@@ -190,6 +190,22 @@ object ShellText {
         if (isEmpty()) add("No app roles")
     }
 
+    /** Connections' state word for the field server, and its tone. */
+    fun serverState(connecting: Boolean, offline: Boolean, error: Boolean, deviceKnown: Boolean): Pair<String, PillTone> = when {
+        connecting -> "Connecting" to PillTone.NEUTRAL
+        offline -> "Offline" to PillTone.WARN
+        error -> "Problem" to PillTone.WARN
+        deviceKnown -> "Connected" to PillTone.GOOD
+        else -> "Not linked" to PillTone.NEUTRAL
+    }
+
+    /** Settings › Scanning with: every scanner the app has, glasses first (the prototype's two plus the handheld). */
+    val scannerChoices: List<Pair<com.scmtips.field.app.jobs.ScannerKind, String>> = listOf(
+        com.scmtips.field.app.jobs.ScannerKind.GLASSES to "Glasses",
+        com.scmtips.field.app.jobs.ScannerKind.CAMERA to "Phone camera",
+        com.scmtips.field.app.jobs.ScannerKind.HANDHELD to "Handheld",
+    )
+
     /** Settings.Global.ANIMATOR_DURATION_SCALE == 0 is Android's "Remove animations". */
     fun reduceMotion(animatorDurationScale: Float): Boolean = animatorDurationScale == 0f
 }

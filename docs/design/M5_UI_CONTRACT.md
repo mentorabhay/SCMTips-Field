@@ -57,7 +57,7 @@ sample or invented data as real, and hide or disable its act buttons when `canAc
 | onSignIn | `a.signIn(method, core, field)` (the shell moves on when signed in) |
 | onCreateAccount(core) | `a.openUrl(AccountPages.signup(core, BuildConfig.DEFAULT_CORE_URL))` |
 | onOpenReset | `a.openUrl(AccountPages.reset(ui.signIn.coreUrl, BuildConfig.DEFAULT_CORE_URL))` |
-| onPcCode | `a.scanPairingCode()` |
+| onPcCode | `a.scanPairingCode()`; a "servers" link may open `a.shell(ShellAction.Open(ShellPage.CONNECTIONS))`, drawn over the sign-in screen while signed out |
 | onAllow(step) | `a.requestPermission(step)`; onDone → `a.shell(ShellAction.Go(FirstRunStep.GLASSES))` |
 | onSetUp / onTestPhoto | `a.glassesSetUp()` / `a.testCamera()` (the result is `ui.probe`, drawn by `CameraTestCard`) |
 | onSkip / onContinue (glasses) | `a.shell(ShellAction.Go(FirstRunStep.SITE))` |

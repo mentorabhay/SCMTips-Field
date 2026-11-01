@@ -58,6 +58,7 @@ import com.scmtips.field.app.shell.HomeRules
 import com.scmtips.field.app.shell.PillTone
 import com.scmtips.field.app.shell.ShellAction
 import com.scmtips.field.app.shell.ShellNav
+import com.scmtips.field.app.shell.ShellPage
 import com.scmtips.field.app.shell.ShellText
 import com.scmtips.field.app.shell.StatusPill
 import com.scmtips.field.app.shell.Tab
@@ -127,10 +128,14 @@ fun ShellRoot(ui: AppUi, a: Actions) {
         // First, so a screen's own BackHandler (job, check, evidence; builder B's) wins over this one.
         BackHandler(enabled = task == null && ShellNav.back(ui.shell, isConnected) != null) { a.shell(ShellAction.Back) }
         when {
-            outPage != null -> com.scmtips.field.app.ui.MeScreen(ui, a)
+            outPage != null -> ConnectionsPage(ui, a)
             step != null -> FirstRunContent(step, ui, a)
             task != null -> TaskScreens(task, ui, a)
-            ui.shell.page != null -> com.scmtips.field.app.ui.MeScreen(ui, a)
+            ui.shell.page != null -> when (ui.shell.page) {
+                ShellPage.SETTINGS -> SettingsPage(ui, a)
+                ShellPage.CONNECTIONS -> ConnectionsPage(ui, a)
+                ShellPage.DIAGNOSTICS -> DiagnosticsPage(ui, a)
+            }
             else -> Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {
                     when (ui.shell.tab) {
@@ -138,7 +143,7 @@ fun ShellRoot(ui: AppUi, a: Actions) {
                         Tab.ACTIVITY -> ActivityTab(ui, a)
                         Tab.SCAN -> ScanScreen(ui, a)
                         Tab.INBOX -> InboxTab(ui, a)
-                        Tab.PROFILE -> com.scmtips.field.app.ui.MeScreen(ui, a)
+                        Tab.PROFILE -> ProfileTab(ui, a)
                     }
                 }
                 ShellTabBar(ui.shell.tab, (ui.decisions.waiting ?: 0) + (ui.claims.waiting ?: 0), a)

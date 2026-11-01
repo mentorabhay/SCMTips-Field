@@ -71,6 +71,7 @@
     "app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellKit.kt": "androidx.compose (rows, switches, tab glyphs of the M5-U shell)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/shell/HomeContent.kt": "androidx.compose (the home seam and interim homes; the home rules are shell/Homes.kt)",
     "app/src/main/kotlin/com/scmtips/field/app/ui/shell/FirstRunContent.kt": "androidx.compose (the first-run seam and interim screens; the graph is shell/ShellNav.kt)",
-    "app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellTabs.kt": "androidx.compose (the Activity and Inbox tabs)"
+    "app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellTabs.kt": "androidx.compose (the Activity and Inbox tabs)",
+    "app/src/main/kotlin/com/scmtips/field/app/ui/shell/ProfilePages.kt": "androidx.compose (Profile, Settings, Connections, Diagnostics; their words are shell/ShellNav.kt ShellText)"
   }
 }
