@@ -75,7 +75,7 @@ already heard). If no label batch is answered (failure, time-out) or anything fa
 the labels. Say your numbers.". A read unfinished at its due time (labels + fallback deadlines + 15 s, e.g. field-api
 restarted) is ended the same way by the next read of the look (reason `labels:not_finished`). Looks without
 instances or without a reader are final in one step (`say_next` null). The `Idempotency-Key` replay of the POST
-returns the stored first answer; the app polls `GET` (every 1 s, up to 40 s) until `final`. Every spoken number is
+returns the stored first answer; the app polls `GET` (every 1 s, up to 60 s, which covers the server's `labels_due_at` of labels + fallback deadlines + 15 s) until `final`. Every spoken number is
 still checked against the deterministic result, and nothing posts without the operator's numbers and "confirm".
 `POST /v1/claims` on a look that is not final is refused **409 `FIELD-CLM-409-LOOK-PENDING`**: a claim is always made
 from the final state. Posting a receipt with a look that is not final is allowed (the operator's numbers post); the

@@ -890,7 +890,7 @@
     Two-step speech: POST /v1/vision/looks answers once SAM's instances are counted (final false, source partial, the
     count only, "Reading the labels."); the label read continues in field-api; GET /v1/vision/looks/{id} answers the
     final look (labels, checks, proposal, full say, say_next); the app speaks the first answer, polls GET every 1 s up
-    to 40 s and speaks the second part once
+    to 60 s and speaks the second part once
   workstream: M5-S
   role: Builder (photo and speech)
   status: partial
@@ -939,9 +939,10 @@
     forced RLS of field_0064 applies). Idempotency-Key: the middleware replays the stored first answer and no
     second read starts. Claims: POST /v1/claims on a look that is not final -> 409 FIELD-CLM-409-LOOK-PENDING
     (picked over waiting); posting with a pending look is allowed (the operator's numbers post). App: speaks the
-    first answer, pre-fills nothing, polls GET every 1 s up to 40 times, speaks say_next (else say) + hint once via
+    first answer, pre-fills nothing, polls GET every 1 s up to 60 times, speaks say_next (else say) + hint once via
     queue; a new look, another job, leaving the job screen (FieldController.closeJob -> leave) or clear cancels
-    the poll; a claim waits; LOOK_READ_TIMEOUT_S stays 75 for an older server. The server's labels + fallback
-    deadlines (30 + 15 s) can exceed the app's 40 s poll; the app then says the labels were not read. Proven with
+    the poll; a claim waits; LOOK_READ_TIMEOUT_S stays 75 for an older server. The app's poll was raised from 40
+    to 60 s at the merge so it covers the server's labels_due_at (30 + 15 + 15 s); the dynamic SQL in
+    _settle_overdue became two fixed queries (no noqa). Proven with
     the model stand-in only (smoke --m5-look and --m5 PASS on a private stack); partial until proven on the owner's
     phone and glasses against the real Meta API.

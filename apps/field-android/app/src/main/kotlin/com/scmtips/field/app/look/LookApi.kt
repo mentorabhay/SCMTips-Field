@@ -79,9 +79,9 @@ object LookApi {
      *  read after it; 75 s is kept so a server that still reads the labels before answering (15 s + 30 s) fits.
      *  Only the look call gets it. */
     const val LOOK_READ_TIMEOUT_S = 75
-    /** The poll of a two-step look: GET every [POLL_MS] until final, at most [POLL_MAX] times (40 s). */
+    /** The poll of a two-step look: GET every [POLL_MS] until final, at most [POLL_MAX] times (60 s: the server's labels + fallback deadlines + 15 s grace, labels_due_at). */
     const val POLL_MS = 1_000L
-    const val POLL_MAX = 40
+    const val POLL_MAX = 60
 
     fun uploadSession(key: String, deviceId: String, jpeg: ByteArray) =
         ApiRequest("POST", "/v1/captures/uploads", buildJsonObject {

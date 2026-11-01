@@ -217,7 +217,7 @@ class LookFlowTest {
         s.flow.look(s.target)
         s.flow.polling!!.join()
         assertEquals(LookApi.POLL_MAX, s.api.sent.count { it.method == "GET" })
-        assertEquals(40, LookApi.POLL_MAX); assertEquals(1_000L, LookApi.POLL_MS)
+        assertEquals(60, LookApi.POLL_MAX); assertEquals(1_000L, LookApi.POLL_MS) // 60 s: covers the server's labels_due_at (30 + 15 + 15 s)
         assertEquals(LookFlow.LABELS_TIMEOUT_SAY, s.voice.said.last())
         assertEquals("I couldn't read the labels. Say your numbers.", LookFlow.LABELS_TIMEOUT_SAY)
         assertEquals(2, s.voice.said.size)

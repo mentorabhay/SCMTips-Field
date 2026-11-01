@@ -286,10 +286,15 @@ _GIVE_UP = """
 """
 
 
+_OVERDUE_BY = MappingProxyType({
+    "idempotency_key": "SELECT id FROM field.vision_look WHERE idempotency_key = %s AND NOT final AND labels_due_at < NOW()",
+    "id::text": "SELECT id FROM field.vision_look WHERE id::text = %s AND NOT final AND labels_due_at < NOW()",
+})
+
+
 def _settle_overdue(cur: Any, where: str, value: str) -> None:
     """Ends a look whose label read is past its due time (reason labels:not_finished): read paths call this first."""
-    cur.execute(f"SELECT id FROM field.vision_look WHERE {where} = %s AND NOT final AND labels_due_at < NOW()",  # noqa: S608
-                (value,))
+    cur.execute(_OVERDUE_BY[where], (value,))
     row = cur.fetchone()
     if row:
         cur.execute(_GIVE_UP, {"say": LABELS_FAILED_SAY, "reason": "labels:not_finished", "id": str(row[0])})
