@@ -26,6 +26,14 @@ M4 F7 (handover 01 / 01a, M4 contract section 4):
   refused with 403 FIELD-AUTH-403-NO-FIELD-ROLE and a sentence the app shows on its sign-in screen (not a bare
   401). The mapped core keys are echoed as ``core_roles``.
 - Every call to the core carries ``X-Requested-With: lr`` (TO_FIELD section 3: the core checks it).
+
+M5-J01 (the hosted field console, hud.scmtips.com): the console's server signs in at the core with a per-browser
+device id ``web-console:<uuid>`` (device_model ``WEB_CONSOLE``) and exchanges with ``client_id: field-console`` and no
+``device_id``. A browser is not a field device: such a token is exchanged without a device binding (no field.device is
+registered, no device status is asked, the field token has no ``did``), like the development sign-in's tokens. The
+core's device status would not help here: the core keeps a device session only for members who may pair glasses.
+A token bound to any other device id (the phone's install id) keeps the device checks above whatever ``client_id``
+says, so a phone token cannot skip the core's revocation by claiming to be the console.
 """
 
 import os
@@ -56,6 +64,9 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/v1/auth", tags=["Auth"])
 
 MAX_FIELD_TTL_S = 600
+# M5-J01: the hosted console's per-browser core device ids, and the client id its server sends.
+WEB_CONSOLE_DEVICE_PREFIX = "web-console:"
+WEB_CONSOLE_CLIENT_ID = "field-console"
 # Tests route the core device-status call in-process (httpx.ASGITransport(app=<stand-in core>)); None = network.
 CORE_TRANSPORT: httpx.AsyncBaseTransport | None = None
 
@@ -134,6 +145,12 @@ async def _core_check(tenant_id: str, field_device_id: str, core_device_id: str 
     return await _core_device_active(url)
 
 
+def is_web_console(bound: str | None, request: ExchangeRequest) -> bool:
+    """M5-J01: a console browser's core token, exchanged by the console's server with no field device id."""
+    return (bool(bound) and str(bound).startswith(WEB_CONSOLE_DEVICE_PREFIX)
+            and request.client_id == WEB_CONSOLE_CLIENT_ID and request.device_id is None)
+
+
 def _str_list(value: Any) -> list[str] | None:
     if isinstance(value, list) and all(isinstance(v, str) for v in value):
         return [str(v) for v in value]
@@ -184,7 +201,7 @@ async def exchange_token(request: ExchangeRequest) -> ExchangeResponse:
 
     raw_bound = claims.get("device_id") or claims.get("did")
     bound = str(raw_bound) if raw_bound else None
-    device_id = request.device_id or bound
+    device_id = None if is_web_console(bound, request) else (request.device_id or bound)
     if device_id:
         if request.device_id and request.device_id != bound:
             dev = _field_device(tenant_id, request.device_id)
