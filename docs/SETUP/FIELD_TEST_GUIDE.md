@@ -161,6 +161,8 @@ The tower jobs live on a separate site, **SAMPLE tower 0001**, with a real geofe
 ## Step 8: AI credits (optional; nothing here uses them)
 Barcodes, speech and spoken prompts run on the phone and glasses for free. Cloud AI is off (`AI_CLOUD_ENABLED=false`). If you enable it later, keys go in `.env.local` only. Hard caps are enforced in Postgres (`AI_BUDGET_LLAMA_USD=40`, `AI_BUDGET_BASETEN_USD=25`, `AI_DAILY_CAP_USD=3`), and spend shows at `GET /v1/system/ai-usage`. Don't deploy dedicated Baseten models; they bill while idle. The M3 Field Assistant uses the Meta Model API (`MODEL_API_KEY`, cap `AI_BUDGET_META_USD`, prices in `config/ai_pricing.yaml`); `uv run python -m tools.dev_stack.assistant_check` makes one capped call and prints `OK` or `BLOCKED <reason>`. Without AI the assistant still answers in rules mode.
 
+M5 vision look (SAM 3.1 instances, Muse Spark 1.3 label reads): both prices in `config/ai_pricing.yaml` are placeholders marked `confirmed: false` (SAM 3.1 per image; Muse image input per image), and the budget guard refuses a placeholder price (`AI_PRICE_UNCONFIRMED`) unless `AI_ALLOW_UNCONFIRMED_PRICES=true`. Until then a look answers in rules mode ("say the count"). Gate 0: `uv run python tools/probes/m5_gate0.py --photo <photo> --allow-unconfirmed-prices` makes one call of each (the flag applies to that run only) and writes a redacted evidence file under `docs/evidence/`. Then check both prices on the Meta console, correct them in `config/ai_pricing.yaml` and set `confirmed: true`; the flag is then not needed. To try the look without any model: `stack up --model-standin` (a local dev double, never Meta) and `stack smoke --m5-look`.
+
 ---
 
 ## Known limits of this build

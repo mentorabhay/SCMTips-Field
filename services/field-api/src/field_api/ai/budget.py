@@ -18,6 +18,16 @@ as served from its prompt cache (usage.prompt_tokens_details.cached_tokens) are 
 model without it bills cached tokens at the normal input rate. The reservation always assumes no cache
 hit (worst case).
 
+Unconfirmed prices (M5, owner amendment A-06): a price entry may say ``confirmed: false`` (a placeholder the owner
+has not checked on the provider's console), and a token-priced model may carry ``image_input: {confirmed: false,
+tokens_per_image: N}`` (how many prompt tokens one input image costs is not published). ``reserve`` refuses such a
+model (AI_PRICE_UNCONFIRMED), and a call with ``images > 0`` to a model whose image input is unconfirmed, unless
+AI_ALLOW_UNCONFIRMED_PRICES=true (default false). Entries without the keys are confirmed, so every earlier caller
+(text calls, and the assistant's photo turn, which does not pass ``images``) behaves exactly as before. A model can
+also be priced per image (``per_image_usd``, SAM 3.1 is billed per image): reservation and settlement add
+images x per_image_usd. With ``images`` the reservation counts ``tokens_per_image`` prompt tokens per image (worst
+case); settlement uses the provider's own prompt-token count, which includes the images.
+
 All checks and the insert run under one transaction-level advisory lock, so concurrent callers
 cannot overspend. Caps are read per call: lowering a cap in .env.local takes effect on restart.
 """
@@ -44,6 +54,8 @@ CAP_ENV: Mapping[str, str] = MappingProxyType(
 DAILY_ENV = "AI_DAILY_CAP_USD"
 LOCK_KEY = 0x41494255  # "AIBU": one global lock for budget decisions
 PROHIBITED_MODEL_WORDS = ("image",)  # A-04: Muse Image is never called
+ALLOW_UNCONFIRMED_ENV = "AI_ALLOW_UNCONFIRMED_PRICES"
+DEFAULT_TOKENS_PER_IMAGE = 3000  # reservation per input image when the price entry gives no estimate
 PRICING_FILE = Path(os.getenv("FIELD_AI_PRICING_FILE", Path(__file__).resolve().parents[5] / "config" / "ai_pricing.yaml"))
 
 
@@ -58,16 +70,23 @@ class Price:
     input_per_mtok: Decimal
     output_per_mtok: Decimal
     cached_input_per_mtok: Decimal | None = None
+    per_image_usd: Decimal = Decimal(0)
+    confirmed: bool = True
+    image_input_confirmed: bool = True
+    tokens_per_image: int = DEFAULT_TOKENS_PER_IMAGE
 
-    def cost(self, input_tokens: int, output_tokens: int, cached_input_tokens: int = 0) -> Decimal:
+    def cost(self, input_tokens: int, output_tokens: int, cached_input_tokens: int = 0, images: int = 0) -> Decimal:
         """USD for one call. ``input_tokens`` is the provider's prompt_tokens (cached ones included);
-        ``cached_input_tokens`` of them are billed at the cached rate when the model has one."""
+        ``cached_input_tokens`` of them are billed at the cached rate when the model has one; ``images`` adds
+        images x per_image_usd (a per-image model)."""
         if not 0 <= cached_input_tokens <= max(input_tokens, 0):
             raise ValueError("cached_input_tokens must be between 0 and input_tokens")
+        if images < 0:
+            raise ValueError("images must be >= 0")
         cached_rate = self.input_per_mtok if self.cached_input_per_mtok is None else self.cached_input_per_mtok
         fresh = input_tokens - cached_input_tokens
-        return (self.input_per_mtok * fresh + cached_rate * cached_input_tokens
-                + self.output_per_mtok * output_tokens) / Decimal(1_000_000)
+        return ((self.input_per_mtok * fresh + cached_rate * cached_input_tokens
+                 + self.output_per_mtok * output_tokens) / Decimal(1_000_000) + self.per_image_usd * images)
 
 
 @dataclass(frozen=True)
@@ -77,6 +96,7 @@ class Reservation:
     model: str
     reserved_usd: Decimal
     price: Price
+    images: int = 0
 
 
 def _cap(name: str) -> Decimal:
@@ -98,13 +118,35 @@ def load_prices(path: Path = PRICING_FILE) -> dict[str, dict[str, Price]]:
     return out
 
 
+def _flag(v: Any, name: str) -> bool:
+    if v is None:
+        return True
+    if not isinstance(v, bool):
+        raise ValueError(f"{name} must be true or false")
+    return v
+
+
 def _price_from(p: Mapping[str, Any]) -> Price:
     cached = p.get("cached_input_per_mtok")
+    image_input = p.get("image_input") or {}
+    if not isinstance(image_input, Mapping):
+        raise ValueError("image_input must be a mapping")
+    tokens_per_image = int(image_input.get("tokens_per_image", DEFAULT_TOKENS_PER_IMAGE))
     price = Price(Decimal(str(p["input_per_mtok"])), Decimal(str(p["output_per_mtok"])),
-                  None if cached is None else Decimal(str(cached)))
-    if price.input_per_mtok < 0 or price.output_per_mtok < 0 or (cached is not None and Decimal(str(cached)) < 0):
+                  None if cached is None else Decimal(str(cached)),
+                  per_image_usd=Decimal(str(p.get("per_image_usd", 0))),
+                  confirmed=_flag(p.get("confirmed"), "confirmed"),
+                  image_input_confirmed=_flag(image_input.get("confirmed"), "image_input.confirmed"),
+                  tokens_per_image=tokens_per_image)
+    if (price.input_per_mtok < 0 or price.output_per_mtok < 0 or (cached is not None and Decimal(str(cached)) < 0)
+            or price.per_image_usd < 0 or tokens_per_image < 0):
         raise ValueError("prices must be >= 0")
     return price
+
+
+def unconfirmed_allowed() -> bool:
+    """AI_ALLOW_UNCONFIRMED_PRICES=true lets the guard use placeholder prices (default false: refused)."""
+    return os.getenv(ALLOW_UNCONFIRMED_ENV, "false").strip().lower() == "true"
 
 
 class BudgetGuard:
@@ -141,18 +183,27 @@ class BudgetGuard:
 
     def reserve(
         self, provider: str, model: str, *, input_tokens: int, max_output_tokens: int, purpose: str,
-        tenant_id: str | None = None, request_id: str | None = None,
+        tenant_id: str | None = None, request_id: str | None = None, images: int = 0,
     ) -> Reservation:
         if os.getenv("AI_CLOUD_ENABLED", "false").strip().lower() != "true":
             raise BudgetRefused("AI_CLOUD_DISABLED", "AI_CLOUD_ENABLED is not true")
         if provider not in PROVIDERS:
             raise BudgetRefused("AI_PROVIDER_UNKNOWN", f"unknown provider {provider!r}")
-        if input_tokens < 0 or max_output_tokens <= 0:
+        if input_tokens < 0 or max_output_tokens <= 0 or images < 0:
             raise BudgetRefused("AI_REQUEST_INVALID", "token counts must be positive")
         if any(w in model.lower() for w in PROHIBITED_MODEL_WORDS):
             raise BudgetRefused("AI_MODEL_PROHIBITED", f"{model!r}: image models are prohibited (A-04)")
         price = self._price(provider, model)
-        est = price.cost(input_tokens, max_output_tokens)
+        if not unconfirmed_allowed():
+            if not price.confirmed:
+                raise BudgetRefused("AI_PRICE_UNCONFIRMED", f"the price of {provider}/{model} in config/ai_pricing.yaml"
+                                    f" is a placeholder (confirmed: false); set {ALLOW_UNCONFIRMED_ENV}=true to use it")
+            if images > 0 and not price.image_input_confirmed:
+                raise BudgetRefused("AI_PRICE_UNCONFIRMED", f"image input of {provider}/{model} is not confirmed in"
+                                    f" config/ai_pricing.yaml; set {ALLOW_UNCONFIRMED_ENV}=true to use it")
+        # A per-image model (SAM 3.1) bills the image itself; a token model bills the image as prompt tokens.
+        image_tokens = 0 if price.per_image_usd > 0 else images * price.tokens_per_image
+        est = price.cost(input_tokens + image_tokens, max_output_tokens, images=images)
         cap, daily = _cap(CAP_ENV[provider]), _cap(DAILY_ENV)
         with get_conn(self._db_url) as conn, conn.cursor() as cur:
             cur.execute("SELECT pg_advisory_xact_lock(%s)", (LOCK_KEY,))
@@ -169,10 +220,10 @@ class BudgetGuard:
             row = cur.fetchone()
             conn.commit()
         assert row is not None
-        return Reservation(str(row[0]), provider, model, est, price)
+        return Reservation(str(row[0]), provider, model, est, price, images)
 
     def settle(self, r: Reservation, *, input_tokens: int, output_tokens: int, cached_input_tokens: int = 0) -> Decimal:
-        cost = r.price.cost(input_tokens, output_tokens, cached_input_tokens)
+        cost = r.price.cost(input_tokens, output_tokens, cached_input_tokens, images=r.images)
         self._close(r, "settled", cost, input_tokens, output_tokens, cached_input_tokens)
         return cost
 

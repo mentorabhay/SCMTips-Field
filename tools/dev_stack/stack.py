@@ -27,6 +27,12 @@
         feeds now (the worker also does it every FIELD_CORE_SNAPSHOT_INTERVAL_S, M4 Q10)
     uv run python -m tools.dev_stack.stack smoke --erp-feed  # snapshot -> the core's on-hand and open POs = erp-sim's
         (FIELD_CORE_TARGET standin or core; tools/dev_stack/erp_feed.py)
+    uv run python -m tools.dev_stack.stack m5-cases [--reset]  # M5: C1 grocery + C2 pharmacy receipts on the home
+        sandbox site, var/m5_cases.html with their labels (tools/dev_stack/m5.py)
+    uv run python -m tools.dev_stack.stack up --model-standin  # field-api's Meta Model API calls go to the local
+        model stand-in (tools/dev_stack/model_standin.py, a dev double, never Meta), no key, zero prices
+    uv run python -m tools.dev_stack.stack smoke --m5-look  # both M5 cases: look -> proposal -> post good + flagged ->
+        101A and 101Q in erp-sim -> the look linked (needs `up --model-standin`)
 
 Services (logs in var/log, pids in var/run):
   fake-core  :8011  dev identity provider (EdDSA tokens + JWKS) and the stand-in core (a dev double of the
@@ -395,6 +401,33 @@ def wait_http(url: str, timeout_s: float = 30) -> bool:
 
 # --- commands -------------------------------------------------------------------------------------
 
+MODEL_STANDIN_PORT_ENV = "FIELD_STACK_MODEL_PORT"
+MODEL_STANDIN_PRICING = ROOT / "tools" / "dev_stack" / "model_standin_pricing.yaml"
+MODEL_STANDIN_KEY = "dev-model-standin-not-a-key"  # a marker the stand-in accepts; never a credential
+
+
+def start_model_standin() -> bool:
+    """`up --model-standin` (M5): the local model stand-in on 127.0.0.1, and field-api pointed at it: base URL, a dev
+    marker instead of MODEL_API_KEY (so a real key in .env.local is never sent to it), AI on with small caps unless
+    set, and the stand-in's zero-price pricing file. Only field-api's environment changes; .env.local is not touched."""
+    p = int(os.environ.get(MODEL_STANDIN_PORT_ENV) or 8430)
+    if running("model-standin") is None and port_in_use(p):
+        print(f"FAIL: port {p} for model-standin is used by {owner_of_port(p)}; set {MODEL_STANDIN_PORT_ENV}")
+        return False
+    pid = start("model-standin", [sys.executable, "-m", "uvicorn", "tools.dev_stack.model_standin:app",
+                                  "--host", "127.0.0.1", "--port", str(p)])
+    if not wait_http(f"http://127.0.0.1:{p}/_standin/requests"):
+        print("model-standin: NOT RUNNING - see var/log/model-standin.log")
+        return False
+    os.environ.update({"META_MODEL_API_BASE_URL": f"http://127.0.0.1:{p}/v1", "MODEL_API_KEY": MODEL_STANDIN_KEY,
+                       "AI_CLOUD_ENABLED": "true", "FIELD_AI_PRICING_FILE": str(MODEL_STANDIN_PRICING),
+                       "FIELD_STACK_MODEL_URL": f"http://127.0.0.1:{p}"})
+    os.environ.setdefault("AI_BUDGET_META_USD", "1")
+    os.environ.setdefault("AI_DAILY_CAP_USD", "1")
+    print(f"model-standin: pid {pid}, :{p} (a dev double of the Meta Model API, NOT Meta); field-api uses it")
+    return True
+
+
 def cmd_up(a: argparse.Namespace) -> int:
     filled = ensure_env_local()
     if filled:
@@ -402,6 +435,8 @@ def cmd_up(a: argparse.Namespace) -> int:
     load_env()
     choose_ports()
     apply_ports()
+    if getattr(a, "model_standin", False) and not start_model_standin():
+        return 1
     bind = "127.0.0.1" if a.local_only else "0.0.0.0"
     taken = [n for n in PORTS if running(n) is None and port_in_use(port(n))]
     if taken:  # only an explicit FIELD_STACK_*_PORT can still collide
@@ -458,7 +493,7 @@ def print_core_target() -> None:
           " the core API is on this PC's LAN address, port 8000")
 
 
-STACK_PROCESS = r"fake_core\.app:app|erp_sim\.app:app|field_api\.app:app|-m field_worker"
+STACK_PROCESS = r"fake_core\.app:app|erp_sim\.app:app|field_api\.app:app|-m field_worker|dev_stack\.model_standin:app"
 
 
 def stop_leftovers() -> int:
@@ -478,7 +513,7 @@ def stop_leftovers() -> int:
 
 
 def cmd_down(_a: argparse.Namespace) -> int:
-    for name in reversed(list(services("127.0.0.1"))):
+    for name in [*reversed(list(services("127.0.0.1"))), "model-standin"]:
         print(f"{name}: {'stopped' if stop(name) else 'not running'}")
     n = stop_leftovers()
     if n:
@@ -1959,6 +1994,10 @@ def cmd_smoke(a: argparse.Namespace) -> int:
     if (getattr(a, "approver", False) or getattr(a, "core", False)) and core_target() == "core":
         return smoke_real_core(a, api)
     state = ensure_warehouse(json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {})
+    if getattr(a, "m5_look", False):
+        from tools.dev_stack.m5 import smoke_m5_look
+
+        return smoke_m5_look(api, state, a.wait)
     if getattr(a, "approver", False):
         if core_target() != "standin":
             print("FAIL: smoke --approver runs against a core: set FIELD_CORE_TARGET=standin (the stand-in) or core"
@@ -2279,6 +2318,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     up = sub.add_parser("up")
     up.add_argument("--local-only", action="store_true", help="bind field-api to 127.0.0.1 (no phone access)")
+    up.add_argument("--model-standin", action="store_true",
+                    help="M5: field-api's Meta Model API calls go to the local model stand-in (dev double, no key)")
     sub.add_parser("down")
     sub.add_parser("status")
     pr = sub.add_parser("pair")
@@ -2316,6 +2357,8 @@ def main(argv: list[str] | None = None) -> int:
     sm.add_argument("--decision", metavar="ID",
                     help="with --approver against the real core (M4-C17): approve exactly this decision, e.g. the one"
                          " the core's `scmtips-scenario inject <name> --wait` reported (submitted first if a draft)")
+    sm.add_argument("--m5-look", action="store_true",
+                    help="M5: both test cases, look -> post good + flagged -> 101A + 101Q (needs up --model-standin)")
     sm.add_argument("--erp-feed", action="store_true",
                     help="erp-sim's stock and open POs as a snapshot to the core's feeds; the core then equals erp-sim")
     ef = sub.add_parser("erp-feed", help="stage a snapshot of erp-sim's stock and open POs for the core's feeds now")
@@ -2335,11 +2378,19 @@ def main(argv: list[str] | None = None) -> int:
     hm.add_argument("--simulate-differences", action="store_true",
                     help="opt-in: give two SAMPLE materials a simulated book stock in HOME-A (documents marked simulated)")
     sub.add_parser("assistant-check", help="one real Field Assistant model call through the budget guard (track A)")
+    m5 = sub.add_parser("m5-cases", help="M5: C1 grocery + C2 pharmacy receipts on the home sandbox site + labels")
+    m5.add_argument("--reset", action="store_true", help="cancel the open case receipts and make new ones")
     a = ap.parse_args(argv)
     return {"up": cmd_up, "down": cmd_down, "status": cmd_status, "pair": cmd_pair, "smoke": cmd_smoke,
             "delivery": cmd_delivery, "outbound": cmd_outbound, "count": cmd_count, "tower": cmd_tower,
             "labels": cmd_labels, "home": cmd_home, "assistant-check": cmd_assistant_check,
-            "seed-core-export": cmd_seed_core_export, "erp-feed": cmd_erp_feed}[a.cmd](a)
+            "seed-core-export": cmd_seed_core_export, "erp-feed": cmd_erp_feed, "m5-cases": cmd_m5_cases}[a.cmd](a)
+
+
+def cmd_m5_cases(a: argparse.Namespace) -> int:
+    from tools.dev_stack.m5 import cmd_m5_cases as run
+
+    return run(a)
 
 
 if __name__ == "__main__":

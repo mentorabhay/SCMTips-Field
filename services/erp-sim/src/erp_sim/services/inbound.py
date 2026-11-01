@@ -5,6 +5,14 @@ Implements:
 - PATCH of ActualDeliveryQuantity with ETag
 - Function imports: PostGoodsReceipt (mvt 101, material doc 4900000000+, status 'C')
 - Function imports: PutawayItem / PutawayDelivery
+
+M5 (simulator extension, not S/4): PATCH A_InbDeliveryItem may carry YY1_QualityQuantity and
+YY1_QualityStorageLocation: that part of the item's actual quantity is posted 101 to the quality storage location
+(e.g. 101Q of plant 1010, "Quality Inspection Holding"; it must exist in the delivery's plant), the rest 101 to the
+delivery's storage location, as two items of the same material document (item_data YY1_FieldQuality true on the
+quality one). Divergence from S/4 (UNVERIFIED): S/4's inbound delivery item has no such fields; a real system splits
+the delivery item per storage location, or receives into stock type "quality inspection" (QM inspection lot) in
+the same storage location. The S/4 adapter does not post this yet (field_sap/s4/adapter.py).
 """
 
 import contextlib
@@ -30,6 +38,9 @@ class PatchItemBody(BaseModel):
     StorageBin: str | None = None
     # M3 soft pegging (sandbox deliveries only): the delivery quantity becomes what was counted.
     OriginalDeliveryQuantity: str | float | None = None
+    # M5 (simulator extension): flagged units of the actual quantity, posted to the quality storage location.
+    YY1_QualityQuantity: str | float | None = None
+    YY1_QualityStorageLocation: str | None = None
 
 
 def generate_item_etag(delivery_document: str, item_no: str, actual_qty: Any) -> str:
@@ -284,6 +295,9 @@ async def patch_inbound_delivery_item(
                 """,
                 (new_qty, deliv_qty, sap_client, delivery_document, item_no),
             )
+            if body.YY1_QualityQuantity is not None:
+                _set_quality(cur, sap_client, delivery_document, item_no, Decimal(str(body.YY1_QualityQuantity)),
+                             (body.YY1_QualityStorageLocation or "").strip(), Decimal(str(new_qty)))
             conn.commit()
 
             new_etag = generate_item_etag(delivery_document, item_no, new_qty)
@@ -296,6 +310,28 @@ async def patch_inbound_delivery_item(
                     "ActualDeliveryQuantity": str(new_qty),
                 }
             }
+
+
+def _bad_request(code: str, text: str) -> HTTPException:
+    return HTTPException(status_code=400, detail={"error": {"code": code, "message": {"lang": "en", "value": text}}})
+
+
+def _set_quality(cur: Any, client: str, delivery_document: str, item_no: str, qty: Decimal, sloc: str,
+                 actual: Decimal) -> None:
+    """M5: the flagged part of one item and its quality storage location (validated against the plant)."""
+    if qty < 0 or qty > actual:
+        raise _bad_request("ZSIM/QUALITY-QTY", f"quality quantity {qty} must be between 0 and the actual {actual}")
+    if qty > 0:
+        cur.execute(
+            "SELECT 1 FROM erpsim.storage_location s JOIN erpsim.inbound_delivery d"
+            " ON d.client = s.client AND d.plant = s.plant"
+            " WHERE d.client = %s AND d.delivery_document = %s AND s.storage_location = %s",
+            (client, delivery_document, sloc))
+        if cur.fetchone() is None:
+            raise _bad_request("ZSIM/SLOC-NOT-FOUND", f"storage location {sloc!r} does not exist in the delivery's plant")
+    cur.execute("UPDATE erpsim.inbound_delivery_item SET quality_qty = %s, quality_sloc = %s"
+                " WHERE client = %s AND delivery_document = %s AND item_no = %s",
+                (qty, sloc if qty > 0 else None, client, delivery_document, item_no))
 
 
 @router.post("/PostGoodsReceipt")
@@ -401,7 +437,7 @@ async def post_goods_receipt(
                 cur.execute(
                     """
                     SELECT item_no, material_no, delivery_qty, actual_qty, uom, status,
-                           purchase_order, purchase_order_item
+                           purchase_order, purchase_order_item, quality_qty, quality_sloc
                     FROM erpsim.inbound_delivery_item
                     WHERE client = %s AND delivery_document = %s
                     ORDER BY item_no;
@@ -428,36 +464,44 @@ async def post_goods_receipt(
 
                 line_no = 1
                 for item in items:
-                    item_no, mat_no, deliv_qty, act_qty, uom, item_status, po_no, po_item = item
+                    item_no, mat_no, deliv_qty, act_qty, uom, item_status, po_no, po_item, q_qty, q_sloc = item
                     # A PATCHed quantity always wins, including 0 (nothing received); an item never
                     # PATCHed receives its delivery quantity (S/4 default).
                     qty_to_post = Decimal(str(act_qty if item_status == "qty_set" else deliv_qty))
                     if qty_to_post == 0:
                         continue
-                    apply_movement(cur, sap_client, plant, sloc, mat_no, qty_to_post, "101", uom)
-                    cur.execute(
-                        """
-                        INSERT INTO erpsim.document_item (
-                            client, doc_number, fiscal_year, line_no, material_no,
-                            plant, storage_location, quantity, uom, movement_type, item_data
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, '101', %s);
-                    """,
-                        (
-                            sap_client,
-                            doc_no,
-                            doc_year,
-                            line_no,
-                            mat_no,
-                            plant,
-                            sloc,
-                            qty_to_post,
-                            uom,
-                            # M4 F4: the PO line of an ASN item travels into the GR item (S/4 does the same)
-                            json.dumps({"DeliveryItem": item_no,
-                                        **({"PurchaseOrder": po_no, "PurchaseOrderItem": po_item or ""}
-                                           if po_no else {})}),
-                        ),
-                    )
+                    # M5: the flagged part goes to the quality storage location (simulator extension, see above)
+                    quality = min(Decimal(str(q_qty or 0)), qty_to_post) if q_sloc else Decimal(0)
+                    for part_sloc, part_qty, part_flag in ((sloc, qty_to_post - quality, False),
+                                                           (q_sloc, quality, True)):
+                        if part_qty <= 0:
+                            continue
+                        apply_movement(cur, sap_client, plant, part_sloc, mat_no, part_qty, "101", uom)
+                        cur.execute(
+                            """
+                            INSERT INTO erpsim.document_item (
+                                client, doc_number, fiscal_year, line_no, material_no,
+                                plant, storage_location, quantity, uom, movement_type, item_data
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, '101', %s);
+                        """,
+                            (
+                                sap_client,
+                                doc_no,
+                                doc_year,
+                                line_no,
+                                mat_no,
+                                plant,
+                                part_sloc,
+                                part_qty,
+                                uom,
+                                # M4 F4: the PO line of an ASN item travels into the GR item (S/4 does the same)
+                                json.dumps({"DeliveryItem": item_no,
+                                            **({"PurchaseOrder": po_no, "PurchaseOrderItem": po_item or ""}
+                                               if po_no else {}),
+                                            **({"YY1_FieldQuality": True} if part_flag else {})}),
+                            ),
+                        )
+                        line_no += 1
                     cur.execute(
                         """
                         UPDATE erpsim.inbound_delivery_item
@@ -466,7 +510,6 @@ async def post_goods_receipt(
                     """,
                         (qty_to_post, sap_client, delivery_document, item_no),
                     )
-                    line_no += 1
 
                 cur.execute(
                     """

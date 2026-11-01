@@ -1,0 +1,66 @@
+M5 stream V smokes on the build sandbox (Linux container), private dev stack on fresh databases: field-api :8420,
+erp-sim :8402, fake-core :8411, model stand-in :8432 (stack up --local-only --model-standin; the stand-in is a dev
+double of the Meta Model API, not Meta). Postgres 16 on :5461. Branch feat/m5-vision at e6f4e7b plus
+the working tree committed with this file. 2026-11-01T03:10Z.
+
+$ uv run python -m tools.dev_stack.stack smoke --all --wait 90
+paired: device 01a19516-4995-7022-8b60-801fb4b0c2f0
+receive  task 'Delivery 1835026282' (2 items · 40 pieces) with 2 lines
+         erp.posted: GR 4900000101/2026 in erp-sim, movements [('SAMPLE-MAT-0008', '101', 17.0), ('SAMPLE-MAT-0002', '101', 23.0)]
+         task.assigned: 'Put away delivery 1835026282'
+putaway  task 'Put away delivery 1835026282' (Goods receipt 4900000101 · 2 items · 40 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-01-02.'
+         stored: SAMPLE-MAT-0008 x17 in 02-01-02, SAMPLE-MAT-0002 x23 in 02-03-04
+pick     task 'Pick delivery 8035026320' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000102 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0008', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000103 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 123.0, 113.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:10:44 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:10:45 [info     ] audit_task_generated           line_count=3 site_id=01a19516-8dd7-76a9-857a-fee7c6b09be3 snapshot_version=erp-2026-11-01T03:10Z#fe29 task_id=4ecd4964-7884-44ed-8f87-257bde763dfc
+visit    checked in (916ead04-809d-4a1f-9e20-828f78507ad4); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-2ED451'), ('Sector A · slot 2', 'RRU-SN-422022'), ('Sector A · slot 3', 'RRU-SN-6D7681')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 2 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-6D7681 at Sector A · slot 3, install spare RRU-SN-17A5CC
+         erp.posted: change document 7000000002; erp-sim: RRU-SN-6D7681 dismantled, RRU-SN-17A5CC installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+
+$ uv run python -m tools.dev_stack.stack smoke --home --wait 90
+paired: device 01a19516-9806-7a7b-8fc1-cc3f3dd8f32c (home), 01a19516-9862-74af-8d1b-48642b74c69d (warehouse)
+home     receipt 1935026484: barcode 2109517100363 -> new material HOME-0001
+         counted 3 (delivery said 1, soft pegging) -> GR 4900000105/2026, [('HOME-0001', '101', 3.0)], sandbox
+         production warehouse: 2109517100363 unknown, scan refused on delivery 1835026498, sandbox refused ('This is a production site. Only items the ERP already knows can be used here.')
+         count PID-20261101031052063048 of HOME-B: new box 2314921966355 -> HOME-0002, 4 counted -> 561 4900000106 [('HOME-0002', '561', 4.0)], sandbox
+PASS: home sandbox (receipt with a new barcode -> GR 101, production refusal, count -> 561)
+exit 0
+
+$ uv run python -m tools.dev_stack.stack smoke --m5-look --wait 60
+paired: device 01a19516-b123-794f-8212-e39adefce752 (home), consent recorded
+m5 grocery  delivery 1935026538: look 01a19516-aeff-7fa4-8e69-366a993bd8f4 {'good': 18, 'seen': 20, 'damaged': 2, 'expected': 20} -> '20 of 20 packs. 2 damaged. 2 packs hold 10, not 12: 4 pieces short. Receive 18, flag 2?'
+         receive 18, flag 2, post, confirm -> GR 4900000107/2026 [('101A', '101', 18.0), ('101Q', '101', 2.0)], look linked
+m5 pharmacy delivery 1935026556: look 01a19516-b961-7cc6-8b60-57e113cca455 {'good': 7, 'seen': 10, 'damaged': 1, 'expected': 10} -> '10 of 10 boxes. 1 damaged. 1 expired. 1 expires within 90 days. 2 batches. Receive 7, flag 3?'
+         receive 7, flag 3, post, confirm -> GR 4900000108/2026 [('101A', '101', 7.0), ('101Q', '101', 3.0)], look linked
+PASS: M5 look, 2 cases (C1 grocery: receive 18 flag 2 -> 101A 18 + 101Q 2; C2 pharmacy: receive 7 flag 3 -> 101A 7 + 101Q 3), each look linked to its GR; models: the dev stack's model stand-in, not Meta
+exit 0
+
+$ uv run python -m tools.dev_stack.stack m5-cases --reset
+reset: 0 open case receipt(s) cancelled
+grocery: receipt 1935026575 created
+pharmacy: receipt 1935026576 created
+  grocery: delivery 1935026575 (task 01a19516-c02b-774d-85ef-74a57c7aab02): 20 packs, 12 pieces each
+  pharmacy: delivery 1935026576 (task 01a19516-c08b-785e-8628-73b57f0b31e9): 10 boxes, expiry window 90 days
+labels: var/m5_cases.html
+On the phone (paired with `stack pair --home`): say "new grocery delivery" / "new pharmacy delivery" for another one, or open these receipts; lay the items out in one layer and say look.
+exit 0
+
+$ uv run python -m tools.dev_stack.stack m5-cases
+grocery: open receipt 1935026575 reused (--reset makes a new one)
+pharmacy: open receipt 1935026576 reused (--reset makes a new one)
+  grocery: delivery 1935026575 (task 01a19516-c02b-774d-85ef-74a57c7aab02): 20 packs, 12 pieces each
+  pharmacy: delivery 1935026576 (task 01a19516-c08b-785e-8628-73b57f0b31e9): 10 boxes, expiry window 90 days
+labels: var/m5_cases.html
+On the phone (paired with `stack pair --home`): say "new grocery delivery" / "new pharmacy delivery" for another one, or open these receipts; lay the items out in one layer and say look.
+exit 0
+

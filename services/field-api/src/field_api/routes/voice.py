@@ -10,6 +10,18 @@ staged_hash = sha256("|".join(sorted(f"{line_id}:{qty:.3f}"))) over the lines in
 qty is, per task type (M2 jobs contract §4): counted_qty for receive and count, picked_qty for pick,
 expected_qty for putaway, audit and swap. The confirmation is voice (the turn pair above) or touch
 (``confirm: {method: "touch"}``: the operator pressed "Yes, post it" on the review screen).
+
+M5 (docs/design/M5_CONTRACT.md §2, receipts only). Flagged units of a line post 101 to the quality storage location
+(101Q), the rest 101 to the delivery's storage location, in one material document. The counted quantity (and so
+staged_hash) stays the whole received quantity, good plus flagged: "receive 18, flag 2" is a count of 20 with flag 2.
+- count-records: optional ``flag_qty`` (at most ``value``), ``look_id`` (a look of the line's task) with
+  ``capture_id``; the flag is kept on the line (task_line.flag_qty). A count without ``flag_qty`` clears an earlier
+  flag of that line (an M4 count leaves the 0 it always had).
+- post-requests: optional top-level ``look_id`` links the look to the receipt; optional ``flag_qty`` ({line id:
+  units}) overrides the counted flags; otherwise the flags recorded with the counts are posted. A flag is at most the
+  counted minus the damaged quantity of its line. A look already linked to a document that did not fail is refused
+  (409 FIELD-VIS-409-POSTED).
+Without any of these fields and with no flag recorded, the request is the M4 one.
 """
 
 from __future__ import annotations
@@ -88,6 +100,9 @@ class CountRecordRequest(BaseModel):
     unit: str
     voice_event_id: str | None = None
     source: Literal["voice", "scan", "manual"] = "voice"
+    # M5 (receipts): units of ``value`` flagged for the quality area, and the look the count came from
+    flag_qty: Decimal | None = Field(default=None, ge=0)
+    look_id: str | None = None
 
 
 @router.post("/count-records", status_code=201)
@@ -112,13 +127,38 @@ async def create_count_record(
                         (req.voice_event_id,))
             v = cur.fetchone()
             confidence = float(v[0]) if v else 0.0
+    if req.flag_qty is not None or req.look_id is not None:
+        _check_count_flag(principal, task_id, req)
     out = record_count(
         task_id, req.task_line_id,
         CountIn(qty=req.value, uom=req.unit, source=req.source, confidence=confidence,
                 voice_event_id=req.voice_event_id, capture_id=req.capture_id),
         principal,
     )
+    with principal_tx(principal) as cur:  # M5: the flag of this count (0 clears an earlier one; M4 lines stay 0)
+        cur.execute("UPDATE field.task_line SET flag_qty = %s WHERE id = %s::uuid AND flag_qty <> %s",
+                    (req.flag_qty or Decimal(0), req.task_line_id, req.flag_qty or Decimal(0)))
+    if req.flag_qty is not None:
+        out = {**out, "flag_qty": float(req.flag_qty)}
     return {"id": out["line_id"], **out}
+
+
+def _check_count_flag(principal: Principal, task_id: str, req: CountRecordRequest) -> None:
+    if req.flag_qty is not None and req.flag_qty > req.value:
+        raise FieldError(status=422, code="FIELD-POST-422-FLAG-QTY", title="More flagged than counted",
+                         detail="flag_qty is part of value: receive 18, flag 2 is value 20 with flag_qty 2")
+    with principal_tx(principal) as cur:
+        cur.execute("SELECT type FROM field.task WHERE id = %s::uuid", (task_id,))
+        row = cur.fetchone()
+        if req.flag_qty and (not row or row[0] != "receive"):
+            raise FieldError(status=409, code="FIELD-TASK-409-STATE", title="Only receipt lines are flagged")
+        if req.look_id is not None:
+            cur.execute("SELECT task_id FROM field.vision_look WHERE id::text = %s", (req.look_id,))
+            look = cur.fetchone()
+            if not look:
+                raise FieldError(status=404, code="FIELD-VIS-404-LOOK", title="Look not found or out of scope")
+            if str(look[0]) != task_id:
+                raise FieldError(status=422, code="FIELD-VIS-422-TASK", title="The look belongs to another task")
 
 
 class ConfirmMethod(BaseModel):
@@ -138,6 +178,9 @@ class PostRequest(BaseModel):
     # Pre-M2 shape (top-level voice turn ids): still accepted, means method "voice".
     post_voice_event_id: str | None = None
     confirm_voice_event_id: str | None = None
+    # M5 (receipts): the vision look this receipt was checked with, and flagged units per line id (to 101Q).
+    look_id: str | None = None
+    flag_qty: dict[str, Decimal] = Field(default_factory=dict)
 
 
 def _voice_ids(req: PostRequest) -> tuple[str, str] | None:
@@ -213,6 +256,7 @@ async def submit_post_request(
         if len(rows) != len(set(req.lines)) or staged_hash(rows) != req.staged_hash:
             raise FieldError(status=422, code="FIELD-POST-422-NO-CONFIRM", title="Staged lines changed",
                              detail="staged_hash does not match the server's lines; re-read and confirm again")
+        flags = _flags(cur, task, req)
         if task["type"] == "pick":
             _require_pick_scans(cur, task_id, req.lines)
         if task["type"] == "putaway":
@@ -226,11 +270,14 @@ async def submit_post_request(
     if finished is not None:
         return {"task_id": task_id, "type": task["type"], "confirm_method": method, "posting_request_id": None,
                 **finished}
-    extra = {"confirm_method": method}
+    extra: dict[str, Any] = {"confirm_method": method}
     if voice:
         extra.update({"post_voice_event_id": voice[0], "confirm_voice_event_id": voice[1]})
+    if flags is not None:
+        extra.update({"look_id": req.look_id, "flag_qty": {k: f"{v:.3f}" for k, v in flags.items() if v > 0}})
     try:
-        out = confirm_task(task_id, ConfirmIn(lines=req.lines), idempotency_key, principal, extra_payload=extra)
+        out = confirm_task(task_id, ConfirmIn(lines=req.lines), idempotency_key, principal, extra_payload=extra,
+                           flags=flags, look_id=req.look_id)
     except psycopg.errors.UniqueViolation as e:  # concurrent request for the same voice turn
         raise FieldError(status=409, code="FIELD-POST-409-ALREADY-REQUESTED", title="Already requested") from e
     return {"task_id": task_id, "type": task["type"], "confirm_method": method,
@@ -249,3 +296,50 @@ def _require_pick_scans(cur: Any, task_id: str, line_ids: list[str]) -> None:
     if missing:
         raise FieldError(status=409, code="FIELD-TASK-409-STATE", title="Scan the bin and the product first",
                          detail=f"lines {missing} have no bin and product scan")
+
+def _flags(cur: Any, task: dict[str, Any], req: PostRequest) -> dict[str, Decimal] | None:
+    """M5: None for the M4 post (no look, no flag sent, none recorded with the counts); else the checked flags."""
+    if req.look_id is None and not req.flag_qty:
+        if task["type"] != "receive":
+            return None
+        cur.execute("SELECT 1 FROM field.task_line WHERE id = ANY(%s::uuid[]) AND flag_qty > 0 LIMIT 1", (req.lines,))
+        if cur.fetchone() is None:
+            return None
+    return _check_look(cur, task, req)
+
+
+def _check_look(cur: Any, task: dict[str, Any], req: PostRequest) -> dict[str, Decimal]:
+    """M5: the look (if any) and the flagged quantities of a receipt post; returns the flag per posted line."""
+    if task["type"] != "receive":
+        raise FieldError(status=409, code="FIELD-TASK-409-STATE", title="A look is posted with receipts only",
+                         detail=f"this is a {task['type']} job")
+    unknown = sorted(set(req.flag_qty) - set(req.lines))
+    if unknown:
+        raise FieldError(status=422, code="FIELD-POST-422-FLAG-LINE", title="A flagged line is not being posted",
+                         detail=f"flag_qty names lines not in lines: {unknown}")
+    if any(v < 0 for v in req.flag_qty.values()):
+        raise FieldError(status=422, code="FIELD-POST-422-FLAG-QTY", title="A flagged quantity cannot be negative")
+    if req.look_id is not None:
+        cur.execute(
+            "SELECT l.task_id, d.status FROM field.vision_look l"
+            " LEFT JOIN field.erp_document d ON d.id = l.erp_document_id WHERE l.id::text = %s", (req.look_id,))
+        look = cur.fetchone()
+        if not look:
+            raise FieldError(status=404, code="FIELD-VIS-404-LOOK", title="Look not found or out of scope")
+        if str(look[0]) != task["id"]:
+            raise FieldError(status=422, code="FIELD-VIS-422-TASK", title="The look belongs to another task")
+        if look[1] is not None and look[1] != "failed":
+            raise FieldError(status=409, code="FIELD-VIS-409-POSTED", title="This look is already posted",
+                             detail=f"its document is {look[1]}")
+    cur.execute("SELECT id, counted_qty, damaged_qty, flag_qty FROM field.task_line WHERE id = ANY(%s::uuid[])",
+                (req.lines,))
+    rows = cur.fetchall()
+    room = {str(r[0]): Decimal(r[1] or 0) - Decimal(r[2] or 0) for r in rows}
+    counted_flags = {str(r[0]): Decimal(r[3] or 0) for r in rows}
+    flags = {lid: Decimal(req.flag_qty[lid]) if lid in req.flag_qty else counted_flags.get(lid, Decimal(0))
+             for lid in req.lines}
+    over = [lid for lid, q in flags.items() if q > room.get(lid, Decimal(0))]
+    if over:
+        raise FieldError(status=422, code="FIELD-POST-422-FLAG-QTY", title="More flagged than counted",
+                         detail=f"lines {over}: flag_qty is more than the counted (less damaged) quantity")
+    return flags

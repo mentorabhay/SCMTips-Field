@@ -6,9 +6,16 @@ one PATCH ActualDeliveryQuantity per line in confirm order, then PostGoodsReceip
 them through ErpPort and writes the material document number back (field_worker.posting.queue).
 
 This module builds the job list; staging itself is field_api.posting.staging.stage_document.
+
+M5 (docs/design/M5_CONTRACT.md §2): a receipt posted with a vision look may flag part of a line. The line's PATCH
+then also carries QualityQuantity (the flagged units, part of ActualDeliveryQuantity) and QualityStorageLocation
+(FIELD_QUALITY_SLOC, default 101Q): the goods receipt posts the good units 101 to the delivery's storage location
+and the flagged ones 101 to the quality storage location, in the same material document. Without flags the jobs are
+exactly the M4 ones.
 """
 
-from collections.abc import Sequence
+import os
+from collections.abc import Mapping, Sequence
 
 from field_api.posting.staging import JobSpec
 
@@ -20,8 +27,14 @@ def goods_receipt_queue_key(delivery_document: str) -> str:
     return f"IBD:{delivery_document}"
 
 
+def quality_storage_location() -> str:
+    """The storage location flagged receipt units go to (FIELD_QUALITY_SLOC, default 101Q)."""
+    return os.getenv("FIELD_QUALITY_SLOC", "").strip() or "101Q"
+
+
 def goods_receipt_jobs(delivery_document: str, received: Sequence[tuple[int | str, float]],
-                       soft_pegging: bool = False) -> list[JobSpec]:
+                       soft_pegging: bool = False, quality: Mapping[int | str, float] | None = None,
+                       quality_sloc: str | None = None) -> list[JobSpec]:
     """PATCH per (line_no, received_qty) in the given order, then one PostGoodsReceipt.
 
     ``soft_pegging`` (M3 sandbox receipts): each PATCH also sets the delivery quantity to the received one,
@@ -35,6 +48,9 @@ def goods_receipt_jobs(delivery_document: str, received: Sequence[tuple[int | st
             "DeliveryDocumentItem": str(line_no).zfill(6),
             "ActualDeliveryQuantity": f"{max(0.0, qty):.3f}",
             **({"SoftPegging": True} if soft_pegging else {}),
+            **({"QualityQuantity": f"{float((quality or {})[line_no]):.3f}",
+                "QualityStorageLocation": quality_sloc or quality_storage_location()}
+               if (quality or {}).get(line_no, 0) > 0 else {}),
         })
         for line_no, qty in received
     ]

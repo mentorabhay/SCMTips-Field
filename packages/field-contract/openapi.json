@@ -4669,6 +4669,48 @@
         }
       }
     },
+    "/v1/sandbox/cases": {
+      "post": {
+        "tags": [
+          "Sandbox (M3)"
+        ],
+        "summary": "Post Case",
+        "description": "M5 test case C1 (grocery delivery) or C2 (pharmacy receipt) on a sandbox site (contract \u00a71).",
+        "operationId": "post_case_v1_sandbox_cases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/assistant/turns": {
       "post": {
         "tags": [
@@ -5009,6 +5051,104 @@
           }
         }
       }
+    },
+    "/v1/vision/looks": {
+      "post": {
+        "tags": [
+          "Vision (M5)"
+        ],
+        "summary": "Post Look",
+        "operationId": "post_look_v1_vision_looks_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LookIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Post Look V1 Vision Looks Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/vision/looks/{look_id}": {
+      "get": {
+        "tags": [
+          "Vision (M5)"
+        ],
+        "summary": "Read Look",
+        "operationId": "read_look_v1_vision_looks__look_id__get",
+        "parameters": [
+          {
+            "name": "look_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Look Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Read Look V1 Vision Looks  Look Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5107,6 +5247,137 @@
           "body"
         ],
         "title": "Card"
+      },
+      "CaseIn": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "case": {
+            "type": "string",
+            "enum": [
+              "grocery",
+              "pharmacy"
+            ],
+            "title": "Case"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 999.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units",
+            "description": "expected units (20 packs / 10 boxes)"
+          },
+          "pieces_per_unit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pieces Per Unit",
+            "description": "grocery: pieces in each pack"
+          },
+          "window_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3650.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Days",
+            "description": "pharmacy: the expiring-soon window"
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id",
+          "case"
+        ],
+        "title": "CaseIn"
+      },
+      "CaseResult": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "ref_doc_no": {
+            "type": "string",
+            "title": "Ref Doc No"
+          },
+          "line_id": {
+            "type": "string",
+            "title": "Line Id"
+          },
+          "case": {
+            "type": "string",
+            "title": "Case"
+          },
+          "object": {
+            "type": "string",
+            "title": "Object"
+          },
+          "material": {
+            "type": "string",
+            "title": "Material"
+          },
+          "expected_units": {
+            "type": "integer",
+            "title": "Expected Units"
+          },
+          "expected_pieces_per_unit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Pieces Per Unit"
+          },
+          "expiry_window_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Window Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "ref_doc_no",
+          "line_id",
+          "case",
+          "object",
+          "material",
+          "expected_units",
+          "expected_pieces_per_unit",
+          "expiry_window_days"
+        ],
+        "title": "CaseResult"
       },
       "Check": {
         "properties": {
@@ -5590,6 +5861,32 @@
             ],
             "title": "Source",
             "default": "voice"
+          },
+          "flag_qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag Qty"
+          },
+          "look_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Look Id"
           }
         },
         "type": "object",
@@ -6636,6 +6933,58 @@
         "type": "object",
         "title": "LocationUpdate"
       },
+      "LookIn": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "line_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Id"
+          },
+          "capture_id": {
+            "type": "string",
+            "title": "Capture Id"
+          },
+          "object": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z -]{0,39}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object",
+            "description": "the noun to count (pack, box, carton); default from the case"
+          },
+          "case": {
+            "type": "string",
+            "enum": [
+              "grocery",
+              "pharmacy",
+              "generic"
+            ],
+            "title": "Case",
+            "default": "generic"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "capture_id"
+        ],
+        "title": "LookIn"
+      },
       "MeResponse": {
         "properties": {
           "id": {
@@ -7036,6 +7385,31 @@
               }
             ],
             "title": "Confirm Voice Event Id"
+          },
+          "look_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Look Id"
+          },
+          "flag_qty": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Flag Qty"
           }
         },
         "type": "object",
@@ -7336,6 +7710,22 @@
           "site_id": {
             "type": "string",
             "title": "Site Id"
+          },
+          "case": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "grocery",
+                  "pharmacy"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case",
+            "description": "M5: a test-case receipt (C1 grocery / C2 pharmacy) with its default line; the same as POST /v1/sandbox/cases with the defaults"
           }
         },
         "type": "object",

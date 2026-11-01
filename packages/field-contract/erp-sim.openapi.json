@@ -5013,6 +5013,31 @@
               }
             ],
             "title": "Originaldeliveryquantity"
+          },
+          "YY1_QualityQuantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yy1 Qualityquantity"
+          },
+          "YY1_QualityStorageLocation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yy1 Qualitystoragelocation"
           }
         },
         "type": "object",

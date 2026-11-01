@@ -209,6 +209,11 @@ class SimAdapter:
             body: dict[str, str] = {"ActualDeliveryQuantity": str(qty)}
             if req.header_data.get("SoftPegging"):  # M3 sandbox: the delivery quantity becomes the counted one
                 body["OriginalDeliveryQuantity"] = str(qty)
+            if req.header_data.get("QualityQuantity"):  # M5: flagged units of this item go to the quality area
+                # erp-sim's YY1_ extension fields (erp_sim/services/inbound.py docstring): S/4 would split the item or
+                # post stock type quality inspection instead; UNVERIFIED against a real system.
+                body["YY1_QualityQuantity"] = str(req.header_data["QualityQuantity"])
+                body["YY1_QualityStorageLocation"] = str(req.header_data.get("QualityStorageLocation") or "")
             try:
                 resp = await client.patch(url, headers=headers, json=body)
             except (httpx.TimeoutException, httpx.NetworkError) as e:
