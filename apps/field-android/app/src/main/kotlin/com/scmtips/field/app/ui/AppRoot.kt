@@ -147,7 +147,7 @@ fun ClassicRoot(ui: AppUi, a: Actions) {
             signed != null && !signed.approver && ui.deviceId == null -> ConnectScreen(ui, a)
             ui.decisions.reviewing -> Column(Modifier.fillMaxSize()) {
                 if (ui.work.active) SessionStrip(ui.work, a)
-                Box(Modifier.weight(1f)) { DecisionScreen(ui, a) }
+                Box(Modifier.weight(1f)) { DecisionScreen(ui, a, classic = true) }
             }
             ui.claims.reviewing -> Column(Modifier.fillMaxSize()) {
                 if (ui.work.active) SessionStrip(ui.work, a)
@@ -164,11 +164,11 @@ fun ClassicRoot(ui: AppUi, a: Actions) {
             }
             ui.check.open -> Column(Modifier.fillMaxSize()) {
                 if (ui.work.active) SessionStrip(ui.work, a)
-                Box(Modifier.weight(1f)) { CheckScreen(ui.check, ui.work.active, a) }
+                Box(Modifier.weight(1f)) { CheckScreen(ui.check, ui.work.active, a, classic = true) }
             }
             job != null -> Column(Modifier.fillMaxSize()) {
                 if (ui.work.active) SessionStrip(ui.work, a)
-                Box(Modifier.weight(1f)) { JobScreen(job, ui.audioOnly, a, look = ui.look.takeIf { it.taskId != null }) }
+                Box(Modifier.weight(1f)) { JobScreen(job, ui.audioOnly, a, look = ui.look.takeIf { it.taskId != null }, classic = true) }
             }
             else -> Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {

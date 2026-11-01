@@ -167,12 +167,12 @@ private fun TaskScreens(task: TaskKind, ui: AppUi, a: Actions) {
         if (ui.work.active) SessionStrip(ui.work, a)
         Box(Modifier.weight(1f)) {
             when (task) {
-                TaskKind.DECISIONS -> DecisionScreen(ui, a)
+                TaskKind.DECISIONS -> DecisionScreen(ui, a, reduceMotion = LocalReduceMotion.current)
                 TaskKind.CLAIMS -> ClaimReviewScreen(ui.claims, a)
                 TaskKind.LOOK_EVIDENCE -> ui.look.evidenceUrl?.let { EvidenceScreen(it, a) }
                 TaskKind.CHECK_EVIDENCE -> ui.check.evidenceUrl?.let { EvidenceScreen(it, a) }
-                TaskKind.CHECK -> CheckScreen(ui.check, ui.work.active, a)
-                TaskKind.JOB -> ui.job?.let { JobScreen(it, ui.audioOnly, a, look = ui.look.takeIf { l -> l.taskId != null }) }
+                TaskKind.CHECK -> CheckScreen(ui.check, ui.work.active, a, reduceMotion = LocalReduceMotion.current)
+                TaskKind.JOB -> ui.job?.let { JobScreen(it, ui.audioOnly, a, look = ui.look.takeIf { l -> l.taskId != null }, reduceMotion = LocalReduceMotion.current) }
             }
         }
     }
