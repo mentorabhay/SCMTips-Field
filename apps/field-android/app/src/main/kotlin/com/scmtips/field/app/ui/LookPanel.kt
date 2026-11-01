@@ -114,7 +114,7 @@ fun LookPanel(v: LookView, a: Actions) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LookFacts(l: Look) {
+internal fun LookFacts(l: Look) {
     val c = l.counts
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
         c.seen?.let { Chip("Seen $it${c.expected?.let { e -> " of $e" } ?: ""}", CardBg, Ink, line = Line) }
@@ -139,7 +139,7 @@ private fun LookFacts(l: Look) {
 
 /** The photo drawn whole (letterboxed) with each instance's polygon or box and its number. */
 @Composable
-private fun OutlinedPhoto(photo: LookPhoto, look: Look?) {
+internal fun OutlinedPhoto(photo: LookPhoto, look: Look?, maxHeight: androidx.compose.ui.unit.Dp = 420.dp) {
     val image: ImageBitmap? = remember(photo) {
         BitmapFactory.decodeByteArray(photo.jpeg, 0, photo.jpeg.size)?.asImageBitmap()
     }
@@ -149,7 +149,7 @@ private fun OutlinedPhoto(photo: LookPhoto, look: Look?) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val density = LocalDensity.current
         val wPx = with(density) { maxWidth.toPx() }
-        val hPx = Fit.heightFor(photo.width, photo.height, wPx, with(density) { 420.dp.toPx() })
+        val hPx = Fit.heightFor(photo.width, photo.height, wPx, with(density) { maxHeight.toPx() })
         Canvas(Modifier.fillMaxWidth().height(with(density) { hPx.toDp() }).background(Color.Black, Corner).semantics { contentDescription = desc }) {
             val img = image ?: return@Canvas
             val shown = Fit.of(photo.width, photo.height, size.width, size.height) ?: return@Canvas

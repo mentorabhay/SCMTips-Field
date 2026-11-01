@@ -1376,3 +1376,59 @@
     own checks (AccountStore.rememberServers) and only while signed out. Reduce motion is read from
     Settings.Global.ANIMATOR_DURATION_SCALE in MainActivity.onResume. The Compose pages type-check with the real
     compiler; no Gradle build or device run was possible here.
+- id: M5-U04
+  title: >-
+    M5-U task screens (A-07; prototype ReceiveLook, ReceiveAnswer, ReceivePost, ReceiveDone, TowerHarness, TowerSlot,
+    DecisionDetail, DecisionDone, ScanSeal, ScanVerdict): full-screen task chrome (step header "Step n of 3 · name"
+    with a 3-segment bar, back/close and "?" replay, a hint area, a voice chip, ONE brand-gradient main button and
+    quiet secondary actions); six drawn hint animations (look, say your numbers, confirm within 10 s, scan bin then
+    product, point at the seal code, clip in) with a reduce-motion still frame; the confirm ring driven by the job's
+    10 s spoken-confirm window; the look step, the two answers and the receive/flag numbers, the done screen, the
+    decision detail with a waveform while the brief plays, and the colour-coded box-check verdict with its four
+    signals. A visual layer only: every callback, phrase, deadline and request is unchanged; the old screens stay
+    behind a classic flag
+  workstream: M5-U
+  role: Builder C (task screens)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskModel.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskChrome.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/kit/HintAnimations.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/JobScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/JobScreenClassic.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/CheckScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/CheckScreenClassic.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/DecisionScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/DecisionScreenClassic.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/LookPanel.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/ScanScreen.kt
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_receiveSteps_lookCheckConfirm_withTheirHints
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_practiceHasNoLookHint_andWarehouseScansGetTheBinThenProductHint
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_siteVisit_safetySlotsFinish_clipInOnlyOnTheClimbUp
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_theConfirmStepPlaysTheRing_andItsVoiceChipOnlyWhileListening
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_everyVoiceChipPhraseIsOneTheJobGrammarUnderstands
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_aHintPlaysByItselfOnlyTheFirstTimeItsTaskTypeAndStepOpen
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_ringProgressFollowsTheTenSecondConfirmWindow
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_verdictColoursAndTheFourSignals
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_theBoxCheckHint_isTheSealCode_untilAVerdictIsUp
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_decisionDetail_optionsApproveRejectAndTheBriefWaveform
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U04_lookAnswers_firstThenReadingThenSecond
+  frs: []
+  verified_at: null
+  note: >-
+    Partial until proven on the owner's phone. The pure rules (step numbering per task type, which hint plays on
+    which step, the first-time rule keyed by task type and step, ring progress, verdict colours and signals, the
+    decision layout, the two look answers) are JVM-tested against the real JobRunner, CardFormatter, DecisionText
+    and check models; the Compose files are type-checked by tools/android_check/compile_check.py only (no Gradle
+    build, no device, no screenshot). Tokens in ui/kit/TaskChrome.kt copy builder A's names and values
+    (M5_UI_CONTRACT §5) for the integrator to delete. JobScreen, CheckScreen and DecisionScreen take
+    classic=false (the old layouts moved unchanged to *Classic.kt), reduceMotion (default: the system animator
+    scale; LocalReduceMotion to be passed), and JobScreen onEvidence / nextUp (null: rows left out). Known gaps,
+    for the integrator: the confirm ring is anchored when the step starts listening with JobRunner's default 10 s
+    window (StepView does not expose the deadline); the flag number has no touch stepper (no JobAction sets it,
+    so it changes by voice as before); the brief has no replay button (no action; say "repeat"); option cards show
+    "Option X" only (DecisionsView does not carry the option titles); the evidence page cannot be reopened from the
+    done screen. ScanScreen gained optional ManualCode ink/onDark parameters (defaults unchanged); SessionViews and
+    M5Screens are unchanged.
