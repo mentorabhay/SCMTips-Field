@@ -1,6 +1,7 @@
 package com.scmtips.field.app.decisions
 
 import com.scmtips.field.app.jobs.Speaker
+import com.scmtips.field.feature.decisions.api.NextItem
 import com.scmtips.field.core.wearables.AudioOut
 import com.scmtips.field.core.wearables.EarconCue
 import com.scmtips.field.feature.decisions.brief.SpokenBrief
@@ -100,6 +101,12 @@ data class DecisionsView(
     val briefSource: String? = null,
     val stepUp: StepUpAsk? = null,
     val last: String? = null,
+    /**
+     * M5-U06: the core's next decision as `GET /v1/wearable/next` last answered it when the waiting count was
+     * refreshed (title, options with their titles and amounts, deadline); null when nothing waits or it was not asked.
+     * Drawn only (the Approvals home's card, the option cards); the review fetches its own item as before.
+     */
+    val next: NextItem? = null,
 )
 
 data class StepUpAsk(val retryMessage: String?)

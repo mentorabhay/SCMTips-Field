@@ -195,6 +195,8 @@ data class AppUi(
     val check: CheckView = CheckView(),
     /** M5-U01: the redesign's shell (first run, tab, page, chosen home, classic layout, reduce motion). */
     val shell: ShellView = ShellView(),
+    /** M5-U06: the task id of the open [job] (its done screen's "Next up" leaves it out); null when no job is open. */
+    val jobTaskId: String? = null,
 )
 
 /** Who is signed in against the core (no tokens here: AppUi is drawn and logged freely). */
@@ -667,11 +669,14 @@ class FieldController(private val context: Context, private val toolkitError: ()
     // --- decisions (M4 F1) ------------------------------------------------------------------------
 
     /** How many decisions wait for this approver (GET /v1/wearable/next); null when it could not be asked. */
-    private suspend fun waitingDecisions(): Int? {
+    private suspend fun waitingDecisions(): Int? = nextDecision()?.first
+
+    /** The same one call, also keeping the item it answered (M5-U06: the Approvals home draws its title and options). */
+    private suspend fun nextDecision(): Pair<Int, com.scmtips.field.feature.decisions.api.NextItem?>? {
         val a = account?.takeIf { it.approver } ?: return null
         return try {
             val item = CoreClient(a.coreBaseUrl, coreCredentials, coreHttp).next()
-            if (item == null) 0 else maxOf(item.waiting, 1)
+            (if (item == null) 0 else maxOf(item.waiting, 1)) to item
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -681,7 +686,9 @@ class FieldController(private val context: Context, private val toolkitError: ()
     }
 
     fun refreshDecisions() {
-        scope.launch { waitingDecisions()?.let { n -> _ui.value = _ui.value.copy(decisions = _ui.value.decisions.copy(waiting = n)) } }
+        scope.launch {
+            nextDecision()?.let { (n, item) -> _ui.value = _ui.value.copy(decisions = _ui.value.decisions.copy(waiting = n, next = item)) }
+        }
     }
 
     /** Decisions card "Review now", the session's "decisions", or a launch from the glasses. */
@@ -853,7 +860,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         var askedEvidence = false
         runnerJobs += scope.launch {
             r.view.collect { v ->
-                _ui.value = _ui.value.copy(job = v)
+                _ui.value = _ui.value.copy(job = v, jobTaskId = r.task.id)
                 syncVisit(r)
                 if (r.isDone && !toldDone && !r.practice && workSession.view.active) {
                     toldDone = true
@@ -881,7 +888,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         location.stop()
         runnerJobs.forEach { it.cancel() }
         runnerJobs.clear()
-        _ui.value = _ui.value.copy(job = null, toast = note ?: _ui.value.toast)
+        _ui.value = _ui.value.copy(job = null, jobTaskId = null, toast = note ?: _ui.value.toast)
         // A posted look stays for "make a claim" and its evidence page until the next job opens; its label poll stops.
         lookFlow.leave()
         if (!r.usedLook && _ui.value.look.evidenceUrl == null) lookFlow.clear()
@@ -1168,6 +1175,11 @@ class FieldController(private val context: Context, private val toolkitError: ()
         checkFlow.closeEvidence()
     }
 
+    /** M5-U06: the receipt's done screen, "Evidence page": the look's evidence page again (no new request). */
+    fun reopenEvidence() {
+        lookFlow.reopenEvidence()
+    }
+
     private suspend fun lookNow() {
         val r = runner
         val site = r?.task?.siteId ?: _ui.value.pairing?.siteId
@@ -1321,13 +1333,13 @@ class FieldController(private val context: Context, private val toolkitError: ()
     fun refreshClaims() {
         scope.launch {
             if (session == null) return@launch
-            val n = when (val r = lookClient.drafts()) {
+            val drafts = when (val r = lookClient.drafts()) {
                 // Operators may read claims (field.claim.read) but only supervisors decide (field.claim.decide).
-                is ClaimsList.Ok -> r.claims.size.takeIf { claimsDecider }
+                is ClaimsList.Ok -> r.claims.takeIf { claimsDecider }
                 ClaimsList.NotAllowed -> null
                 is ClaimsList.Failed -> return@launch log("claims: ${r.text}")
             }
-            _ui.value = _ui.value.copy(claims = _ui.value.claims.copy(waiting = n))
+            _ui.value = _ui.value.copy(claims = _ui.value.claims.copy(waiting = drafts?.size, drafts = drafts))
         }
     }
 

@@ -88,7 +88,8 @@ import com.scmtips.field.app.ui.kit.rememberSystemReduceMotion
  * The running review, M5-U decision detail (A-07; prototype DecisionDetail, DecisionDone): the title, the state,
  * the brief's status with a waveform while it is spoken, the card's text, one card per option (tap to pick), and at
  * the bottom Reject and ONE main "Approve option X" (or Confirm / Cancel on the read-back). Every button is a card
- * button of the flow ([Actions.decisionButton] with its id), so the core still decides every intent. [classic] draws
+ * button of the flow ([Actions.decisionButton] with its id), so the core still decides every intent. An option card
+ * adds the option's title and the core's amounts when DecisionsView.next is this decision (M5-U06). [classic] draws
  * the old screen ([ClassicDecisionScreen]). The brief cannot be replayed by a tap yet (say "repeat"): see the report.
  */
 @Composable
@@ -103,6 +104,7 @@ fun DecisionScreen(ui: AppUi, a: Actions, classic: Boolean = false, reduceMotion
     var tapped by remember(card) { mutableStateOf<String?>(null) }
     val picked = DecisionLayout.picked(card, tapped)
     val ids = card?.buttons.orEmpty().associate { it.id to it.label }
+    val details = DecisionLayout.optionDetails(card, d.next)
     Column(Modifier.fillMaxSize().background(g.bg)) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)) {
             StepHeader("Decision", null, g, LeadIcon.BACK, a.stopReview, leadLabel = "Stop the review")
@@ -136,7 +138,10 @@ fun DecisionScreen(ui: AppUi, a: Actions, classic: Boolean = false, reduceMotion
                                     if (on) Box(Modifier.size(12.dp).background(BrandStart, CircleShape))
                                 }
                                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    Text("Option ${o.letter}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Ink)
+                                    val detail = details[o.letter]
+                                    Text(detail?.title?.let { "Option ${o.letter} · $it" } ?: "Option ${o.letter}",
+                                        fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Ink)
+                                    detail?.cost?.let { Text(it, fontSize = 14.sp, color = Ink) }
                                     Text("Say “approve option ${o.letter}”", fontSize = 13.sp, color = Muted)
                                 }
                             }

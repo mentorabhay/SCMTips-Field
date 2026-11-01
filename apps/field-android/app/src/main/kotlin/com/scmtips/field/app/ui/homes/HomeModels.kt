@@ -104,6 +104,24 @@ data class WarehouseHomeModel(
     }
 }
 
+/**
+ * M5-U06: the job screen's done "Next up": the next assigned job other than the one just finished, by the homes' own
+ * rules (a warehouse job: WarehouseHomeModel's next up without the sandbox cases, so a receipt is offered first; a
+ * tower job: TowerHomeModel's first job). Practice runs and an unknown current job get none.
+ */
+object JobNextUp {
+    fun of(tasks: List<JobTask>, currentTaskId: String?, practice: Boolean, linked: Boolean): NextUp.Task? {
+        if (practice || currentTaskId == null) return null
+        val current = tasks.firstOrNull { it.id == currentTaskId }
+        val rest = tasks.filter { it.id != currentTaskId }
+        if (current?.type?.isTower == true) {
+            val j = TowerHomeModel.of(rest, null, null, null, linked, loading = false).jobs.firstOrNull() ?: return null
+            return NextUp.Task(j.taskId, j.title, j.sub, j.started, look = false)
+        }
+        return WarehouseHomeModel.of(rest, sandbox = false, fieldWork = true, linked = linked, loading = false).nextUp as? NextUp.Task
+    }
+}
+
 // ---------------------------------------------------------------- Tower
 
 data class TowerJob(val taskId: String, val letter: String, val title: String, val sub: String, val started: Boolean)

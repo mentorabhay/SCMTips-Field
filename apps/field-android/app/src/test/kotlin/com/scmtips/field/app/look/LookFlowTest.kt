@@ -157,6 +157,32 @@ class LookFlowTest {
     }
 
     @Test
+    fun m5U06_theDoneScreenReopensThisLooksEvidencePage_withoutAnotherRequest() = runBlocking {
+        val s = Setup()
+        assertFalse(s.flow.reopenEvidence()) // no evidence page yet: nothing to reopen
+        s.api.scriptLook()
+        s.flow.look(s.target)
+        s.api.ok("POST /v1/evidence/documents/4900000101/link", """{"url":"/evidence/tok"}""")
+        s.flow.evidence("4900000101", null)
+        s.flow.closeEvidence()
+        assertNull(s.flow.view.value.evidenceUrl)
+        assertEquals("http://pc:8080/evidence/tok", s.flow.view.value.evidenceSeenUrl)
+        val sentBefore = s.api.sent.size
+        val saidBefore = s.voice.said.size
+        assertTrue(s.flow.reopenEvidence())
+        assertEquals("http://pc:8080/evidence/tok", s.flow.view.value.evidenceUrl)
+        assertEquals(sentBefore, s.api.sent.size) // the link already fetched: nothing is sent
+        assertEquals(saidBefore, s.voice.said.size) // and nothing is spoken again
+        // A new look (or another job) forgets it: the page belongs to that posting only.
+        s.flow.closeEvidence()
+        s.flow.look(s.target)
+        assertNull(s.flow.view.value.evidenceSeenUrl)
+        assertFalse(s.flow.reopenEvidence())
+        s.flow.forTask("t-2", LookCase.GENERIC)
+        assertNull(s.flow.view.value.evidenceSeenUrl)
+    }
+
+    @Test
     fun m5B02_hintsSayTheProposalBack() {
         val base = Look("l", "model", null, null, null, emptyList(), LookCounts(10, 10, 0, 10), 0, null, 0, emptyList(),
             Proposal(10, 0, emptyList()), "", emptyList(), emptyList())

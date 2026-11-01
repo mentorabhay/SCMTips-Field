@@ -125,6 +125,47 @@ class HomeModelsTest {
     }
 
     @Test
+    fun m5U06_approvals_fromTheKeptNextDecisionAndDraftList_haveRealTitles() {
+        // What FieldController now keeps from the calls it already makes (GET /v1/wearable/next, GET /v1/claims).
+        val next = NextItem("d7", "Reroute PO 4500 0007 via Pune", "", "", options = listOf(ItemOption("A", "o1", "Reroute"),
+            ItemOption("B", "o2", "Wait")), deadlineAt = "2026-11-01T20:00:00Z", waiting = 1)
+        val decisions = com.scmtips.field.app.decisions.DecisionsView(waiting = 1, next = next)
+        val draft = Claim("c9", "draft", listOf(ClaimLine("short", 2, null)), "", null, null, "pharmacy delivery")
+        val claims = com.scmtips.field.app.look.ClaimsView(waiting = 1, drafts = listOf(draft))
+        val m = ApprovalsHomeModel.of(decisions.waiting, claims.waiting, decisions.next, claims.drafts, approver = true, nowMs = now)
+        assertEquals(listOf("decision:d7", "claim:c9"), m.items.map { it.key })
+        assertEquals("Reroute PO 4500 0007 via Pune", m.items[0].title)
+        assertEquals("2 options · listen to the brief", m.items[0].sub)
+        assertTrue(m.items[0].urgent) // 10 h left
+        assertEquals("Supplier claim: pharmacy delivery", m.items[1].title)
+        assertEquals("2 waiting for you", m.headline)
+        // Before the first answer the views carry nothing: the honest summary rows, never invented titles.
+        val none = ApprovalsHomeModel.of(2, 1, com.scmtips.field.app.decisions.DecisionsView(waiting = 2).next,
+            com.scmtips.field.app.look.ClaimsView(waiting = 1).drafts, approver = true, nowMs = now)
+        assertEquals(listOf("decisions:more", "claims:summary"), none.items.map { it.key })
+    }
+
+    @Test
+    fun m5U06_jobNextUp_isTheNextOtherJob_receiptsFirst_towerAfterTower_noneForPractice() {
+        // Finishing the oldest receipt: the other receipt is next (never the job just done, never a sandbox case).
+        val afterReceipt = JobNextUp.of(tasks, "0192-a", practice = false, linked = true)!!
+        assertEquals("0192-c", afterReceipt.taskId)
+        assertTrue(afterReceipt.look)
+        // Finishing the put-away with both receipts done: the pick (the oldest left of any warehouse kind).
+        val left = tasks.filter { it.id !in setOf("0192-a", "0192-c") }
+        assertEquals("0192-d", JobNextUp.of(left, "0192-b", practice = false, linked = true)!!.taskId)
+        // A tower job is followed by the next tower job only.
+        val tower = tasks + task("0192-f", JobType.SWAP)
+        assertEquals("0192-f", JobNextUp.of(tower, "0192-e", practice = false, linked = true)!!.taskId)
+        assertNull(JobNextUp.of(tasks, "0192-e", practice = false, linked = true))
+        // Practice, an unknown job, nothing left, or no site: none.
+        assertNull(JobNextUp.of(tasks, "0192-a", practice = true, linked = true))
+        assertNull(JobNextUp.of(tasks, null, practice = false, linked = true))
+        assertNull(JobNextUp.of(listOf(task("0192-a", JobType.RECEIVE)), "0192-a", practice = false, linked = true))
+        assertNull(JobNextUp.of(tasks, "0192-a", practice = false, linked = false))
+    }
+
+    @Test
     fun m5U03_approvals_timeLeft_wordsAndUrgency() {
         val h = 3_600_000L
         assertEquals("5 h 10 min left", ApprovalsHomeModel.timeLeft("2026-11-01T15:10:00Z", now)?.text)

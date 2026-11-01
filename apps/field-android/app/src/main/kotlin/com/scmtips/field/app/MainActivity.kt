@@ -145,6 +145,7 @@ class MainActivity : ComponentActivity() {
             makeClaim = controller::claimButton,
             agreePhotos = controller::agreeToPhotos,
             closeEvidence = controller::closeEvidence,
+            reopenEvidence = controller::reopenEvidence,
             startCase = controller::startCase,
             startClaims = controller::startClaimReview,
             stopClaims = { controller.stopClaimReview() },

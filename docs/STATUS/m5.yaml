@@ -1430,7 +1430,10 @@
     window (StepView does not expose the deadline); the flag number has no touch stepper (no JobAction sets it,
     so it changes by voice as before); the brief has no replay button (no action; say "repeat"); option cards show
     "Option X" only (DecisionsView does not carry the option titles); the evidence page cannot be reopened from the
-    done screen. ScanScreen gained optional ManualCode ink/onDark parameters (defaults unchanged); SessionViews and
+    done screen. Closed in M5-U06: option cards add the core's option title and amounts (DecisionsView.next), the
+    done screen's "Evidence page" reopens the look's page (LookFlow.reopenEvidence) and its "Next up" is the next
+    assigned job (JobNextUp); ShellRoot passes LocalReduceMotion. Still open: the confirm ring anchor, the flag
+    stepper and the brief replay button (each needs a runner or flow change, not a screen change). ScanScreen gained optional ManualCode ink/onDark parameters (defaults unchanged); SessionViews and
     M5Screens are unchanged.
 - id: M5-U02
   title: >-
@@ -1552,8 +1555,22 @@
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/FirstRunContent.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModels.kt
   - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SitePickScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/shell/ShellRoot.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/DecisionScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskModel.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeModels.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/decisions/DecisionsBridge.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookViews.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookFlow.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/AppRoot.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
   tests:
   - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/firstrun/FirstRunModelsTest.kt::m5U06_site_anAnsweredEmptyList_letsTheAccountOnToHome_aListStillAskedForWaits
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/kit/TaskModelTest.kt::m5U06_optionCards_takeTheCoresTitlesAndAmounts_onlyForTheDecisionOnTheCard
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U06_jobNextUp_isTheNextOtherJob_receiptsFirst_towerAfterTower_noneForPractice
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/ui/homes/HomeModelsTest.kt::m5U06_approvals_fromTheKeptNextDecisionAndDraftList_haveRealTitles
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5U06_theDoneScreenReopensThisLooksEvidencePage_withoutAnotherRequest
   frs: []
   verified_at: null
   note: >-
@@ -1568,6 +1585,18 @@
     FinishSetup. The sign-in state adds a PC-code pairing's connectError (signed out) and busy while connecting, which
     the interim screen showed. Fixed with a test: SitePick.canContinue never enabled for an account field-api lists no
     site for (an approver-only sign-in had no way out of first run); with the new listAnswered (= not connecting) an
-    empty answered list lets the person on to Home, a listed site must still be chosen. The Compose files type-check
+    empty answered list lets the person on to Home, a listed site must still be chosen. Data gaps closed with additive
+    state only, no new endpoint or request: DecisionsView.next keeps the item GET /v1/wearable/next already answers
+    when refreshDecisions counts what waits (the other callers still use the count only), ClaimsView.drafts keeps the
+    list GET /v1/claims?status=draft already returns to refreshClaims (same supervisor rule as the count);
+    DecisionScreen's option cards show "Option X · <title>" and the core's committed / net strings when the kept item
+    is the decision on the card (matched by the card's title as CardFormatter builds it; the card has no decision id;
+    another decision keeps "Option X"); AppUi.jobTaskId names the open job, and the done screen's "Next up" is
+    JobNextUp (B's WarehouseHomeModel next-up rule without the sandbox cases, or the next tower job after a tower
+    job; none in practice) opening it with openTask; "Evidence page" on the done screen reopens the look's evidence
+    page through LookFlow.reopenEvidence (LookView.evidenceSeenUrl, the signed link the posting already fetched;
+    forgotten on a new look or job) and Actions.reopenEvidence, shown only for the open job's own look.
+    FieldController's logic is unchanged: waitingDecisions now reads the same one call through nextDecision. The
+    Compose files type-check
     with tools/android_check/compile_check (Kotlin 2.2.21 + Compose against the real AndroidX jars); no Gradle build or
     device run was possible here (no Android SDK).

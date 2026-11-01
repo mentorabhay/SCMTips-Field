@@ -8,6 +8,8 @@ import com.scmtips.field.app.check.VerdictTone
 import com.scmtips.field.app.jobs.StepKind
 import com.scmtips.field.app.jobs.StepView
 import com.scmtips.field.app.look.Look
+import com.scmtips.field.feature.decisions.api.NextItem
+import com.scmtips.field.feature.decisions.flow.CardFormatter
 import com.scmtips.field.feature.decisions.flow.DecisionCard
 
 /*
@@ -329,7 +331,27 @@ object DecisionLayout {
     /** Card buttons this layout does not place (shown as quiet text buttons, so nothing the flow offers is lost). */
     fun others(card: DecisionCard?): List<String> =
         card?.buttons.orEmpty().map { it.id }.filterNot { it.startsWith(APPROVE) || it in setOf("reject", "confirm", "cancel") }
+
+    /**
+     * M5-U06: the option titles and amounts of the core's [next] item, by letter, when it is the decision on [card]
+     * (the card carries no decision id, so its title is matched as CardFormatter built it). Another decision, no item,
+     * or a letter the item does not have: no detail, and the card keeps "Option X". The amounts are the core's own
+     * strings ("committed", "net"), never computed here.
+     */
+    fun optionDetails(card: DecisionCard?, next: NextItem?): Map<String, OptionDetail> {
+        if (card == null || next == null) return emptyMap()
+        if (CardFormatter.truncate(next.title, CardFormatter.MAX_TITLE_CHARS) != card.title) return emptyMap()
+        val letters = options(card).map { it.letter }.toSet()
+        return next.options.filter { it.letter in letters }.associate { o ->
+            val cost = listOfNotNull(o.committed.trim().ifEmpty { null }?.let { "Commits $it" }, o.net.trim().ifEmpty { null }?.let { "Net $it" })
+                .joinToString(" · ").ifEmpty { null }
+            o.letter to OptionDetail(o.title.trim().ifEmpty { null }, cost)
+        }.filterValues { it.title != null || it.cost != null }
+    }
 }
+
+/** What an option card shows under "Option X" when the core's item is known (DecisionLayout.optionDetails). */
+data class OptionDetail(val title: String?, val cost: String?)
 
 /** The two answers of a look (prototype ReceiveAnswer): the first at once, "Reading the labels…", then the second. */
 data class LookAnswers(val first: String?, val second: String?, val reading: Boolean)
