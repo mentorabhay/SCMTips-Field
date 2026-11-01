@@ -6,8 +6,10 @@ from __future__ import annotations
 
 import io
 import json
+import time
 from datetime import date
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from field_api.vision.labels import parse_reads
@@ -170,8 +172,8 @@ def test_m5_s01_smoke_checks_the_first_answer_then_polls_until_final(monkeypatch
         gets.append(url)
         return httpx.Response(200, json=answers.pop(0) if answers else {**first})
 
-    monkeypatch.setattr(m5.httpx, "get", fake_get)
-    monkeypatch.setattr(m5.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(httpx, "get", fake_get)  # m5 calls httpx.get through the module
+    monkeypatch.setattr(time, "sleep", lambda _s: None)
     phone = SimpleNamespace(api="http://field", _h=lambda *_a: {})
     assert m5.two_step(phone, "grocery", first, 20, 0.2)["final"] is True
     assert gets == ["http://field/v1/vision/looks/lk-1"] * 3
