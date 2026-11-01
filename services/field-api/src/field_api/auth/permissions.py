@@ -28,6 +28,7 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.claim.create",  # supplier claims from a look (M5 contract §3)
             "field.claim.read",
             "field.evidence.pack",  # the evidence pack of a posted document (M5 contract §3)
+            "field.try.use",  # the console's "Try a look" page: a SAMPLE look, nothing posted (M5-W01)
         ),
         "field.technician": (
             "field.capture.create",
@@ -82,6 +83,7 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.claim.read",
             "field.claim.decide",  # approve / reject a supplier claim, then confirm within 10 s (M5 contract §3)
             "field.evidence.pack",
+            "field.try.use",
         ),
         "inventory.controller": (
             "field.stock.read",
@@ -117,6 +119,7 @@ ROLE_PERMISSIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "field.material.read",
             "field.task.read",
             "field.evidence.pack",
+            "field.try.use",
         ),
         "field.admin": (
             "field.*",

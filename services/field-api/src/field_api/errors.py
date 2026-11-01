@@ -19,6 +19,7 @@ class FieldError(Exception):
         title: str,
         detail: str | None = None,
         errors: list[dict[str, Any]] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(detail or title)
         self.code = code
@@ -26,6 +27,7 @@ class FieldError(Exception):
         self.title = title
         self.detail = detail or title
         self.errors = errors or []
+        self.headers = headers or {}  # extra response headers (e.g. Retry-After of a 429)
 
 
 # Standard Error Catalog
@@ -137,6 +139,7 @@ def problem_json_response(
     detail: str,
     request: Request,
     errors: list[dict[str, Any]] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     """Build RFC 9457 Problem+JSON response."""
     request_id = getattr(request.state, "request_id", "req-unknown")
@@ -152,7 +155,7 @@ def problem_json_response(
     if errors:
         body["errors"] = errors
 
-    headers = {"Content-Type": "application/problem+json"}
+    headers = {**(headers or {}), "Content-Type": "application/problem+json"}
     if status == 409 and code == "FIELD-IDEM-409-IN-PROGRESS":
         headers["Retry-After"] = "1"
 

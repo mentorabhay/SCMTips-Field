@@ -40,7 +40,7 @@ logger = structlog.get_logger(__name__)
 IN_PROGRESS_TTL = timedelta(seconds=60)
 EXEMPT_PATHS = frozenset({"/v1/auth/exchange"})
 ERR_MISSING_KEY = FieldError(code="FIELD-IDEM-400-MISSING-KEY", status=400, title="Idempotency-Key header required")
-REPLAY_HEADERS = ("content-type", "etag", "location")
+REPLAY_HEADERS = ("content-type", "etag", "location", "retry-after")
 
 
 def compute_fingerprint(method: str, path: str, principal_id: str, body_bytes: bytes) -> str:

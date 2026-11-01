@@ -5150,6 +5150,225 @@
         }
       }
     },
+    "/v1/try/looks": {
+      "post": {
+        "tags": [
+          "Try a look (M5)"
+        ],
+        "summary": "Post Try Look",
+        "operationId": "post_try_look_v1_try_looks_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Post Try Look V1 Try Looks Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "photo",
+                  "look"
+                ],
+                "properties": {
+                  "photo": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG or PNG, at most 5 MB"
+                  },
+                  "look": {
+                    "type": "string",
+                    "description": "JSON of TryIn",
+                    "contentMediaType": "application/json",
+                    "contentSchema": {
+                      "description": "The ``look`` part of POST /v1/try/looks (JSON).",
+                      "properties": {
+                        "case": {
+                          "enum": [
+                            "grocery",
+                            "pharmacy"
+                          ],
+                          "title": "Case",
+                          "type": "string"
+                        },
+                        "expected_units": {
+                          "description": "units the delivery should have (C1: 8 packs, C2: 5 boxes)",
+                          "maximum": 200,
+                          "minimum": 1,
+                          "title": "Expected Units",
+                          "type": "integer"
+                        },
+                        "pieces_per_unit": {
+                          "anyOf": [
+                            {
+                              "maximum": 1000,
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "C1: pieces each pack should hold (6)",
+                          "title": "Pieces Per Unit"
+                        },
+                        "window_days": {
+                          "anyOf": [
+                            {
+                              "maximum": 3650,
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "C2: expiring within this many days is flagged",
+                          "title": "Window Days"
+                        },
+                        "object": {
+                          "anyOf": [
+                            {
+                              "pattern": "^[A-Za-z][A-Za-z -]{0,39}$",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "the noun to count; default pack (C1) or box (C2)",
+                          "title": "Object"
+                        }
+                      },
+                      "required": [
+                        "case",
+                        "expected_units"
+                      ],
+                      "title": "TryIn",
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/try/looks/{look_id}": {
+      "get": {
+        "tags": [
+          "Try a look (M5)"
+        ],
+        "summary": "Read Try Look",
+        "operationId": "read_try_look_v1_try_looks__look_id__get",
+        "parameters": [
+          {
+            "name": "look_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Look Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Read Try Look V1 Try Looks  Look Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/try/looks/{look_id}/photo": {
+      "get": {
+        "tags": [
+          "Try a look (M5)"
+        ],
+        "summary": "Read Try Photo",
+        "operationId": "read_try_photo_v1_try_looks__look_id__photo_get",
+        "parameters": [
+          {
+            "name": "look_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Look Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "the stored photo, faces pixelated",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/claims": {
       "post": {
         "tags": [

@@ -41,13 +41,14 @@ RUN groupadd --system --gid 10001 field \
     && useradd --system --uid 10001 --gid field --home-dir /app --shell /usr/sbin/nologin field
 WORKDIR /app
 COPY --from=build /app /app
-# Writable data folders (assistant photos, evidence crops); the hosting kit mounts a volume on /data.
-RUN mkdir -p /data/assistant-photos /data/crops && chown -R 10001:10001 /data
+# Writable data folders (assistant photos, evidence crops, try-look photos); the hosting kit mounts a volume on /data.
+RUN mkdir -p /data/assistant-photos /data/crops /data/try-photos && chown -R 10001:10001 /data
 ENV PATH=/app/.venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FIELD_ASSISTANT_PHOTO_DIR=/data/assistant-photos \
-    FIELD_CROP_DIR=/data/crops
+    FIELD_CROP_DIR=/data/crops \
+    FIELD_TRY_PHOTO_DIR=/data/try-photos
 USER 10001:10001
 
 FROM runtime AS field-api

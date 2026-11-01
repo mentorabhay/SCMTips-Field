@@ -51,6 +51,7 @@ function Nav() {
     { href: "/postings", label: "Postings to SAP", count: queues ? queues.filter((q) => q.is_blocked).length : null, warn: true },
     { href: "/devices", label: "Phones and glasses" },
     { href: "/sessions", label: "Assistant sessions" },
+    { href: "/try", label: "Try a look" },
     { href: "/recalls", label: "Recalls · phase 5" },
     { href: "/packs", label: "Industry packs · phase 7" },
     { href: "/status", label: "System status" },

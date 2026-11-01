@@ -28,6 +28,11 @@ also be priced per image (``per_image_usd``, SAM 3.1 is billed per image): reser
 images x per_image_usd. With ``images`` the reservation counts ``tokens_per_image`` prompt tokens per image (worst
 case); settlement uses the provider's own prompt-token count, which includes the images.
 
+Try scope (M5-W01, the console's "Try a look" page for judges): a guard made with ``BudgetGuard(scope="try")``
+records its calls with purpose ``try:<purpose>`` and also refuses (AI_TRY_DAILY_CAP) when today's (UTC) spend of try
+calls in the caller's tenant + this call would exceed AI_TRY_DAILY_CAP_USD (default 3). Every other cap still applies;
+a guard without a scope behaves exactly as before.
+
 All checks and the insert run under one transaction-level advisory lock, so concurrent callers
 cannot overspend. Caps are read per call: lowering a cap in .env.local takes effect on restart.
 """
@@ -52,6 +57,9 @@ CAP_ENV: Mapping[str, str] = MappingProxyType(
     {"llama": "AI_BUDGET_LLAMA_USD", "baseten": "AI_BUDGET_BASETEN_USD", "meta": "AI_BUDGET_META_USD"}
 )
 DAILY_ENV = "AI_DAILY_CAP_USD"
+TRY_DAILY_ENV = "AI_TRY_DAILY_CAP_USD"
+TRY_DAILY_DEFAULT = Decimal(3)
+SCOPES = ("try",)
 LOCK_KEY = 0x41494255  # "AIBU": one global lock for budget decisions
 PROHIBITED_MODEL_WORDS = ("image",)  # A-04: Muse Image is never called
 ALLOW_UNCONFIRMED_ENV = "AI_ALLOW_UNCONFIRMED_PRICES"
@@ -109,6 +117,17 @@ def _cap(name: str) -> Decimal:
     return val
 
 
+def try_daily_cap() -> Decimal:
+    """AI_TRY_DAILY_CAP_USD (default 3): the most try looks may spend per tenant per UTC day."""
+    raw = os.getenv(TRY_DAILY_ENV, "").strip()
+    if not raw:
+        return TRY_DAILY_DEFAULT
+    val = Decimal(raw)
+    if val < 0:
+        raise BudgetRefused("AI_CAP_INVALID", f"{TRY_DAILY_ENV} must be >= 0")
+    return val
+
+
 def load_prices(path: Path = PRICING_FILE) -> dict[str, dict[str, Price]]:
     data: dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     out: dict[str, dict[str, Price]] = {}
@@ -150,9 +169,17 @@ def unconfirmed_allowed() -> bool:
 
 
 class BudgetGuard:
-    def __init__(self, db_url: str | None = None, prices: dict[str, dict[str, Price]] | None = None) -> None:
+    def __init__(self, db_url: str | None = None, prices: dict[str, dict[str, Price]] | None = None,
+                 scope: str | None = None) -> None:
+        if scope is not None and scope not in SCOPES:
+            raise ValueError(f"unknown budget scope {scope!r}")
         self._db_url = db_url
         self._prices = prices
+        self._scope = scope
+
+    @property
+    def scope(self) -> str | None:
+        return self._scope
 
     def _price(self, provider: str, model: str) -> Price:
         prices = self._prices if self._prices is not None else load_prices()
@@ -181,6 +208,20 @@ class BudgetGuard:
         frow = cur.fetchone()
         return Decimal(row[0] if row else 0) + Decimal(frow[0] if frow else 0)
 
+    @staticmethod
+    def _try_spent_today(cur: psycopg.Cursor[Any], tenant_id: str | None) -> Decimal:
+        """Today's (UTC) spend of try-scope calls (purpose ``try:...``), in the tenant when one is given."""
+        sql = ("SELECT COALESCE(SUM(CASE WHEN status = 'failed' THEN cost_usd ELSE COALESCE(cost_usd, reserved_usd) END),"
+               " 0) FROM ops.ai_usage WHERE purpose LIKE 'try:%%'"
+               " AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'")
+        args: list[Any] = []
+        if tenant_id is not None:
+            sql += " AND tenant_id = %s::uuid"
+            args.append(tenant_id)
+        cur.execute(sql, args)
+        row = cur.fetchone()
+        return Decimal(row[0] if row and row[0] is not None else 0)
+
     def reserve(
         self, provider: str, model: str, *, input_tokens: int, max_output_tokens: int, purpose: str,
         tenant_id: str | None = None, request_id: str | None = None, images: int = 0,
@@ -205,6 +246,7 @@ class BudgetGuard:
         image_tokens = 0 if price.per_image_usd > 0 else images * price.tokens_per_image
         est = price.cost(input_tokens + image_tokens, max_output_tokens, images=images)
         cap, daily = _cap(CAP_ENV[provider]), _cap(DAILY_ENV)
+        try_cap = try_daily_cap() if self._scope == "try" else None
         with get_conn(self._db_url) as conn, conn.cursor() as cur:
             cur.execute("SELECT pg_advisory_xact_lock(%s)", (LOCK_KEY,))
             total, today = self._spent(cur, provider, False), self._spent(cur, None, True)
@@ -212,10 +254,16 @@ class BudgetGuard:
                 raise BudgetRefused("AI_BUDGET_EXHAUSTED", f"{provider}: ${total:.4f} of ${cap} used; call needs ${est:.4f}")
             if today + est > daily:
                 raise BudgetRefused("AI_DAILY_CAP", f"today ${today:.4f} of ${daily}; call needs ${est:.4f}")
+            if try_cap is not None:
+                tried = self._try_spent_today(cur, tenant_id)
+                if tried + est > try_cap:
+                    raise BudgetRefused("AI_TRY_DAILY_CAP", f"try looks today ${tried:.4f} of ${try_cap};"
+                                        f" call needs ${est:.4f}")
             cur.execute(
                 "INSERT INTO ops.ai_usage (provider, model, purpose, status, reserved_usd, tenant_id, request_id)"
                 " VALUES (%s, %s, %s, 'reserved', %s, %s, %s) RETURNING id",
-                (provider, model, purpose, est, tenant_id, request_id),
+                (provider, model, f"{self._scope}:{purpose}" if self._scope else purpose, est, tenant_id,
+                 request_id),
             )
             row = cur.fetchone()
             conn.commit()
