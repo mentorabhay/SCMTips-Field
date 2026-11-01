@@ -696,3 +696,53 @@
     into the first look's count, and post / claim use the look the app holds last (see M5_DEVICE_TEST.md). Partial
     until CI is green on the mirror and the owner's device test of both cases passes on the real Meta API, the
     phone and the glasses.
+- id: M5-J01
+  title: >-
+    Hosted field console sign-in through the SCMTIPS core (hud.scmtips.com): e-mail + password on the login page, the
+    console's server calls the core's app token and field-api's exchange, tokens in httpOnly cookies, field-api
+    exchanges a web console's core token without a device binding
+  workstream: M5
+  role: Console sign-in (M5 console session)
+  status: partial
+  evidence:
+  - apps/field-console/lib/coreSignIn.ts
+  - apps/field-console/lib/consoleAuthHandlers.ts
+  - apps/field-console/lib/coreSignInClient.ts
+  - apps/field-console/lib/fieldCookie.ts
+  - apps/field-console/middleware.ts
+  - apps/field-console/app/api/console-auth/signin/route.ts
+  - apps/field-console/components/LoginView.tsx
+  - apps/field-console/README.md
+  - services/field-api/src/field_api/routes/auth.py
+  - deploy/hosted/field.env.example
+  tests:
+  - apps/field-console/tests/console-core-signin.test.ts::calls the core's app token and field-api's exchange, sets httpOnly
+    cookies, answers no token
+  - apps/field-console/tests/console-core-signin.test.ts::wrong password (core 401)
+  - apps/field-console/tests/console-core-signin.test.ts::pairing required (core 403 problem code)
+  - apps/field-console/tests/console-core-signin.test.ts::too many attempts (core 429)
+  - apps/field-console/tests/console-core-signin.test.ts::no Field role (field 403, its detail shown)
+  - apps/field-console/tests/console-core-signin.test.ts::core unreachable
+  - apps/field-console/tests/console-core-signin.test.ts::sign-out clears both token cookies and keeps the device id
+  - apps/field-console/tests/console-core-signin.test.ts::middleware forwards the header to the /v1 rewrite
+  - services/field-api/tests/unit/test_m5_console_exchange.py::test_m5_j01_console_token_exchanges_unbound_and_registers_no_device
+  - services/field-api/tests/unit/test_m5_console_exchange.py::test_m5_j01_phone_token_claiming_the_console_client_keeps_the_device_checks
+  frs: []
+  verified_at: null
+  note: >-
+    Shown when the console server has FIELD_CONSOLE_CORE_URL (run time; FIELD_CONSOLE_FIELD_API_URL optional); the
+    "not connected yet" text only when neither it nor NEXT_PUBLIC_DEV_SIGNIN=1 is set; the development sign-in is
+    unchanged (token in sessionStorage, sent as bearer; the middleware leaves it). Flow: POST /api/console-auth/signin
+    -> core POST /v1/auth/app/token (X-Requested-With lr, device_id web-console:<uuid> from an httpOnly per-browser
+    cookie, device_model WEB_CONSOLE, client scmtips-field as the real core requires) -> field-api /v1/auth/exchange
+    (client_id field-console, no device_id) -> cookies scmtips_field_token (httpOnly, Secure, SameSite=Lax, Path=/v1,
+    600 s) and scmtips_core_token (httpOnly, Secure, SameSite=Strict, Path=/api/console-auth, for refresh only); no
+    token in any response body or browser storage; middleware.ts adds the bearer on same-origin /v1 calls only.
+    field-api change: a core token bound to a web-console: device id, exchanged with client_id field-console and no
+    device_id, gets an unbound field token (no field.device, no core device status: the real core keeps a device
+    session only for members who may pair glasses); any other bound token keeps every device check. Proven on a
+    production build (next build + next start) against the dev stack's stand-in core and field-api (META_FIELD row
+    26). Partial until hud.scmtips.com signs a SAMPLE member in against the real core in demo mode. Known limits: a
+    new browser tab needs a new sign-in (session info is per tab, as with the dev sign-in); browsers without
+    Sec-Fetch-Site (Safari before 16.4) get no cookie bearer on GET calls; the core's per-IP sign-in rate limit sees
+    the console container's address for every person.

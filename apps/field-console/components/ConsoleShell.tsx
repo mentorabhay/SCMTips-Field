@@ -102,14 +102,14 @@ function Header() {
         <>
           <div className="text-sm text-muted">
             Tenant <span className="font-mono">{session.tenantId.slice(0, 8)}</span>
-            {config.devSignIn ? " · development sign-in" : ""}
+            {session.transport === "cookie" ? " · signed in with SCMTIPS" : config.devSignIn ? " · development sign-in" : ""}
           </div>
           <div className="flex items-center gap-2 text-sm font-bold">
             <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white">
-              {initials(session.principalId)}
+              {initials(session.displayName || session.principalId)}
             </span>
             <span>
-              {session.principalId} · {roleLabel(session.roles)}
+              {session.displayName || session.principalId} · {roleLabel(session.roles)}
             </span>
           </div>
           <button
