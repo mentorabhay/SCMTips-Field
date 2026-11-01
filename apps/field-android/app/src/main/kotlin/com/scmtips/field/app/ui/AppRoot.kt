@@ -61,6 +61,7 @@ class Actions(
     val startLocation: () -> Unit,
     val stopLocation: () -> Unit,
     val cycleScanner: () -> Unit,
+    val nextSite: () -> Unit = {},
     val glassesSetUp: () -> Unit,
     val toggleGlassesMic: () -> Unit,
     val toggleAudioOnly: () -> Unit,

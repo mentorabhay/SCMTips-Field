@@ -134,6 +134,11 @@ class AccountStore(private val store: PhoneBinding.Store) {
     val lastFieldUrl: String? get() = store.get(K_FIELD_URL)
     val lastEmail: String? get() = store.get(K_EMAIL)
 
+    /** The site chosen on Me (M5-H05); forgotten on sign-out with the account. */
+    var chosenSite: String?
+        get() = store.get(K_SITE)
+        set(v) { if (v == null) store.remove(K_SITE) else store.put(K_SITE, v) }
+
     /** The addresses typed on the sign-in screen, kept even when the sign-in fails. */
     fun rememberServers(coreUrl: String, fieldUrl: String) {
         store.put(K_CORE_URL, coreUrl)
@@ -156,9 +161,10 @@ class AccountStore(private val store: PhoneBinding.Store) {
         private const val K_W_DEVICE = "core_wearable_device"
         private const val K_CAPS = "core_capabilities"
         private const val K_PERMS = "core_permissions"
+        private const val K_SITE = "core_chosen_site"
 
         /** Removed on sign-out. The addresses and the e-mail stay. */
-        val SECRET_KEYS = listOf(K_ACCESS, K_ACCESS_EXP, K_TENANT, K_SITES, K_USER, K_NAME, K_W_SESSION, K_W_TOKEN, K_W_EXP, K_W_DEVICE, K_CAPS, K_PERMS)
+        val SECRET_KEYS = listOf(K_ACCESS, K_ACCESS_EXP, K_TENANT, K_SITES, K_USER, K_NAME, K_W_SESSION, K_W_TOKEN, K_W_EXP, K_W_DEVICE, K_CAPS, K_PERMS, K_SITE)
     }
 }
 
@@ -239,14 +245,29 @@ object FieldAccess {
 
 data class SiteRef(val id: String, val name: String, val mode: String?)
 
-/** Which site the signed-in person works at: the first of the token's `sites` field-api lists, else the first listed. */
+/**
+ * Which site the signed-in person works at: the site they chose last on Me (if field-api still lists it), else the first
+ * of the token's `sites` field-api lists, else the first listed. The real core's tokens say `"*"` (every site), so the
+ * choice on Me is how a phone reaches "Home (sandbox)" next to the core's own sites (M5-H05).
+ */
 object SiteChoice {
-    fun pick(claimSites: List<String>, sitesBody: JsonObject): SiteRef? {
-        val items = (sitesBody["items"] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }.mapNotNull { o ->
+    fun all(sitesBody: JsonObject): List<SiteRef> =
+        (sitesBody["items"] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }.mapNotNull { o ->
             val id = o.s("id") ?: return@mapNotNull null
             SiteRef(id, o.s("name") ?: o.s("code") ?: id, o.s("mode"))
         }
-        return claimSites.firstNotNullOfOrNull { c -> items.firstOrNull { it.id == c } } ?: items.firstOrNull()
+
+    fun pick(claimSites: List<String>, sitesBody: JsonObject, chosen: String? = null): SiteRef? = pick(claimSites, all(sitesBody), chosen)
+
+    fun pick(claimSites: List<String>, items: List<SiteRef>, chosen: String?): SiteRef? =
+        chosen?.let { c -> items.firstOrNull { it.id == c } }
+            ?: claimSites.firstNotNullOfOrNull { c -> items.firstOrNull { it.id == c } } ?: items.firstOrNull()
+
+    /** Me → Site → Change: the next listed site after [current], wrapping round; null when there is nothing to change to. */
+    fun next(items: List<SiteRef>, current: String?): SiteRef? {
+        if (items.size < 2) return null
+        val i = items.indexOfFirst { it.id == current }
+        return items[(i + 1).mod(items.size)]
     }
 
     private fun JsonObject.s(k: String): String? = (this[k] as? JsonPrimitive)?.contentOrNull

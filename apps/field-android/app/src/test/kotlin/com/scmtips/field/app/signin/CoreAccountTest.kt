@@ -157,6 +157,22 @@ class CoreAccountTest {
     }
 
     @Test
+    fun m5_h05_theSiteChosenOnMeWinsAndChangeGoesRoundTheListedSites() {
+        val body = Json.parseToJsonElement("""{"items":[{"id":"s-a","name":"Warehouse A","mode":"production"},{"id":"s-b","name":"Home (sandbox)","mode":"sandbox"},{"id":"s-c","name":"Tower","mode":"production"}]}""").jsonObject
+        val listed = SiteChoice.all(body)
+        assertEquals(3, listed.size)
+        // the real core's token says "*": without a choice the first listed site, with one the chosen site
+        assertEquals("s-a", SiteChoice.pick(listOf("*"), listed, null)?.id)
+        assertEquals("s-b", SiteChoice.pick(listOf("*"), listed, "s-b")?.id)
+        // a chosen site field-api no longer lists falls back as before
+        assertEquals("s-a", SiteChoice.pick(listOf("*"), listed, "s-gone")?.id)
+        assertEquals("s-b", SiteChoice.next(listed, "s-a")?.id)
+        assertEquals("s-a", SiteChoice.next(listed, "s-c")?.id)
+        assertEquals("s-a", SiteChoice.next(listed, null)?.id)
+        assertNull(SiteChoice.next(listed.take(1), "s-a"))
+    }
+
+    @Test
     fun theSiteIsTheFirstOfTheTokensSitesThatFieldApiLists() {
         val sites = Json.parseToJsonElement("""{"items":[{"id":"s-a","name":"Warehouse A","mode":"production"},{"id":"s-b","name":"Home","mode":"sandbox"}]}""").jsonObject
         assertEquals(SiteRef("s-b", "Home", "sandbox"), SiteChoice.pick(listOf("s-x", "s-b"), sites))

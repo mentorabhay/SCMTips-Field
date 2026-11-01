@@ -826,3 +826,25 @@
     (DSL, manifest merge, APK) is proven only by CI: no Android SDK here. AppConfig.DEFAULT_BASE_URL
     (10.0.2.2:8020) is not read by the running app (AppConfig / EffectiveConfigManager have no production caller)
     and was left unchanged.
+- id: M5-H05
+  title: >-
+    Site choice for a SCMTIPS sign-in: the real core's tokens say sites "*", so the phone opened the first listed
+    site and never the hosted "Home (sandbox)"; Me shows a Site row (when field-api lists more than one) whose Change
+    goes round the listed sites, the choice is remembered until sign-out and wins at the next sign-in
+  workstream: M5
+  role: Hosting readiness (M5 integrator)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/signin/CoreAccount.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/MeScreen.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::m5_h05_theSiteChosenOnMeWinsAndChangeGoesRoundTheListedSites
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/signin/CoreAccountTest.kt::theSiteIsTheFirstOfTheTokensSitesThatFieldApiLists
+  frs: []
+  verified_at: null
+  note: >-
+    Found by the H01 builder (SiteChoice fell back to the oldest site). Partial until the owner switches to
+    Home (sandbox) on the hosted phone and sees the grocery / pharmacy starters. The choice is stored with the
+    account (EncryptedSharedPreferences) and removed with the other account keys on sign-out. A QR pairing (PC path)
+    is unchanged: it names its site.
