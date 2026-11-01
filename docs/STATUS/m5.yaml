@@ -160,3 +160,61 @@
     read 201 {task_id, ref_doc_no} like the M3 home receipt; a 404 or 422 (a field-api before stream V) is "not
     available yet" with a clear message, never a crash. The case's intro asks for a look instead of a scan. Without the
     M5 port the conductor routes exactly as in M4 (pinned). Nothing ran on the phone or the glasses.
+- id: M5-B05
+  title: >-
+    Me → Test glasses camera (the owner's Gate 0 probe G0-5): one photo through the Meta toolkit, its size and delay;
+    nothing leaves the phone unless the operator taps Upload
+  workstream: M5-B
+  role: Stream B (app)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookViews.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/M5Screens.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/look/LookFlowTest.kt::m5B05_cameraTestShowsSizeAndDelay_andNothingIsSentByIt
+  frs: []
+  verified_at: null
+  note: >-
+    The probe uses the existing DatGlasses.capturePhoto (DeviceSession.addCamera(StreamConfiguration(HIGH, 2 fps)) then
+    Stream.capturePhoto(), PhotoData.Bitmap or HEIC decoded) and times it from the call to the bitmap, stream opening
+    included. Before it runs, MainActivity checks BLUETOOTH_CONNECT and the toolkit's CAMERA permission
+    (Wearables.checkPermissionStatus) and sends the operator through the Meta AI app grant when missing. Upload is the
+    captures API with the blurred 640 px copy (consent asked once if needed). Compiled against the 1.0.1 jars only; it
+    has never run on the glasses (META_FIELD row 5), which is exactly what G0-5 is for.
+- id: M5-B06
+  title: >-
+    App wiring and hands-busy UX: look, voice, claims and evidence with no touch after Start Work; big fallback
+    targets; SAMPLE labels; phone-camera fallback; versionCode 7, versionName 0.6.0-m5
+  workstream: M5-B
+  role: Stream B (app)
+  status: partial
+  evidence:
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/net/FieldHttp.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookPhotos.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/LookPanel.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/M5Screens.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/JobScreen.kt
+  - apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/TodayScreen.kt
+  - apps/field-android/app/src/main/AndroidManifest.xml
+  - apps/field-android/app/src/main/res/xml/look_files.xml
+  - apps/field-android/app/build.gradle.kts
+  - apps/field-android/jvm-unit.json
+  tests:
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B04_lookAndClaimWordsGoToTheLookPort_notToTheAssistant
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/session/ConductorLookTest.kt::m5B04_casesClaimsAndConsentByVoice
+  - apps/field-android/app/src/test/kotlin/com/scmtips/field/app/jobs/JobRunnerLookTest.kt::m5B02_receiveEighteenFlagTwo_savesTwentyWithTwoFlagged_thenPostAndYesCarryTheLook
+  frs: []
+  verified_at: null
+  note: >-
+    The Android wiring is type-checked by tools/android_check/compile_check.py (not a Gradle build); its pure parts are
+    the JVM-tested classes above. A look runs off the conductor's lock, so "stop work" is heard meanwhile. Camera
+    order: the glasses (Meta toolkit) when their session is STARTED; else, or when they give no photo, the phone's
+    camera app (ACTION_IMAGE_CAPTURE into the app cache through androidx.core's FileProvider, no CAMERA permission
+    unless a merged library manifest declares it, then it is asked first), only while the app is on screen; the panel
+    and the log say which camera was used. No new dependency coordinate: FileProvider is androidx.core (core-ktx),
+    the WebView and the face finder are platform APIs. Lint, the manifest merge and the APK are proven only by the
+    Gradle build in CI. Nothing ran on the owner's phone or the glasses.

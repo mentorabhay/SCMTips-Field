@@ -59,6 +59,17 @@ class MainActivity : ComponentActivity() {
         else controller.toast("Location is needed to check in at the site. Allow it in Settings → Apps → SCMTips Field.")
     }
 
+    /**
+     * M5: a look photo with the phone's own camera app when the glasses give none (ACTION_IMAGE_CAPTURE into
+     * this app's cache through FileProvider; the app itself holds no CAMERA permission).
+     */
+    private var lookFile: java.io.File? = null
+    private val takeLookPhoto = registerForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        val f = lookFile
+        lookFile = null
+        controller.phonePhotoTaken(if (saved && f != null && f.length() > 0) f else f?.let { it.delete(); null })
+    }
+
     private val datPermission = registerForActivityResult(Wearables.RequestPermissionContract()) { result ->
         result.onSuccess { status -> if (status == PermissionStatus.Granted) requestNextDatPermission() }
             .onFailure { e, _ -> controller.toast(e.description) }
@@ -79,6 +90,7 @@ class MainActivity : ComponentActivity() {
             arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS),
         )
         lifecycleScope.launch { controller.cameraRequests.collect { scanWithCamera() } }
+        lifecycleScope.launch { controller.photoRequests.collect { takePhoneLookPhoto() } }
         val actions = Actions(
             scanPairingCode = ::scanPairingQr,
             retryConnect = controller::retryConnect,
@@ -118,6 +130,18 @@ class MainActivity : ComponentActivity() {
             answerStepUp = controller::answerStepUp,
             startSandbox = controller::startSandbox,
             toggleAttentionWord = controller::toggleAttentionWord,
+            look = controller::lookButton,
+            makeClaim = controller::claimButton,
+            agreePhotos = controller::agreeToPhotos,
+            closeEvidence = controller::closeEvidence,
+            startCase = controller::startCase,
+            startClaims = controller::startClaimReview,
+            stopClaims = { controller.stopClaimReview() },
+            refreshClaims = controller::refreshClaims,
+            claimButton = controller::claimCardButton,
+            testCamera = ::testGlassesCamera,
+            uploadProbe = { agree -> controller.uploadProbe(agree) },
+            closeProbe = controller::closeProbe,
         )
         setContent {
             val ui by controller.ui.collectAsState()
@@ -210,6 +234,59 @@ class MainActivity : ComponentActivity() {
         GmsBarcodeScanning.getClient(this, options).startScan()
             .addOnSuccessListener { code -> code.rawValue?.let(controller::pair) }
             .addOnFailureListener { e -> controller.toast(e.message ?: "The scan did not work. Try again.") }
+    }
+
+    /**
+     * Me → Test glasses camera (G0-5): Bluetooth and the glasses' camera permission (granted in the Meta AI
+     * app) are checked first; a missing one is asked for, and the test runs on the next tap.
+     */
+    private fun testGlassesCamera() {
+        app.datInitError?.let { return controller.toast("Glasses toolkit: $it") }
+        if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
+            androidPermissions.launch(arrayOf(Manifest.permission.BLUETOOTH_CONNECT))
+            return controller.toast("Allow Bluetooth for the glasses, then tap Take a test photo again.")
+        }
+        lifecycleScope.launch {
+            Wearables.checkPermissionStatus(Permission.CAMERA)
+                .onSuccess { st ->
+                    if (st == PermissionStatus.Granted) controller.testGlassesCamera()
+                    else { controller.toast("Allow the glasses camera in the Meta AI app, then tap again."); connectGlasses() }
+                }
+                .onFailure { e, _ -> controller.toast(e.description) }
+        }
+    }
+
+    /** Only when a merged library manifest declares CAMERA does Android require it for ACTION_IMAGE_CAPTURE. */
+    private val lookCameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) launchLookCamera()
+        else { controller.phonePhotoTaken(null); controller.toast("The camera permission is needed for a phone photo.") }
+    }
+
+    private fun declaresPermission(p: String): Boolean = runCatching {
+        @Suppress("DEPRECATION")
+        packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS).requestedPermissions?.contains(p) == true
+    }.getOrDefault(false)
+
+    private fun takePhoneLookPhoto() {
+        if (declaresPermission(Manifest.permission.CAMERA) && !hasPermission(Manifest.permission.CAMERA)) {
+            lookCameraPermission.launch(Manifest.permission.CAMERA)
+        } else {
+            launchLookCamera()
+        }
+    }
+
+    private fun launchLookCamera() {
+        val dir = java.io.File(cacheDir, "looks").apply { mkdirs() }
+        val f = java.io.File(dir, "look-${System.currentTimeMillis()}.jpg")
+        lookFile = f
+        try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.looks", f)
+            takeLookPhoto.launch(uri)
+        } catch (e: RuntimeException) { // no camera app, or the provider is missing
+            lookFile = null
+            controller.phonePhotoTaken(null)
+            controller.toast("The phone camera could not be opened: ${e.message ?: e.javaClass.simpleName}")
+        }
     }
 
     /** Phone camera: Google's code scanner UI (no camera permission needed by this app). */

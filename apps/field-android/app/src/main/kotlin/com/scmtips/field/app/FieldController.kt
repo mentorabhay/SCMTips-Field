@@ -88,6 +88,27 @@ import com.scmtips.field.feature.decisions.flow.StepUpBroker
 import com.scmtips.field.feature.decisions.flow.StepUpEntry
 import com.scmtips.field.feature.decisions.flow.UtteranceInbox
 import com.scmtips.field.core.common.UUIDv7
+import com.scmtips.field.app.home.CaseOutcome
+import com.scmtips.field.app.home.CaseStart
+import com.scmtips.field.app.home.CaseStarters
+import com.scmtips.field.app.look.CameraProbe
+import com.scmtips.field.app.look.CameraUsed
+import com.scmtips.field.app.look.ClaimReview
+import com.scmtips.field.app.look.ClaimsList
+import com.scmtips.field.app.look.ClaimsText
+import com.scmtips.field.app.look.ClaimsView
+import com.scmtips.field.app.look.LookCamera
+import com.scmtips.field.app.look.LookCase
+import com.scmtips.field.app.look.LookClient
+import com.scmtips.field.app.look.LookFlow
+import com.scmtips.field.app.look.LookPhotos
+import com.scmtips.field.app.look.LookTarget
+import com.scmtips.field.app.look.LookView
+import com.scmtips.field.app.look.Shot
+import com.scmtips.field.app.look.UploadResult
+import com.scmtips.field.app.session.LookPort
+import com.scmtips.field.app.session.LocalIntents
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -147,6 +168,12 @@ data class AppUi(
     val sandbox: Boolean = false,
     /** Me → Attention word: only words starting with "Field" are acted on (off by default). */
     val attentionWord: Boolean = false,
+    /** M5: the current look (photo, outlines, proposal), its claim and the evidence page. */
+    val look: LookView = LookView(),
+    /** M5: supervisors' draft claims (Today card) and the running claims review. */
+    val claims: ClaimsView = ClaimsView(),
+    /** M5: Me → Test glasses camera (Gate 0 probe G0-5). */
+    val probe: CameraProbe? = null,
 )
 
 /** Who is signed in against the core (no tokens here: AppUi is drawn and logged freely). */
@@ -180,6 +207,11 @@ class FieldController(private val context: Context, private val toolkitError: ()
     /** MainActivity opens the phone camera scanner when this fires. */
     private val _cameraRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val cameraRequests: SharedFlow<Unit> = _cameraRequests.asSharedFlow()
+
+    /** M5: MainActivity opens the phone's camera app for a look photo (the glasses gave none) when this fires. */
+    private val _photoRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val photoRequests: SharedFlow<Unit> = _photoRequests.asSharedFlow()
+    private var phoneShot: CompletableDeferred<android.graphics.Bitmap?>? = null
 
     private val prefs by lazy {
         val key = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
@@ -287,7 +319,44 @@ class FieldController(private val context: Context, private val toolkitError: ()
             override fun startReview() = this@FieldController.startReview()
             override fun heard(text: String, confidence: Float) { reviewInbox.offer(text, confidence) }
         },
+        looks = object : LookPort {
+            override val reviewingClaims: Boolean get() = claimJob?.isActive == true
+            override val consentPending: Boolean get() = lookFlow.consentPending
+            override fun heardForClaims(text: String, confidence: Float) { claimInbox.offer(text, confidence) }
+            // The look runs on its own (camera, upload, models: seconds; the phone camera app: up to 2 min), so
+            // the session keeps hearing words such as "stop work" meanwhile.
+            override suspend fun look() { scope.launch { lookNow() } }
+            override suspend fun claim() = lookFlow.claim()
+            override fun startClaims() = startClaimReview()
+            override suspend fun startCase(case: LookCase) { CaseStart.of(case)?.let { startCaseNow(it) } }
+            override suspend fun agree() { scope.launch { lookFlow.agree() } }
+        },
     )
+
+    // --- M5 look and act (docs/design/M5_CONTRACT.md §4) ----------------------------------------
+    /** field-api of the moment (a QR pairing or a core sign-in), for the M5 calls. */
+    private val liveTransport = object : com.scmtips.field.app.jobs.JobTransport, com.scmtips.field.app.look.BytesPort {
+        override suspend fun send(request: com.scmtips.field.app.jobs.ApiRequest) =
+            session?.send(request) ?: com.scmtips.field.app.jobs.ApiResult.Offline("not connected")
+        override suspend fun put(path: String, bytes: ByteArray, contentType: String) =
+            session?.put(path, bytes, contentType) ?: com.scmtips.field.app.jobs.ApiResult.Offline("not connected")
+    }
+    private val lookClient = LookClient(liveTransport, liveTransport, { _ui.value.deviceId })
+    private val lookFlow = LookFlow(
+        camera = LookCamera { takeLookPhoto() },
+        client = lookClient,
+        speaker = speaker,
+        onLook = { fill -> runner?.applyLook(fill) },
+        baseUrl = { session?.apiBaseUrl },
+        log = ::log,
+    )
+    private val caseByTask = mutableMapOf<String, LookCase>()
+    private val claimInbox = UtteranceInbox { if (workSession.view.active) REVIEW_LISTEN_SESSION_MS else REVIEW_LISTEN_PHONE_MS }
+    private val claimCard = PhoneCardDisplay { !_ui.value.audioOnly }
+    private var claimJob: Job? = null
+
+    /** False once the server refused this person's claim decision (403): the Today card is hidden. */
+    private var claimsDecider = true
 
     // --- M4 decisions (F1) --------------------------------------------------------------------
     private var account: CoreAccount? = null
@@ -321,6 +390,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
     @Volatile var manualEntryOpen = false
 
     init {
+        scope.launch { lookFlow.view.collect { v -> _ui.value = _ui.value.copy(look = v) } }
         scope.launch {
             glasses.status.collect { g ->
                 _ui.value = _ui.value.copy(glasses = g, glassesAdvice = GlassesHelp.advise(g, toolkitError()))
@@ -378,6 +448,9 @@ class FieldController(private val context: Context, private val toolkitError: ()
     fun unpair() {
         stopWork()
         stopReview(silent = true)
+        stopClaimReview(silent = true)
+        lookFlow.clear()
+        claimsDecider = true
         account?.let { a -> signOutOfCore(a) }
         loops?.cancel()
         closeJob(null)
@@ -666,6 +739,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         try {
             _ui.value = _ui.value.copy(tasks = s.tasks(site), link = Link.ONLINE)
             siteModes?.let { m -> m.prime(site); _ui.value = _ui.value.copy(sandbox = m.isSandbox(site)) }
+            refreshClaims()
         } catch (e: Exception) {
             log("⚠ tasks: ${describe(e)}")
             _ui.value = _ui.value.copy(link = if (e is IOException) Link.OFFLINE else _ui.value.link,
@@ -681,9 +755,12 @@ class FieldController(private val context: Context, private val toolkitError: ()
         val siteLabel = if (t.type.isTower) t.title.substringBefore(" · ") else _ui.value.pairing?.siteName ?: "the site"
         val site = t.siteId ?: _ui.value.pairing?.siteId
         val visit = _ui.value.visitId?.takeIf { _ui.value.visitSiteId == null || _ui.value.visitSiteId == site }
+        val case = caseByTask[t.id]
+        if (t.type == JobType.RECEIVE) lookFlow.forTask(t.id, case ?: LookCase.GENERIC)
         startRunner(JobRunner(
             t, s, speaker, _ui.value.deviceId, visitId = visit, siteId = site,
             siteLabel = siteLabel, scanner = _ui.value.scanner, nextSeq = ::nextClimbSeq, unknownCodes = unknownCodes,
+            lookHint = case?.let { CaseStart.of(it)?.introHint },
         ))
     }
 
@@ -716,6 +793,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         closeJob(null)
         runner = r
         var toldDone = false
+        var askedEvidence = false
         runnerJobs += scope.launch {
             r.view.collect { v ->
                 _ui.value = _ui.value.copy(job = v)
@@ -723,6 +801,12 @@ class FieldController(private val context: Context, private val toolkitError: ()
                 if (r.isDone && !toldDone && !r.practice && workSession.view.active) {
                     toldDone = true
                     scope.launch { conductor.stepDone() }
+                }
+                // M5: a receipt posted from a look gets its evidence page, opened on the phone.
+                val doc = r.postedDocument
+                if (doc != null && r.usedLook && !askedEvidence) {
+                    askedEvidence = true
+                    scope.launch { lookFlow.evidence(doc, r.postedYear) }
                 }
                 if (v.finished) closeJob(v.exitNote)
             }
@@ -741,6 +825,8 @@ class FieldController(private val context: Context, private val toolkitError: ()
         runnerJobs.forEach { it.cancel() }
         runnerJobs.clear()
         _ui.value = _ui.value.copy(job = null, toast = note ?: _ui.value.toast)
+        // A posted look stays for "make a claim" and its evidence page until the next job opens.
+        if (!r.usedLook && _ui.value.look.evidenceUrl == null) lookFlow.clear()
         applyStreaming()
         if (!r.practice) refreshTasks()
     }
@@ -847,7 +933,17 @@ class FieldController(private val context: Context, private val toolkitError: ()
         if (source != "phone") return // no session: only the operator's own hold-to-talk is heard (A-03)
         log("🎤 [$source ${"%.2f".format(java.util.Locale.ROOT, confidence)}] $text")
         if (reviewJob?.isActive == true) { reviewInbox.offer(text, confidence); return }
-        if (JobGrammar.parse(text, confidence) == Command.Capture) requestScan()
+        if (claimJob?.isActive == true) { claimInbox.offer(text, confidence); return }
+        val local = LocalIntents.parse(text)
+        if (local == LocalIntents.Intent.Agree && lookFlow.consentPending && confidence >= JobGrammar.FLOOR) { scope.launch { lookFlow.agree() }; return }
+        if (local == LocalIntents.Intent.Claims) return startClaimReview()
+        if (local is LocalIntents.Intent.NewCase) { CaseStart.of(local.case)?.let(::startCase); return }
+        when (JobGrammar.parse(text, confidence)) {
+            Command.Capture -> requestScan()
+            Command.Look -> return lookButton()
+            Command.Claim -> return claimButton()
+            else -> Unit
+        }
         if (runner != null) runnerAct(JobAction.Heard(text, confidence))
     }
 
@@ -873,6 +969,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
     fun stopWork() {
         if (workSession.stop() == null) return
         stopReview(silent = true)
+        stopClaimReview(silent = true)
         log("work session stopped")
         continuous.stop()
         glasses.setListening(false)
@@ -984,6 +1081,202 @@ class FieldController(private val context: Context, private val toolkitError: ()
             r.isScanStep -> onCode(r.bestOf(codes) ?: codes.first())
             else -> Unit // not a scan step: codes seen in passing are ignored
         }
+    }
+
+    // --- M5: look, claims, cases, camera test ---------------------------------------------------
+
+    /** The job screen's Look button (and "look" by hold-to-talk). */
+    fun lookButton() {
+        scope.launch { lookNow() }
+    }
+
+    fun claimButton() {
+        scope.launch { lookFlow.claim() }
+    }
+
+    fun agreeToPhotos() {
+        scope.launch { lookFlow.agree() }
+    }
+
+    fun closeEvidence() = lookFlow.closeEvidence()
+
+    private suspend fun lookNow() {
+        val r = runner
+        val site = r?.task?.siteId ?: _ui.value.pairing?.siteId
+        if (r == null || r.practice || r.task.type != JobType.RECEIVE || site == null) {
+            speaker.say("Open a delivery first. Say new grocery delivery, or start receive.")
+            return
+        }
+        lookFlow.look(LookTarget(r.task.id, r.lookLineId, site, caseByTask[r.task.id] ?: LookCase.GENERIC))
+    }
+
+    /**
+     * A look photo: the glasses camera through the Meta toolkit when the glasses are connected; else (or when
+     * they give none) the phone's camera app, only while the app is on screen. Faces are blurred on the phone.
+     */
+    private suspend fun takeLookPhoto(): Shot {
+        val glassesOn = glasses.status.value.session == "STARTED"
+        if (glassesOn) {
+            val t0 = System.currentTimeMillis()
+            val bmp = glasses.capturePhoto()
+            val ms = System.currentTimeMillis() - t0
+            if (bmp != null) {
+                log("look photo from the glasses: ${bmp.width}x${bmp.height} in $ms ms")
+                return prepared(bmp, CameraUsed.GLASSES, t0, ms, null)
+            }
+        }
+        if (!inForeground) return Shot.Failed(if (glassesOn) "No photo from the glasses. Open the app on the phone to use its camera." else "Connect the glasses, or open the app on the phone to use its camera.")
+        speaker.say(if (glassesOn) "No photo from the glasses. Take it with the phone." else "Take the photo with the phone.")
+        val t0 = System.currentTimeMillis()
+        val waiting = CompletableDeferred<android.graphics.Bitmap?>()
+        phoneShot = waiting
+        _photoRequests.tryEmit(Unit)
+        val bmp = kotlinx.coroutines.withTimeoutOrNull(PHONE_PHOTO_MS) { waiting.await() }
+        phoneShot = null
+        return if (bmp == null) Shot.Failed("No photo was taken.")
+        else prepared(bmp, CameraUsed.PHONE, t0, System.currentTimeMillis() - t0, if (glassesOn) "Used the phone camera." else null)
+    }
+
+    private suspend fun prepared(bmp: android.graphics.Bitmap, camera: CameraUsed, at: Long, ms: Long, note: String?): Shot {
+        val photo = withContext(Dispatchers.Default) { LookPhotos.prepare(bmp, camera, at, ms) }
+            ?: return Shot.Failed("The photo could not be checked for faces, so it was not sent.")
+        if (photo.facesBlurred > 0) log("look photo: ${photo.facesBlurred} face(s) blurred on the phone")
+        return Shot.Taken(photo, note)
+    }
+
+    /** MainActivity: the camera app's photo file (null when cancelled or unreadable). */
+    fun phonePhotoTaken(file: File?) {
+        val waiting = phoneShot ?: return
+        scope.launch {
+            val bmp = file?.let { f -> withContext(Dispatchers.IO) { runCatching { LookPhotos.decodePhoneFile(f) }.getOrNull() } }
+            file?.delete()
+            waiting.complete(bmp)
+        }
+    }
+
+    /** Today on a sandbox site: "New grocery delivery" / "New pharmacy delivery" (contract §1). */
+    fun startCase(start: CaseStart) {
+        scope.launch { startCaseNow(start) }
+    }
+
+    private suspend fun startCaseNow(start: CaseStart) {
+        val s = session ?: return toast("Connect this phone to the PC first.")
+        val site = _ui.value.pairing?.siteId ?: return toast("No site is linked to this phone.")
+        when (val r = CaseStarters.start(s, site, start)) {
+            is CaseOutcome.Created -> {
+                caseByTask[r.taskId] = start.case
+                log("case ${start.case.wire}: task ${r.taskId}${r.refDocNo?.let { " ($it)" } ?: ""}")
+                refreshTasksNow()
+                if (_ui.value.tasks.any { it.id == r.taskId }) openTask(r.taskId) else toast("${start.label} is ready on Today.")
+            }
+            is CaseOutcome.NotAvailable -> { toast(r.text); if (workSession.view.active) speaker.say(r.text) }
+            is CaseOutcome.Refused -> { toast(r.text); if (workSession.view.active) speaker.say(r.text) }
+        }
+    }
+
+    fun refreshClaims() {
+        scope.launch {
+            if (session == null) return@launch
+            val n = when (val r = lookClient.drafts()) {
+                // Operators may read claims (field.claim.read) but only supervisors decide (field.claim.decide).
+                is ClaimsList.Ok -> r.claims.size.takeIf { claimsDecider }
+                ClaimsList.NotAllowed -> null
+                is ClaimsList.Failed -> return@launch log("claims: ${r.text}")
+            }
+            _ui.value = _ui.value.copy(claims = _ui.value.claims.copy(waiting = n))
+        }
+    }
+
+    /** Today's Claims card, or "claims" / "next claim" said: the supervisor's review by voice. */
+    fun startClaimReview() {
+        if (session == null) return toast("Connect this phone to the PC first.")
+        if (claimJob?.isActive == true || reviewJob?.isActive == true) return
+        val flow = ClaimReview(lookClient, SpeechWaiter(speaker, ttsSignals), claimInbox, claimCard)
+        claimJob = scope.launch {
+            _ui.value = _ui.value.copy(claims = _ui.value.claims.copy(reviewing = true, last = null))
+            val mirror = launch {
+                combine(flow.state, claimCard.card, claimInbox.waiting) { st, card, listening ->
+                    _ui.value.claims.copy(state = ClaimsText.state(st), card = card, listening = listening)
+                }.collect { v -> _ui.value = _ui.value.copy(claims = v.copy(reviewing = true)) }
+            }
+            try {
+                val end = try {
+                    flow.run()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    log("⚠ claims review: ${e.message ?: e.javaClass.simpleName}")
+                    com.scmtips.field.app.look.ClaimFlowState.Failed(e.message ?: e.javaClass.simpleName)
+                }
+                log("claims review: ${ClaimsText.state(end)}")
+                if ((end as? com.scmtips.field.app.look.ClaimFlowState.Finished)?.outcome == com.scmtips.field.app.look.ClaimOutcome.NOT_ALLOWED) claimsDecider = false
+                _ui.value = _ui.value.copy(claims = _ui.value.claims.copy(last = ClaimsText.state(end)))
+            } finally {
+                mirror.cancel()
+                _ui.value = _ui.value.copy(claims = _ui.value.claims.copy(reviewing = false, card = null, listening = false))
+                refreshClaims()
+            }
+        }
+    }
+
+    fun stopClaimReview(silent: Boolean = false) {
+        val j = claimJob ?: return
+        if (!j.isActive) return
+        j.cancel()
+        if (!silent) speaker.say("Stopped. Nothing more was changed.")
+    }
+
+    fun claimCardButton(id: String) {
+        if (!claimCard.press(id)) toast("That card is no longer open.")
+    }
+
+    /** Me → Test glasses camera (G0-5): one toolkit photo; its size and delay; nothing is sent. */
+    fun testGlassesCamera() {
+        if (_ui.value.probe?.busy == true) return
+        if (glasses.status.value.session != "STARTED") {
+            _ui.value = _ui.value.copy(probe = CameraProbe(message = "Connect the glasses first (Me → Smart glasses → Connect)."))
+            return
+        }
+        _ui.value = _ui.value.copy(probe = CameraProbe(busy = true, message = "Taking one photo with the glasses…"))
+        scope.launch {
+            val t0 = System.currentTimeMillis()
+            val bmp = glasses.capturePhoto()
+            val ms = System.currentTimeMillis() - t0
+            if (bmp == null) {
+                val why = glasses.status.value.lastError ?: "the toolkit gave no photo"
+                log("G0-5 glasses camera: no photo ($why) after $ms ms")
+                _ui.value = _ui.value.copy(probe = CameraProbe(delayMs = ms, message = "No photo: $why"))
+                return@launch
+            }
+            log("G0-5 glasses camera: ${bmp.width}x${bmp.height} in $ms ms")
+            val preview = withContext(Dispatchers.Default) { LookPhotos.prepare(bmp, CameraUsed.GLASSES, t0, ms) }
+            _ui.value = _ui.value.copy(probe = CameraProbe(width = bmp.width, height = bmp.height, delayMs = ms, preview = preview,
+                message = if (preview == null) "Face check failed: this photo cannot be uploaded." else "Nothing was sent. Tap Upload to send this photo to the Field server."))
+        }
+    }
+
+    /** The camera test's Upload: the blurred photo through the captures API (no job). */
+    fun uploadProbe(agree: Boolean = false) {
+        val p = _ui.value.probe ?: return
+        val photo = p.preview ?: return
+        val site = _ui.value.pairing?.siteId ?: return toast("No site is linked to this phone.")
+        _ui.value = _ui.value.copy(probe = p.copy(busy = true, message = "Uploading…", needsConsent = false))
+        scope.launch {
+            if (agree && !lookClient.consent(site)) {
+                _ui.value = _ui.value.copy(probe = p.copy(busy = false, message = "The consent was not recorded."))
+                return@launch
+            }
+            val next = when (val r = lookClient.upload(photo, null, site, "camera_test")) {
+                is UploadResult.Uploaded -> p.copy(busy = false, uploadedCaptureId = r.captureId, message = "Uploaded as capture ${r.captureId}.")
+                UploadResult.NeedsConsent -> p.copy(busy = false, needsConsent = true, message = com.scmtips.field.app.look.LookFlow.CONSENT_TEXT)
+                is UploadResult.Failed -> p.copy(busy = false, message = r.text)
+            }
+            _ui.value = _ui.value.copy(probe = next)
+        }
+    }
+
+    fun closeProbe() {
+        _ui.value = _ui.value.copy(probe = null)
     }
 
     // --- Me ------------------------------------------------------------------------------------
@@ -1132,6 +1425,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
     fun shutdown() {
         stopWork()
         stopReview(silent = true)
+        stopClaimReview(silent = true)
         stopLaunches()
         loops?.cancel()
         location.stop()
@@ -1158,5 +1452,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
         private const val REVIEW_LISTEN_SESSION_MS = 15_000L
         private const val REVIEW_LISTEN_PHONE_MS = 25_000L
         private const val HEARTBEAT_MS = 5 * 60_000L
+        /** How long a look waits for the phone camera app before it gives up. */
+        private const val PHONE_PHOTO_MS = 120_000L
     }
 }

@@ -83,7 +83,7 @@ private val Climb = JobColors(ClimbBg, Color.White, ClimbMuted, ClimbCard, Climb
  * control (scan area, count, checklist, check-in, climb-safe, done), then the primary/secondary buttons.
  */
 @Composable
-fun JobScreen(v: StepView, audioOnly: Boolean, a: Actions) {
+fun JobScreen(v: StepView, audioOnly: Boolean, a: Actions, look: com.scmtips.field.app.look.LookView? = null) {
     val c = if (v.dark) Climb else Light
     BackHandler { if (v.canGoBack) a.job(JobAction.Back) } // climb-safe: back does nothing
     val view = LocalView.current
@@ -112,10 +112,13 @@ fun JobScreen(v: StepView, audioOnly: Boolean, a: Actions) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             v.banner?.let { Text(it, color = WarnInk, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().background(WarnBg, Corner).padding(horizontal = 14.dp, vertical = 10.dp)) }
+            // M5: the look (photo with outlines, counts, proposal, claim) above the step it pre-fills.
+            if (look != null && !audioOnly) LookPanel(look, a)
             if (audioOnly) AudioOnly(v, c, a) else StepBody(v, c, a)
             v.message?.let { Box(Modifier.semantics { liveRegion = LiveRegionMode.Polite }) { Notice(it, v.messageTone) } }
         }
         Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (v.canLook) LookButton(look, a)
             v.primary?.let { PrimaryButton(it, { a.job(JobAction.Primary) }, enabled = v.primaryEnabled && !v.busy, bg = c.primaryBg, fg = c.primaryFg) }
             v.secondary?.let { SecondaryButton(it, { a.job(JobAction.Secondary) }, ink = c.ink, line = c.line, enabled = !v.busy) }
             HoldToTalk(c, a)
@@ -196,6 +199,10 @@ private fun CountControl(v: StepView, a: Actions) {
                     .padding(top = 8.dp).semantics { contentDescription = "Your count" },
             )
             StepperButton("+", "One more") { a.job(JobAction.SetQty(v.qty + 1)) }
+        }
+        v.flagged?.let { f ->
+            Text("+ $f flagged for quality inspection (say “flag” and a number to change)", fontSize = 15.sp, color = WarnText,
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
         v.qtyNote?.let {
             Text(it, fontSize = 15.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),

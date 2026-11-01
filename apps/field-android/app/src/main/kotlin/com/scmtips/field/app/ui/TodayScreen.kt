@@ -90,7 +90,11 @@ fun TodayScreen(ui: AppUi, a: Actions) {
             }
         }
         if (ui.home.decisions) item { DecisionsCard(ui.decisions, ui.work.active, a) }
+        if (ui.claims.waiting != null) item { ClaimsCard(ui.claims, ui.work.active, a) }
         item { WorkCard(ui.work, ui.glasses.session == "STARTED", a) }
+        // M5: the two test cases first on a sandbox site (contract §1), above the rest of the list.
+        val cases = com.scmtips.field.app.home.CaseStart.offered(ui.sandbox && ui.home.fieldWork && ui.pairing != null)
+        if (cases.isNotEmpty()) item { CaseStarterCards(cases, ui.work.active, a) }
         if (ui.home.fieldWork && ui.pairing == null) {
             item {
                 CardBox {
