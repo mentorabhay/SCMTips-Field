@@ -10,7 +10,8 @@ Covers: greeting + work list, "what do we have", "most urgent", "start <type or 
 "How many?" -> add through the sandbox port), "summary", "repeat", "help", what done means, pause / resume /
 session end, step done, and the job words the phone may forward (post, all here, count N, cancel). On sandbox
 sites (M4) also "new home receipt" and "count shelf <bin>" / "count a shelf" (then "Which shelf?"), which create
-the task through the sandbox ports and open it; "nothing assigned" offers both. Work never stops because of the
+the task through the sandbox ports and open it; "nothing assigned" offers both. M5: "new grocery delivery" and
+"new pharmacy delivery" create the two test-case receipts (field_api.vision.cases) the same way. Work never stops because of the
 AI. No network: only the database (task list, records) and the injected ports.
 """
 
@@ -50,6 +51,9 @@ _TYPE_SYNONYMS = (
 INTENTS = (
     ("cancel", r"^(cancel|stop|never ?mind|forget it|no thanks?)\b"),
     ("confirm", r"\bconfirm\b"),
+    # M5 test cases: before "new receipt" and "start"
+    ("new_case", r"\b(?:new|another|create|make|start|open)\b(?: a| an| the)?(?: new)? "
+                 r"(?P<arg>grocery|groceries|pharmacy|medicine|chemist)(?: delivery| receipt| order| case)?\b"),
     # M4 sandbox: before "start" (which opens an existing job) and "count" (which counts in the open job)
     ("new_receipt", r"\b(?:new|another|create|make)\b(?: a| an)?(?: new)?(?: home)? (?:goods )?receipt\b|"
                     r"\bhome receipt\b"),
@@ -280,6 +284,7 @@ class RulesEngine:
             "work": self.work_list,
             "greet": lambda: self.work_list(greeting=True),
             "new_receipt": self.new_receipt,
+            "new_case": lambda: self.new_case(arg),
             "new_count": lambda: self.new_count(arg),
         }
         handler = handlers.get(name)
@@ -323,6 +328,27 @@ class RulesEngine:
                          _card("No receipt", str(r.get("error"))))
         return Reply("New home receipt open. Look at each box's barcode and I'll add it.",
                      _card(f"Delivery {r['ref_doc_no']}", DONE.get("receive", "")),
+                     [{"type": "open_task", "task_id": r["task_id"]}], task_id=r["task_id"])
+
+    def new_case(self, arg: str) -> Reply:
+        """M5: "new grocery delivery" (C1) or "new pharmacy delivery" (C2) on a sandbox site."""
+        case = "grocery" if arg.startswith("grocer") else "pharmacy"
+        if self.tools.ctx.site_mode != "sandbox":
+            refused = self._sandbox_refusal(f"{case} deliveries")
+            if refused is not None:
+                return refused
+        if not self.tools.can_create_case:
+            return Reply(f"I can't create {case} deliveries in this build.", _card("Not available"))
+        r = self.tools.new_case(case)
+        if not r.get("ok"):
+            return Reply(f"I couldn't create the {case} delivery. {_sentence(r.get('error'))}",
+                         _card("No delivery", str(r.get("error"))))
+        units, noun = r.get("expected_units"), str(r.get("object") or "item")
+        what = f"{units} {noun}{'es' if noun.endswith('x') else 's'}"
+        if r.get("expected_pieces_per_unit"):
+            what += f", {r['expected_pieces_per_unit']} in each"
+        return Reply(f"New {case} delivery open: {what}. Lay them out in one layer and say look.",
+                     _card(f"Delivery {r['ref_doc_no']}", f"{case} delivery · {what}"),
                      [{"type": "open_task", "task_id": r["task_id"]}], task_id=r["task_id"])
 
     def _bins_say(self, bins: list[str]) -> str:

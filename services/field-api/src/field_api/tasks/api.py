@@ -42,6 +42,7 @@ from field_api.warehouse.receiving.post import (
     GR_MOVEMENT_TYPE,
     goods_receipt_jobs,
     goods_receipt_queue_key,
+    quality_storage_location,
 )
 from field_api.warehouse.receiving.tolerance import (
     VALID_UNDER_DELIVERY_REASONS,
@@ -366,8 +367,15 @@ def confirm_task(
     idempotency_key: str,
     principal: Principal,
     extra_payload: dict[str, Any] | None = None,
+    flags: dict[str, Decimal] | None = None,
+    look_id: str | None = None,
 ) -> dict[str, Any]:
-    """Stage the confirmed lines of a task (shared by API3.06 and the voice gate API2.14)."""
+    """Stage the confirmed lines of a task (shared by API3.06 and the voice gate API2.14).
+
+    M5 (receipts posted with a vision look, voice.py checks the look and the quantities): ``flags`` = flagged units
+    per line id; they are part of the received quantity and post 101 to the quality storage location (101Q), and
+    are recorded on the line (task_line.flag_qty) when the receipt is staged. ``look_id`` is linked to the staged
+    document (vision_look.erp_document_id). Both None: the M4 staging, unchanged."""
     with principal_tx(principal) as cur:
         cur.execute(
             "SELECT id, site_id, type, status, ref_doc_no FROM field.task WHERE id = %s::uuid FOR UPDATE",
@@ -442,7 +450,14 @@ def confirm_task(
                     raise _err(422, "FIELD-RCV-422-REASON", "Reason code missing", f"line {r[1]} is under-delivered")
                 received.append((r[1], counted - damaged))  # FIELD_DAMAGED_MODE=reject (spec default)
             doc_type, mvt, queue_key = GR_DOC_TYPE, GR_MOVEMENT_TYPE, goods_receipt_queue_key(ref_doc)
-            if not over_where:
+            if not over_where and flags is not None:
+                quality = {r[1]: float(flags.get(str(r[0]), Decimal(0))) for r in lines}
+                for r in lines:
+                    cur.execute("UPDATE field.task_line SET flag_qty = %s WHERE id = %s",
+                                (flags.get(str(r[0]), Decimal(0)), r[0]))
+                job_specs = goods_receipt_jobs(ref_doc, received, soft_pegging=sandbox, quality=quality,
+                                               quality_sloc=quality_storage_location())
+            elif not over_where:
                 job_specs = goods_receipt_jobs(ref_doc, received, soft_pegging=sandbox)
         else:
             for r in lines:
@@ -458,6 +473,9 @@ def confirm_task(
             staged = _stage_confirm(cur, principal, task_id, str(site_id), doc_type, mvt, queue_key,
                                     ref_doc, plant, idempotency_key, job_specs, [str(r[0]) for r in lines],
                                     extra_payload or {})
+            if look_id is not None:
+                cur.execute("UPDATE field.vision_look SET erp_document_id = %s WHERE id = %s::uuid",
+                            (staged.erp_document_id, look_id))
     if staged is None:
         raise _OverTolerance(over_where or "")
     return {"erp_document_id": staged.erp_document_id, "queue_key": staged.queue_key,

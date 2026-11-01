@@ -98,14 +98,16 @@ def _erp[T](coro: Coroutine[Any, Any, T]) -> T:
 
 
 # --------------------------------------------------------------------------- receipts and counts
-def create_receipt(principal: Principal, site_id: str) -> SandboxTaskResult:
-    """An open, empty inbound delivery in the ERP and its receive task (created now, no worker wait)."""
+def create_receipt(principal: Principal, site_id: str, sloc: str | None = None) -> SandboxTaskResult:
+    """An open, empty inbound delivery in the ERP and its receive task (created now, no worker wait).
+
+    ``sloc`` (M5 test cases): the delivery's storage location when the site lists it, else the site's first one."""
     _require_execute(principal)
     _require_scope(principal, site_id)
     with principal_tx(principal) as cur:
         site = _sandbox_site(cur, site_id)
     deliv = _erp(erp.get_sandbox_port().create_sandbox_inbound_delivery(
-        str(site["plant"]), _sloc(site), HOME_SUPPLIER))
+        str(site["plant"]), sloc if sloc and sloc in site["storage_locations"] else _sloc(site), HOME_SUPPLIER))
     with principal_tx(principal) as cur:
         cur.execute("SELECT id FROM field.task WHERE site_id = %s AND type = 'receive' AND ref_doc_no = %s"
                     " AND status = 'pending'", (site_id, deliv.delivery_document))

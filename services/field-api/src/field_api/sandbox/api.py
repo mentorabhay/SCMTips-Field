@@ -4,6 +4,9 @@ POST /v1/sandbox/receipts {site_id}                     -> 201 {task_id, ref_doc
 POST /v1/sandbox/counts {site_id, bin, simulated?}      -> 201 {task_id, ref_doc_no}   (an empty count of one bin)
 POST /v1/sandbox/tasks/{task_id}/items {code, description, qty?}  (Idempotency-Key)
                                                         -> 201 {line_id, material, created_material}
+POST /v1/sandbox/cases {site_id, case: grocery|pharmacy, units?, pieces_per_unit?, window_days?}   (M5 §1)
+                        -> 201 {task_id, ref_doc_no, line_id, case, object, material, expected_units,
+                                expected_pieces_per_unit, expiry_window_days}   (field_api.vision.cases)
 
 Permission field.task.execute (operators and technicians; field.admin by its wildcard).
 """
@@ -11,6 +14,7 @@ Permission field.task.execute (operators and technicians; field.admin by its wil
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel, Field
@@ -24,6 +28,7 @@ from field_api.sandbox.service import (
     create_count,
     create_receipt,
 )
+from field_api.vision.cases import CaseResult, create_case
 
 router = APIRouter(prefix="/v1/sandbox", tags=["Sandbox (M3)"])
 
@@ -69,3 +74,20 @@ def post_item(
     principal: Principal = Depends(require_permission("field.task.execute")),
 ) -> SandboxItemResult:
     return add_item(principal, task_id, body.code, body.description, body.qty, idempotency_key)
+
+
+class CaseIn(BaseModel):
+    site_id: str
+    case: Literal["grocery", "pharmacy"]
+    units: int | None = Field(default=None, ge=1, le=999, description="expected units (20 packs / 10 boxes)")
+    pieces_per_unit: int | None = Field(default=None, ge=1, le=10_000, description="grocery: pieces in each pack")
+    window_days: int | None = Field(default=None, ge=0, le=3650, description="pharmacy: the expiring-soon window")
+
+
+@router.post("/cases", status_code=201)
+def post_case(
+    body: CaseIn,
+    principal: Principal = Depends(require_permission("field.task.execute")),
+) -> CaseResult:
+    """M5 test case C1 (grocery delivery) or C2 (pharmacy receipt) on a sandbox site (contract §1)."""
+    return create_case(principal, body.site_id, body.case, body.units, body.pieces_per_unit, body.window_days)

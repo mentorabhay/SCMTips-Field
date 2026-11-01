@@ -64,6 +64,10 @@ class S4ODataAdapter:
         raise NotImplementedError("S4 adapter: find_by_idempotency_key not implemented in F0")
 
     async def update_inbound_delivery_item(self, req: ErpPostingRequest) -> ErpResult:
+        # M5 (UNVERIFIED): a receipt with flagged units carries QualityQuantity / QualityStorageLocation. A real S/4
+        # system has no such item fields: it would need a delivery item split (one item per storage location) or
+        # the item's stock type quality inspection (A_InbDeliveryItem.StockType / InspectionLot), to be designed
+        # and proven on a real system before this adapter posts them. erp-sim's shape: erp_sim/services/inbound.py.
         raise NotImplementedError("S4 adapter: update_inbound_delivery_item not implemented in F0")
 
     async def post_inbound_goods_receipt(self, req: ErpPostingRequest) -> ErpResult:

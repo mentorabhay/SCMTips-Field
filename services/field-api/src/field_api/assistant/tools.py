@@ -118,6 +118,26 @@ class AssistantTools:
             return {"ok": False, "error": "Creating receipts is not available in this build.", "code": "not_wired"}
         return self._created("new_receipt", {}, lambda: port(self.ctx.principal, self.ctx.site_id))
 
+    @property
+    def can_create_case(self) -> bool:
+        return self.ctx.ports.create_case is not None
+
+    def new_case(self, case: str) -> dict[str, Any]:
+        """M5: a test-case receipt ('grocery' or 'pharmacy') on this sandbox site (rules only)."""
+        port = self.ctx.ports.create_case
+        if port is None:
+            return {"ok": False, "error": "Creating test cases is not available in this build.", "code": "not_wired"}
+        made: dict[str, Any] = {}
+
+        def call() -> Any:
+            made.update(port(self.ctx.principal, self.ctx.site_id, case))
+            return made
+
+        result = self._created("new_case", {"case": case}, call)
+        if result.get("ok"):
+            result.update({k: made.get(k) for k in ("object", "expected_units", "expected_pieces_per_unit")})
+        return result
+
     def new_count(self, storage_bin: str) -> dict[str, Any]:
         """A new, empty blind count of one bin of this sandbox site (rules only)."""
         port = self.ctx.ports.create_count

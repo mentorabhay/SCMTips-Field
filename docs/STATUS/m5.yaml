@@ -129,3 +129,64 @@
     checks the console. Entries without the keys are confirmed, and text calls (and the assistant's M4 photo turn,
     which passes no image count) are unchanged. The owner sets confirmed true after checking, or
     AI_ALLOW_UNCONFIRMED_PRICES=true for Gate 0 only.
+- id: M5-V06
+  title: >-
+    Receive posting with a look: optional look_id and per-line flag_qty on the post request; good units 101 to
+    101A, flagged units 101 to 101Q in one material document, the look linked; 101Q receipts in erp-sim
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/routes/voice.py
+  - services/field-api/src/field_api/tasks/api.py
+  - services/field-api/src/field_api/warehouse/receiving/post.py
+  - services/field-worker/src/field_worker/warehouse/putaway_tasks.py
+  - connectors/sap/src/field_sap/sim/adapter.py
+  - connectors/sap/src/field_sap/s4/adapter.py
+  - services/erp-sim/src/erp_sim/services/inbound.py
+  - services/erp-sim/alembic/versions/erpsim_0006_m5_quality.py
+  tests:
+  - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_grocery_case_look_post_18_good_2_flagged
+  - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_pharmacy_case_and_a_look_is_posted_once
+  - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_erp_sim_refuses_an_unknown_quality_location
+  - tests/e2e/test_m3_sandbox_e2e.py::test_sandbox_receipt_new_barcode_soft_pegging_gr_101
+  - tests/e2e/test_slice_receive_e2e.py::test_slice_goods_receipt_round_trip
+  frs: []
+  verified_at: null
+  note: >-
+    The counted quantity (and staged_hash) stays the whole received quantity: "receive 18, flag 2" is a count of 20
+    with flag_qty 2; flag at most counted minus damaged; flag_qty needs look_id. The quality storage location is
+    FIELD_QUALITY_SLOC (default 101Q). 101Q existed in erp-sim only as master data of plant 1010; receipts to it are
+    new, through the simulator's YY1_QualityQuantity / YY1_QualityStorageLocation item fields. Real S/4 differs
+    (UNVERIFIED): it would split the delivery item per storage location or receive into quality inspection stock;
+    the S/4 adapter still posts no goods receipt at all. Flagged units are not put away. Without look_id and
+    flag_qty the M4 request, staging and jobs are unchanged (the M2/M3/M4 receive tests pass unchanged).
+- id: M5-V07
+  title: >-
+    The two test cases (contract §1): POST /v1/sandbox/cases creates a grocery delivery (units, pieces per unit) or
+    a pharmacy delivery (units, expiry window) on a sandbox site; voice starters "new grocery delivery" / "new
+    pharmacy delivery"
+  workstream: M5-V
+  role: Stream V (vision, posting, cases)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/vision/cases.py
+  - services/field-api/src/field_api/sandbox/api.py
+  - services/field-api/src/field_api/sandbox/service.py
+  - services/field-api/src/field_api/assistant/rules.py
+  - services/field-api/src/field_api/assistant/ports.py
+  - services/field-api/src/field_api/assistant/tools.py
+  tests:
+  - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_grocery_case_look_post_18_good_2_flagged
+  - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_pharmacy_case_and_a_look_is_posted_once
+  - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_case_intents
+  - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_voice_starters_create_and_open_the_case
+  - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_production_site_and_unwired_build_refuse
+  - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_new_home_receipt_is_still_the_m4_intent
+  frs: []
+  verified_at: null
+  note: >-
+    C1 grocery: 20 packs of 12 pieces by default, counted as "pack", material "biscuit pack"; C2 pharmacy: 10 boxes,
+    window VISION_EXPIRY_WINDOW_DAYS (90), counted as "box", material "tablet box" (generic names, contract §6). The
+    delivery uses storage location FIELD_CASE_SLOC (101A) when the site lists it. The Today starters call the same
+    endpoint (stream B). Not yet run with real products, the phone or the glasses.

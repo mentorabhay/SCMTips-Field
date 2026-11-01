@@ -4,7 +4,8 @@ When the worker writes back the material document of a goods receipt (101), it c
 task for what was received: one line per received material, ``storage_bin`` = the proposed bin
 (field_common.bin_stock.propose_bin: the material's fixed bin, else the first empty bin of the
 site's bin tree, else the least-filled bin), ``expected_qty`` = the received quantity
-(counted minus damaged, FIELD_DAMAGED_MODE=reject).
+(counted minus damaged, FIELD_DAMAGED_MODE=reject, minus the units flagged with a vision look: M5, those
+were received into the quality storage location and are not put away).
 
 Idempotent per material document: the task's ref_doc_no is the GR material document number, so a
 replayed finalize (pre-post probe adoption) never creates a second task.
@@ -39,7 +40,7 @@ def create_putaway_task(
         return None
     cur.execute(
         """
-        SELECT l.line_no, l.material_id, m.erp_material_no, l.uom, l.counted_qty - l.damaged_qty
+        SELECT l.line_no, l.material_id, m.erp_material_no, l.uom, l.counted_qty - l.damaged_qty - l.flag_qty
           FROM field.task_line l LEFT JOIN field.material m ON m.id = l.material_id
          WHERE l.id = ANY(%s::uuid[]) ORDER BY l.line_no
         """,
