@@ -181,7 +181,7 @@ def check_migration(text: str) -> list[str]:
 
 
 M3_ID_RE = re.compile(r"^M3-[SAP]\d{2}$")
-SLICE_LEDGERS = {"m3": M3_ID_RE, "m4": re.compile(r"^M4-[A-Z]\d{2}$"), "m5": re.compile(r"^M5-[A-Z]\d{2}$")}  # A-03, A-04, A-06
+SLICE_LEDGERS = {"m3": M3_ID_RE, "m4": re.compile(r"^M4-[A-Z]\d{2}$"), "m5": re.compile(r"^M5-(?:[A-Z]\d{2}|00)$")}  # A-03, A-04, A-06
 
 
 def _evidence_ok(root: Path, tid: str, evid: list[str]) -> list[str]:
