@@ -16,6 +16,7 @@ import json
 from types import MappingProxyType
 from typing import Any
 
+import httpx
 import pytest
 from field_worker.core_feeds.codes import CodeMap
 
@@ -208,3 +209,26 @@ def test_m4_c16_scenario_only_with_the_approver_against_the_real_core(monkeypatc
     ns.approver = True
     assert stack.cmd_smoke(ns) == 0
     assert calls == ["approver magnet-export-curbs"]
+
+
+
+def test_m4_c18_a_secure_session_cookie_is_sent_to_a_hosted_core_over_its_internal_http_address(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """VM-1: the core's cookie is Secure (LR_COOKIE_SECURE) and the ops image calls http://api:8000."""
+    seen: list[str | None] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path == "/v1/auth/login":
+            return httpx.Response(200, json={"mfa_required": False},
+                                  headers={"set-cookie": "__Host-lr_session=tok123; Path=/; HttpOnly; Secure"})
+        seen.append(req.headers.get("cookie"))
+        return httpx.Response(200, json={"items": []})
+
+    real = httpx.Client
+    monkeypatch.setattr(httpx, "Client",
+                        lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    monkeypatch.setenv("FIELD_CORE_SMOKE_PLANNER", "planner@sample.test")
+    monkeypatch.setenv("FIELD_CORE_SMOKE_PLANNER_PASSWORD", "pw")
+    web = core_smoke.CoreWeb("http://api:8000", "PLANNER")
+    assert web.get("/v1/inventory") == {"items": []}
+    assert seen == ["__Host-lr_session=tok123"]

@@ -194,8 +194,21 @@ def choose_ports() -> dict[str, int]:
     return chosen
 
 
+# A stack whose services run elsewhere (the hosted VM-1's containers, reached from the ops image on the kit's network)
+# names their base URLs here; unset, the services are this PC's processes on 127.0.0.1 (M4-C18).
+URL_VARS = {"fake-core": "FIELD_STACK_CORE_URL", "erp-sim": "FIELD_STACK_ERPSIM_URL", "field-api": "FIELD_STACK_API_URL"}
+
+
 def local(name: str) -> str:
-    return f"http://127.0.0.1:{port(name)}"
+    url = os.environ.get(URL_VARS[name], "").strip().rstrip("/")
+    return url or f"http://127.0.0.1:{port(name)}"
+
+
+def public_field_url() -> str:
+    """The field-api address a phone uses: FIELD_PUBLIC_URL (a hosted field-api, e.g. https://field.scmtips.com),
+    else this PC's LAN address and field-api port (the phone on the same Wi-Fi)."""
+    url = os.environ.get("FIELD_PUBLIC_URL", "").strip().rstrip("/")
+    return url or f"http://{lan_ip()}:{port('field-api')}"
 
 
 def core_target() -> str:
@@ -414,7 +427,7 @@ def cmd_up(a: argparse.Namespace) -> int:
         print("field-worker: NOT RUNNING - see var/log/field-worker.log")
         ok["field-worker"] = False
     if all(ok.values()):
-        print(f"\nPhone URL: http://{lan_ip()}:{port('field-api')}   next: `uv run python -m tools.dev_stack.stack pair`")
+        print(f"\nPhone URL: {public_field_url()}   next: `uv run python -m tools.dev_stack.stack pair`")
         print_core_target()
     return 0 if all(ok.values()) else 1
 
@@ -544,7 +557,7 @@ def cmd_pair(a: argparse.Namespace) -> int:
         state = ensure_home(state)
         site, site_name = state["home_site"], HOME_SITE_NAME
     token = _core_token(a.user, state["tenant"], site, a.hours * 3600)
-    api = a.api or f"http://{lan_ip()}:{port('field-api')}"
+    api = a.api or public_field_url()
     payload = pairing_payload(api, token, state["tenant"], site, site_name)
     import qrcode
 

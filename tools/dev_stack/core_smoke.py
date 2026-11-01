@@ -106,6 +106,11 @@ class CoreWeb:
         if body.get("mfa_required"):
             raise SmokeFailure(f"{self.email}: the core asks for an authenticator code at sign-in (strict sign-in on);"
                                " these smokes sign in with e-mail and password (LR_ENV=local or staging)")
+        # A hosted core sets Secure cookies (LR_COOKIE_SECURE) and the ops image reaches it over the host's internal
+        # http address (M4-C18): httpx keeps such a cookie but never sends it over http, so send the session cookie
+        # (whatever its name) explicitly.
+        if r.cookies and base.startswith("http://"):
+            self.c.headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in r.cookies.items())
 
     def get(self, path: str, **params: Any) -> Any:
         r = self.c.get(path, params=params)

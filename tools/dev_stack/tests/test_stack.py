@@ -389,3 +389,19 @@ def test_pair_home_points_the_phone_at_the_sandbox_site(monkeypatch: pytest.Monk
 def test_new_barcodes_are_ean13_shaped_and_fresh() -> None:
     codes = {stack.new_barcode() for _ in range(50)}
     assert len(codes) == 50 and all(len(c) == 13 and c.isdigit() and c.startswith("2") for c in codes)
+
+
+def test_m4_c18_hosted_service_urls_and_the_phones_public_field_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The ops image on VM-1 reaches the containers by name, and the pairing QR carries field-api's public URL."""
+    for var in (*stack.URL_VARS.values(), "FIELD_PUBLIC_URL"):
+        monkeypatch.delenv(var, raising=False)
+    assert stack.local("field-api") == f"http://127.0.0.1:{stack.port('field-api')}"
+    assert stack.public_field_url() == f"http://{stack.lan_ip()}:{stack.port('field-api')}"
+    monkeypatch.setenv("FIELD_STACK_API_URL", "http://field-api:8020/")
+    monkeypatch.setenv("FIELD_STACK_ERPSIM_URL", " http://erp-sim:8002 ")
+    monkeypatch.setenv("FIELD_PUBLIC_URL", "https://field.scmtips.com/")
+    assert stack.local("field-api") == "http://field-api:8020"
+    assert stack.local("erp-sim") == "http://erp-sim:8002"
+    assert stack.public_field_url() == "https://field.scmtips.com"
+    payload = json.loads(stack.pairing_payload(stack.public_field_url(), "tok", "t-1", "s-1", "SAMPLE"))
+    assert payload["api"] == "https://field.scmtips.com"

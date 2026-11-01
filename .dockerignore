@@ -1,0 +1,25 @@
+# Build context of the production images (deploy/docker/*.Dockerfile). Only source the images read goes in:
+# no git data, no local state, no secrets (.env*, local.properties), no tests, no Android or spec material.
+.git
+**/.git
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.hypothesis
+**/tests
+**/e2e
+.env
+.env.*
+!.env.example
+**/local.properties
+var
+reports
+Plan
+docs
+apps/field-android
+ops

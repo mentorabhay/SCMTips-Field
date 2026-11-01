@@ -142,6 +142,43 @@ async def test_m4_c04_nothing_without_both_urls() -> None:
     assert deliveries(tenant) == [] and pushes_for(material) == []
 
 
+async def test_m4_c18_only_the_configured_tenants_receipts_reach_the_core() -> None:
+    """K5 finding: the feeds belong to one core organisation, so another Field tenant's receipts are never sent."""
+    mine, other = str(uuid.uuid4()), str(uuid.uuid4())
+    m_mine, m_other = f"RM-T{uuid.uuid4().hex[:6].upper()}", f"RM-O{uuid.uuid4().hex[:6].upper()}"
+    await post_gr(mine, asn(m_mine, 5, "4500000011"))
+    await post_gr(other, asn(m_other, 7, "4500000012"))
+    pub = CoreFeedPublisher(SIM, DATABASE_URL, cfg(feed_tenants=(mine,), core_target="core"),
+                            client_factory=to_standin)
+    assert mine in pub.tenants() and other not in pub.tenants()
+    await pub.run_once()
+    assert len(pushes_for(m_mine)) == 2 and pushes_for(m_other) == [] and deliveries(other) == []
+    # FIELD_CORE_FEED_TENANTS unset: the snapshot's tenants decide (one organisation for both)
+    assert cfg(snapshot_tenants=(mine,)).receipt_tenants == (mine,)
+    assert cfg(feed_tenants=(other,), snapshot_tenants=(mine,)).receipt_tenants == (other,)
+
+
+async def test_m4_c18_the_real_core_needs_its_tenant_named_else_nothing_is_sent() -> None:
+    tenant, material = str(uuid.uuid4()), f"RM-R{uuid.uuid4().hex[:6].upper()}"
+    await post_gr(tenant, asn(material, 4, "4500000013"))
+    unnamed = cfg(core_target="core")
+    assert unnamed.problems() == ["FIELD_CORE_FEED_TENANTS"]
+    assert await CoreFeedPublisher(SIM, DATABASE_URL, unnamed, client_factory=to_standin).run_once() == (0, 0)
+    assert deliveries(tenant) == [] and pushes_for(material) == []
+    # back-compat: the stand-in core (or no target) with no tenants named still serves every tenant
+    assert cfg(core_target="standin").problems() == [] and cfg().receipt_tenants == ()
+    assert tenant in CoreFeedPublisher(SIM, DATABASE_URL, cfg(), client_factory=to_standin).tenants()
+
+
+def test_m4_c18_feed_tenants_and_target_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FIELD_CORE_FEED_TENANTS", " a , b ,")
+    monkeypatch.setenv("FIELD_CORE_SNAPSHOT_TENANTS", "c")
+    monkeypatch.setenv("FIELD_CORE_TARGET", "Core")
+    c = FeedConfig.from_env()
+    assert c.feed_tenants == ("a", "b") and c.snapshot_tenants == ("c",) and c.core_target == "core"
+    assert c.receipt_tenants == ("a", "b")
+
+
 async def test_m4_c04_retry_with_backoff_then_dead_letter_and_permanent_refusal() -> None:
     tenant, material = str(uuid.uuid4()), f"RM-R{uuid.uuid4().hex[:6].upper()}"
     await post_gr(tenant, asn(material, 7, "4500000002", "20"))
