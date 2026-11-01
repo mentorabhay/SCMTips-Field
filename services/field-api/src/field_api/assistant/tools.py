@@ -46,6 +46,7 @@ class TurnContext:
     task_id: str | None = None
     dialog: dict[str, Any] | None = None
     explicit_yes: bool = False
+    look_id: str | None = None  # M5: the look the phone just made (client_state.look_id), for "make a claim"
 
 
 @dataclass
@@ -145,6 +146,20 @@ class AssistantTools:
             return {"ok": False, "error": "Creating counts is not available in this build.", "code": "not_wired"}
         return self._created("new_count", {"bin": storage_bin},
                              lambda: port(self.ctx.principal, self.ctx.site_id, storage_bin))
+
+    # ------------------------------------------------------------------ M5 supplier claims (rules only)
+    @property
+    def can_claim(self) -> bool:
+        return self.ctx.ports.claims is not None
+
+    def claim_call(self, name: str, args: dict[str, Any], fn: Callable[[], Any]) -> dict[str, Any]:
+        """One claims call, recorded like the other effects; a refusal becomes {ok: False, error: <speakable>}."""
+        try:
+            result: dict[str, Any] = {"ok": True, "result": fn()}
+        except FieldError as e:
+            result = {"ok": False, "error": e.title, "code": e.code}
+        self.calls.append({"name": name, "args": args, "ok": bool(result.get("ok"))})
+        return result
 
     def lookup_code(self, code: str) -> dict[str, Any]:
         code = (code or "").strip()

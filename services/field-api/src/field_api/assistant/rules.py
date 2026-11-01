@@ -27,6 +27,7 @@ from typing import Any
 from field_api.assistant.prompts import DONE, DONE_SHORT, clip_say
 from field_api.assistant.tools import SANDBOX_TASK_TYPES, AssistantTools
 from field_api.assistant.work import count_by_type, remaining_lines, type_word
+from field_api.auth.permissions import has_permission
 
 SKIP = "skip"
 
@@ -54,6 +55,14 @@ INTENTS = (
     # M5 test cases: before "new receipt" and "start"
     ("new_case", r"\b(?:new|another|create|make|start|open)\b(?: a| an| the)?(?: new)? "
                  r"(?P<arg>grocery|groceries|pharmacy|medicine|chemist)(?: delivery| receipt| order| case)?\b"),
+    # M5 supplier claims (stream X): before "start" ("open a claim") and "next" ("next claim")
+    ("make_claim", r"\b(?:make|raise|create|file|open|start|log) (?:a |an |the )?(?:new )?(?:supplier )?claim\b|"
+                   r"^claim (?:it|this|that)$"),
+    ("claims_next", r"^(?:(?:ok(?:ay)?|please|so) )*(?:(?:read|show|give me|what'?s|what are|any|open|my) )*"
+                    r"(?:the )?(?:next |first |open |draft |waiting )?claims?(?: please)?$|\bnext claim\b"),
+    ("approve", r"^(?:(?:ok(?:ay)?|yes|so) )*(?:i )?approve\b(?: (?:it|this|that|the claim|claim))?(?: please)?$"),
+    ("reject", r"^(?:(?:ok(?:ay)?|so) )*(?:i )?reject\b(?: (?:it|this|that|the claim|claim))?"
+               r"(?: ?(?:because|reason|as)\b ?(?P<arg>.*))?$"),
     # M4 sandbox: before "start" (which opens an existing job) and "count" (which counts in the open job)
     ("new_receipt", r"\b(?:new|another|create|make)\b(?: a| an)?(?: new)?(?: home)? (?:goods )?receipt\b|"
                     r"\bhome receipt\b"),
@@ -257,6 +266,8 @@ class RulesEngine:
             answered = self.count_bin_dialog(text, name)
             if answered is not None:
                 return answered
+        if dialog and dialog.get("kind") in ("claim", "claim_confirm") and name == "unknown":
+            return self.claim_reprompt(dialog)
         if name == "what_is":
             if code:
                 return self.code_reply(code)
@@ -267,8 +278,13 @@ class RulesEngine:
         handlers: dict[str, Callable[[], Reply]] = {
             "cancel": lambda: Reply("OK.", _card("Cancelled"), [{"type": "command", "command": "cancel"}]
                                     if self.tools.ctx.task_id else []),
-            "confirm": lambda: Reply("Say post first, then confirm on the review step. I can't confirm for you.",
-                                     _card("Confirm is yours", "Posting needs your own confirm on the phone.")),
+            "confirm": lambda: (self.claim_confirm(text) if dialog and dialog.get("kind") == "claim_confirm" else
+                                Reply("Say post first, then confirm on the review step. I can't confirm for you.",
+                                      _card("Confirm is yours", "Posting needs your own confirm on the phone."))),
+            "make_claim": self.make_claim,
+            "claims_next": lambda: self.next_claim(advance="next" in normalise(text)),
+            "approve": lambda: self.claim_decide("approve", None),
+            "reject": lambda: self.claim_decide("reject", arg or None),
             "repeat": lambda: Reply(self.last_said or "There is nothing to repeat yet.", _card("Repeat")),
             "help": self.help,
             "summary": self.summary,
@@ -293,6 +309,107 @@ class RulesEngine:
         return Reply("Sorry, I didn't catch that. Say what's next, how many left, or help.",
                      _card("Try", "what's next · how many left · what is this · start receipt · summary"),
                      [dict(LISTEN_CMD)])
+
+    # ------------------------------------------------------------------ M5 supplier claims (stream X)
+    def _may(self, permission: str) -> bool:
+        return has_permission(self.tools.ctx.principal.permissions, permission)
+
+    def _claims_refusal(self, permission: str, who: str) -> Reply | None:
+        if not self.tools.can_claim:
+            return Reply("Claims are not available in this build.", _card("No claims"))
+        if not self._may(permission):
+            return Reply(f"Claims are {who}.", _card("Not for your role"), [dict(LISTEN_CMD)])
+        return None
+
+    def make_claim(self) -> Reply:
+        refused = self._claims_refusal("field.claim.create", "made by the receiving team")
+        if refused is not None:
+            return refused
+        look_id = self.tools.ctx.look_id
+        port = self.tools.ctx.ports.claims
+        if not look_id or port is None:
+            return Reply("Take a look first, then say make a claim.", _card("No look yet"), [dict(LISTEN_CMD)])
+        principal = self.tools.ctx.principal
+        r = self.tools.claim_call("make_claim", {"look_id": look_id}, lambda: port.create(principal, look_id))
+        if not r["ok"]:
+            return Reply(f"No claim made. {_sentence(r['error'])}", _card("No claim", str(r["error"])))
+        c = r["result"]
+        return Reply(f"Claim drafted for a supervisor. {clip_say(c['text'], 1)}", _card("Claim draft", c["text"]),
+                     task_id=self.tools.ctx.task_id)
+
+    def _claim_dialog(self) -> dict[str, Any] | None:
+        d = self.tools.ctx.dialog
+        return d if d and d.get("kind") in ("claim", "claim_confirm") and d.get("claim_id") else None
+
+    def next_claim(self, advance: bool = False) -> Reply:
+        refused = self._claims_refusal("field.claim.decide", "approved by a supervisor")
+        if refused is not None:
+            return refused
+        port = self.tools.ctx.ports.claims
+        assert port is not None
+        principal = self.tools.ctx.principal
+        r = self.tools.claim_call("next_claim", {}, lambda: port.drafts(principal))
+        if not r["ok"]:
+            return Reply(f"I can't read the claims. {_sentence(r['error'])}", _card("Claims"))
+        drafts: list[dict[str, Any]] = r["result"]
+        if not drafts:
+            return Reply("No claims are waiting.", _card("No claims"), [dict(LISTEN_CMD)])
+        current = (self._claim_dialog() or {}).get("claim_id")
+        ids = [d["claim_id"] for d in drafts]
+        i = ids.index(current) + 1 if advance and current in ids else 0
+        if i >= len(drafts):
+            return Reply("No more claims are waiting.", _card("No more claims"), [dict(LISTEN_CMD)])
+        c = drafts[i]
+        title = f"Claim {i + 1} of {len(drafts)}"
+        return Reply(f"{title}; say approve or reject. {clip_say(c['text'], 1)}", _card(title, c["text"]),
+                     [dict(LISTEN_CMD)], dialog={"kind": "claim", "claim_id": c["claim_id"], "version": c["version"]})
+
+    def _claim_refused(self, r: dict[str, Any], prefix: str) -> Reply:
+        code = str(r.get("code") or "")
+        if code.startswith("FIELD-ETAG") or code == "FIELD-CLM-409-STATE":
+            return Reply(f"{prefix} The claim changed; say next claim to hear it again.", _card("Claim changed"),
+                         [dict(LISTEN_CMD)])
+        return Reply(f"{prefix} {_sentence(r.get('error'))}", _card("Claim", str(r.get("error"))), [dict(LISTEN_CMD)])
+
+    def claim_decide(self, decision: str, reason: str | None) -> Reply:
+        refused = self._claims_refusal("field.claim.decide", "approved by a supervisor")
+        if refused is not None:
+            return refused
+        d = self._claim_dialog()
+        port = self.tools.ctx.ports.claims
+        if d is None or port is None:
+            return Reply("Say next claim first, so I know which claim.", _card("Which claim?"), [dict(LISTEN_CMD)])
+        principal, cid, version = self.tools.ctx.principal, str(d["claim_id"]), int(d.get("version") or 0)
+        r = self.tools.claim_call("claim_decision", {"claim_id": cid, "decision": decision},
+                                  lambda: port.decide(principal, cid, version, decision, reason))
+        if not r["ok"]:
+            return self._claim_refused(r, "Not decided.")
+        answer, out = r["result"]
+        return Reply(answer["say"], _card(f"{decision.title()}: say confirm", out["text"]), [dict(LISTEN_CMD)],
+                     dialog={"kind": "claim_confirm", "claim_id": cid, "version": out["version"],
+                             "decision": decision})
+
+    def claim_confirm(self, words: str | None) -> Reply:
+        d = self._claim_dialog()
+        port = self.tools.ctx.ports.claims
+        if d is None or port is None or not self._may("field.claim.decide"):
+            return Reply("Say next claim first, so I know which claim.", _card("Which claim?"), [dict(LISTEN_CMD)])
+        principal, cid, version = self.tools.ctx.principal, str(d["claim_id"]), int(d.get("version") or 0)
+        r = self.tools.claim_call("claim_confirm", {"claim_id": cid},
+                                  lambda: port.confirm(principal, cid, version, words))
+        if not r["ok"]:
+            if r.get("code") == "FIELD-CLM-422-CONFIRM-EXPIRED":
+                return Reply("Too late to confirm; the claim is waiting again. Say next claim to hear it.",
+                             _card("Not confirmed", "Confirm within 10 seconds."), [dict(LISTEN_CMD)])
+            return self._claim_refused(r, "Not confirmed.")
+        answer, out = r["result"]
+        return Reply(answer["say"], _card(f"Claim {out['status']}", out["text"]), [dict(LISTEN_CMD)])
+
+    def claim_reprompt(self, dialog: dict[str, Any]) -> Reply:
+        if dialog.get("kind") == "claim_confirm":
+            return Reply("Say confirm, or cancel.", _card("Say confirm"), [dict(LISTEN_CMD)], dialog=dialog)
+        return Reply("Say approve or reject, or next claim.", _card("Approve or reject"), [dict(LISTEN_CMD)],
+                     dialog=dialog)
 
     # ------------------------------------------------------------------ work
     # ------------------------------------------------------------------ sandbox: new receipts and counts (M4)

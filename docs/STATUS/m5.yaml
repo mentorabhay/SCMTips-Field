@@ -268,3 +268,160 @@
   note: >-
     Both rows stay UNVERIFIED until the owner's Gate 0 evidence file is committed. Two doc pages
     (dev.meta.ai/docs/sam/segmenting, /docs/sam/reading-segmentation) could not be read from the build sandbox.
+- id: M5-X01
+  title: >-
+    Supplier claim table (field.supplier_claim, migration field_0065 with forced RLS) and the look port that reads
+    stream V's looks in the contract section 2 shape
+  workstream: M5-X
+  role: Stream X (claims and evidence)
+  status: partial
+  evidence:
+  - services/field-api/alembic/versions/field_0065_m5_claims.py
+  - services/field-api/src/field_api/claims/looks.py
+  tests:
+  - services/field-api/tests/claims/test_claims_api.py::test_rls_isolates_tenants_and_sites
+  - services/field-api/tests/claims/test_claims_api.py::test_one_claim_per_look_and_idempotent_replay
+  - services/field-api/tests/claims/test_look_port.py::test_a_body_column_gives_the_section_2_shape
+  - services/field-api/tests/claims/test_look_port.py::test_one_column_per_key_wins_over_the_body_and_fills_the_capture
+  - services/field-api/tests/claims/test_look_port.py::test_an_empty_row_is_an_empty_look
+  - services/field-api/tests/claims/test_look_port.py::test_the_database_port_answers_none_without_raising
+  frs: []
+  verified_at: null
+  note: >-
+    Migration field_0065 revises field_0062 until stream V lands; the integrator re-points it to V's field_0064
+    (contract section 5). It has no foreign key to V's tables (look_id, capture_id are plain uuids). One claim per
+    look (UNIQUE tenant_id, look_id). Look port ASSUMPTION, to be checked at the V -> X merge: the look is a row of
+    field.vision_look with id = look_id under tenant RLS, holding the section 2 body either as one jsonb column
+    body (or response) or as one column per top-level key (source, image, instances, counts, pack, expiry,
+    proposal, say, models, reasons), optionally task_id, line_id, capture_id; a missing table answers "no look".
+    The real port has only run against a database without V's table; every claim test uses the look double in
+    test code (tests/claims/conftest.py). Partial until V's table exists and the owner's device test passes.
+- id: M5-X02
+  title: >-
+    Claim lines computed deterministically from the look (damaged, expired, near_expiry, short, pack_size with
+    pieces), with the property that their totals equal the look's flagged units and pieces difference
+  workstream: M5-X
+  role: Stream X (claims and evidence)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/claims/lines.py
+  - tests/property/test_m5_claim_lines_property.py
+  tests:
+  - tests/property/test_m5_claim_lines_property.py::test_m5_x02_claim_line_totals_property
+  - tests/property/test_m5_claim_lines_property.py::test_m5_x02_template_numbers_property
+  - services/field-api/tests/claims/test_claims_api.py::test_pharmacy_look_claims_expired_and_near_expiry_boxes
+  frs: []
+  verified_at: null
+  note: >-
+    One reason per instance (damaged > expired > near_expiry > pack_size). Flagged units are claimed whole (pieces =
+    units x expected pieces per unit with a pack line, else 0); a pack with fewer pieces is claimed for the missing
+    pieces only, a pack with more is not claimed; short = expected - seen only when seen is known. Built against the
+    section 2 shape as written; V's real looks have not been seen yet.
+- id: M5-X03
+  title: >-
+    Claims API (POST /v1/claims, GET /v1/claims, GET /v1/claims/{id}, POST .../decision, POST .../confirm): Muse
+    draft through the budget guard with the local number check and template fallback, supervisor decision with
+    read-back, 10 s confirm by the same person, ETag / If-Match, simulated send
+  workstream: M5-X
+  role: Stream X (claims and evidence)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/claims/api.py
+  - services/field-api/src/field_api/claims/service.py
+  - services/field-api/src/field_api/claims/text.py
+  - services/field-api/src/field_api/auth/permissions.py
+  tests:
+  - services/field-api/tests/claims/test_claims_api.py::test_operator_creates_a_claim_with_lines_from_the_look_and_the_template_without_ai
+  - services/field-api/tests/claims/test_claims_api.py::test_muse_draft_is_used_when_every_number_matches
+  - services/field-api/tests/claims/test_claims_api.py::test_number_check_refuses_a_changed_number_and_the_template_is_used
+  - services/field-api/tests/claims/test_claims_api.py::test_number_check_refuses_an_added_number
+  - services/field-api/tests/claims/test_claims_api.py::test_model_failure_falls_back_to_the_template
+  - services/field-api/tests/claims/test_claims_api.py::test_unknown_look_and_nothing_to_claim
+  - services/field-api/tests/claims/test_claims_api.py::test_roles
+  - services/field-api/tests/claims/test_claims_api.py::test_approve_read_back_confirm_within_10_s_and_simulated_send
+  - services/field-api/tests/claims/test_claims_api.py::test_confirm_after_10_s_is_refused_and_the_claim_is_a_draft_again
+  - services/field-api/tests/claims/test_claims_api.py::test_reject_with_reason_sends_nothing
+  - services/field-api/tests/claims/test_claims_api.py::test_an_unconfirmed_decision_is_void_when_read_after_10_s
+  frs: []
+  verified_at: null
+  note: >-
+    New permissions field.claim.create (operator, supervisor), field.claim.read (operator, supervisor, inventory
+    controller), field.claim.decide (supervisor). Muse (purpose claim, CLAIM_MODEL_DEADLINE_S, default 4 s) sees the
+    template text only; every number must match it or the template is spoken. Muse Spark is UNVERIFIED here
+    (docs/META_FIELD.md rows 19-20: no key in the build sandbox); CI uses the recorded-response double. Sending to
+    the supplier is SIMULATED: one claim.sent outbox record (simulated true, channel none), no e-mail. Additions to
+    the contract response (look_id, task_id, site_id, decision fields, sent, version) are additive;
+    evidence_url is the JSON pack path of the posted receipt, an empty string until it is posted.
+- id: M5-X04
+  title: >-
+    Evidence pack GET /v1/evidence/documents/{doc_number}?year= assembled from erp_document, posting jobs, outbox
+    events, task lines, voice events, assistant turns, the claim and the look, with photo and pack sha256
+  workstream: M5-X
+  role: Stream X (claims and evidence)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/evidence/pack.py
+  - services/field-api/src/field_api/evidence/api.py
+  tests:
+  - services/field-api/tests/claims/test_evidence.py::test_pack_holds_document_look_models_check_confirm_claim_and_hashes
+  - services/field-api/tests/claims/test_evidence.py::test_pack_hash_is_stable_and_follows_the_content
+  - services/field-api/tests/claims/test_evidence.py::test_canonical_json_ignores_key_order
+  - services/field-api/tests/claims/test_evidence.py::test_pack_roles_tenants_and_unknown_documents
+  - services/field-api/tests/claims/test_evidence.py::test_pack_without_a_look_still_shows_the_document
+  frs: []
+  verified_at: null
+  note: >-
+    The look is found by erp_document.payload.look_id (ASSUMPTION: stream V's receive extension puts the look_id
+    there, as the voice gate puts its confirm fields) or else by the latest claim of the document's task. Movements
+    are the posting steps as staged for the ERP plus the erp.posted events (no read of erp-sim from field-api); the
+    101A / 101Q split shows as whatever V stages. Label raw text is left out of the pack (contract section 6).
+    Tested on records inserted the way Field writes them, not yet on a real V posting.
+- id: M5-X05
+  title: >-
+    Signed evidence link (POST /v1/evidence/documents/{doc}/link) and the self-contained evidence page
+    GET /evidence/{token} (embedded photo, numbered SVG outlines, SAMPLE banner, model calls, check, confirm, claim,
+    hashes)
+  workstream: M5-X
+  role: Stream X (claims and evidence)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/evidence/signing.py
+  - services/field-api/src/field_api/evidence/page.py
+  - tools/checks/route_auth.py
+  tests:
+  - services/field-api/tests/claims/test_evidence.py::test_signed_link_opens_a_self_contained_page
+  - services/field-api/tests/claims/test_evidence.py::test_link_tamper_expiry_and_other_tenant
+  - services/field-api/tests/claims/test_evidence.py::test_signing_round_trip_and_key
+  - services/field-api/tests/claims/test_evidence.py::test_page_escapes_every_value
+  frs: []
+  verified_at: null
+  note: >-
+    Token = base64url(JSON {v, t tenant, d doc, y year, e expiry}) + "." + hex HMAC-SHA256 with FIELD_EVIDENCE_SECRET
+    over a domain prefix + payload (the audit-report key, domain-separated); default 24 h (FIELD_EVIDENCE_LINK_TTL_S,
+    60 s..7 d). GET /evidence/{token} is listed in route_auth PUBLIC (the token is the credential). Page: no external
+    asset, CSP default-src 'none', photo as a data URI, outlines in image pixels. Not yet opened on the owner's phone.
+- id: M5-X06
+  title: >-
+    Claims by voice in the Field Assistant rules (no model call to classify): "make a claim" (operator, needs
+    client_state.look_id), "claims" / "next claim", "approve" / "reject", "confirm" (supervisor)
+  workstream: M5-X
+  role: Stream X (claims and evidence)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/assistant/rules.py
+  - services/field-api/src/field_api/claims/voice.py
+  - services/field-api/src/field_api/assistant/ports.py
+  tests:
+  - services/field-api/tests/claims/test_claims_voice.py::test_operator_makes_a_claim_after_a_look
+  - services/field-api/tests/claims/test_claims_voice.py::test_supervisor_reads_approves_and_confirms_by_voice
+  - services/field-api/tests/claims/test_claims_voice.py::test_voice_reject_with_reason_next_claim_and_late_confirm
+  - services/field-api/tests/claims/test_claims_voice.py::test_an_abandoned_decision_is_void_after_10_s
+  - services/field-api/tests/claims/test_claims_voice.py::test_claims_not_wired_in_a_build_without_the_port
+  frs: []
+  verified_at: null
+  note: >-
+    client_state gains an optional look_id (additive). "make a claim" creates the claim through the claims service,
+    which drafts with Muse like POST /v1/claims (one budget-guarded call within CLAIM_MODEL_DEADLINE_S) or the
+    template; the intent itself is rules-only. The claim dialog keeps the claim's version for If-Match; "confirm"
+    outside a claim_confirm dialog keeps its M3 answer. Every existing assistant test passes unchanged. Not yet
+    heard on the glasses.

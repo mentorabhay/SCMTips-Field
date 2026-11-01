@@ -21,6 +21,8 @@ PUBLIC: dict[tuple[str, str], str] = {
     ("POST", "/v1/auth/exchange"): "verifies the core token itself (it is the login)",
     ("GET", "/v1/devices/{device_id}/events"): "SSE: _authorise() verifies the access_token query/header",
     ("GET", "/v1/evidence/{id}"): "bearer principal OR HMAC-signed URL, checked in the handler",
+    ("GET", "/evidence/{token}"): "M5 evidence page: the HMAC-signed token (tenant, document, expiry) is verified"
+                                  " in the handler (evidence/signing.py); 401 otherwise",
 }
 AUTH_DEPS = ("require_principal", "require_permission")
 
