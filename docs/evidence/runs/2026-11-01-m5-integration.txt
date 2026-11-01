@@ -1,0 +1,425 @@
+M5 integration run (integrator, owner amendment A-06; docs/design/M5_CONTRACT.md §7) on the build sandbox (Linux
+container), 2026-11-01. Models: the dev stack's model stand-in (tools/dev_stack/model_standin.py, a dev double of the
+Meta Model API, NOT Meta); no key, no spend. ERP: erp-sim. No phone, no glasses: nothing here is proven on the owner's
+devices.
+
+Merged slice/m5-look: V (feat/m5-vision d1063b3) -> X (feat/m5-claims 5f68633) -> B (feat/m5-app ace87c2), then the
+integration fix-ups (migration chain, look port, claim etag, smoke --m5, stand-in claim draft). Sections 1 and 2 ran
+at 4bdb10c; section 3 at 9817892 (adds only the m5-cases options); section 4 is verify_all.
+
+== 1. Smokes on a fresh stack ==
+Worktree of 4bdb10c, fresh Postgres 16 on :5464 (new data directory), fresh var/ state, private ports field-api :8520,
+erp-sim :8502, fake-core :8511, model stand-in :8532:
+  uv run python -m tools.dev_stack.stack up --local-only --model-standin
+then the smokes in this order on the same stack:
+
+$ uv run python -m tools.dev_stack.stack smoke --m5 --wait 90
+paired: device 01a19527-7655-7389-862d-47dc4ecd44b3 (home), consent recorded
+m5 grocery  delivery 1935037530: look 01a19527-74be-7b89-89bc-01316929bdcc {'good': 18, 'seen': 20, 'damaged': 2, 'expected': 20} -> '20 of 20 packs. 2 damaged. 2 packs hold 10, not 12: 4 pieces short. Receive 18, flag 2?'
+         receive 18, flag 2, post, confirm -> GR 4900000101/2026 [('101A', '101', 18.0), ('101Q', '101', 2.0)], look linked
+         claim 01a19527-7e46-7c8c-8ba5-f6f0566564e3 draft (model): [{'reason': 'damaged', 'units': 2, 'pieces': 24}, {'reason': 'pack_size', 'units': 2, 'pieces': 4}]
+         supervisor smoke-m5-sup: approve -> 'Approve the claim for 2 damaged units (24 pieces); 2 packs hold fewer pieces: 4 pieces short? Say confirm within 10 seconds.' -> confirm -> approved ('Claim approved. Sending it to the supplier is simulated in this build.')
+         evidence /evidence/eyJkIjoiNDkwMD...: page 200 (SAMPLE, SVG outlines, hashes), pack: look, 5 model call(s) ['muse-spark-1.3', 'sam-3.1'], voice confirm, claim approved; photo sha256 c03e80cd6cb5..., pack sha256 878db92969c1...
+m5 pharmacy delivery 1935037551: look 01a19527-811d-7636-808e-3def7e1980af {'good': 7, 'seen': 10, 'damaged': 1, 'expected': 10} -> '10 of 10 boxes. 1 damaged. 1 expired. 1 expires within 90 days. 2 batches. Receive 7, flag 3?'
+         receive 7, flag 3, post, confirm -> GR 4900000102/2026 [('101A', '101', 7.0), ('101Q', '101', 3.0)], look linked
+         claim 01a19527-8665-7f24-82f0-b9db64e57e1e draft (model): [{'reason': 'damaged', 'units': 1, 'pieces': 0}, {'reason': 'expired', 'units': 1, 'pieces': 0}, {'reason': 'near_expiry', 'units': 1, 'pieces': 0}]
+         supervisor smoke-m5-sup: approve -> 'Approve the claim for 1 damaged unit; 1 expired unit; 1 unit expiring soon? Say confirm within 10 seconds.' -> confirm -> approved ('Claim approved. Sending it to the supplier is simulated in this build.')
+         evidence /evidence/eyJkIjoiNDkwMD...: page 200 (SAMPLE, SVG outlines, hashes), pack: look, 4 model call(s) ['muse-spark-1.3', 'sam-3.1'], voice confirm, claim approved; photo sha256 646df7b5cb30..., pack sha256 aeaae9b28c22...
+PASS: M5 end to end, 2 cases (C1 grocery: starter -> look -> receive 18 flag 2 -> 101A 18 + 101Q 2 -> claim damaged + pack size -> supervisor approve + confirm -> evidence page and pack; C2 pharmacy: app upload path -> look -> receive 7 flag 3 -> 101A 7 + 101Q 3 -> claim expired + near expiry + damaged -> approved -> evidence); models: the dev stack's model stand-in, not Meta
+exit 0
+
+$ uv run python -m tools.dev_stack.stack smoke --m5-look --wait 90
+paired: device 01a19527-892d-7a01-802b-04a7dd03cfed (home), consent recorded
+m5 grocery  delivery 1935037577: look 01a19527-86eb-7497-8710-9cf83d7ad2e0 {'good': 18, 'seen': 20, 'damaged': 2, 'expected': 20} -> '20 of 20 packs. 2 damaged. 2 packs hold 10, not 12: 4 pieces short. Receive 18, flag 2?'
+         receive 18, flag 2, post, confirm -> GR 4900000103/2026 [('101A', '101', 18.0), ('101Q', '101', 2.0)], look linked
+m5 pharmacy delivery 1935037594: look 01a19527-9117-761a-8d32-5682b0408d3c {'good': 7, 'seen': 10, 'damaged': 1, 'expected': 10} -> '10 of 10 boxes. 1 damaged. 1 expired. 1 expires within 90 days. 2 batches. Receive 7, flag 3?'
+         receive 7, flag 3, post, confirm -> GR 4900000104/2026 [('101A', '101', 7.0), ('101Q', '101', 3.0)], look linked
+PASS: M5 look, 2 cases (C1 grocery: receive 18 flag 2 -> 101A 18 + 101Q 2; C2 pharmacy: receive 7 flag 3 -> 101A 7 + 101Q 3), each look linked to its GR; models: the dev stack's model stand-in, not Meta
+exit 0
+
+$ uv run python -m tools.dev_stack.stack smoke --all --wait 90
+paired: device 01a19527-93d4-7fb1-8eac-7bc9ce8c7c82
+receive  task 'Delivery 1835037614' (2 items · 24 pieces) with 2 lines
+         erp.posted: GR 4900000105/2026 in erp-sim, movements [('SAMPLE-MAT-0045', '101', 15.0), ('SAMPLE-MAT-0039', '101', 9.0)]
+         task.assigned: 'Put away delivery 1835037614'
+putaway  task 'Put away delivery 1835037614' (Goods receipt 4900000105 · 2 items · 24 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-01-02.'
+         stored: SAMPLE-MAT-0045 x15 in 02-01-02, SAMPLE-MAT-0039 x9 in 02-02-01
+pick     task 'Pick delivery 8035037691' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000106 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000107 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 100.0, 90.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:29:44 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:29:44 [info     ] audit_task_generated           line_count=3 site_id=01a19527-ec41-7f60-829c-223632c554c2 snapshot_version=erp-2026-11-01T03:29Z#2ad2 task_id=e1be3e65-9a33-46bb-9cc7-f172cf30c302
+visit    checked in (e477e2d9-5fcc-4bfe-9b89-a9915c8ce619); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-971FB5'), ('Sector A · slot 2', 'RRU-SN-6874BA'), ('Sector A · slot 3', 'RRU-SN-1AA0FB')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 2 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-1AA0FB at Sector A · slot 3, install spare RRU-SN-AC01E9
+         erp.posted: change document 7000000002; erp-sim: RRU-SN-1AA0FB dismantled, RRU-SN-AC01E9 installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+
+$ uv run python -m tools.dev_stack.stack smoke --home --wait 90
+paired: device 01a19527-f93d-73da-8b54-dbceb199c762 (home), 01a19527-f984-7d8e-8508-36aa7b22d495 (warehouse)
+home     receipt 1935037874: barcode 2355140288475 -> new material HOME-0003
+         counted 3 (delivery said 1, soft pegging) -> GR 4900000109/2026, [('HOME-0003', '101', 3.0)], sandbox
+         production warehouse: 2355140288475 unknown, scan refused on delivery 1835037889, sandbox refused ('This is a production site. Only items the ERP already knows can be used here.')
+         count PID-20261101032959294449 of HOME-B: new box 2535178767532 -> HOME-0004, 4 counted -> 561 4900000110 [('HOME-0004', '561', 4.0)], sandbox
+PASS: home sandbox (receipt with a new barcode -> GR 101, production refusal, count -> 561)
+exit 0
+
+$ uv run python -m tools.dev_stack.stack smoke --core --wait 90
+core     signed in operator@demo.scmtips.test at the stand-in: kid scmtips-core-ed25519-standin-a5b556fc66be, permissions ['field.operate', 'evidence.upload']
+         exchanged at field-api: field device 01a19528-2eb1-78e3-8b7d-ffd43fac56b0 (core device smoke-core-de3c84cadf is active at the core)
+         GR 4900000111/2026 in erp-sim: SAMPLE-MAT-0047 21 against PO 4593503801 line 10
+         feeds: stock SAMPLE-MAT-0047@1010 on_hand 121 (= erp-sim) and PO 4593503801 received 21, both signed and verified by the stand-in; delivered once each
+         core revocation: the next exchange is refused (403)
+PASS: core link against the stand-in core (sign-in, exchange, device status, GR 101 -> two signed feed rows, revocation)
+exit 0
+
+$ uv run python -m tools.dev_stack.stack smoke --approver --wait 90
+approver signed in approver@demo.scmtips.test at the stand-in; field device 01a19528-64fd-7bf9-8399-608d5c456329, core permissions ['voice.approve', 'decision.read', 'evidence.upload']
+decision 5a3e0d00-0000-4000-8000-000000000001: 2 waiting, step-up True; brief from template (local:number_dropped:4, local:number_dropped:9, local:number_dropped:14, local:number_dropped:307, local:number_dropped:1200, local:number_dropped:18500, local:number_dropped:48000)
+         confirm before the phone step-up was held; wrong code refused; step-up accepted
+         'approve option two' -> read-back -> confirm: Approved: option B, Qualify alternate supplier. The recovery is on its way. (approval 8166f322-fca9-421f-a16f-629ba5805bb5)
+decision 5a3e0d00-0000-4000-8000-000000000002: 1 waiting, step-up False; brief from template (local:number_dropped:3, local:number_dropped:6, local:number_dropped:307, local:number_dropped:7800)
+         'approve option one' -> read-back -> confirm: Approved: option A, Raise buffer to 6 weeks. The recovery is on its way. (approval e413e592-f8d8-46a4-8f14-e1a28bf8d018)
+         nothing waiting; a decided decision refuses a new challenge (409)
+PASS: approver flow against the stand-in core (sign-in, exchange, spoken brief, voice approve, read-back, phone step-up, confirm, both decisions committed)
+exit 0
+
+== 2. smoke --all repeated on the same database (stream V saw "count within tolerance" fail on its third run) ==
+Same stack and database as section 1, after the six smokes above (so smoke --all runs 2, 3 and 4 on this database):
+
+$ uv run python -m tools.dev_stack.stack smoke --all --wait 90   # repetition 2 on the same database
+paired: device 01a19528-7c2d-7904-8b90-4ae2832cc98d
+receive  task 'Delivery 1835038198' (2 items · 32 pieces) with 2 lines
+         erp.posted: GR 4900000112/2026 in erp-sim, movements [('SAMPLE-MAT-0014', '101', 8.0), ('SAMPLE-MAT-0048', '101', 24.0)]
+         task.assigned: 'Put away delivery 1835038198'
+putaway  task 'Put away delivery 1835038198' (Goods receipt 4900000112 · 2 items · 32 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-03-05.'
+         stored: SAMPLE-MAT-0014 x8 in 02-03-05, SAMPLE-MAT-0048 x24 in 03-05-03
+pick     task 'Pick delivery 8035038245' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000113 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000114 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 90.0, 80.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:30:35 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:30:35 [info     ] audit_task_generated           line_count=3 site_id=01a19527-ec41-7f60-829c-223632c554c2 snapshot_version=erp-2026-11-01T03:30Z#393b task_id=ad9646ad-dcc2-414b-9fa8-e3bbe3de9b7e
+visit    checked in (5327003a-7c61-4ff0-bd26-3f99a5763416); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-971FB5'), ('Sector A · slot 2', 'RRU-SN-6874BA'), ('Sector A · slot 3', 'RRU-SN-AC01E9')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-AC01E9 at Sector A · slot 3, install spare RRU-SN-1AA0FB
+         erp.posted: change document 7000000004; erp-sim: RRU-SN-AC01E9 dismantled, RRU-SN-1AA0FB installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+
+$ uv run python -m tools.dev_stack.stack smoke --all --wait 90   # repetition 3 on the same database
+paired: device 01a19528-c50f-7e33-8445-ed5f9bf9fad9
+receive  task 'Delivery 1835038385' (2 items · 9 pieces) with 2 lines
+         erp.posted: GR 4900000116/2026 in erp-sim, movements [('SAMPLE-MAT-0045', '101', 5.0), ('SAMPLE-MAT-0027', '101', 4.0)]
+         task.assigned: 'Put away delivery 1835038385'
+putaway  task 'Put away delivery 1835038385' (Goods receipt 4900000116 · 2 items · 9 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-01-02.'
+         stored: SAMPLE-MAT-0045 x5 in 02-01-02, SAMPLE-MAT-0027 x4 in 03-06-01
+pick     task 'Pick delivery 8035038442' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000117 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000118 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 80.0, 70.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:30:57 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:30:57 [info     ] audit_task_generated           line_count=3 site_id=01a19527-ec41-7f60-829c-223632c554c2 snapshot_version=erp-2026-11-01T03:30Z#4def task_id=6b27814f-22a4-4c74-9600-b6c5ce371ac2
+visit    checked in (a3aee534-525e-415d-8eeb-975993b03475); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-971FB5'), ('Sector A · slot 2', 'RRU-SN-6874BA'), ('Sector A · slot 3', 'RRU-SN-1AA0FB')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-1AA0FB at Sector A · slot 3, install spare RRU-SN-AC01E9
+         erp.posted: change document 7000000006; erp-sim: RRU-SN-1AA0FB dismantled, RRU-SN-AC01E9 installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+
+$ uv run python -m tools.dev_stack.stack smoke --all --wait 90   # repetition 4 on the same database
+paired: device 01a19529-162c-7815-82a8-3dfe8106d0dc
+receive  task 'Delivery 1835038602' (2 items · 32 pieces) with 2 lines
+         erp.posted: GR 4900000120/2026 in erp-sim, movements [('SAMPLE-MAT-0021', '101', 18.0), ('SAMPLE-MAT-0013', '101', 14.0)]
+         task.assigned: 'Put away delivery 1835038602'
+putaway  task 'Put away delivery 1835038602' (Goods receipt 4900000120 · 2 items · 32 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 03-06-02.'
+         stored: SAMPLE-MAT-0021 x18 in 03-06-02, SAMPLE-MAT-0013 x14 in 03-07-01
+pick     task 'Pick delivery 8035038660' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000121 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000122 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 70.0, 60.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:31:18 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:31:19 [info     ] audit_task_generated           line_count=3 site_id=01a19527-ec41-7f60-829c-223632c554c2 snapshot_version=erp-2026-11-01T03:31Z#b851 task_id=05b7d4c4-328c-4da4-9dbe-1b52d48646b5
+visit    checked in (a9c450c3-65ee-48f9-8926-1dafc82fd850); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-971FB5'), ('Sector A · slot 2', 'RRU-SN-6874BA'), ('Sector A · slot 3', 'RRU-SN-AC01E9')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-AC01E9 at Sector A · slot 3, install spare RRU-SN-1AA0FB
+         erp.posted: change document 7000000008; erp-sim: RRU-SN-AC01E9 dismantled, RRU-SN-1AA0FB installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+
+Then a fresh Postgres :5464 and fresh stack of 4bdb10c again, smoke --all three times in a row and nothing else:
+
+$ smoke --all --wait 90   # fresh database, run 1
+paired: device 01a19529-c359-7dc3-87a5-4ee1e5c093ff
+receive  task 'Delivery 1835039036' (2 items · 26 pieces) with 2 lines
+         erp.posted: GR 4900000101/2026 in erp-sim, movements [('SAMPLE-MAT-0024', '101', 5.0), ('SAMPLE-MAT-0014', '101', 21.0)]
+         task.assigned: 'Put away delivery 1835039036'
+putaway  task 'Put away delivery 1835039036' (Goods receipt 4900000101 · 2 items · 26 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-01-02.'
+         stored: SAMPLE-MAT-0024 x5 in 02-01-02, SAMPLE-MAT-0014 x21 in 02-02-01
+pick     task 'Pick delivery 8035039153' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000102 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0024', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000103 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 100.0, 90.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:32:09 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:32:09 [info     ] audit_task_generated           line_count=3 site_id=01a1952a-2345-7ee0-8a7e-729628f0a0e3 snapshot_version=erp-2026-11-01T03:32Z#408c task_id=d341b5bd-9c85-43e1-b328-032790320ba9
+visit    checked in (5cb34e9d-7c31-4da1-9f86-e4da16dfb03b); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-3CA027'), ('Sector A · slot 2', 'RRU-SN-E1B546'), ('Sector A · slot 3', 'RRU-SN-D45A7D')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 2 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-D45A7D at Sector A · slot 3, install spare RRU-SN-4AF0F9
+         erp.posted: change document 7000000002; erp-sim: RRU-SN-D45A7D dismantled, RRU-SN-4AF0F9 installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+$ smoke --all --wait 90   # fresh database, run 2
+paired: device 01a1952a-3466-75d3-8370-cf79f46af84b
+receive  task 'Delivery 1835039325' (2 items · 31 pieces) with 2 lines
+         erp.posted: GR 4900000105/2026 in erp-sim, movements [('SAMPLE-MAT-0017', '101', 22.0), ('SAMPLE-MAT-0043', '101', 9.0)]
+         task.assigned: 'Put away delivery 1835039325'
+putaway  task 'Put away delivery 1835039325' (Goods receipt 4900000105 · 2 items · 31 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-02-02.'
+         stored: SAMPLE-MAT-0017 x22 in 02-02-02, SAMPLE-MAT-0043 x9 in 02-03-05
+pick     task 'Pick delivery 8035039362' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000106 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0024', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000107 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 90.0, 80.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:32:29 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:32:29 [info     ] audit_task_generated           line_count=3 site_id=01a1952a-2345-7ee0-8a7e-729628f0a0e3 snapshot_version=erp-2026-11-01T03:32Z#a2ae task_id=93f7e4ec-86eb-4082-8869-738a076d1d81
+visit    checked in (9306a483-3ed4-4c46-a198-20aaf203e5cb); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-3CA027'), ('Sector A · slot 2', 'RRU-SN-E1B546'), ('Sector A · slot 3', 'RRU-SN-4AF0F9')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-4AF0F9 at Sector A · slot 3, install spare RRU-SN-D45A7D
+         erp.posted: change document 7000000004; erp-sim: RRU-SN-4AF0F9 dismantled, RRU-SN-D45A7D installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+$ smoke --all --wait 90   # fresh database, run 3
+paired: device 01a1952a-8138-7bdb-8530-3c5630d98fdd
+receive  task 'Delivery 1835039532' (2 items · 22 pieces) with 2 lines
+         erp.posted: GR 4900000109/2026 in erp-sim, movements [('SAMPLE-MAT-0002', '101', 18.0), ('SAMPLE-MAT-0004', '101', 4.0)]
+         task.assigned: 'Put away delivery 1835039532'
+putaway  task 'Put away delivery 1835039532' (Goods receipt 4900000109 · 2 items · 22 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-03-04.'
+         stored: SAMPLE-MAT-0002 x18 in 02-03-04, SAMPLE-MAT-0004 x4 in 03-05-02
+pick     task 'Pick delivery 8035039569' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-02-01']
+         queued -> erp.posted: GI 4900000110 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0014', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000111 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 98.0, 88.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:32:52 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:32:52 [info     ] audit_task_generated           line_count=3 site_id=01a1952a-2345-7ee0-8a7e-729628f0a0e3 snapshot_version=erp-2026-11-01T03:32Z#e18b task_id=53ed0fad-3c9f-4b6c-b0ed-f5fdac71e8d4
+visit    checked in (f46b6430-90f8-44d2-a224-705afaffd537); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-3CA027'), ('Sector A · slot 2', 'RRU-SN-E1B546'), ('Sector A · slot 3', 'RRU-SN-D45A7D')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-D45A7D at Sector A · slot 3, install spare RRU-SN-4AF0F9
+         erp.posted: change document 7000000006; erp-sim: RRU-SN-D45A7D dismantled, RRU-SN-4AF0F9 installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+
+Base commit fd5726d (slice/m5-look before the three streams), separate worktree, its own venv, fresh Postgres 16 on
+:5463, private ports field-api :8620, erp-sim :8602, fake-core :8611 (stack up --local-only), smoke --all six times
+on the same database:
+
+$ smoke --all --wait 90   # base fd5726d, fresh database :5463, run 1
+paired: device 01a1952b-344d-7edc-8339-16cd2f416496
+receive  task 'Delivery 1835039990' (2 items · 32 pieces) with 2 lines
+         erp.posted: GR 4900000101/2026 in erp-sim, movements [('SAMPLE-MAT-0045', '101', 24.0), ('SAMPLE-MAT-0037', '101', 8.0)]
+         task.assigned: 'Put away delivery 1835039990'
+putaway  task 'Put away delivery 1835039990' (Goods receipt 4900000101 · 2 items · 32 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-01-02.'
+         stored: SAMPLE-MAT-0045 x24 in 02-01-02, SAMPLE-MAT-0037 x8 in 02-02-01
+pick     task 'Pick delivery 8035040109' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000102 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000103 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 100.0, 90.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:33:43 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:33:43 [info     ] audit_task_generated           line_count=3 site_id=01a1952b-9847-7575-8527-f981e559be5a snapshot_version=erp-2026-11-01T03:33Z#4d2f task_id=9137380d-afde-4c52-803e-d28ac10f77d5
+visit    checked in (deaf11a5-7d12-48d0-b784-75a1b07f4ad3); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-9C4B50'), ('Sector A · slot 2', 'RRU-SN-30C7E5'), ('Sector A · slot 3', 'RRU-SN-D873AE')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 2 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-D873AE at Sector A · slot 3, install spare RRU-SN-BAF918
+         erp.posted: change document 7000000002; erp-sim: RRU-SN-D873AE dismantled, RRU-SN-BAF918 installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+$ smoke --all --wait 90   # base fd5726d, fresh database :5463, run 2
+paired: device 01a1952b-a55b-7a40-8a17-eaaf700e9b95
+receive  task 'Delivery 1835040270' (2 items · 26 pieces) with 2 lines
+         erp.posted: GR 4900000105/2026 in erp-sim, movements [('SAMPLE-MAT-0022', '101', 23.0), ('SAMPLE-MAT-0011', '101', 3.0)]
+         task.assigned: 'Put away delivery 1835040270'
+putaway  task 'Put away delivery 1835040270' (Goods receipt 4900000105 · 2 items · 26 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-02-02.'
+         stored: SAMPLE-MAT-0022 x23 in 02-02-02, SAMPLE-MAT-0011 x3 in 02-03-05
+pick     task 'Pick delivery 8035040306' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000106 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000107 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 90.0, 80.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:34:06 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:34:06 [info     ] audit_task_generated           line_count=3 site_id=01a1952b-9847-7575-8527-f981e559be5a snapshot_version=erp-2026-11-01T03:34Z#4589 task_id=7f00598b-dd14-4ab4-8dce-eccd7981e343
+visit    checked in (15756e9c-1cc8-44da-9aa3-8c54f0b97e00); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-9C4B50'), ('Sector A · slot 2', 'RRU-SN-30C7E5'), ('Sector A · slot 3', 'RRU-SN-BAF918')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-BAF918 at Sector A · slot 3, install spare RRU-SN-D873AE
+         erp.posted: change document 7000000004; erp-sim: RRU-SN-BAF918 dismantled, RRU-SN-D873AE installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+$ smoke --all --wait 90   # base fd5726d, fresh database :5463, run 3
+paired: device 01a1952b-feff-716a-810a-622d5494663d
+receive  task 'Delivery 1835040499' (2 items · 13 pieces) with 2 lines
+         erp.posted: GR 4900000109/2026 in erp-sim, movements [('SAMPLE-MAT-0002', '101', 7.0), ('SAMPLE-MAT-0016', '101', 6.0)]
+         task.assigned: 'Put away delivery 1835040499'
+putaway  task 'Put away delivery 1835040499' (Goods receipt 4900000109 · 2 items · 13 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-03-04.'
+         stored: SAMPLE-MAT-0002 x7 in 02-03-04, SAMPLE-MAT-0016 x6 in 03-05-03
+pick     task 'Pick delivery 8035040546' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000110 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000111 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 87.0, 77.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:34:25 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:34:25 [info     ] audit_task_generated           line_count=3 site_id=01a1952b-9847-7575-8527-f981e559be5a snapshot_version=erp-2026-11-01T03:34Z#803e task_id=defae4d1-7018-4087-a8fb-ba38a10a0af7
+visit    checked in (975f2aed-28e5-422d-b150-fc6008927c7c); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-9C4B50'), ('Sector A · slot 2', 'RRU-SN-30C7E5'), ('Sector A · slot 3', 'RRU-SN-D873AE')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-D873AE at Sector A · slot 3, install spare RRU-SN-BAF918
+         erp.posted: change document 7000000006; erp-sim: RRU-SN-D873AE dismantled, RRU-SN-BAF918 installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+$ smoke --all --wait 90   # base fd5726d, same database :5463, run 4
+paired: device 01a1952c-6bc0-7d96-8896-8abaf457d3d7
+receive  task 'Delivery 1835040778' (2 items · 23 pieces) with 2 lines
+         erp.posted: GR 4900000113/2026 in erp-sim, movements [('SAMPLE-MAT-0038', '101', 8.0), ('SAMPLE-MAT-0050', '101', 15.0)]
+         task.assigned: 'Put away delivery 1835040778'
+putaway  task 'Put away delivery 1835040778' (Goods receipt 4900000113 · 2 items · 23 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 03-06-01.'
+         stored: SAMPLE-MAT-0038 x8 in 03-06-01, SAMPLE-MAT-0050 x15 in 03-06-02
+pick     task 'Pick delivery 8035040834' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000114 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000115 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 77.0, 67.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:34:58 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:34:58 [info     ] audit_task_generated           line_count=3 site_id=01a1952b-9847-7575-8527-f981e559be5a snapshot_version=erp-2026-11-01T03:34Z#07e9 task_id=3e811935-464e-4fbe-8501-686860554ec8
+visit    checked in (c6a9bd86-223b-4648-a443-c28367e9f90a); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-9C4B50'), ('Sector A · slot 2', 'RRU-SN-30C7E5'), ('Sector A · slot 3', 'RRU-SN-BAF918')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-BAF918 at Sector A · slot 3, install spare RRU-SN-D873AE
+         erp.posted: change document 7000000008; erp-sim: RRU-SN-BAF918 dismantled, RRU-SN-D873AE installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+$ smoke --all --wait 90   # base fd5726d, same database :5463, run 5
+paired: device 01a1952c-c466-78f6-8f64-b30f192492e9
+receive  task 'Delivery 1835041015' (2 items · 24 pieces) with 2 lines
+         erp.posted: GR 4900000117/2026 in erp-sim, movements [('SAMPLE-MAT-0015', '101', 14.0), ('SAMPLE-MAT-0001', '101', 10.0)]
+         task.assigned: 'Put away delivery 1835041015'
+putaway  task 'Put away delivery 1835041015' (Goods receipt 4900000117 · 2 items · 24 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 03-07-01.'
+         stored: SAMPLE-MAT-0015 x14 in 03-07-01, SAMPLE-MAT-0001 x10 in 02-01-01
+pick     task 'Pick delivery 8035041051' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000118 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000119 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0002', 67.0, 57.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:35:19 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:35:19 [info     ] audit_task_generated           line_count=3 site_id=01a1952b-9847-7575-8527-f981e559be5a snapshot_version=erp-2026-11-01T03:35Z#3dbf task_id=e0c9fabb-0e48-456a-bdee-404c54f472fd
+visit    checked in (92480660-a0ab-4937-8eb2-97c78bd57427); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-9C4B50'), ('Sector A · slot 2', 'RRU-SN-30C7E5'), ('Sector A · slot 3', 'RRU-SN-D873AE')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-D873AE at Sector A · slot 3, install spare RRU-SN-BAF918
+         erp.posted: change document 7000000010; erp-sim: RRU-SN-D873AE dismantled, RRU-SN-BAF918 installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+$ smoke --all --wait 90   # base fd5726d, same database :5463, run 6
+paired: device 01a1952d-1c00-7ff6-8592-41d695aa7054
+receive  task 'Delivery 1835041229' (2 items · 26 pieces) with 2 lines
+         erp.posted: GR 4900000121/2026 in erp-sim, movements [('SAMPLE-MAT-0048', '101', 9.0), ('SAMPLE-MAT-0041', '101', 17.0)]
+         task.assigned: 'Put away delivery 1835041229'
+putaway  task 'Put away delivery 1835041229' (Goods receipt 4900000121 · 2 items · 26 pieces)
+         wrong bin refused: 'That is bin 02-01-01. Go to 02-03-05.'
+         stored: SAMPLE-MAT-0048 x9 in 02-03-05, SAMPLE-MAT-0041 x17 in 02-03-05
+pick     task 'Pick delivery 8035041265' (For SAMPLE-CUSTOMER-01 · 2 stops · 6 pieces), stops ['02-01-01', '02-01-02']
+         queued -> erp.posted: GI 4900000122 (601) [('SAMPLE-MAT-0001', '601', 3.0), ('SAMPLE-MAT-0045', '601', 2.0)]; one stop short
+count    'Count bin 02-01-01' blind, 1 short (within tolerance) -> erp.posted: 4900000123 [('SAMPLE-MAT-0001', '702', 1.0)]
+         10 short (beyond tolerance) -> awaiting_approval; console sees pi_variance lines [('SAMPLE-MAT-0003', 100.0, 90.0)]
+         recount by a second operator ('Requested by an exception case: count differed from the books') -> approved -> 702 of 10 posted in erp-sim
+2026-11-01 03:35:39 [info     ] fl_import.read_complete        count=7 prefix=SAMPLE-TWR-0001
+2026-11-01 03:35:39 [info     ] audit_task_generated           line_count=3 site_id=01a1952b-9847-7575-8527-f981e559be5a snapshot_version=erp-2026-11-01T03:35Z#36b8 task_id=b72cc681-6a1b-4aca-94d1-7cc0c1de052b
+visit    checked in (37c28d48-250c-4c94-b89c-b1b3fe922391); harness, climb-safe, checkpoint level 1, safety heartbeat
+audit    'Sector A audit' (SAMPLE-TWR-0001 · 3 units): [('Sector A · slot 1', 'RRU-SN-9C4B50'), ('Sector A · slot 2', 'RRU-SN-30C7E5'), ('Sector A · slot 3', 'RRU-SN-BAF918')]
+         completed: {'matched': 1, 'serial_mismatch': 1, 'tower_only': 0, 'erp_only': 1, 'misplaced': 0, 'completeness': 0.333}; console mismatch queue has 3 open finding(s)
+         climb-safe released, checked out
+swap     'Swap RRU at Sector A · slot 3': remove RRU-SN-BAF918 at Sector A · slot 3, install spare RRU-SN-D873AE
+         erp.posted: change document 7000000012; erp-sim: RRU-SN-BAF918 dismantled, RRU-SN-D873AE installed at SAMPLE-TWR-0001-A-S3
+PASS: 6 job types end to end (receive, putaway, pick, count + recount, audit, swap)
+exit 0
+
+Finding: the failure stream V saw (field bin stock 90 vs erp-sim 100 at "count within tolerance") was reproduced
+neither on the merged M5 commit (7 runs: 4 on one database after every other smoke, 3 on a fresh one) nor on the base
+fd5726d (6 runs on one database). Not attributable to M5 on this evidence; no change made. If it comes back, the
+smoke's count step reads erp-sim's material stock (erp_stock) and counts that minus 1 in one bin; any stock of that
+material outside the bin (a putaway or pick from an earlier run still in flight) makes the count look 10 off.
+
+== 3. Final code: smoke --m5 and m5-cases with the device-test options ==
+Fresh Postgres :5464 and fresh stack (up --local-only --model-standin) of 9817892, same private ports:
+
+$ uv run python -m tools.dev_stack.stack smoke --m5 --wait 90
+paired: device 01a19537-6abc-733e-8de8-47052e1e6910 (home), consent recorded
+m5 grocery  delivery 1935047995: look 01a19537-70c9-787c-8267-d18d4936a0e2 {'good': 18, 'seen': 20, 'damaged': 2, 'expected': 20} -> '20 of 20 packs. 2 damaged. 2 packs hold 10, not 12: 4 pieces short. Receive 18, flag 2?'
+         receive 18, flag 2, post, confirm -> GR 4900000101/2026 [('101A', '101', 18.0), ('101Q', '101', 2.0)], look linked
+         claim 01a19537-7233-7b4d-8fec-7c3afe9e21d6 draft (model): [{'reason': 'damaged', 'units': 2, 'pieces': 24}, {'reason': 'pack_size', 'units': 2, 'pieces': 4}]
+         supervisor smoke-m5-sup: approve -> 'Approve the claim for 2 damaged units (24 pieces); 2 packs hold fewer pieces: 4 pieces short? Say confirm within 10 seconds.' -> confirm -> approved ('Claim approved. Sending it to the supplier is simulated in this build.')
+         evidence /evidence/eyJkIjoiNDkwMD...: page 200 (SAMPLE, SVG outlines, hashes), pack: look, 5 model call(s) ['muse-spark-1.3', 'sam-3.1'], voice confirm, claim approved; photo sha256 c03e80cd6cb5..., pack sha256 eec2fadc552d...
+m5 pharmacy delivery 1935048016: look 01a19537-785c-7f61-8667-b1a70b583f89 {'good': 7, 'seen': 10, 'damaged': 1, 'expected': 10} -> '10 of 10 boxes. 1 damaged. 1 expired. 1 expires within 90 days. 2 batches. Receive 7, flag 3?'
+         receive 7, flag 3, post, confirm -> GR 4900000102/2026 [('101A', '101', 7.0), ('101Q', '101', 3.0)], look linked
+         claim 01a19537-79d4-75f6-86e3-3199892803cf draft (model): [{'reason': 'damaged', 'units': 1, 'pieces': 0}, {'reason': 'expired', 'units': 1, 'pieces': 0}, {'reason': 'near_expiry', 'units': 1, 'pieces': 0}]
+         supervisor smoke-m5-sup: approve -> 'Approve the claim for 1 damaged unit; 1 expired unit; 1 unit expiring soon? Say confirm within 10 seconds.' -> confirm -> approved ('Claim approved. Sending it to the supplier is simulated in this build.')
+         evidence /evidence/eyJkIjoiNDkwMD...: page 200 (SAMPLE, SVG outlines, hashes), pack: look, 4 model call(s) ['muse-spark-1.3', 'sam-3.1'], voice confirm, claim approved; photo sha256 646df7b5cb30..., pack sha256 ffb0957b19af...
+PASS: M5 end to end, 2 cases (C1 grocery: starter -> look -> receive 18 flag 2 -> 101A 18 + 101Q 2 -> claim damaged + pack size -> supervisor approve + confirm -> evidence page and pack; C2 pharmacy: app upload path -> look -> receive 7 flag 3 -> 101A 7 + 101Q 3 -> claim expired + near expiry + damaged -> approved -> evidence); models: the dev stack's model stand-in, not Meta
+exit 0
+
+$ uv run python -m tools.dev_stack.stack m5-cases --reset --c1-units 8 --c1-pieces 6 --c2-units 5
+reset: 0 open case receipt(s) cancelled
+grocery: receipt 1935048039 created
+pharmacy: receipt 1935048040 created
+  grocery: delivery 1935048039 (task 01a19537-8059-7710-8bc9-7997c54cfa62): 8 packs, 6 pieces each
+  pharmacy: delivery 1935048040 (task 01a19537-7ccd-7121-8d55-8148400653bd): 5 boxes, expiry window 90 days
+labels: var/m5_cases.html
+On the phone (paired with `stack pair --home`): say "new grocery delivery" / "new pharmacy delivery" for another one, or open these receipts; lay the items out in one layer and say look.
+exit 0
+
+$ uv run python -m tools.dev_stack.stack m5-cases
+grocery: open receipt 1935048039 reused (--reset makes a new one)
+pharmacy: open receipt 1935048040 reused (--reset makes a new one)
+  grocery: delivery 1935048039 (task 01a19537-8059-7710-8bc9-7997c54cfa62): 8 packs, 6 pieces each
+  pharmacy: delivery 1935048040 (task 01a19537-7ccd-7121-8d55-8148400653bd): 5 boxes, expiry window 90 days
+labels: var/m5_cases.html
+On the phone (paired with `stack pair --home`): say "new grocery delivery" / "new pharmacy delivery" for another one, or open these receipts; lay the items out in one layer and say look.
+exit 0
+

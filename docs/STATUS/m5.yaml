@@ -168,6 +168,8 @@
     (UNVERIFIED): it would split the delivery item per storage location or receive into quality inspection stock;
     the S/4 adapter still posts no goods receipt at all. Flagged units are not put away. Without look_id and
     flag_qty the M4 request, staging and jobs are unchanged (the M2/M3/M4 receive tests pass unchanged).
+    Integrator (2026-11-01): the app's count and post bodies (stream B, JobRequests) match these fields; smoke --m5
+    posts both cases through them on a fresh stack (docs/evidence/runs/2026-11-01-m5-integration.txt).
 - id: M5-V07
   title: >-
     The two test cases (contract §1): POST /v1/sandbox/cases creates a grocery delivery (units, pieces per unit) or
@@ -233,6 +235,13 @@
     private stack (run log in evidence): C1 receive 18 flag 2 -> GR with 101A 18 and 101Q 2, C2 receive 7 flag 3 ->
     101A 7 and 101Q 3, both looks linked; smoke --home and --all passed on the same stack. Says nothing about the real
     models; the claim and evidence steps of the full `smoke --m5` belong to stream X and the integrator.
+    Integrator (2026-11-01): `smoke --m5` (tools/dev_stack/m5.py) runs both cases end to end on the stand-in stack:
+    C1 started by the app's Today starter (POST /v1/sandbox/receipts {site_id, case}), C2 photo through the app's
+    upload session, then claim -> supervisor (another principal) approve with the list item's etag as If-Match ->
+    confirm -> approved -> evidence link -> signed page (SAMPLE banner, outlines SVG, photo and pack hashes) and JSON
+    pack (look, model calls, voice confirm, approved claim). The stand-in also answers a claim draft with the facts
+    as given, so the claim's model path and number check are exercised (source model). Run log
+    docs/evidence/runs/2026-11-01-m5-integration.txt. Still the stand-in, not Meta.
 - id: M5-V09
   title: >-
     Gate 0 probe tools/probes/m5_gate0.py for the owner's PC: G0-1 Muse Spark 1.3 image read and G0-2 SAM 3.1
@@ -385,6 +394,10 @@
     are the posting steps as staged for the ERP plus the erp.posted events (no read of erp-sim from field-api); the
     101A / 101Q split shows as whatever V stages. Label raw text is left out of the pack (contract section 6).
     Tested on records inserted the way Field writes them, not yet on a real V posting.
+    Integrator (2026-11-01): V's receive extension does put look_id in erp_document.payload; the pack was read for
+    two real stand-in postings (C1, C2) by smoke --m5: look, counts, instances, model calls (sam-3.1, muse-spark-1.3),
+    voice confirm words, the approved claim and photo_sha256 (verified) all present, and on a real field.vision_look
+    row in tests/claims/test_look_port.py.
 - id: M5-X05
   title: >-
     Signed evidence link (POST /v1/evidence/documents/{doc}/link) and the self-contained evidence page
@@ -409,6 +422,8 @@
     over a domain prefix + payload (the audit-report key, domain-separated); default 24 h (FIELD_EVIDENCE_LINK_TTL_S,
     60 s..7 d). GET /evidence/{token} is listed in route_auth PUBLIC (the token is the credential). Page: no external
     asset, CSP default-src 'none', photo as a data URI, outlines in image pixels. Not yet opened on the owner's phone.
+    Integrator (2026-11-01): the signed page of both stand-in postings answered 200 with the SAMPLE banner, one SVG
+    rect per instance, the photo sha256 and the pack sha256 (smoke --m5). Still not opened on the owner's phone.
 - id: M5-X06
   title: >-
     Claims by voice in the Field Assistant rules (no model call to classify): "make a claim" (operator, needs
@@ -514,6 +529,10 @@
     erp.posted carried doc_year or year) answering {url, path, expires_at}; url is opened in an in-app WebView
     (platform android.webkit, JavaScript off). A claim's evidence_url (the authenticated JSON path) is never opened. Numbers said as words parse through core-voice's NumberWordParser. Nothing ran on
     the phone or the glasses.
+    Integrator (2026-11-01): checked against the merged server: count-records and post-requests take exactly these
+    fields (stream V), the evidence link answers {url, path, expires_at} and erp.posted's device tick carries
+    doc_number and doc_year (field-worker posting/queue.py), so the app's evidence call has its year. The server
+    side of this flow passed smoke --m5; the app itself has not run against it.
 - id: M5-B03
   title: >-
     Supervisor claims by voice: "claims" / "next claim" reads each draft, "approve" / "reject [reason]" → the server's
@@ -554,6 +573,9 @@
     the server's: operators may list (field.claim.read), so the Today card hides after a decision answers 403, or when
     the list answers 403/404. Coded against a scripted field-api; stream X's routes were not called. Nothing ran on the
     phone or the glasses.
+    Integrator (2026-11-01): the ASSUMPTION holds (GET /v1/claims/{id} answers the ETag header), and every claim body,
+    list items included, now carries etag (additive, M5-X03), so the review sends If-Match without a GET per claim.
+    smoke --m5 took If-Match from the draft list item and the decision's ETag for the confirm.
 - id: M5-B04
   title: >-
     The two cases on a sandbox site's Today ("New grocery delivery", "New pharmacy delivery", also by voice), each with
@@ -581,6 +603,8 @@
     read 201 {task_id, ref_doc_no} like the M3 home receipt; a 404 or 422 (a field-api before stream V) is "not
     available yet" with a clear message, never a crash. The case's intro asks for a look instead of a scan. Without the
     M5 port the conductor routes exactly as in M4 (pinned). Nothing ran on the phone or the glasses.
+    Integrator (2026-11-01): the ASSUMPTION holds: POST /v1/sandbox/receipts {site_id, case} answers 201
+    {task_id, ref_doc_no} (stream V); smoke --m5 starts C1 that way.
 - id: M5-B05
   title: >-
     Me → Test glasses camera (the owner's Gate 0 probe G0-5): one photo through the Meta toolkit, its size and delay;
@@ -639,3 +663,36 @@
     and the log say which camera was used. No new dependency coordinate: FileProvider is androidx.core (core-ktx),
     the WebView and the face finder are platform APIs. Lint, the manifest merge and the APK are proven only by the
     Gradle build in CI. Nothing ran on the owner's phone or the glasses.
+- id: M5-I01
+  title: >-
+    M5 integration: streams V, X and B merged into slice/m5-look, migration chain field_0062 -> field_0064_m5_vision
+    -> field_0065, X's look port on V's vision service, claim etag, `smoke --m5` end to end on the model stand-in,
+    every gate and smoke on a fresh stack
+  workstream: M5
+  role: Integrator (lead session)
+  status: partial
+  evidence:
+  - docs/evidence/runs/2026-11-01-m5-integration.txt
+  - tools/dev_stack/m5.py
+  - services/field-api/alembic/versions/field_0065_m5_claims.py
+  - services/field-api/src/field_api/claims/looks.py
+  - docs/SETUP/M5_DEVICE_TEST.md
+  tests:
+  - services/field-api/tests/claims/test_look_port.py::test_the_database_port_reads_a_real_vision_look_under_rls
+  - services/field-api/tests/claims/test_look_port.py::test_a_claim_and_the_evidence_pack_on_a_real_vision_look
+  - services/field-api/tests/claims/test_claims_api.py::test_list_items_carry_the_etag_the_decision_accepts
+  - tools/dev_stack/tests/test_m5.py::test_m5_v07_case_labels_and_commands
+  - tools/dev_stack/tests/test_m5.py::test_m5_v08_standin_drafts_a_claim_that_keeps_every_number
+  frs: []
+  verified_at: null
+  note: >-
+    Run log docs/evidence/runs/2026-11-01-m5-integration.txt (no secrets): on a fresh Postgres and stack with the
+    model stand-in, smoke --m5, --m5-look, --all, --home, --core and --approver PASS; smoke --all repeated on one
+    database (4 runs) and on a fresh one (3 runs) PASS on the merged commit, and 6 runs PASS on the base fd5726d, so
+    stream V's one-off "count within tolerance" failure was not reproduced and nothing was changed for it.
+    verify_all: every job PASS except semgrep (rules download blocked by the sandbox proxy), trivy (not installed)
+    and field-android (no Gradle distribution / Android SDK), which CI runs. Open, not fixed here: a close look
+    (asked for when labels are too small in the 640 px photo) is a new look of its own; its label read is not merged
+    into the first look's count, and post / claim use the look the app holds last (see M5_DEVICE_TEST.md). Partial
+    until CI is green on the mirror and the owner's device test of both cases passes on the real Meta API, the
+    phone and the glasses.
