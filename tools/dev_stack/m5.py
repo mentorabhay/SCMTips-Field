@@ -146,6 +146,14 @@ def case_sections(cases: dict[str, dict[str, Any]]) -> list[tuple[str, list[tupl
     return out
 
 
+def case_options(a: Any, case: str) -> dict[str, int]:
+    """`m5-cases --c1-units 8 --c1-pieces 6 --c2-units 5`: what the delivery expects, to match the items on the table
+    (POST /v1/sandbox/cases units / pieces_per_unit); unset options keep the case defaults."""
+    want = {"grocery": (("units", "c1_units"), ("pieces_per_unit", "c1_pieces")),
+            "pharmacy": (("units", "c2_units"),)}[case]
+    return {key: int(v) for key, attr in want if (v := getattr(a, attr, None)) is not None}
+
+
 def cmd_m5_cases(a: Any) -> int:
     s = _stack()
     s.load_env()
@@ -162,7 +170,7 @@ def cmd_m5_cases(a: Any) -> int:
         if case in cases:
             print(f"{case}: open receipt {cases[case]['ref_doc_no']} reused (--reset makes a new one)")
             continue
-        cases[case] = create_case(token, state["home_site"], case)
+        cases[case] = create_case(token, state["home_site"], case, **case_options(a, case))
         print(f"{case}: receipt {cases[case]['ref_doc_no']} created")
     from field_api.vision.reconcile import plural
 

@@ -189,6 +189,7 @@
   - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_grocery_case_look_post_18_good_2_flagged
   - tests/e2e/test_m5_vision_post_e2e.py::test_m5_v06_pharmacy_case_and_a_look_is_posted_once
   - tools/dev_stack/tests/test_m5.py::test_m5_v07_case_labels_and_commands
+  - tools/dev_stack/tests/test_m5.py::test_m5_cases_options_set_what_the_delivery_expects
   - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_case_intents
   - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_voice_starters_create_and_open_the_case
   - services/field-api/tests/assistant/test_assistant_m5_cases.py::test_m5_v07_production_site_and_unwired_build_refuse
@@ -203,6 +204,8 @@
     --reset cancels and remakes them), adds 101A and 101Q to plant HOME and the home site, and writes
     var/m5_cases.html with the delivery numbers and product labels as QR codes; run three times on the build
     sandbox's private stack (create, reuse, reset). Not yet run with real products, the phone or the glasses.
+    Integrator (2026-11-01): m5-cases --c1-units N --c1-pieces N --c2-units N sets what each delivery expects, so the
+    owner's receipts match the items on the table (docs/SETUP/M5_DEVICE_TEST.md); unset options keep the defaults.
 - id: M5-V08
   title: >-
     stack smoke --m5-look on the stand-in stack: both cases (look -> proposal -> post good + flagged -> 101A and 101Q

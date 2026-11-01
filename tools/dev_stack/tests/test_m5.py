@@ -120,3 +120,13 @@ def test_m5_v08_standin_drafts_a_claim_that_keeps_every_number() -> None:
     r = api.post("/v1/chat/completions", json={"model": "muse-spark-1.3", "messages": [
         {"role": "user", "content": facts}]})
     assert json.loads(r.json()["choices"][0]["message"]["content"])["say"].startswith("The model stand-in")
+
+
+def test_m5_cases_options_set_what_the_delivery_expects() -> None:
+    """`m5-cases --c1-units 8 --c1-pieces 6 --c2-units 5` (integrator, for the owner's device test sheet)."""
+    from types import SimpleNamespace
+
+    a = SimpleNamespace(c1_units=8, c1_pieces=6, c2_units=5)
+    assert m5.case_options(a, "grocery") == {"units": 8, "pieces_per_unit": 6}
+    assert m5.case_options(a, "pharmacy") == {"units": 5}
+    assert m5.case_options(SimpleNamespace(c1_units=None, c1_pieces=None, c2_units=None), "grocery") == {}

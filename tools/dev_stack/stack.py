@@ -2386,6 +2386,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("assistant-check", help="one real Field Assistant model call through the budget guard (track A)")
     m5 = sub.add_parser("m5-cases", help="M5: C1 grocery + C2 pharmacy receipts on the home sandbox site + labels")
     m5.add_argument("--reset", action="store_true", help="cancel the open case receipts and make new ones")
+    m5.add_argument("--c1-units", type=int, metavar="N", help="C1 grocery: packs expected (default 20)")
+    m5.add_argument("--c1-pieces", type=int, metavar="N", help="C1 grocery: pieces in each pack (default 12)")
+    m5.add_argument("--c2-units", type=int, metavar="N", help="C2 pharmacy: boxes expected (default 10)")
     a = ap.parse_args(argv)
     return {"up": cmd_up, "down": cmd_down, "status": cmd_status, "pair": cmd_pair, "smoke": cmd_smoke,
             "delivery": cmd_delivery, "outbound": cmd_outbound, "count": cmd_count, "tower": cmd_tower,
