@@ -250,3 +250,19 @@ def test_an_unconfirmed_decision_is_void_when_read_after_10_s(client: TestClient
     assert got.json()["status"] == "draft" and got.headers["ETag"] != r.headers["ETag"]
     assert client.post(f"/v1/claims/{cid}/confirm", headers=h.auth(env["sup"], **{"If-Match": r.headers["ETag"]})
                        ).status_code == 412  # the old decision's ETag is stale
+
+
+def test_list_items_carry_the_etag_the_decision_accepts(client: TestClient, env: dict[str, Any], h: SimpleNamespace,
+                                                         ai_off: None) -> None:
+    """The phone (stream B) takes If-Match from the draft list item's ``etag`` (additive, integrator 2026-11-01)."""
+    created = _create(client, h, env["op"], env["look"])
+    cid = created.json()["claim_id"]
+    assert created.json()["etag"] == created.headers["ETag"]
+    drafts = client.get("/v1/claims", params={"status": "draft"}, headers=h.auth(env["sup"])).json()["items"]
+    item = next(x for x in drafts if x["claim_id"] == cid)
+    assert item["etag"] == _etag(client, h, env["sup"], cid)
+    r = client.post(f"/v1/claims/{cid}/decision", json={"decision": "approve"},
+                    headers=h.auth(env["sup"], **{"If-Match": item["etag"]}))
+    assert r.status_code == 200, r.text
+    pending = client.get(f"/v1/claims/{cid}", headers=h.auth(env["sup"]))
+    assert pending.json()["etag"] == r.headers["ETag"] == pending.headers["ETag"] != item["etag"]

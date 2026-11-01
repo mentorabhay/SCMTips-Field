@@ -128,6 +128,7 @@ def view(row: dict[str, Any], doc: tuple[str, str] | None) -> dict[str, Any]:
         "confirmed_by": row["confirmed_by"], "confirmed_at": _iso(row["confirmed_at"]),
         "confirm_words": row["confirm_words"], "sent": row["sent_outbox_id"] is not None,
         "version": int(row["version"]),
+        "etag": generate_etag(str(row["id"]), int(row["version"])),  # the ETag header's value, also in list items
     }
 
 

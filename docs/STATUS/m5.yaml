@@ -345,6 +345,7 @@
   - services/field-api/tests/claims/test_claims_api.py::test_confirm_after_10_s_is_refused_and_the_claim_is_a_draft_again
   - services/field-api/tests/claims/test_claims_api.py::test_reject_with_reason_sends_nothing
   - services/field-api/tests/claims/test_claims_api.py::test_an_unconfirmed_decision_is_void_when_read_after_10_s
+  - services/field-api/tests/claims/test_claims_api.py::test_list_items_carry_the_etag_the_decision_accepts
   frs: []
   verified_at: null
   note: >-
@@ -354,7 +355,9 @@
     (docs/META_FIELD.md rows 19-20: no key in the build sandbox); CI uses the recorded-response double. Sending to
     the supplier is SIMULATED: one claim.sent outbox record (simulated true, channel none), no e-mail. Additions to
     the contract response (look_id, task_id, site_id, decision fields, sent, version) are additive;
-    evidence_url is the JSON pack path of the posted receipt, an empty string until it is posted.
+    evidence_url is the JSON pack path of the posted receipt, an empty string until it is posted. Integrator
+    (2026-11-01): every claim body, including GET /v1/claims list items, carries etag (the ETag header's value),
+    additive, so the phone's draft review can send If-Match without a GET per claim.
 - id: M5-X04
   title: >-
     Evidence pack GET /v1/evidence/documents/{doc_number}?year= assembled from erp_document, posting jobs, outbox

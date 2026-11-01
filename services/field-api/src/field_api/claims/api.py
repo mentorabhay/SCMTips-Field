@@ -62,6 +62,7 @@ class ClaimOut(BaseModel):
     confirm_words: str | None
     sent: bool = Field(description="approved and recorded as sent (SIMULATED: an outbox record, no e-mail)")
     version: int
+    etag: str = Field(description="the claim's ETag (as the ETag header): If-Match on /decision and /confirm")
 
 
 class ClaimList(BaseModel):

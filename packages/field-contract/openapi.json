@@ -6229,6 +6229,11 @@
           "version": {
             "type": "integer",
             "title": "Version"
+          },
+          "etag": {
+            "type": "string",
+            "title": "Etag",
+            "description": "the claim's ETag (as the ETag header): If-Match on /decision and /confirm"
           }
         },
         "type": "object",
@@ -6254,7 +6259,8 @@
           "confirmed_at",
           "confirm_words",
           "sent",
-          "version"
+          "version",
+          "etag"
         ],
         "title": "ClaimOut"
       },
