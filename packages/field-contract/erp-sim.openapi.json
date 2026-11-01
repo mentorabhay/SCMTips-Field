@@ -4550,6 +4550,387 @@
         }
       }
     },
+    "/_oem/health": {
+      "get": {
+        "tags": [
+          "OEM simulator (M5 C3)"
+        ],
+        "summary": "Health",
+        "operationId": "health__oem_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health  Oem Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_oem/.well-known/oem-keys": {
+      "get": {
+        "tags": [
+          "OEM simulator (M5 C3)"
+        ],
+        "summary": "Oem Keys",
+        "operationId": "oem_keys__oem__well_known_oem_keys_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Oem Keys  Oem  Well Known Oem Keys Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_oem/v1/units/{serial}/checks": {
+      "post": {
+        "tags": [
+          "OEM simulator (M5 C3)"
+        ],
+        "summary": "Post Check",
+        "operationId": "post_check__oem_v1_units__serial__checks_post",
+        "parameters": [
+          {
+            "name": "serial",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Serial"
+            }
+          },
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Check  Oem V1 Units  Serial  Checks Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_oem/v1/units/{serial}": {
+      "get": {
+        "tags": [
+          "OEM simulator (M5 C3)"
+        ],
+        "summary": "Get Unit",
+        "operationId": "get_unit__oem_v1_units__serial__get",
+        "parameters": [
+          {
+            "name": "serial",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Serial"
+            }
+          },
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Unit  Oem V1 Units  Serial  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_oem/admin/units": {
+      "post": {
+        "tags": [
+          "OEM simulator (M5 C3)"
+        ],
+        "summary": "Post Unit",
+        "operationId": "post_unit__oem_admin_units_post",
+        "parameters": [
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnitIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Unit  Oem Admin Units Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_oem/admin/forgeries": {
+      "post": {
+        "tags": [
+          "OEM simulator (M5 C3)"
+        ],
+        "summary": "Post Forgery",
+        "operationId": "post_forgery__oem_admin_forgeries_post",
+        "parameters": [
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgeryIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Forgery  Oem Admin Forgeries Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_oem/admin/reset": {
+      "post": {
+        "tags": [
+          "OEM simulator (M5 C3)"
+        ],
+        "summary": "Post Reset",
+        "operationId": "post_reset__oem_admin_reset_post",
+        "parameters": [
+          {
+            "name": "X-Sim-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sim-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Reset  Oem Admin Reset Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_oem/ui": {
+      "get": {
+        "tags": [
+          "OEM simulator (M5 C3)"
+        ],
+        "summary": "Get Ui",
+        "operationId": "get_ui__oem_ui_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_oem/labels": {
+      "get": {
+        "tags": [
+          "OEM simulator (M5 C3)"
+        ],
+        "summary": "Get Labels",
+        "operationId": "get_labels__oem_labels_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/_sim/health": {
       "get": {
         "summary": "Health",
@@ -4646,6 +5027,34 @@
         ],
         "title": "Body_admin_fault_create__sim_ui_faults_post"
       },
+      "CheckIn": {
+        "properties": {
+          "checker": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Checker",
+            "description": "pseudonymous checker id (never a name)"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z .'-]{0,59}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area",
+            "description": "coarse, city level at most"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checker"
+        ],
+        "title": "CheckIn"
+      },
       "DismantleRequest": {
         "properties": {
           "Equipment": {
@@ -4713,6 +5122,45 @@
           "SerialNumber"
         ],
         "title": "EquipmentCreate"
+      },
+      "EventIn": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "manufactured",
+              "shipped_to_seller",
+              "delivered",
+              "activated",
+              "returned",
+              "refurbished"
+            ],
+            "title": "Type"
+          },
+          "at": {
+            "type": "string",
+            "format": "date",
+            "title": "At"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z .'-]{0,59}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "at"
+        ],
+        "title": "EventIn"
       },
       "FaultRuleIn": {
         "properties": {
@@ -4790,6 +5238,56 @@
           "kind"
         ],
         "title": "FaultRuleIn"
+      },
+      "ForgeryIn": {
+        "properties": {
+          "serial": {
+            "type": "string",
+            "pattern": "^[A-Z0-9-]{4,40}$",
+            "title": "Serial"
+          },
+          "sku": {
+            "type": "string",
+            "pattern": "^[A-Z0-9-]{2,40}$",
+            "title": "Sku"
+          },
+          "sealed_at": {
+            "type": "string",
+            "format": "date",
+            "title": "Sealed At"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serial",
+          "sku",
+          "sealed_at"
+        ],
+        "title": "ForgeryIn"
       },
       "HTTPValidationError": {
         "properties": {
@@ -5405,6 +5903,76 @@
           "StorageLocation"
         ],
         "title": "SandboxStorageLocationIn"
+      },
+      "UnitIn": {
+        "properties": {
+          "serial": {
+            "type": "string",
+            "pattern": "^[A-Z0-9-]{4,40}$",
+            "title": "Serial"
+          },
+          "sku": {
+            "type": "string",
+            "pattern": "^[A-Z0-9-]{2,40}$",
+            "title": "Sku"
+          },
+          "sealed_at": {
+            "type": "string",
+            "format": "date",
+            "title": "Sealed At"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventIn"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Events"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "copies": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Copies",
+            "default": 1
+          },
+          "reset_first_check": {
+            "type": "boolean",
+            "title": "Reset First Check",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "serial",
+          "sku",
+          "sealed_at"
+        ],
+        "title": "UnitIn"
       },
       "ValidationError": {
         "properties": {

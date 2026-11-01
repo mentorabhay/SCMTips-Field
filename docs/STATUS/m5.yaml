@@ -1036,3 +1036,58 @@
     QR drawn from qrcode's module matrix as one SVG path (qrcode is a runtime dependency of oem-sim). The tampered
     label (L5) is drawn with a torn seal band and a tape strip, and the sheet asks for real tape over it. Not yet
     printed and scanned with the glasses or the phone.
+- id: M5-T04
+  title: >-
+    C3 check API: POST /v1/authenticity/checks and GET /v1/authenticity/checks/{id} through the OemPort (simulator
+    adapter by config, a real-OEM adapter that refuses), local Ed25519 verification with cached keys, the maker's
+    history and atomic first check, the deterministic verdict, the optional two-step visual seal check (SAM 3.1 +
+    Muse Spark 1.3), permission field.authenticity.check, table field.authenticity_check with forced RLS (migration
+    field_0067_m5_c3), the signed evidence pack and page, claims of kind authenticity
+  workstream: M5-T
+  role: Stream T (C3 authenticity)
+  status: partial
+  evidence:
+  - services/field-api/src/field_api/authenticity/api.py
+  - services/field-api/src/field_api/authenticity/service.py
+  - services/field-api/src/field_api/authenticity/seal_code.py
+  - services/field-api/src/field_api/authenticity/rules.py
+  - services/field-api/src/field_api/authenticity/seal.py
+  - services/field-api/src/field_api/authenticity/oem.py
+  - services/field-api/src/field_api/authenticity/evidence.py
+  - services/field-api/alembic/versions/field_0067_m5_c3.py
+  - connectors/oem/src/field_oem/ports/oem_port.py
+  - connectors/oem/src/field_oem/sim/adapter.py
+  - connectors/oem/src/field_oem/real/adapter.py
+  - connectors/oem/src/field_oem_testing/memory.py
+  - services/field-api/src/field_api/claims/service.py
+  - services/field-api/src/field_api/evidence/signing.py
+  - packages/field-contract/openapi.json
+  tests:
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_genuine_new_then_same_checker_then_another_checker
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_returned_unit_says_the_contract_example
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_counterfeit_and_unreadable_codes
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_unreachable_or_unconfigured_maker_is_a_verdict_not_an_error
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_visual_check_two_steps_flags_tape_over_the_seal
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_unfinished_visual_check_is_ended_by_the_next_read
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_roles_sites_and_validation
+  - services/field-api/tests/authenticity/test_authenticity_api.py::test_m5_t04_rls_isolates_tenants_and_sites
+  - services/field-api/tests/authenticity/test_seal_code.py::test_m5_t04_forgeries_fail_the_signature
+  - services/field-api/tests/authenticity/test_authenticity_evidence_claims.py::test_m5_t04_evidence_pack_hashes_and_the_signed_page
+  - services/field-api/tests/authenticity/test_authenticity_evidence_claims.py::test_m5_t04_claim_from_a_check_lines_one_per_check_and_voice_approval
+  - connectors/oem/tests/contract/test_oem_port_contract.py::test_m5_t04_sim_adapter_meets_the_port_contract
+  - connectors/oem/tests/contract/test_oem_port_contract.py::test_m5_t04_real_oem_adapter_refuses_honestly
+  - tests/e2e/test_m5_c3_seal_code_e2e.py::test_m5_t04_sim_signed_codes_verify_in_field_api_and_the_clone_is_caught
+  frs: []
+  verified_at: null
+  note: >-
+    UNVERIFIED dependencies (rule 2.4, docs/META_FIELD.md row 27): no real maker signs seals or opens a registry, so
+    the only answering adapter is the OEM simulator; FIELD_OEM_ADAPTER=oem refuses (CANNOT_VERIFY
+    oem:not_configured). The visual check uses the M5 look's SAM 3.1 and Muse Spark 1.3 shapes (rows 20, 23),
+    proven with test doubles only. Two steps chosen over one: the verdict never depends on the photo, so it is
+    final at once and only tamper / say_next follow (POST final false, GET polled; visual_due_at = 2 x instances +
+    labels deadlines + 15 s, then the next read ends it as visual:not_finished). The maker's key cache is per
+    adapter instance (lru_cache per process), refreshed once on an unknown kid. Claims: supplier_claim gains kind
+    and check_id (look_id nullable, exactly one by kind); POST /v1/claims accepts {check_id}; ClaimOut.look_id is
+    null for kind authenticity (the M5 app must accept it). Migration field_0067_m5_c3 revises
+    field_0066_m5_look_stage; the integrator re-points it if a try-page 0067 lands first. Partial until proven on
+    the owner's phone and glasses.

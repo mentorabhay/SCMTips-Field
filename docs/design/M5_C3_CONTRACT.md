@@ -149,6 +149,7 @@ Response **200** (also the Idempotency-Key replay, which returns the stored firs
   "check_id": "uuid",
   "final": true,
   "verdict": "GENUINE_NEW | GENUINE_PREVIOUSLY_ACTIVATED | RETURNED_REFURBISHED | CANNOT_VERIFY | LIKELY_COUNTERFEIT",
+  "rule": "R11",
   "tamper": true,
   "reasons": ["history:activated", "history:returned", "visual:tape_over_seal"],
   "signals": {

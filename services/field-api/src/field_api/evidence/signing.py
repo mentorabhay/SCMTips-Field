@@ -62,9 +62,9 @@ def _unb64(text: str) -> bytes:
     return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
 
 
-def _sig(payload: str) -> str:
+def _sig(payload: str, domain: bytes = DOMAIN) -> str:
     key = required_secret(SECRET_ENV).encode("utf-8")
-    return hmac.new(key, DOMAIN + payload.encode("ascii"), hashlib.sha256).hexdigest()
+    return hmac.new(key, domain + payload.encode("ascii"), hashlib.sha256).hexdigest()
 
 
 def sign(tenant_id: str, doc_number: str, fiscal_year: str, *, ttl_s: int | None = None,
@@ -101,3 +101,49 @@ def verify(token: str, *, now: float | None = None) -> EvidenceLink:
     if (now if now is not None else time.time()) > e:
         raise BadToken("expired")
     return EvidenceLink(t, d, y, e)
+
+
+# --- M5 case C3: the evidence page of an authenticity check (docs/design/M5_C3_CONTRACT.md section 4.3) ----------
+# Same key and token shape; its own domain string, so a document link never opens a check page or the reverse.
+CHECK_DOMAIN = b"scmtips-field/m5-c3-evidence/v1\n"
+CHECK_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+@dataclass(frozen=True)
+class CheckLink:
+    tenant_id: str
+    check_id: str
+    expires_at: int
+
+
+def sign_check(tenant_id: str, check_id: str, *, ttl_s: int | None = None, now: float | None = None) -> tuple[str, int]:
+    """(token, expires_at unix seconds) for the check page; payload {"v": 1, "t", "c", "e"}."""
+    if not CHECK_RE.match(check_id):
+        raise ValueError("bad check id")
+    exp = int((now if now is not None else time.time()) + (ttl_s if ttl_s is not None else link_ttl_s()))
+    body = json.dumps({"v": 1, "t": tenant_id, "c": check_id, "e": exp}, separators=(",", ":"),
+                      sort_keys=True).encode("utf-8")
+    payload = _b64(body)
+    return f"{payload}.{_sig(payload, CHECK_DOMAIN)}", exp
+
+
+def verify_check(token: str, *, now: float | None = None) -> CheckLink:
+    if not token or len(token) > MAX_TOKEN_LEN or token.count(".") != 1:
+        raise BadToken("malformed")
+    payload, sig = token.split(".")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", payload) or not re.fullmatch(r"[0-9a-f]{64}", sig):
+        raise BadToken("malformed")
+    if not hmac.compare_digest(_sig(payload, CHECK_DOMAIN), sig):
+        raise BadToken("signature")
+    try:
+        data = json.loads(_unb64(payload))
+    except ValueError:
+        raise BadToken("malformed") from None
+    if not isinstance(data, dict) or data.get("v") != 1:
+        raise BadToken("malformed")
+    t, c, e = data.get("t"), data.get("c"), data.get("e")
+    if not (isinstance(t, str) and isinstance(c, str) and isinstance(e, int)) or not CHECK_RE.match(c):
+        raise BadToken("malformed")
+    if (now if now is not None else time.time()) > e:
+        raise BadToken("expired")
+    return CheckLink(t, c, e)

@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from field_api.assistant.api import router as assistant_router
 from field_api.audit.api import router as audit_router
 from field_api.audits.reports import router as audit_reports_router
+from field_api.authenticity.api import router as authenticity_router
 from field_api.briefs.api import router as briefs_router
 from field_api.claims.api import router as claims_router
 from field_api.codes.api import router as codes_router
@@ -244,6 +245,7 @@ def create_app() -> FastAPI:
     app.include_router(vision_router)
     app.include_router(claims_router)  # M5 stream X
     app.include_router(evidence_router)  # M5 stream X
+    app.include_router(authenticity_router)  # M5 case C3 (docs/design/M5_C3_CONTRACT.md)
 
     return app
 

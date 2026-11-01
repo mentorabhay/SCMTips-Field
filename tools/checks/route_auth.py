@@ -23,6 +23,9 @@ PUBLIC: dict[tuple[str, str], str] = {
     ("GET", "/v1/evidence/{id}"): "bearer principal OR HMAC-signed URL, checked in the handler",
     ("GET", "/evidence/{token}"): "M5 evidence page: the HMAC-signed token (tenant, document, expiry) is verified"
                                   " in the handler (evidence/signing.py); 401 otherwise",
+    ("GET", "/evidence/check/{token}"): "M5 C3 check evidence page: the HMAC-signed token (tenant, check, expiry,"
+                                        " its own domain) is verified in the handler (signing.verify_check); 401"
+                                        " otherwise",
 }
 AUTH_DEPS = ("require_principal", "require_permission")
 

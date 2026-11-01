@@ -5605,6 +5605,232 @@
           }
         }
       }
+    },
+    "/v1/authenticity/checks": {
+      "post": {
+        "tags": [
+          "Authenticity checks (M5 C3)"
+        ],
+        "summary": "Post Check",
+        "operationId": "post_check_v1_authenticity_checks_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Post Check V1 Authenticity Checks Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/authenticity/checks/{check_id}": {
+      "get": {
+        "tags": [
+          "Authenticity checks (M5 C3)"
+        ],
+        "summary": "Read Check",
+        "operationId": "read_check_v1_authenticity_checks__check_id__get",
+        "parameters": [
+          {
+            "name": "check_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Check Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Read Check V1 Authenticity Checks  Check Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/authenticity/checks/{check_id}/evidence": {
+      "get": {
+        "tags": [
+          "Authenticity checks (M5 C3)"
+        ],
+        "summary": "Check Evidence",
+        "operationId": "check_evidence_v1_authenticity_checks__check_id__evidence_get",
+        "parameters": [
+          {
+            "name": "check_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Check Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Check Evidence V1 Authenticity Checks  Check Id  Evidence Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/authenticity/checks/{check_id}/link": {
+      "post": {
+        "tags": [
+          "Authenticity checks (M5 C3)"
+        ],
+        "summary": "Check Link",
+        "operationId": "check_link_v1_authenticity_checks__check_id__link_post",
+        "parameters": [
+          {
+            "name": "check_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Check Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckLinkOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/evidence/check/{token}": {
+      "get": {
+        "tags": [
+          "Authenticity checks (M5 C3)"
+        ],
+        "summary": "Check Page",
+        "operationId": "check_page_evidence_check__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5869,6 +6095,82 @@
         ],
         "title": "Check"
       },
+      "CheckIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Code",
+            "description": "the QR text of the seal"
+          },
+          "capture_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture Id",
+            "description": "optional photo of the seal (captures API)"
+          },
+          "site_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Id",
+            "description": "default: the capture's site, else your only site"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z .'-]{0,59}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area",
+            "description": "coarse, city level at most (no digits); sent to the maker"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "CheckIn"
+      },
+      "CheckLinkOut": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "path",
+          "expires_at"
+        ],
+        "title": "CheckLinkOut"
+      },
       "CheckOutRequest": {
         "properties": {
           "unsynced_count": {
@@ -5984,17 +6286,35 @@
       "ClaimIn": {
         "properties": {
           "look_id": {
-            "type": "string",
-            "maxLength": 36,
-            "minLength": 36,
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36,
+                "minLength": 36
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Look Id",
-            "description": "the look (POST /v1/vision/looks)"
+            "description": "the look (POST /v1/vision/looks): a supplier claim"
+          },
+          "check_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36,
+                "minLength": 36
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Id",
+            "description": "the C3 check (POST /v1/authenticity/checks): an authenticity claim"
           }
         },
         "type": "object",
-        "required": [
-          "look_id"
-        ],
         "title": "ClaimIn"
       },
       "ClaimLineOut": {
@@ -6006,7 +6326,12 @@
               "short",
               "pack_size",
               "expired",
-              "near_expiry"
+              "near_expiry",
+              "not_new",
+              "counterfeit",
+              "copied_code",
+              "cannot_verify",
+              "tampered_seal"
             ],
             "title": "Reason"
           },
@@ -6093,10 +6418,37 @@
           "evidence_url": {
             "type": "string",
             "title": "Evidence Url",
-            "description": "the JSON evidence pack of the posted receipt; empty until it is posted"
+            "description": "the JSON evidence pack of the posted receipt (empty until it is posted), or of the C3 check for an authenticity claim"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "supplier",
+              "authenticity"
+            ],
+            "title": "Kind",
+            "default": "supplier"
+          },
+          "check_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Id"
           },
           "look_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Look Id"
           },
           "task_id": {

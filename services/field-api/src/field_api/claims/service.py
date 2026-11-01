@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from types import MappingProxyType
 from typing import Any
@@ -27,6 +28,7 @@ from field_api.assistant.model import ModelRouter
 from field_api.auth.jwt import Principal
 from field_api.claims.lines import (
     ClaimLine,
+    authenticity_lines,
     claim_lines,
     expected_pieces_per_unit,
     lines_from_stored,
@@ -53,6 +55,12 @@ ERR_EXPIRED = FieldError(status=422, code="FIELD-CLM-422-CONFIRM-EXPIRED", title
                          detail=f"Confirm within {CONFIRM_TIMEOUT_S:g} s of the decision. The claim is a draft "
                                 "again; decide again.")
 ERR_ID = FieldError(status=422, code="FIELD-HTTP-422-VALIDATION", title="Invalid id")
+ERR_CHECK = FieldError(status=404, code="FIELD-AUT-404-CHECK", title="Check not found or out of scope")
+ERR_CHECK_PENDING = FieldError(status=409, code="FIELD-CLM-409-CHECK-PENDING", title="The seal is still being checked",
+                               detail="A claim is made from the check's final state. Try again when GET "
+                                      "/v1/authenticity/checks/{id} answers final: true.")
+ERR_NOTHING_AUTH = FieldError(status=422, code="FIELD-CLM-422-NOTHING-TO-CLAIM", title="Nothing to claim",
+                              detail="The unit is new by the maker's records and the seal was not flagged.")
 ERR_LOOK_PENDING = FieldError(status=409, code="FIELD-CLM-409-LOOK-PENDING", title="The look is still reading labels",
                               detail="A claim is made from the look's final state (M5-S01). Try again when GET "
                                      "/v1/vision/looks/{id} answers final: true.")
@@ -62,7 +70,7 @@ STATUS_FILTER = MappingProxyType({"draft": ("draft",), "pending": ("pending_conf
                                   "rejected": ("rejected",)})
 COLS = ("id, site_id, look_id, task_id, capture_id, status, lines, text, source, reasons, model_calls, created_by,"
         " created_at, decision, decision_reason, decided_by, decided_at, confirm_by, confirmed_by, confirmed_at,"
-        " confirm_words, sent_outbox_id, version, updated_at")
+        " confirm_words, sent_outbox_id, version, updated_at, kind, check_id")
 _NAMES = tuple(c.strip() for c in COLS.split(","))
 
 
@@ -95,13 +103,20 @@ def _tid(row: dict[str, Any]) -> str | None:
     return str(row["task_id"]) if row.get("task_id") else None
 
 
+def _lid(row: dict[str, Any]) -> str | None:
+    return str(row["look_id"]) if row.get("look_id") else None
+
+
 def _jsonish(v: Any) -> Any:
     return json.loads(v) if isinstance(v, str) else v
 
 
-def evidence_doc(cur: Any, look_id: str, task_id: str | None) -> tuple[str, str] | None:
+def evidence_doc(cur: Any, look_id: str | None, task_id: str | None) -> tuple[str, str] | None:
     """(doc_number, fiscal_year) of the posted document of this look: ``erp_document.payload.look_id`` (stream V's
-    receive extension), else the latest posted goods receipt of the look's task."""
+    receive extension), else the latest posted goods receipt of the look's task. None for a claim without a look
+    (an authenticity claim, M5 case C3)."""
+    if not look_id:
+        return None
     cur.execute("SELECT doc_number, fiscal_year FROM field.erp_document WHERE payload->>'look_id' = %s"
                 " AND status = 'posted' AND doc_number IS NOT NULL ORDER BY created_at DESC LIMIT 1", (look_id,))
     r = cur.fetchone()
@@ -119,13 +134,18 @@ def evidence_path(doc: tuple[str, str] | None) -> str:
 
 
 def view(row: dict[str, Any], doc: tuple[str, str] | None) -> dict[str, Any]:
-    """The claim as the API returns it (contract section 3 fields first, then the record)."""
+    """The claim as the API returns it (contract section 3 fields first, then the record). An authenticity claim
+    (M5 case C3) has ``check_id`` instead of ``look_id`` and the check's evidence path."""
     lines = lines_from_stored(_jsonish(row["lines"]))
+    kind = row.get("kind") or "supplier"
+    evidence = (f"/v1/authenticity/checks/{row['check_id']}/evidence" if kind == "authenticity" and row.get("check_id")
+                else evidence_path(doc))
     return {
         "claim_id": str(row["id"]), "status": row["status"], "lines": [ln.api() for ln in lines],
         "text": row["text"], "source": row["source"], "reasons": list(_jsonish(row["reasons"]) or []),
-        "evidence_url": evidence_path(doc),
-        "look_id": str(row["look_id"]), "task_id": str(row["task_id"]) if row["task_id"] else None,
+        "evidence_url": evidence, "kind": kind, "check_id": str(row["check_id"]) if row.get("check_id") else None,
+        "look_id": str(row["look_id"]) if row["look_id"] else None,
+        "task_id": str(row["task_id"]) if row["task_id"] else None,
         "site_id": str(row["site_id"]), "created_by": row["created_by"], "created_at": _iso(row["created_at"]),
         "decision": row["decision"], "decision_reason": row["decision_reason"], "decided_by": row["decided_by"],
         "decided_at": _iso(row["decided_at"]), "confirm_by": _iso(row["confirm_by"]),
@@ -216,6 +236,52 @@ def create_claim(principal: Principal, look_id: str, *, looks: LookPort, router:
         return view(row, evidence_doc(cur, look_id, str(task_id) if task_id else None)), created
 
 
+CheckReader = Callable[[Principal, str], dict[str, Any] | None]
+
+
+def create_check_claim(principal: Principal, check_id: str, *, checks: CheckReader, router: ModelRouter,
+                       request_id: str | None = None) -> tuple[dict[str, Any], bool]:
+    """(claim, created) of ``kind`` authenticity from a C3 check (M5_C3_CONTRACT.md section 4.4); one per check."""
+    check_id = _uuid(check_id)
+    with principal_tx(principal) as cur:
+        cur.execute(f"SELECT {COLS} FROM field.supplier_claim WHERE check_id = %s::uuid", (check_id,))
+        row = _row(cur)
+        if row is not None:
+            return view(row, None), False
+    check = checks(principal, check_id)
+    if check is None:
+        raise ERR_CHECK
+    if check.get("final") is False:  # the seal is still being checked: tamper is not known yet
+        raise ERR_CHECK_PENDING
+    lines = authenticity_lines(check)
+    if not lines:
+        raise ERR_NOTHING_AUTH
+    site_id = str(check["site_id"])
+    require_site_scope(site_id, principal)
+    draft = draft_text(lines, router=router, tenant_id=principal.tenant_id, request_id=request_id,
+                       kind="authenticity")
+    with principal_tx(principal) as cur:
+        cur.execute(
+            f"""
+            INSERT INTO field.supplier_claim (tenant_id, site_id, kind, check_id, look_id, task_id, capture_id, lines,
+                   text, source, reasons, model_calls, created_by)
+            VALUES (%s, %s, 'authenticity', %s, NULL, NULL, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (tenant_id, check_id) DO NOTHING RETURNING {COLS}
+            """,
+            (principal.tenant_id, site_id, check_id, check.get("capture_id"),
+             json.dumps([ln.stored() for ln in lines]), draft.text, draft.source, json.dumps(draft.reasons),
+             json.dumps(draft.model_calls), principal.id),
+        )
+        row = _row(cur)
+        created = row is not None
+        if row is None:  # a concurrent create for the same check won
+            cur.execute(f"SELECT {COLS} FROM field.supplier_claim WHERE check_id = %s::uuid", (check_id,))
+            row = _row(cur)
+            if row is None:
+                raise ERR_CLAIM
+        return view(row, None), created
+
+
 _EXPIRE_SET = ("status = 'draft', decision = NULL, decision_reason = NULL, decided_by = NULL, decided_at = NULL,"
                " confirm_by = NULL, version = version + 1, updated_at = NOW()")
 
@@ -240,8 +306,7 @@ def list_claims(principal: Principal, status: str | None, limit: int = 50) -> di
         cur.execute(f"SELECT {COLS} FROM field.supplier_claim{where} ORDER BY created_at, id LIMIT %s",
                     (*args, limit))
         rows = [dict(zip(_NAMES, r, strict=True)) for r in cur.fetchall()]
-        items = [view(r, evidence_doc(cur, str(r["look_id"]), _tid(r)))
-                 for r in rows]
+        items = [view(r, evidence_doc(cur, _lid(r), _tid(r))) for r in rows]
     return {"items": items, "count": len(items)}
 
 
@@ -253,7 +318,7 @@ def get_claim(principal: Principal, claim_id: str) -> dict[str, Any]:
         row = _row(cur)
         if row is None:
             raise ERR_CLAIM
-        return view(row, evidence_doc(cur, str(row["look_id"]), _tid(row)))
+        return view(row, evidence_doc(cur, _lid(row), _tid(row)))
 
 
 def read_back(decision: str, lines: list[ClaimLine], reason: str | None) -> str:
@@ -295,7 +360,7 @@ def decide(principal: Principal, claim_id: str, decision: str, reason: str | Non
         )
         new = _row(cur)
         assert new is not None
-        out = view(new, evidence_doc(cur, str(new["look_id"]), _tid(new)))
+        out = view(new, evidence_doc(cur, _lid(new), _tid(new)))
     say = read_back(decision, lines_from_stored(_jsonish(new["lines"])), new["decision_reason"])
     return {"status": "pending_confirm", "say": say, "confirm_by": out["confirm_by"]}, out
 
@@ -304,7 +369,8 @@ def _sent_payload(row: dict[str, Any], outbox_id: str) -> dict[str, Any]:
     return {"id": outbox_id, "type": "claim.sent", "simulated": True, "channel": "none",
             "note": "SIMULATED: no e-mail or network call is made in this build",
             "subject": f"supplier_claim/{row['id']}",
-            "data": {"claim_id": str(row["id"]), "look_id": str(row["look_id"]),
+            "data": {"claim_id": str(row["id"]), "look_id": _lid(row), "kind": row.get("kind") or "supplier",
+                     "check_id": str(row["check_id"]) if row.get("check_id") else None,
                      "lines": [ln.api() for ln in lines_from_stored(_jsonish(row["lines"]))], "text": row["text"],
                      "approved_by": row["confirmed_by"]}}
 
@@ -348,7 +414,7 @@ def confirm(principal: Principal, claim_id: str, if_match: str | None,
                             f" RETURNING {COLS}", (outbox_id, claim_id))
                 new = _row(cur)
                 assert new is not None
-            out = view(new, evidence_doc(cur, str(new["look_id"]), _tid(new)))
+            out = view(new, evidence_doc(cur, _lid(new), _tid(new)))
     if expired:
         raise ERR_EXPIRED
     if out["status"] == "approved":
