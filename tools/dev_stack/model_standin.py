@@ -80,14 +80,21 @@ async def responses(request: Request) -> Response:
     return Response(data, media_type="text/event-stream")
 
 
+CLAIM_DRAFT_PROMPT_START = "You write the body of a short, polite claim message"
+
+
 @app.post("/v1/chat/completions")
 async def chat(request: Request) -> JSONResponse:
     body = await request.json()
     SEEN["chat"] += 1
     SEEN["models"].append(body.get("model"))
-    content = (body.get("messages") or [{}])[-1].get("content")
+    messages = body.get("messages") or [{}]
+    content = messages[-1].get("content")
+    system = str(messages[0].get("content") or "") if messages[0].get("role") == "system" else ""
     if isinstance(content, list) and any(p.get("type") == "image_url" for p in content):
         answer = json.dumps({"items": label_items(content, SCENE["labels"])})
+    elif system.startswith(CLAIM_DRAFT_PROMPT_START) and isinstance(content, str):
+        answer = content  # a claim draft (M5 claims): the facts as given, so field-api's number check passes
     else:
         answer = json.dumps({"say": "The model stand-in has no answer to that.", "card": {"title": "Stand-in"},
                              "actions": []})

@@ -345,6 +345,8 @@ def claim_and_evidence(phone: Any, sup: Any, case: str, look: dict[str, Any], sc
     flagged_units = sum(ln["units"] for ln in claim["lines"] if ln["reason"] in FLAG_REASONS)
     s._expect(claim["status"] == "draft" and reasons == CLAIM_REASONS[case] and flagged_units == scene["flag"],
               f"{case} claim lines {claim['lines']}")
+    s._expect(claim["source"] == "model" and not claim["reasons"],  # the stand-in drafts; the number check passes
+              f"{case} claim text from {claim['source']}: {claim['reasons']}")
     s._expect(claim.get("etag") == made.headers.get("ETag"), f"claim etag {claim.get('etag')} vs header")
     print(f"         claim {cid} draft ({claim['source']}): {claim['lines']}")
     drafts = sup.get("/v1/claims", status="draft")["items"]

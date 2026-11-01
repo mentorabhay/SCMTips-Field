@@ -77,8 +77,9 @@ def test_m5_v07_case_labels_and_commands() -> None:
     with pytest.raises(SystemExit):
         stack.main(["smoke", "--m5", "--help"])
     # smoke --m5 (integrator): the claim lines each case must give and the reasons that count as flagged units
-    assert m5.CLAIM_REASONS == {"grocery": {"damaged", "pack_size"}, "pharmacy": {"damaged", "expired", "near_expiry"}}
-    assert m5.FLAG_REASONS == {"damaged", "expired", "near_expiry"}
+    claim_reasons, flag_reasons = m5.CLAIM_REASONS, m5.FLAG_REASONS
+    assert claim_reasons == {"grocery": {"damaged", "pack_size"}, "pharmacy": {"damaged", "expired", "near_expiry"}}
+    assert flag_reasons == {"damaged", "expired", "near_expiry"}
 
 
 def test_m5_v08_model_standin_env_never_uses_the_real_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -103,3 +104,19 @@ def test_m5_v08_model_standin_env_never_uses_the_real_key(monkeypatch: pytest.Mo
     prices = load_prices(stack.MODEL_STANDIN_PRICING)["meta"]
     assert all(p.confirmed and p.input_per_mtok == 0 and p.output_per_mtok == 0 and p.per_image_usd == 0
                for p in prices.values())
+
+
+def test_m5_v08_standin_drafts_a_claim_that_keeps_every_number() -> None:
+    """The stand-in answers a claim draft (field_api.claims.text) with the facts as given, so smoke --m5 sees the
+    model path of the claim text pass the local number check; any other text request gets the assistant answer."""
+    from field_api.claims.text import CLAIM_PROMPT
+
+    assert CLAIM_PROMPT.startswith(model_standin.CLAIM_DRAFT_PROMPT_START)
+    api = TestClient(model_standin.app)
+    facts = "We claim for this delivery: 2 damaged units (24 pieces)."
+    r = api.post("/v1/chat/completions", json={"model": "muse-spark-1.3", "messages": [
+        {"role": "system", "content": CLAIM_PROMPT}, {"role": "user", "content": facts}]})
+    assert r.json()["choices"][0]["message"]["content"] == facts
+    r = api.post("/v1/chat/completions", json={"model": "muse-spark-1.3", "messages": [
+        {"role": "user", "content": facts}]})
+    assert json.loads(r.json()["choices"][0]["message"]["content"])["say"].startswith("The model stand-in")
