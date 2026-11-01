@@ -12,6 +12,7 @@ import {
   findings,
   fitWithin,
   itemRows,
+  glassesLines,
   lookButtonLabel,
   modeNotice,
   outlines,
@@ -151,6 +152,16 @@ describe("hosted look of 1 Nov: nothing seen, and the button after the answer", 
     expect(lookButtonLabel(true, null)).toBe("Looking…");
     expect(lookButtonLabel(true, first())).toBe("Reading the labels…");
     expect(lookButtonLabel(true, final())).toBe("Speaking the answer…");
+  });
+});
+
+describe("the glasses-say box follows the look, not the speech", () => {
+  test("first answer, then the final answer at once even if nothing more was spoken yet", () => {
+    expect(glassesLines(first(), [])).toEqual([first().say]);
+    const fin = final({ say_next: "1 damaged. Receive 7, flag 1?" });
+    expect(glassesLines(fin, [first().say])).toEqual([first().say, "1 damaged. Receive 7, flag 1?"]);
+    expect(glassesLines(fin, [])).toEqual([fin.say]);
+    expect(glassesLines(final({ say_next: null }), [])).toEqual([final({ say_next: null }).say]);
   });
 });
 

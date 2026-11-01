@@ -380,3 +380,12 @@ export function lookButtonLabel(busy: boolean, look: TryLook | null): string {
   if (!look) return "Looking…";
   return look.final === false ? "Reading the labels…" : "Speaking the answer…";
 }
+
+/** What the "glasses say" box shows: the look's own answer as soon as it arrives, not only what the browser has finished
+ * speaking (hosted 1 Nov: without a browser voice the box kept the first answer after the final one came). A final
+ * two-step look shows its first sentence and then `say_next`; a one-step or first answer shows `say`. */
+export function glassesLines(look: TryLook, spoken: string[]): string[] {
+  if (look.final === false || !look.say_next) return [look.say];
+  const first = spoken.length ? spoken[0] : null;
+  return first && first !== look.say_next ? [first, look.say_next] : [look.say];
+}

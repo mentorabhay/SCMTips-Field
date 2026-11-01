@@ -15,6 +15,7 @@ import {
   findings,
   fitWithin,
   itemRows,
+  glassesLines,
   lookButtonLabel,
   modeNotice,
   outlines,
@@ -119,7 +120,7 @@ function Result({ look, photoUrl, spoken, stillReading, onSpeak }: { look: TryLo
         <div className="flex flex-col gap-3">
           <div className="rounded-card border border-line bg-card p-4" aria-live="polite">
             <div className="text-[13px] font-bold uppercase text-muted">The glasses say</div>
-            {spoken.length ? spoken.map((t, i) => <p key={i} className="m-0 mt-1 text-[17px]">“{t}”</p>) : <p className="m-0 mt-1 text-[17px]">“{look.say}”</p>}
+            {glassesLines(look, spoken).map((t, i) => <p key={i} className="m-0 mt-1 text-[17px]">“{t}”</p>)}
             <button type="button" onClick={onSpeak} className="mt-2 min-h-[40px] rounded-md border border-control bg-card px-3 font-bold text-ink hover:bg-soft">
               Speak again
             </button>
