@@ -1,0 +1,49 @@
+$ uv run pytest -p no:cacheprovider --junitxml=reports/junit.xml
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean
+2026-11-02T13:34:56Z
+........................................................................ [  7%]
+........................................................................ [ 14%]
+........................................................................ [ 22%]
+........................................................................ [ 29%]
+........................................................................ [ 37%]
+........................................................................ [ 44%]
+........................................................................ [ 52%]
+........................................................................ [ 59%]
+........................................................................ [ 67%]
+........................................................................ [ 74%]
+........................................................................ [ 82%]
+........................................................................ [ 89%]
+........................................................................ [ 97%]
+...........................                                              [100%]
+=============================== warnings summary ===============================
+conftest.py:69
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/conftest.py:69: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient
+
+services/field-api/tests/test_audit_ws4_3.py::test_tc4_120_and_tc4_121_findings_endpoints
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/.venv/lib/python3.13/site-packages/fastapi/telemetry/_api.py:244: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    return function(**arguments)
+
+services/field-api/tests/test_graph_ws4_6.py::test_api4_11_missing_node_and_unreachable
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/services/field-api/src/field_api/graph/route3d.py:228: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    return dijkstra_3d(nodes, edges, from_id, to_id)
+
+services/field-api/tests/test_models_ws4_7.py::test_tc4_145_gltf_upload_validation
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/services/field-api/src/field_api/models/upload.py:266: StarletteDeprecationWarning: 'HTTP_413_REQUEST_ENTITY_TOO_LARGE' is deprecated. Use 'HTTP_413_CONTENT_TOO_LARGE' instead.
+    sha256_hex, triangles, gltf_json = validate_glb_binary(glb_bytes)
+
+services/field-api/tests/test_models_ws4_7.py::test_tc4_145_gltf_upload_validation
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/services/field-api/src/field_api/models/upload.py:266: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    sha256_hex, triangles, gltf_json = validate_glb_binary(glb_bytes)
+
+services/field-api/tests/unit/test_api_core.py::test_tc1_012_readiness_probes_are_real
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/.venv/lib/python3.13/site-packages/alembic/config.py:604: DeprecationWarning: No path_separator found in configuration; falling back to legacy splitting on spaces, commas, and colons for prepend_sys_path.  Consider adding path_separator=os to Alembic config.
+    util.warn_deprecated(
+
+tools/dev_stack/tests/test_core_link.py::test_m4_c14_the_site_pack_creates_field_sites_on_the_cores_plants_through_the_api
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/conftest.py:84: StarletteDeprecationWarning: You should not use the 'timeout' argument with the TestClient. See https://github.com/Kludex/starlette/issues/1108 for more information.
+    return original(self, method, url, *args, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+963 passed, 7 warnings in 475.07s (0:07:55)
+exit status: 0
