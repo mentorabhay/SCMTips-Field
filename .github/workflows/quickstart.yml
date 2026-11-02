@@ -1,0 +1,56 @@
+name: quickstart
+
+# The README's "Run it on your own computer" steps, exactly as written, on a fresh machine: the stand-in core and the
+# model stand-in (no account, no key), both looks end to end, and the console answering through field-api.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quickstart-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quickstart:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: 1. Database (Postgres 16 in Docker)
+        run: docker compose -f docker-compose.dev.yml up -d --wait postgres
+      - name: 2. Install
+        run: |
+          uv sync --frozen
+          pnpm install --frozen-lockfile
+      - name: 3. Start Field with the stand-in core and the model stand-in
+        run: uv run python -m tools.dev_stack.stack up --local-only --model-standin
+      - name: 4. Both looks end to end (grocery and pharmacy, claim, approval, evidence page)
+        run: uv run python -m tools.dev_stack.stack smoke --m5 --wait 90
+      - name: 5. The supervisor console
+        run: |
+          (NEXT_PUBLIC_DEV_SIGNIN=1 pnpm --dir apps/field-console dev > console.log 2>&1 &)
+          for i in $(seq 1 60); do curl -fsS -o /dev/null http://127.0.0.1:3000/login && break; sleep 3; done
+          curl -fsS -o /dev/null -w "login page %{http_code}\n" http://127.0.0.1:3000/login
+          curl -fsS -w "\nfield-api through the console %{http_code}\n" http://127.0.0.1:3000/v1/health
+      - name: Logs on failure
+        if: failure()
+        run: |
+          tail -n 60 console.log || true
+          ls var/ 2>/dev/null; tail -n 60 var/*.log 2>/dev/null || true
+      - name: Stop
+        if: always()
+        run: uv run python -m tools.dev_stack.stack down || true
