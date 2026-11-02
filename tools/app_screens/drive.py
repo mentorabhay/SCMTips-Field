@@ -38,6 +38,8 @@ def wait_for(pattern: str, timeout: float) -> Node | None:
     scrolled = False
     while time.monotonic() < end:
         _, nodes = screen()
+        if dismiss_anr(nodes):
+            continue
         hit = find(nodes, pattern)
         if hit is not None:
             return hit
@@ -46,6 +48,17 @@ def wait_for(pattern: str, timeout: float) -> Node | None:
             scrolled = True
         time.sleep(1.0)
     return None
+
+
+def dismiss_anr(nodes: list[Node]) -> bool:
+    """A freshly booted emulator can show "System UI isn't responding"; answer Wait and carry on."""
+    if find(nodes, r"isn.t responding") is None:
+        return False
+    wait = find(nodes, r"^Wait$")
+    if wait is not None:
+        tap(wait)
+        time.sleep(2.0)
+    return True
 
 
 def tap(node: Node) -> None:
@@ -97,6 +110,7 @@ def run(out: Path, package: str) -> int:
     for i, step in enumerate(WALK):
         ok, note = execute(step)
         if step.kind == "shot":
+            dismiss_anr(screen()[1])
             shot_no += 1
             name = f"{shot_no:02d}-{step.name}.png"
             (out / name).write_bytes(adb("exec-out", "screencap", "-p").stdout)

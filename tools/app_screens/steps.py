@@ -22,7 +22,8 @@ ADVANCE = r"^(Allow and continue|Continue without a test photo|Skip|Not now|Cont
 SAMPLE_EMAIL = "judge01@sample-drone-oem.example"
 
 WALK: tuple[Step, ...] = (
-    Step("sleep", "6"),
+    Step("sleep", "15"),
+    Step("wait", r"^Get started$"),
     Step("shot", name="welcome-look"),
     Step("maybe", r"^Next$"),
     Step("shot", name="welcome-hear"),
