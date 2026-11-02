@@ -1,0 +1,5 @@
+$ uv run python tools/checks/conventions.py
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field
+2026-11-02T14:39:46Z
+[PASS] Branch and commit conventions verified.
+exit status: 0
