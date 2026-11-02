@@ -1,0 +1,49 @@
+name: app-screens
+# Screenshot book (M5-K01): the hosted APK of the latest green CI run on slice/m5-look, walked on an Android 14
+# emulator against the hosted servers (one-tap SAMPLE demo). Runs when a branch screens/** is pushed, so it
+# never runs on ordinary pushes. Output: the artifact app-screens, and the logs on the ci-logs branch.
+on:
+  push:
+    branches: ["screens/**"]
+
+permissions:
+  contents: write   # publish sanitized logs to the ci-logs branch
+  actions: read     # download the APK artifact of the CI run
+
+jobs:
+  app-screens:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Take the hosted APK of the latest green CI run on slice/m5-look
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list -R "${{ github.repository }}" --workflow ci.yml --branch slice/m5-look --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          echo "APK from CI run $run_id" | tee ci-apk-run.txt
+          gh run download "$run_id" -R "${{ github.repository }}" -n field-hosted-apk -D apk/
+          ls -la apk/
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Walk the app on an emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d  # v2.38.0 (tag resolved via git ls-remote 2026-10-31)
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back emulated
+          script: scripts/ci/logged.sh app-screens bash scripts/ci/app_screens.sh "$(ls apk/*.apk | head -1)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: app-screens
+          path: app-screens/
+          if-no-files-found: warn
+      - name: Publish logs to ci-logs branch (agent-readable)
+        if: always()
+        run: scripts/ci/publish_logs.sh app-screens "${{ job.status }}"

@@ -1855,3 +1855,30 @@
     already signed in or paired gets "Sign out in Profile first" instead of a second sign-in. The test reads the
     manifest source (not the merged manifest; CI's Gradle build merges and lints it). No Gradle build or device run was
     possible here (no Android SDK).
+- id: M5-K01
+  title: Screenshot book and demo recordings (owner, 2 Nov)
+  workstream: M5-K
+  status: partial
+  evidence:
+  - tools/app_screens/drive.py
+  - tools/app_screens/steps.py
+  - tools/app_screens/uitree.py
+  - scripts/ci/app_screens.sh
+  - .github/workflows/screens.yml
+  tests:
+  - tools/app_screens/tests/test_uitree.py::test_a_text_inside_a_clickable_row_is_tapped_on_the_row
+  - tools/app_screens/tests/test_uitree.py::test_an_enabled_match_wins_over_a_disabled_one
+  - tools/app_screens/tests/test_uitree.py::test_a_content_description_is_found_too
+  - tools/app_screens/tests/test_uitree.py::test_labels_read_top_to_bottom_without_repeats
+  - tools/app_screens/tests/test_uitree.py::test_the_trailing_dump_line_is_dropped_and_a_dump_without_a_hierarchy_is_refused
+  - tools/app_screens/tests/test_uitree.py::test_the_walk_reaches_the_demo_and_names_every_screenshot
+  frs: []
+  verified_at: null
+  note: >-
+    The app's screens for the owner's screenshot book come from the REAL hosted APK walked on an Android 14
+    emulator in CI (workflow app-screens, pushed as a branch screens/**), signed in with the one-tap SAMPLE
+    demo against the hosted servers; every step records what was on screen (steps.json), and the walk is
+    screen-recorded. The emulator has no real camera, so a look, a posting and a box verdict are not
+    reached there: those screens come from the owner's phone and glasses (owner footage), the look in action
+    from the hosted Try page (recorded by the hosting session, FROM_FIELD 24), and the public sites were
+    recorded live by Playwright. Partial until the book is built and the owner has reviewed it.
