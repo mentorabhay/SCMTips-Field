@@ -1,0 +1,4 @@
+$ ./gradlew assembleDebug --stacktrace
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android
+2026-11-02T12:44:22Z
+Starting a Gradle Daemon (subsequent builds will be faster)
