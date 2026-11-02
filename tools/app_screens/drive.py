@@ -142,6 +142,10 @@ def execute(step: Step) -> tuple[bool, str]:
     if step.kind == "sleep":
         time.sleep(float(step.arg or "1"))
         return True, ""
+    if step.kind == "swipe":
+        adb("shell", "input", "swipe", "540", "1800", "540", "800", "500")
+        time.sleep(1.5)
+        return True, ""
     if step.kind == "return":
         did: list[str] = []
         for _ in range(4):

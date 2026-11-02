@@ -9,7 +9,7 @@ from dataclasses import dataclass
 class Step:
     kind: str
     """shot | tap | maybe | wait | back | sleep | advance | type (tap the field `arg`, type `name`) | hidekb |
-    return (Back until `arg` is on screen; from the welcome screen, Get started)"""
+    return (Back until `arg` is on screen; from the welcome screen, Get started) | swipe (scroll down once)"""
     arg: str = ""
     name: str = ""
     required: bool = False
@@ -45,10 +45,6 @@ WALK: tuple[Step, ...] = (
     Step("maybe", r"^Use my password$"),
     Step("hidekb"),
     Step("shot", name="sign-in-password"),
-    Step("return", SIGN_IN),
-    Step("maybe", r"^Scan a code from your computer$"),
-    Step("sleep", "2"),
-    Step("shot", name="sign-in-scan-code"),
     Step("return", SIGN_IN),
     Step("maybe", r"^I have an invite$"),
     Step("sleep", "1"),
@@ -104,7 +100,11 @@ WALK: tuple[Step, ...] = (
     Step("maybe", r"^Scan$"),
     Step("sleep", "3"),
     Step("shot", name="scan-tab"),
-    Step("maybe", r"^Check a box$"),
+    Step("maybe", r"^Home$"),
+    Step("tap", r"^Working as"),
+    Step("maybe", r"^Scan a product"),
+    Step("sleep", "3"),
+    Step("maybe", r"Check a box|Is this unit really new"),
     Step("sleep", "3"),
     Step("shot", name="box-check-start"),
     Step("back"),
@@ -115,14 +115,17 @@ WALK: tuple[Step, ...] = (
     Step("sleep", "2"),
     Step("shot", name="settings"),
     Step("back"),
+    Step("swipe"),
     Step("maybe", r"^Connections$"),
     Step("sleep", "2"),
     Step("shot", name="connections"),
     Step("back"),
+    Step("swipe"),
     Step("maybe", r"^Glasses$"),
     Step("sleep", "2"),
     Step("shot", name="glasses"),
     Step("back"),
+    Step("swipe"),
     Step("maybe", r"^Diagnostics$"),
     Step("sleep", "2"),
     Step("shot", name="diagnostics"),
