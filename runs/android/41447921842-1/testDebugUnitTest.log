@@ -1,0 +1,382 @@
+$ ./gradlew testDebugUnitTest --stacktrace --continue
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android
+2026-11-02T12:58:12Z
+> Task :core-common:preBuild UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :core-common:preDebugBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :core-outbox:preBuild UP-TO-DATE
+> Task :core-outbox:preDebugBuild UP-TO-DATE
+> Task :core-common:writeDebugAarMetadata UP-TO-DATE
+> Task :core-safety:preBuild UP-TO-DATE
+> Task :core-safety:preDebugBuild UP-TO-DATE
+> Task :core-outbox:writeDebugAarMetadata UP-TO-DATE
+> Task :core-voice:preBuild UP-TO-DATE
+> Task :core-voice:preDebugBuild UP-TO-DATE
+> Task :core-safety:writeDebugAarMetadata UP-TO-DATE
+> Task :core-wearables:preBuild UP-TO-DATE
+> Task :core-wearables:preDebugBuild UP-TO-DATE
+> Task :core-wearables:writeDebugAarMetadata UP-TO-DATE
+> Task :core-voice:writeDebugAarMetadata UP-TO-DATE
+> Task :feature-decisions:preBuild UP-TO-DATE
+> Task :feature-decisions:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :core-common:generateDebugResValues UP-TO-DATE
+> Task :feature-decisions:writeDebugAarMetadata UP-TO-DATE
+> Task :core-common:generateDebugResources UP-TO-DATE
+> Task :core-common:packageDebugResources UP-TO-DATE
+> Task :core-outbox:generateDebugResValues UP-TO-DATE
+> Task :core-outbox:generateDebugResources UP-TO-DATE
+> Task :core-outbox:packageDebugResources UP-TO-DATE
+> Task :core-safety:generateDebugResValues UP-TO-DATE
+> Task :core-safety:generateDebugResources UP-TO-DATE
+> Task :core-safety:packageDebugResources UP-TO-DATE
+> Task :core-voice:generateDebugResValues UP-TO-DATE
+> Task :core-voice:generateDebugResources UP-TO-DATE
+> Task :core-voice:packageDebugResources UP-TO-DATE
+> Task :core-wearables:generateDebugResValues UP-TO-DATE
+> Task :core-wearables:generateDebugResources UP-TO-DATE
+> Task :core-wearables:packageDebugResources UP-TO-DATE
+> Task :feature-decisions:generateDebugResValues UP-TO-DATE
+> Task :feature-decisions:generateDebugResources UP-TO-DATE
+> Task :feature-decisions:packageDebugResources UP-TO-DATE
+> Task :core-common:extractDeepLinksDebug UP-TO-DATE
+> Task :core-common:processDebugManifest UP-TO-DATE
+> Task :core-outbox:extractDeepLinksDebug UP-TO-DATE
+> Task :core-outbox:processDebugManifest UP-TO-DATE
+> Task :core-safety:extractDeepLinksDebug UP-TO-DATE
+> Task :core-safety:processDebugManifest UP-TO-DATE
+> Task :core-voice:extractDeepLinksDebug UP-TO-DATE
+> Task :core-voice:processDebugManifest UP-TO-DATE
+> Task :core-wearables:extractDeepLinksDebug UP-TO-DATE
+> Task :core-wearables:processDebugManifest UP-TO-DATE
+> Task :feature-decisions:extractDeepLinksDebug UP-TO-DATE
+> Task :feature-decisions:processDebugManifest UP-TO-DATE
+> Task :core-common:compileDebugLibraryResources UP-TO-DATE
+> Task :core-common:parseDebugLocalResources UP-TO-DATE
+> Task :core-common:generateDebugRFile UP-TO-DATE
+> Task :core-outbox:compileDebugLibraryResources UP-TO-DATE
+> Task :core-outbox:parseDebugLocalResources UP-TO-DATE
+> Task :core-outbox:generateDebugRFile UP-TO-DATE
+> Task :core-safety:compileDebugLibraryResources UP-TO-DATE
+> Task :core-safety:parseDebugLocalResources UP-TO-DATE
+> Task :core-safety:generateDebugRFile UP-TO-DATE
+> Task :core-voice:compileDebugLibraryResources UP-TO-DATE
+> Task :core-voice:parseDebugLocalResources UP-TO-DATE
+> Task :core-voice:generateDebugRFile UP-TO-DATE
+> Task :core-wearables:compileDebugLibraryResources UP-TO-DATE
+> Task :core-wearables:parseDebugLocalResources UP-TO-DATE
+> Task :core-wearables:generateDebugRFile UP-TO-DATE
+> Task :feature-decisions:compileDebugLibraryResources UP-TO-DATE
+> Task :feature-decisions:parseDebugLocalResources UP-TO-DATE
+> Task :feature-decisions:generateDebugRFile UP-TO-DATE
+> Task :core-common:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-common:compileDebugKotlin UP-TO-DATE
+> Task :core-common:javaPreCompileDebug UP-TO-DATE
+> Task :core-common:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-common:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-outbox:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-outbox:kspDebugKotlin UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :core-outbox:compileDebugKotlin UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :core-outbox:javaPreCompileDebug UP-TO-DATE
+> Task :core-outbox:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-outbox:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-safety:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :core-safety:compileDebugKotlin UP-TO-DATE
+> Task :core-safety:javaPreCompileDebug UP-TO-DATE
+> Task :core-safety:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-safety:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-voice:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-voice:compileDebugKotlin UP-TO-DATE
+> Task :core-voice:javaPreCompileDebug UP-TO-DATE
+> Task :core-voice:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-voice:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-wearables:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-wearables:compileDebugKotlin UP-TO-DATE
+> Task :core-wearables:javaPreCompileDebug UP-TO-DATE
+> Task :core-wearables:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-wearables:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature-decisions:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-decisions:compileDebugKotlin UP-TO-DATE
+> Task :feature-decisions:javaPreCompileDebug UP-TO-DATE
+> Task :feature-decisions:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-decisions:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-common:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-common:processDebugJavaRes UP-TO-DATE
+> Task :core-outbox:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-outbox:processDebugJavaRes UP-TO-DATE
+> Task :core-safety:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :core-safety:processDebugJavaRes UP-TO-DATE
+> Task :core-voice:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-voice:processDebugJavaRes UP-TO-DATE
+> Task :core-wearables:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-wearables:processDebugJavaRes UP-TO-DATE
+> Task :feature-decisions:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature-decisions:processDebugJavaRes UP-TO-DATE
+> Task :core-capture:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-capture:preBuild UP-TO-DATE
+> Task :core-capture:preDebugBuild UP-TO-DATE
+> Task :core-capture:generateDebugResValues UP-TO-DATE
+> Task :core-capture:generateDebugResources UP-TO-DATE
+> Task :core-capture:packageDebugResources UP-TO-DATE
+> Task :core-capture:parseDebugLocalResources UP-TO-DATE
+> Task :core-capture:generateDebugRFile UP-TO-DATE
+> Task :core-capture:compileDebugKotlin UP-TO-DATE
+> Task :core-capture:javaPreCompileDebug UP-TO-DATE
+> Task :core-capture:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-capture:bundleLibRuntimeToJarDebug
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :core-capture:bundleLibCompileToJarDebug
+> Task :core-capture:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :core-capture:generateDebugUnitTestStubRFile
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar
+> Task :core-capture:compileDebugUnitTestKotlin
+> Task :core-capture:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-capture:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-capture:processDebugJavaRes UP-TO-DATE
+> Task :core-capture:processDebugUnitTestJavaRes
+> Task :core-capture:testDebugUnitTest
+> Task :core-common:preDebugUnitTestBuild UP-TO-DATE
+> Task :core-common:generateDebugUnitTestStubRFile
+> Task :core-common:compileDebugUnitTestKotlin
+> Task :core-common:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-common:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-common:processDebugUnitTestJavaRes
+> Task :core-common:testDebugUnitTest
+> Task :core-ocr:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-ocr:preBuild UP-TO-DATE
+> Task :core-ocr:preDebugBuild UP-TO-DATE
+> Task :core-ocr:generateDebugResValues UP-TO-DATE
+> Task :core-ocr:generateDebugResources UP-TO-DATE
+> Task :core-ocr:packageDebugResources UP-TO-DATE
+> Task :core-ocr:parseDebugLocalResources UP-TO-DATE
+> Task :core-ocr:generateDebugRFile UP-TO-DATE
+> Task :core-ocr:compileDebugKotlin UP-TO-DATE
+> Task :core-ocr:javaPreCompileDebug UP-TO-DATE
+> Task :core-ocr:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-ocr:bundleLibRuntimeToJarDebug
+> Task :core-ocr:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-ocr:preDebugUnitTestBuild UP-TO-DATE
+> Task :core-ocr:generateDebugUnitTestStubRFile
+> Task :core-ocr:compileDebugUnitTestKotlin
+> Task :core-ocr:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-ocr:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-ocr:processDebugJavaRes UP-TO-DATE
+> Task :core-ocr:processDebugUnitTestJavaRes
+> Task :core-ocr:testDebugUnitTest
+> Task :core-outbox:preDebugUnitTestBuild UP-TO-DATE
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/test/kotlin/com/scmtips/field/app/navigation/ScreenInitTest.kt:16:13 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'ProtectionDomain?'.
+w: file:///home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/test/kotlin/com/scmtips/field/app/navigation/ScreenInitTest.kt:17:13 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'ProtectionDomain?'.
+
+> Task :core-outbox:generateDebugUnitTestStubRFile
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :core-outbox:kspDebugUnitTestKotlin
+> Task :core-outbox:compileDebugUnitTestKotlin
+> Task :core-outbox:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-outbox:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-outbox:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+> Task :core-positioning-stub:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-positioning-stub:preBuild UP-TO-DATE
+> Task :core-positioning-stub:preDebugBuild UP-TO-DATE
+> Task :core-positioning-stub:generateDebugResValues UP-TO-DATE
+> Task :core-positioning-stub:generateDebugResources UP-TO-DATE
+> Task :core-positioning-stub:packageDebugResources UP-TO-DATE
+> Task :core-positioning-stub:parseDebugLocalResources UP-TO-DATE
+> Task :core-positioning-stub:generateDebugRFile UP-TO-DATE
+> Task :core-positioning-stub:compileDebugKotlin UP-TO-DATE
+> Task :core-positioning-stub:javaPreCompileDebug UP-TO-DATE
+> Task :core-positioning-stub:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-positioning-stub:bundleLibRuntimeToJarDebug
+> Task :core-positioning-stub:bundleLibCompileToJarDebug
+> Task :core-positioning-stub:preDebugUnitTestBuild UP-TO-DATE
+> Task :core-outbox:testDebugUnitTest
+> Task :core-positioning-stub:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-positioning-stub:generateDebugUnitTestStubRFile
+> Task :core-safety:preDebugUnitTestBuild UP-TO-DATE
+> Task :core-positioning-stub:processDebugJavaRes UP-TO-DATE
+> Task :core-safety:generateDebugUnitTestStubRFile
+> Task :core-positioning-stub:compileDebugUnitTestKotlin
+> Task :core-positioning-stub:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-positioning-stub:processDebugUnitTestJavaRes
+> Task :core-positioning-stub:testDebugUnitTest
+> Task :core-safety:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-sitepack:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-sitepack:preBuild UP-TO-DATE
+> Task :core-sitepack:preDebugBuild UP-TO-DATE
+> Task :core-sitepack:generateDebugResValues UP-TO-DATE
+> Task :core-sitepack:generateDebugResources UP-TO-DATE
+> Task :core-sitepack:packageDebugResources UP-TO-DATE
+> Task :core-sitepack:parseDebugLocalResources UP-TO-DATE
+> Task :core-sitepack:generateDebugRFile UP-TO-DATE
+> Task :core-safety:compileDebugUnitTestKotlin
+> Task :core-safety:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-sitepack:compileDebugKotlin UP-TO-DATE
+> Task :core-sitepack:javaPreCompileDebug UP-TO-DATE
+> Task :core-sitepack:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-safety:processDebugUnitTestJavaRes
+> Task :core-sitepack:bundleLibRuntimeToJarDebug
+> Task :core-sitepack:bundleLibCompileToJarDebug
+> Task :core-sitepack:preDebugUnitTestBuild UP-TO-DATE
+> Task :core-sitepack:generateDebugUnitTestStubRFile
+> Task :core-sitepack:compileDebugUnitTestKotlin
+> Task :core-sitepack:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-sitepack:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-sitepack:processDebugJavaRes UP-TO-DATE
+> Task :core-sitepack:processDebugUnitTestJavaRes
+> Task :core-sitepack:testDebugUnitTest
+> Task :core-voice:preDebugUnitTestBuild UP-TO-DATE
+> Task :core-voice:generateDebugUnitTestStubRFile
+> Task :core-safety:testDebugUnitTest
+> Task :core-wearables:preDebugUnitTestBuild UP-TO-DATE
+> Task :core-wearables:generateDebugUnitTestStubRFile
+> Task :core-voice:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-wearables:compileDebugUnitTestKotlin NO-SOURCE
+> Task :core-wearables:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-wearables:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-wearables:processDebugUnitTestJavaRes NO-SOURCE
+> Task :core-wearables:testDebugUnitTest NO-SOURCE
+> Task :core-wearables-testing:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-wearables-testing:preBuild UP-TO-DATE
+> Task :core-wearables-testing:preDebugBuild UP-TO-DATE
+> Task :core-wearables-testing:generateDebugResValues UP-TO-DATE
+> Task :core-wearables-testing:generateDebugResources UP-TO-DATE
+> Task :core-wearables-testing:packageDebugResources UP-TO-DATE
+> Task :core-wearables-testing:parseDebugLocalResources UP-TO-DATE
+> Task :core-wearables-testing:generateDebugRFile UP-TO-DATE
+> Task :core-wearables-testing:compileDebugKotlin UP-TO-DATE
+> Task :core-wearables-testing:javaPreCompileDebug UP-TO-DATE
+> Task :core-wearables-testing:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-wearables-testing:bundleLibRuntimeToJarDebug
+> Task :core-wearables-testing:bundleLibCompileToJarDebug
+> Task :core-wearables-testing:preDebugUnitTestBuild UP-TO-DATE
+> Task :core-wearables-testing:generateDebugUnitTestStubRFile
+> Task :core-wearables-testing:compileDebugUnitTestKotlin
+> Task :core-wearables-testing:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core-wearables-testing:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-wearables-testing:processDebugJavaRes UP-TO-DATE
+> Task :core-wearables-testing:processDebugUnitTestJavaRes
+> Task :core-voice:compileDebugUnitTestKotlin
+> Task :core-voice:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-voice:processDebugUnitTestJavaRes
+> Task :core-wearables-testing:testDebugUnitTest
+> Task :feature-decisions:preDebugUnitTestBuild UP-TO-DATE
+> Task :feature-decisions:generateDebugUnitTestStubRFile
+> Task :core-voice:testDebugUnitTest
+> Task :feature-decisions:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :feature-exploded:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-exploded:preBuild UP-TO-DATE
+> Task :feature-exploded:preDebugBuild UP-TO-DATE
+> Task :feature-exploded:generateDebugResValues UP-TO-DATE
+> Task :feature-exploded:generateDebugResources UP-TO-DATE
+> Task :feature-exploded:packageDebugResources UP-TO-DATE
+> Task :feature-exploded:parseDebugLocalResources UP-TO-DATE
+> Task :feature-exploded:generateDebugRFile UP-TO-DATE
+> Task :feature-exploded:compileDebugKotlin UP-TO-DATE
+> Task :feature-exploded:javaPreCompileDebug UP-TO-DATE
+> Task :feature-exploded:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-exploded:bundleLibRuntimeToJarDebug
+> Task :feature-exploded:bundleLibCompileToJarDebug
+> Task :feature-exploded:preDebugUnitTestBuild UP-TO-DATE
+> Task :feature-exploded:generateDebugUnitTestStubRFile
+> Task :feature-exploded:compileDebugUnitTestKotlin
+> Task :feature-exploded:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :feature-exploded:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :feature-exploded:processDebugJavaRes UP-TO-DATE
+> Task :feature-exploded:processDebugUnitTestJavaRes
+> Task :feature-exploded:testDebugUnitTest
+> Task :feature-swap:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-swap:preBuild UP-TO-DATE
+> Task :feature-swap:preDebugBuild UP-TO-DATE
+> Task :feature-swap:generateDebugResValues UP-TO-DATE
+> Task :feature-swap:generateDebugResources UP-TO-DATE
+> Task :feature-swap:packageDebugResources UP-TO-DATE
+> Task :feature-swap:parseDebugLocalResources UP-TO-DATE
+> Task :feature-swap:generateDebugRFile UP-TO-DATE
+> Task :feature-swap:compileDebugKotlin UP-TO-DATE
+> Task :feature-swap:javaPreCompileDebug UP-TO-DATE
+> Task :feature-swap:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-swap:bundleLibRuntimeToJarDebug
+> Task :feature-swap:bundleLibCompileToJarDebug
+> Task :feature-swap:preDebugUnitTestBuild UP-TO-DATE
+> Task :feature-swap:generateDebugUnitTestStubRFile
+> Task :feature-swap:compileDebugUnitTestKotlin
+> Task :feature-swap:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :feature-swap:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :feature-swap:processDebugJavaRes UP-TO-DATE
+> Task :feature-swap:processDebugUnitTestJavaRes
+> Task :feature-decisions:compileDebugUnitTestKotlin
+> Task :feature-decisions:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :feature-decisions:processDebugUnitTestJavaRes
+> Task :feature-swap:testDebugUnitTest
+> Task :feature-tasks:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-tasks:preBuild UP-TO-DATE
+> Task :feature-tasks:preDebugBuild UP-TO-DATE
+> Task :feature-tasks:generateDebugResValues UP-TO-DATE
+> Task :feature-tasks:generateDebugResources UP-TO-DATE
+> Task :feature-tasks:packageDebugResources UP-TO-DATE
+> Task :feature-tasks:parseDebugLocalResources UP-TO-DATE
+> Task :feature-tasks:generateDebugRFile UP-TO-DATE
+> Task :feature-tasks:compileDebugKotlin UP-TO-DATE
+> Task :feature-tasks:javaPreCompileDebug UP-TO-DATE
+> Task :feature-tasks:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-tasks:bundleLibRuntimeToJarDebug
+> Task :feature-tasks:bundleLibCompileToJarDebug
+> Task :feature-tasks:preDebugUnitTestBuild UP-TO-DATE
+> Task :feature-tasks:generateDebugUnitTestStubRFile
+> Task :feature-tasks:compileDebugUnitTestKotlin NO-SOURCE
+> Task :feature-tasks:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :feature-tasks:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :feature-tasks:processDebugJavaRes UP-TO-DATE
+> Task :feature-tasks:processDebugUnitTestJavaRes NO-SOURCE
+> Task :feature-tasks:testDebugUnitTest NO-SOURCE
+> Task :feature-tower-audit:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-tower-audit:preBuild UP-TO-DATE
+> Task :feature-tower-audit:preDebugBuild UP-TO-DATE
+> Task :feature-tower-audit:generateDebugResValues UP-TO-DATE
+> Task :feature-tower-audit:generateDebugResources UP-TO-DATE
+> Task :feature-tower-audit:packageDebugResources UP-TO-DATE
+> Task :feature-tower-audit:parseDebugLocalResources UP-TO-DATE
+> Task :feature-tower-audit:generateDebugRFile UP-TO-DATE
+> Task :feature-tower-audit:compileDebugKotlin UP-TO-DATE
+> Task :feature-tower-audit:javaPreCompileDebug UP-TO-DATE
+> Task :feature-tower-audit:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-tower-audit:bundleLibRuntimeToJarDebug
+> Task :feature-tower-audit:bundleLibCompileToJarDebug
+> Task :feature-tower-audit:preDebugUnitTestBuild UP-TO-DATE
+> Task :feature-tower-audit:generateDebugUnitTestStubRFile
+> Task :feature-decisions:testDebugUnitTest
+> Task :feature-tower-audit:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :feature-tower-audit:processDebugJavaRes UP-TO-DATE
+> Task :feature-tower-audit:compileDebugUnitTestKotlin
+> Task :feature-tower-audit:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :feature-tower-audit:processDebugUnitTestJavaRes
+> Task :feature-tower-audit:testDebugUnitTest
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_5-1793624293524.json
+
+BUILD SUCCESSFUL in 54s
+269 actionable tasks: 77 executed, 16 from cache, 176 up-to-date
+exit status: 0
