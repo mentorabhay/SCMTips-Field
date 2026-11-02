@@ -1,0 +1,20 @@
+$ uv run python scripts/jobs/typecheck.py
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean
+2026-11-02T12:48:32Z
+tools/dev_stack/tests/test_m5.py:173: error: Module "tools.dev_stack.m5" does not explicitly export attribute "httpx"  [attr-defined]
+tools/dev_stack/tests/test_m5.py:174: error: Module "tools.dev_stack.m5" does not explicitly export attribute "time"  [attr-defined]
+Found 2 errors in 1 file (checked 325 source files)
+============================================================
+Running mypy --strict across first-party Python codebase...
+============================================================
+Command: uv run mypy --strict services/field-api/src services/field-worker/src services/erp-sim/src connectors/sap/src tools/
+============================================================
+Running tsc --noEmit across TypeScript apps and packages...
+============================================================
+Checking /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-console...
+Checking /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/packages/field-contract...
+Checking /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/packages/core-contract...
+Checking /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/packages/ui-tokens...
+
+[FAIL] Typecheck failed (mypy=1, tsc=0)
+exit status: 1
