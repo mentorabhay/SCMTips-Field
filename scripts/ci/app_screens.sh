@@ -17,5 +17,7 @@ python3 -m tools.app_screens.drive --out "$out" --package "$pkg" 2>&1 | tee "$lo
 code=${PIPESTATUS[0]}
 adb logcat -d > "$logs/app-screens-logcat.log"
 cp "$out/steps.json" "$logs/app-screens-steps.log" 2>/dev/null
+# the artifact store is not readable from every place the book is built, so the screens travel with the logs
+cp "$out"/*.png "$out"/*.mp4 "$logs/" 2>/dev/null
 ls -la "$out" | tee -a "$logs/app-screens-walk.log"
 exit "$code"

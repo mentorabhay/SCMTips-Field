@@ -49,6 +49,6 @@ def test_the_walk_reaches_the_demo_and_names_every_screenshot() -> None:
     kinds = [s.kind for s in WALK]
     assert all(s.name for s in WALK if s.kind == "shot")
     assert len({s.name for s in WALK if s.kind == "shot"}) == kinds.count("shot")
-    demo = [s for s in WALK if s.arg == r"^Try the SAMPLE demo$"]
+    demo = [s for s in WALK if s.kind == "tap" and s.arg == r"^Try the SAMPLE demo$"]
     assert demo and demo[0].required
     assert find(parse(DUMP), ADVANCE) is None  # nothing on the welcome dump moves the setup on by itself
