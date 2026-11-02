@@ -61,6 +61,11 @@ def dismiss_anr(nodes: list[Node]) -> bool:
     return True
 
 
+def in_front(package: str) -> bool:
+    focus = adb("shell", "dumpsys", "window", "displays").stdout.decode("utf-8", "replace")
+    return any(package in line for line in focus.splitlines() if "mCurrentFocus" in line or "mFocusedApp" in line)
+
+
 def tap(node: Node) -> None:
     x, y = node.center
     adb("shell", "input", "tap", str(x), str(y))
@@ -115,6 +120,10 @@ def run(out: Path, package: str) -> int:
             name = f"{shot_no:02d}-{step.name}.png"
             (out / name).write_bytes(adb("exec-out", "screencap", "-p").stdout)
             note = name
+        if not in_front(package):  # a system Back on a root screen leaves the app: bring it back
+            adb("shell", "am", "start", "-n", f"{package}/{ACTIVITY}")
+            time.sleep(3)
+            note = (note + "; " if note else "") + "the app was brought back to the front"
         raw, nodes = screen()
         report.append({"step": i, "kind": step.kind, "arg": step.arg, "name": step.name, "ok": ok, "note": note, "screen": labels(nodes)[:40]})
         if not ok:
@@ -134,9 +143,15 @@ def execute(step: Step) -> tuple[bool, str]:
         time.sleep(float(step.arg or "1"))
         return True, ""
     if step.kind == "back":
+        _, nodes = screen()
+        own = find(nodes, r"^(Back|Close|Cancel|Done|Back to the check)$")
+        if own is not None:
+            tap(own)
+            time.sleep(1.5)
+            return True, f"tapped {own.label!r}"
         adb("shell", "input", "keyevent", "4")
         time.sleep(1.5)
-        return True, ""
+        return True, "system back"
     if step.kind == "shot":
         time.sleep(0.8)
         return True, ""
@@ -149,7 +164,7 @@ def execute(step: Step) -> tuple[bool, str]:
         return True, f"tapped {hit.label!r}"
     if step.kind == "hidekb":
         if "mInputShown=true" in adb("shell", "dumpsys", "input_method").stdout.decode("utf-8", "replace"):
-            adb("shell", "input", "keyevent", "111")  # ESCAPE closes the keyboard without leaving the screen
+            adb("shell", "input", "keyevent", "4")  # with the keyboard open, Back only closes the keyboard
             time.sleep(1.0)
         return True, ""
     if step.kind == "type":
