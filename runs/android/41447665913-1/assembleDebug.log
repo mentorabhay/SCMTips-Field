@@ -1,0 +1,77 @@
+$ ./gradlew assembleDebug --stacktrace
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android
+2026-11-02T12:49:41Z
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :core-common:preBuild UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :core-common:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig
+> Task :core-common:writeDebugAarMetadata
+> Task :core-safety:preBuild UP-TO-DATE
+> Task :core-safety:preDebugBuild UP-TO-DATE
+> Task :core-outbox:preBuild UP-TO-DATE
+> Task :core-outbox:preDebugBuild UP-TO-DATE
+> Task :core-safety:writeDebugAarMetadata
+> Task :core-voice:preBuild UP-TO-DATE
+> Task :core-outbox:writeDebugAarMetadata
+> Task :core-wearables:preBuild UP-TO-DATE
+> Task :core-wearables:preDebugBuild UP-TO-DATE
+> Task :core-voice:preDebugBuild UP-TO-DATE
+> Task :core-voice:writeDebugAarMetadata
+> Task :feature-decisions:preBuild UP-TO-DATE
+> Task :core-wearables:writeDebugAarMetadata
+> Task :feature-decisions:preDebugBuild UP-TO-DATE
+> Task :feature-decisions:writeDebugAarMetadata
+> Task :app:generateDebugResValues
+> Task :core-common:generateDebugResValues FROM-CACHE
+> Task :core-common:generateDebugResources
+> Task :core-common:packageDebugResources
+> Task :core-outbox:generateDebugResValues FROM-CACHE
+> Task :core-outbox:generateDebugResources FROM-CACHE
+> Task :core-outbox:packageDebugResources
+> Task :core-safety:generateDebugResValues FROM-CACHE
+> Task :core-safety:generateDebugResources FROM-CACHE
+> Task :core-safety:packageDebugResources
+> Task :core-voice:generateDebugResValues FROM-CACHE
+> Task :core-voice:generateDebugResources
+> Task :core-voice:packageDebugResources
+> Task :core-wearables:generateDebugResValues FROM-CACHE
+> Task :core-wearables:generateDebugResources FROM-CACHE
+> Task :core-wearables:packageDebugResources
+> Task :feature-decisions:generateDebugResValues FROM-CACHE
+> Task :feature-decisions:generateDebugResources FROM-CACHE
+> Task :feature-decisions:packageDebugResources
+> Task :core-common:extractDeepLinksDebug
+> Task :core-common:processDebugManifest
+> Task :core-outbox:extractDeepLinksDebug FROM-CACHE
+> Task :core-outbox:processDebugManifest
+> Task :core-safety:extractDeepLinksDebug FROM-CACHE
+> Task :core-safety:processDebugManifest
+> Task :core-voice:extractDeepLinksDebug FROM-CACHE
+> Task :core-voice:processDebugManifest
+> Task :core-wearables:extractDeepLinksDebug FROM-CACHE
+> Task :core-wearables:processDebugManifest
+> Task :feature-decisions:extractDeepLinksDebug FROM-CACHE
+> Task :feature-decisions:processDebugManifest
+> Task :core-common:compileDebugLibraryResources
+> Task :core-common:parseDebugLocalResources
+> Task :core-common:generateDebugRFile
+> Task :core-outbox:compileDebugLibraryResources FROM-CACHE
+> Task :core-outbox:parseDebugLocalResources FROM-CACHE
+> Task :core-outbox:generateDebugRFile
+> Task :core-safety:compileDebugLibraryResources FROM-CACHE
+> Task :core-safety:parseDebugLocalResources FROM-CACHE
+> Task :core-safety:generateDebugRFile
+> Task :core-voice:compileDebugLibraryResources
+> Task :core-voice:parseDebugLocalResources
+> Task :core-voice:generateDebugRFile
+> Task :core-wearables:compileDebugLibraryResources FROM-CACHE
+> Task :core-wearables:parseDebugLocalResources FROM-CACHE
+> Task :core-wearables:generateDebugRFile
+> Task :feature-decisions:compileDebugLibraryResources FROM-CACHE
+> Task :feature-decisions:parseDebugLocalResources FROM-CACHE
+> Task :feature-decisions:generateDebugRFile
+> Task :core-common:checkKotlinGradlePluginConfigurationErrors SKIPPED
