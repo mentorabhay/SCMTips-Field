@@ -8,7 +8,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Step:
     kind: str
-    """shot | tap | maybe | wait | back | sleep | advance"""
+    """shot | tap | maybe | wait | back | sleep | advance | type (tap the field `arg`, type `name`) | hidekb"""
     arg: str = ""
     name: str = ""
     required: bool = False
@@ -18,32 +18,43 @@ class Step:
 # Buttons that move the first run forward without choosing anything (glasses and permissions are optional).
 ADVANCE = r"^(Allow and continue|Continue without a test photo|Skip|Not now|Continue|Next)$"
 
+# A SAMPLE address, typed only to show the password step (no password is ever typed).
+SAMPLE_EMAIL = "judge01@sample-drone-oem.example"
+
 WALK: tuple[Step, ...] = (
     Step("sleep", "6"),
-    Step("shot", name="welcome"),
-    Step("maybe", r"^For judges"),
-    Step("sleep", "1"),
-    Step("shot", name="judges-sign-in-note"),
-    Step("maybe", r"^(Close|Back)$"),
+    Step("shot", name="welcome-look"),
+    Step("maybe", r"^Next$"),
+    Step("shot", name="welcome-hear"),
+    Step("maybe", r"^Next$"),
+    Step("shot", name="welcome-confirm"),
     Step("tap", r"^Get started$", required=True),
     Step("sleep", "2"),
     Step("shot", name="sign-in-ways"),
     Step("tap", r"^Continue with e-mail$"),
+    Step("sleep", "1"),
+    Step("hidekb"),
     Step("shot", name="sign-in-e-mail"),
+    Step("type", r"^Work e-mail$", name=SAMPLE_EMAIL),
+    Step("hidekb"),
     Step("maybe", r"^Use my password$"),
+    Step("hidekb"),
     Step("shot", name="sign-in-password"),
     Step("tap", r"^Back$"),
-    Step("maybe", r"^Back$"),
     Step("wait", r"^Try the SAMPLE demo$"),
     Step("maybe", r"^Scan a code from your computer$"),
+    Step("sleep", "2"),
     Step("shot", name="sign-in-scan-code"),
     Step("tap", r"^Back$"),
     Step("wait", r"^Try the SAMPLE demo$"),
     Step("maybe", r"^I have an invite$"),
+    Step("sleep", "1"),
+    Step("hidekb"),
     Step("shot", name="sign-in-invite"),
     Step("tap", r"^Back$"),
     Step("wait", r"^Try the SAMPLE demo$"),
     Step("maybe", r"^Create an account$"),
+    Step("sleep", "1"),
     Step("shot", name="create-account"),
     Step("maybe", r"^(Close|Back)$"),
     Step("wait", r"^Try the SAMPLE demo$"),

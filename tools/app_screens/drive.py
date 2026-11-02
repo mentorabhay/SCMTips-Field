@@ -33,12 +33,17 @@ def screen() -> tuple[str, list[Node]]:
 
 
 def wait_for(pattern: str, timeout: float) -> Node | None:
+    """Look for `pattern`; after half the time, scroll the screen up once in case it is below the fold."""
     end = time.monotonic() + timeout
+    scrolled = False
     while time.monotonic() < end:
         _, nodes = screen()
         hit = find(nodes, pattern)
         if hit is not None:
             return hit
+        if not scrolled and time.monotonic() > end - timeout / 2:
+            adb("shell", "input", "swipe", "540", "1700", "540", "900", "400")
+            scrolled = True
         time.sleep(1.0)
     return None
 
@@ -128,6 +133,20 @@ def execute(step: Step) -> tuple[bool, str]:
         tap(hit)
         time.sleep(1.5)
         return True, f"tapped {hit.label!r}"
+    if step.kind == "hidekb":
+        if "mInputShown=true" in adb("shell", "dumpsys", "input_method").stdout.decode("utf-8", "replace"):
+            adb("shell", "input", "keyevent", "111")  # ESCAPE closes the keyboard without leaving the screen
+            time.sleep(1.0)
+        return True, ""
+    if step.kind == "type":
+        hit = wait_for(step.arg, 10)
+        if hit is None:
+            return False, f"no field {step.arg}"
+        tap(hit)
+        time.sleep(0.8)
+        adb("shell", "input", "text", step.name)
+        time.sleep(0.8)
+        return True, f"typed into {hit.label!r}"
     if step.kind == "wait":
         return (wait_for(step.arg, 30) is not None), ""
     if step.kind == "advance":
