@@ -1,0 +1,36 @@
+$ pnpm install --frozen-lockfile
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean
+2026-11-02T12:44:42Z
+Scope: all 5 workspace projects
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +250
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 250, reused 0, downloaded 99, added 70
+Progress: resolved 250, reused 0, downloaded 150, added 90
+Progress: resolved 250, reused 0, downloaded 161, added 94
+Progress: resolved 250, reused 0, downloaded 163, added 94
+Progress: resolved 250, reused 0, downloaded 165, added 94
+Progress: resolved 250, reused 0, downloaded 240, added 150
+Progress: resolved 250, reused 0, downloaded 250, added 250, done
+
+devDependencies:
++ @eslint/js 9.39.5
++ @types/node 22.20.5
++ axe-core 4.14.0
++ eslint 9.39.5
++ fast-check 3.23.2
++ prettier 3.9.10
++ typescript 5.9.3
++ typescript-eslint 8.72.1
++ vitest 2.1.9
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: esbuild@0.21.5.                                     │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 7.4s using pnpm v10.34.9
+exit status: 0
