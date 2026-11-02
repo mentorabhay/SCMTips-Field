@@ -1,0 +1,8 @@
+$ bash -c url=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | cut -d= -f2 | sed "s#\\\\##g"); echo "distributionUrl=$url"; echo "published sha256: $(curl -fsSL "${url}.sha256")"
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android
+2026-11-02T12:47:44Z
+distributionUrl=https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+# Published by Gradle at <distributionUrl>.sha256; recorded by CI run the private build mirror#41096609521 (rule 2.1)
+curl: (3) URL rejected: Malformed input to a URL function
+published sha256: 
+exit status: 0
