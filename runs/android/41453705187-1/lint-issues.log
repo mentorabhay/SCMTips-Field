@@ -1,0 +1,161 @@
+$ ../../scripts/ci/lint_issues.sh
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android
+2026-11-02T13:33:26Z
+== ./app/build/reports/lint-results-debug.xml (lint ?)
+Warning  ExifInterface  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookPhotos.kt:7
+         Avoid using `android.media.ExifInterface`; use `androidx.exifinterface.media.ExifInterface` instead
+Warning  ExifInterface  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookPhotos.kt:59
+         Avoid using `android.media.ExifInterface`; use `androidx.exifinterface.media.ExifInterface` instead
+Warning  InlinedApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/CaptureSessionService.kt:63
+         Field requires API level 30 (current min is 29): `android.content.pm.ServiceInfo#FOREGROUND_SERVICE_TYPE_CAMERA`
+Warning  InlinedApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/CaptureSessionService.kt:64
+         Field requires API level 30 (current min is 29): `android.content.pm.ServiceInfo#FOREGROUND_SERVICE_TYPE_MICROPHONE`
+Warning  InlinedApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt:101
+         Field requires API level 31 (current min is 29): `android.Manifest.permission#BLUETOOTH_CONNECT`
+Warning  InlinedApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt:101
+         Field requires API level 33 (current min is 29): `android.Manifest.permission#POST_NOTIFICATIONS`
+Warning  InlinedApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt:192
+         Field requires API level 31 (current min is 29): `android.Manifest.permission#BLUETOOTH_CONNECT`
+Warning  InlinedApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt:192
+         Field requires API level 33 (current min is 29): `android.Manifest.permission#POST_NOTIFICATIONS`
+Warning  InlinedApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt:295
+         Field requires API level 31 (current min is 29): `android.Manifest.permission#BLUETOOTH_CONNECT`
+Warning  OldTargetApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/build.gradle.kts:22
+         Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details.
+Warning  OldTargetApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:9
+         Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details.
+Warning  AndroidGradlePluginVersion  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/wrapper/gradle-wrapper.properties:3
+         A newer version of Gradle than 8.14.3 is available: 8.14.6
+Warning  AndroidGradlePluginVersion  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:5
+         A newer version of com.android.application than 8.11.1 is available: 9.5.0. (There is also a newer version of 8.11.𝑥 available, if upgrading to 9.5.0 is difficult: 8.11.2)
+Warning  AndroidGradlePluginVersion  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:5
+         A newer version of com.android.library than 8.11.1 is available: 9.5.0. (There is also a newer version of 8.11.𝑥 available, if upgrading to 9.5.0 is difficult: 8.11.2)
+Warning  GradleDependency  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:12
+         A newer version of androidx.core:core-ktx than 1.16.0 is available: 1.19.1
+Warning  GradleDependency  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:14
+         A newer version of androidx.compose:compose-bom than 2026.05.01 is available: 2026.09.00
+Warning  GradleDependency  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:15
+         A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.10.0 is available: 2.11.0
+Warning  GradleDependency  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:20
+         A newer version of androidx.room:room-compiler than 2.7.2 is available: 2.8.5
+Warning  GradleDependency  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:20
+         A newer version of androidx.room:room-ktx than 2.7.2 is available: 2.8.5
+Warning  GradleDependency  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:20
+         A newer version of androidx.room:room-runtime than 2.7.2 is available: 2.8.5
+Warning  GradleDependency  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:21
+         A newer version of androidx.work:work-runtime-ktx than 2.10.5 is available: 2.12.0
+Warning  LockedOrientationActivity  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/AndroidManifest.xml:59
+         Expecting `android:screenOrientation="unspecified"` or `"fullSensor"` for this activity so the user can use the application in any orientation and provide a great experience on Chrome OS devices
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:6
+         A newer version of org.jetbrains.kotlin.android than 2.2.21 is available: 2.4.21
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:6
+         A newer version of org.jetbrains.kotlin.plugin.compose than 2.2.21 is available: 2.4.21
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:6
+         A newer version of org.jetbrains.kotlin.plugin.serialization than 2.2.21 is available: 2.4.21
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:17
+         A newer version of org.jetbrains.kotlinx:kotlinx-serialization-json than 1.9.0 is available: 1.12.0
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:18
+         A newer version of com.squareup.okhttp3:logging-interceptor than 4.12.0 is available: 5.5.1
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:18
+         A newer version of com.squareup.okhttp3:okhttp than 4.12.0 is available: 5.5.1
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:19
+         A newer version of com.squareup.retrofit2:converter-kotlinx-serialization than 2.11.0 is available: 3.0.0
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:19
+         A newer version of com.squareup.retrofit2:retrofit than 2.11.0 is available: 3.0.0
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:27
+         A newer version of io.kotest:kotest-assertions-core than 5.9.1 is available: 6.2.6
+Warning  NewerVersionAvailable  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/gradle/libs.versions.toml:27
+         A newer version of io.kotest:kotest-property than 5.9.1 is available: 6.2.6
+Warning  ModifierParameter  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/homes/HomeTokens.kt:112
+         Modifier parameter should be the first optional parameter
+Warning  ModifierParameter  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskChrome.kt:287
+         Modifier parameter should be the first optional parameter
+Warning  DiscouragedApi  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/AndroidManifest.xml:59
+         Fixed screen orientations will be ignored in most cases, starting from Android 16. Android is moving toward a model where apps are expected to adapt to various orientations, display sizes, and aspect ratios.
+Warning  DataExtractionRules  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/AndroidManifest.xml:38
+         The attribute `android:allowBackup` is deprecated from Android 12 and higher and may be removed in future versions. Consider adding the attribute `android:dataExtractionRules` specifying an `@xml` resource which configures cloud backups and device transfers on Android 12 and higher.
+Warning  ObsoleteSdkInt  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/debug/AndroidManifest.xml:8
+         Unnecessary; `SDK_INT` is always >= 28
+Warning  ObsoleteSdkInt  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/CaptureSessionService.kt:61
+         Unnecessary; `SDK_INT` is always >= 29
+Warning  ObsoleteSdkInt  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/session/CaptureSessionService.kt:115
+         Unnecessary; `SDK_INT` is always >= 29
+Hint     AutoboxingStateCreation  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/firstrun/SignInScreen.kt:241
+         Prefer `mutableLongStateOf` instead of `mutableStateOf`
+Warning  UnusedResources  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/res/xml/app_restrictions.xml:2
+         The resource `R.xml.app_restrictions` appears to be unused
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/device/DeviceIo.kt:66
+         Use the KTX extension function `Bitmap.scale` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:261
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:262
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:268
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:269
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:493
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:518
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:597
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:988
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:1553
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:1561
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:1567
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:1574
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:1633
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:1716
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/look/LookPhotos.kt:23
+         Use the KTX extension function `Bitmap.scale` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/MainActivity.kt:353
+         Use the KTX extension function `String.toUri` instead?
+Warning  UseKtx  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/ui/kit/TaskChrome.kt:118
+         Use the KTX extension function `SharedPreferences.edit` instead?
+Warning  HardcodedText  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/res/xml/app_restrictions.xml:6
+         Hardcoded string "Field API Base URL", should use `@string` resource
+Warning  HardcodedText  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/res/xml/app_restrictions.xml:12
+         Hardcoded string "Tenant Hint", should use `@string` resource
+Warning  HardcodedText  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/res/xml/app_restrictions.xml:18
+         Hardcoded string "Default Site ID", should use `@string` resource
+Warning  HardcodedText  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/res/xml/app_restrictions.xml:24
+         Hardcoded string "Allowed Glasses Models", should use `@string` resource
+Warning  HardcodedText  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/res/xml/app_restrictions.xml:30
+         Hardcoded string "Force Audio-Only Mode", should use `@string` resource
+Warning  HardcodedText  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/res/xml/app_restrictions.xml:36
+         Hardcoded string "Allow Phone Camera Mode", should use `@string` resource
+Warning  HardcodedText  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/res/xml/app_restrictions.xml:42
+         Hardcoded string "Max Outbox Queue Depth", should use `@string` resource
+Warning  HardcodedText  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/apps/field-android/app/src/main/res/xml/app_restrictions.xml:48
+         Hardcoded string "Log Level", should use `@string` resource
+== ./core-voice/build/reports/lint-results-debug.xml (lint ?)
+== ./core-safety/build/reports/lint-results-debug.xml (lint ?)
+== ./core-outbox/build/reports/lint-results-debug.xml (lint ?)
+Warning  Aligned16KB  /home/runner/.gradle/caches/8.14.3/transforms/25e65cb5570ddbf4c416be89e714b4e7/transformed/android-database-sqlcipher-4.5.4/jni/arm64-v8a/libsqlcipher.so:?
+         The native library `arm64-v8a/libsqlcipher.so` (from `net.zetetic:android-database-sqlcipher:4.5.4`) is not 16 KB aligned
+Warning  Aligned16KB  /home/runner/.gradle/caches/8.14.3/transforms/25e65cb5570ddbf4c416be89e714b4e7/transformed/android-database-sqlcipher-4.5.4/jni/arm64-v8a/libsqlcipher.so:?
+         The native library `arm64-v8a/libsqlcipher.so` (from `net.zetetic:android-database-sqlcipher:4.5.4`) is not 16 KB aligned
+Warning  Aligned16KB  /home/runner/.gradle/caches/8.14.3/transforms/25e65cb5570ddbf4c416be89e714b4e7/transformed/android-database-sqlcipher-4.5.4/jni/arm64-v8a/libsqlcipher.so:?
+         The native library `arm64-v8a/libsqlcipher.so` (from `net.zetetic:android-database-sqlcipher:4.5.4`) is not 16 KB aligned
+== ./core-capture/build/reports/lint-results-debug.xml (lint ?)
+== ./core-ocr/build/reports/lint-results-debug.xml (lint ?)
+== ./core-wearables/build/reports/lint-results-debug.xml (lint ?)
+== ./core-positioning-stub/build/reports/lint-results-debug.xml (lint ?)
+== ./core-wearables-testing/build/reports/lint-results-debug.xml (lint ?)
+== ./core-sitepack/build/reports/lint-results-debug.xml (lint ?)
+== ./feature-tasks/build/reports/lint-results-debug.xml (lint ?)
+== ./feature-exploded/build/reports/lint-results-debug.xml (lint ?)
+== ./feature-decisions/build/reports/lint-results-debug.xml (lint ?)
+== ./core-common/build/reports/lint-results-debug.xml (lint ?)
+== ./feature-tower-audit/build/reports/lint-results-debug.xml (lint ?)
+== ./feature-swap/build/reports/lint-results-debug.xml (lint ?)
+lint errors: 0
+exit status: 0
