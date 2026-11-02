@@ -406,7 +406,10 @@
     the core's own code (tests/fixtures/core_brief_check_cases.json). Test change: "Option two" for "Option 2" was
     expected to pass locally; the real core refuses it (number word not in the template), so it is now expected to
     be refused locally. The core's own false refusal of "$12,480" is fixed on the core's branch fix/brief-check
-    (K9, not merged); Field does not depend on it. Still UNVERIFIED with the real Muse model on the host.
+    (K9, merged into the core's integration branch ddfbfc9); Field does not depend on it. Hosted 2 Nov (release
+    scm-9a147e1-694f066-20261102-1202): Muse took about 4.2 s, over the 4 s deadline, so the hosting kit set
+    BRIEF_DEADLINE_S=6 on field-api; the next approver smoke spoke the brief from the model (3.7 s) and the
+    real core's check accepted it. Still partial: not yet heard on the owner's phone and glasses.
 
 - id: M4-B01
   title: feature-decisions core client — wearable /v1 calls, app sign-in wire, spoken brief from field-api (F1, F2)
