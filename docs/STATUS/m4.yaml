@@ -345,6 +345,9 @@
   - services/field-api/src/field_api/briefs/service.py
   - services/field-api/src/field_api/briefs/numbers.py
   - services/field-api/src/field_api/briefs/core.py
+  - services/field-api/src/field_api/briefs/markers.py
+  - services/field-api/src/field_api/briefs/core_rule.py
+  - services/field-api/tests/fixtures/core_brief_check_cases.json
   - packages/field-contract/openapi.json
   tests:
   - services/field-api/tests/unit/test_spoken_reasoning_effort.py::test_router_sends_reasoning_effort_to_meta_only
@@ -359,6 +362,15 @@
   - services/field-api/tests/assistant/test_spoken_briefs.py::test_core_token_is_never_stored_or_logged
   - services/field-api/tests/assistant/test_spoken_briefs.py::test_permission_validation_and_idempotency
   - services/field-api/tests/assistant/test_spoken_briefs.py::test_a_rewrite_with_a_new_number_is_always_refused
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_a_model_that_writes_the_templates_figures_itself_is_still_spoken
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_the_hosted_refusal_is_refused_locally_and_the_retry_is_spoken
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_no_retry_when_too_little_of_the_deadline_is_left
+  - services/field-api/tests/assistant/test_spoken_briefs.py::test_a_failed_retry_speaks_the_template_with_both_reasons
+  - services/field-api/tests/unit/test_m4_m03_brief_markers.py::test_the_port_agrees_with_the_core_on_shared_fixtures
+  - services/field-api/tests/unit/test_m4_m03_brief_markers.py::test_the_hosted_refusal_passes_the_old_local_check_and_fails_the_ported_rule
+  - services/field-api/tests/unit/test_m4_m03_brief_markers.py::test_a_fluent_marker_rewrite_becomes_text_the_core_accepts
+  - services/field-api/tests/unit/test_m4_m03_brief_markers.py::test_markers_moved_dropped_or_invented_are_refused_locally
+  - services/field-api/tests/unit/test_m4_m03_brief_markers.py::test_unmasked_markers_always_give_back_the_template_and_pass_the_core_rule
   frs: []
   verified_at: null
   note: >-
@@ -379,7 +391,22 @@
     check client itself was called against the real core by the smoke (template accepted, a changed figure refused;
     META_FIELD row 21 VERIFIED for a local core). The core check refused its own template when net cost = committed
     spend; fixed on the core (6ea7c29), after which the smoke passed on that decision.
-    2 Nov (hosting TO_FIELD §14): the hosted brief hit AI_TIMEOUT and the template was spoken; spoken answers now ask Meta's model for reasoning_effort minimal (SPOKEN_REASONING_EFFORT overrides; Baseten never gets it) and BRIEF_DEADLINE_S (2..8, default 4) can be tuned on the host. Unverified on the host until the next look at a brief's source.
+    2 Nov (hosting TO_FIELD §14): the hosted brief hit AI_TIMEOUT and the template was spoken; spoken answers now ask Meta's model for reasoning_effort minimal (SPOKEN_REASONING_EFFORT overrides; Baseten never gets it) and BRIEF_DEADLINE_S (2..8, default 4) can be tuned on the host. Unverified on the host until the next look at a brief's source. Fix fix/brief-order (2 Nov 2026): the hosted
+    smoke (release scm-1a36ab0-569772d, magnet-export-curbs) spoke the template because the core refused Muse's brief
+    ("The figures are not the template's figures in the template's order with their signs"): the core compares each
+    figure by its digits, in the template's order, with its minus sign, while the old local check compared values as
+    a set, so "$12,480" for "$12,480.00", "$1,908.90" or "minus $1,908.90" for "-$1,908.90", and the committed amount
+    said before the net passed locally and were refused by the core (reproduced with the core's own accept at
+    6357b53). Now the model gets the template with every figure as a marker [F1].. (briefs/markers.py) and writes
+    only the words; field-api puts the template's figures back, runs numbers.check and the core's rule ported
+    (briefs/core_rule.py: grounding with the template's numbers only, order and signs, labels, number words, 70
+    words; reasons local:<the core's sentence>), and asks once more with the markers named when a local check refuses
+    and at least RETRY_MIN_S 1.5 s of the deadline is left (retry:<reason>, retry:no_time); the deadline and
+    reasoning_effort minimal are unchanged. The port agrees with the core's verdicts on 73 shared fixtures made by
+    the core's own code (tests/fixtures/core_brief_check_cases.json). Test change: "Option two" for "Option 2" was
+    expected to pass locally; the real core refuses it (number word not in the template), so it is now expected to
+    be refused locally. The core's own false refusal of "$12,480" is fixed on the core's branch fix/brief-check
+    (K9, not merged); Field does not depend on it. Still UNVERIFIED with the real Muse model on the host.
 
 - id: M4-B01
   title: feature-decisions core client — wearable /v1 calls, app sign-in wire, spoken brief from field-api (F1, F2)

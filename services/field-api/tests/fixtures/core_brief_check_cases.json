@@ -1,0 +1,789 @@
+{
+ "source": "SCMTips core 6357b53 (the core's integration branch), lr_api.domain.ai.short.accept('spoken', candidate, template, facts): with facts={} (the template's numbers only, the evidence Field has) and with the decision's facts",
+ "generated": "2026-11-02",
+ "cases": [
+  {
+   "facts": "magnet-risk",
+   "variant": "verbatim",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "net minus as word",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is minus $1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "net sign dropped",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is $1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "unicode minus",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is −$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "committed .00 dropped",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "currency as a word",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits 12,480.00 dollars. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "percent word",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 percent. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "date month day year",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of November 14, 2026. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "date day/month/year",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 14/11/2026. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"14\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "committed before net",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Approving commits $12,480.00, its net cost against the plan is -$1,908.90.  The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "net and committed swapped",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is $12,480.00. Approving commits -$1,908.90. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed).",
+    "The figure 1248000 is the template's committed figure, not its net figure.",
+    "The figure -190890 is the template's net figure, not its committed figure."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "rounded",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "number word one",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. Only one option is ready.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "Numbers written in words cannot be checked: one."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "number word two kept",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. Two approvers are needed. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "digit for word",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs 2 approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"2\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "citation",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. See [1].",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These citation markers match no article a tool returned: [1].",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "link",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. Details at https://example.com/x.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These links are not stored articles: https://example.com/x"
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "new number",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. It also costs 987654 more.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"987654\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "too long",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The spoken brief has 93 words (at most 70)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "empty",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "   ",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The rewrite is empty."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "magnet-risk",
+   "variant": "fluent same figures",
+   "template": "A decision: Response to: Export licence checks on rare-earth magnets hold brushle…. The recommended option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits $12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision on export licence checks that hold rare-earth magnet and brushless motor shipments. The recommended option is the alternate source, with a net cost against the plan of -$1,908.90. Approving commits $12,480.00, and the fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14, needs two approvers, and approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "verbatim",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "net minus as word",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is minus $25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "net sign dropped",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is $25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "unicode minus",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is −$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "currency as a word",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits 15,622.78 dollars. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "percent word",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 percent. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "date month day year",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of October 28, 2026. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "date day/month/year",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 28/10/2026. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"28\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "committed before net",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Approving commits $15,622.78, its net cost against the plan is -$25,750.16.  The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "net and committed swapped",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is $15,622.78. Approving commits -$25,750.16. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed).",
+    "The figure 1562278 is the template's committed figure, not its net figure.",
+    "The figure -2575016 is the template's net figure, not its committed figure."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "rounded",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"$15,622\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "number word one",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor. Only one option is ready.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "Numbers written in words cannot be checked: one."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "citation",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor. See [1].",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These citation markers match no article a tool returned: [1].",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "link",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor. Details at https://example.com/x.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These links are not stored articles: https://example.com/x"
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "new number",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor. It also costs 987654 more.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"987654\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "too long",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The spoken brief has 87 words (at most 70)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "empty",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "   ",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The rewrite is empty."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "malacca-reroute",
+   "variant": "fluent same figures",
+   "template": "A decision: Response to: Strait of Malacca closed to container traffic. The recommended option is the reroute. Its net cost against the plan is -$25,750.16. Approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28. Approving asks for your second factor.",
+   "candidate": "A decision on the closed Strait of Malacca. The recommended option is the reroute: its net cost against the plan is -$25,750.16, and approving commits $15,622.78. The fill rate would be 64.7 %. It is waiting for approval, with a deadline of 2026-10-28, and approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "verbatim",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "committed .00 dropped",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100. Approving commits $4,100. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "currency as a word",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of 4,100.00 dollars. Approving commits 4,100.00 dollars. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "date month day year",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of November 14, 2026.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "date day/month/year",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 14/11/2026.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "committed before net",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, Approving commits $4,100.00, for a net result of $4,100.00.  The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "net and committed swapped",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "rounded",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100. Approving commits $4,100. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "number word one",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14. Only one option is ready.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "Numbers written in words cannot be checked: one."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "citation",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14. See [1].",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These citation markers match no article a tool returned: [1].",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "link",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14. Details at https://example.com/x.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These links are not stored articles: https://example.com/x"
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "new number",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14. It also costs 987654 more.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"987654\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "too long",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The spoken brief has 95 words (at most 70)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "forward-buy-opportunity",
+   "variant": "empty",
+   "template": "An opportunity: Temporary price cut on CP-201 inertial sensors. The price or duty change behind it is simulated, not real news. The proposed option is the forward buy. It saves $920.00 on price, for a net result of $4,100.00. Approving commits $4,100.00. The cash comes back by week 14. It is waiting for approval, with a deadline of 2026-11-14.",
+   "candidate": "   ",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The rewrite is empty."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "verbatim",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "net minus as word",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is minus ₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "net sign dropped",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is ₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "unicode minus",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is −₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "committed .00 dropped",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "currency as a word",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits 2,50,000.00 dollars. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "percent word",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 percent. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "date month day year",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of November 14, 2026. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "date day/month/year",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 14/11/2026. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"14\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "committed before net",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Approving commits ₹2,50,000.00, its net cost against the plan is -₹12,34,567.50.  The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "net and committed swapped",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is ₹2,50,000.00. Approving commits -₹12,34,567.50. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed).",
+    "The figure 25000000 is the template's committed figure, not its net figure.",
+    "The figure -123456750 is the template's net figure, not its committed figure."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "rounded",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "number word one",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. Only one option is ready.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "Numbers written in words cannot be checked: one."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "number word two kept",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. Two approvers are needed. Approving asks for your second factor.",
+   "accepted_template_only": true,
+   "problems_template_only": [],
+   "accepted_with_facts": true
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "digit for word",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs 2 approvers. Approving asks for your second factor.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"2\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "citation",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. See [1].",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These citation markers match no article a tool returned: [1].",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "link",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. Details at https://example.com/x.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These links are not stored articles: https://example.com/x"
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "new number",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. It also costs 987654 more.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "These figures are not in any tool result: \"987654\".",
+    "The figures are not the template's figures in the template's order with their signs (a figure moved to another fact, or a sign changed)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "too long",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully. Please listen carefully.",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The spoken brief has 95 words (at most 70)."
+   ],
+   "accepted_with_facts": false
+  },
+  {
+   "facts": "indian-expedite",
+   "variant": "empty",
+   "template": "A decision: Response to: Port congestion at Nhava Sheva delays CP-204 motors. The recommended option is air freight for the gap. Its net cost against the plan is -₹12,34,567.50. Approving commits ₹2,50,000.00. The fill rate would be 88.0 %. It is waiting for approval, with a deadline of 2026-11-14. It needs two approvers. Approving asks for your second factor.",
+   "candidate": "   ",
+   "accepted_template_only": false,
+   "problems_template_only": [
+    "The rewrite is empty."
+   ],
+   "accepted_with_facts": false
+  }
+ ]
+}

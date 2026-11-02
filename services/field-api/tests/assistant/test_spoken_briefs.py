@@ -1,5 +1,6 @@
-"""POST /v1/briefs/spoken (M4 contract §4, F3): Muse rewrites the core's template brief, field-api checks the
-numbers locally, then asks the core's check; the template is spoken whenever anything refuses or fails.
+"""POST /v1/briefs/spoken (M4 contract §4, F3): Muse rewrites the core's template brief with its figures as markers,
+field-api puts the figures back and runs the local checks (the number check and the core's own rule, ported), retries
+once when they refuse, then asks the core's check; the template is spoken whenever anything refuses or fails.
 
 Muse is the recorded-response double of the chat-completions API (conftest.RecordedAPI, test code only); the core is
 an httpx MockTransport serving the stand-in core's check shape {accepted, reasons[], template_text} (core handover
@@ -24,7 +25,8 @@ from fastapi.testclient import TestClient
 from field_api.ai.budget import BudgetGuard
 from field_api.app import app
 from field_api.assistant.model import ModelRouter, get_router
-from field_api.briefs import numbers
+from field_api.briefs import core_rule, markers, numbers
+from field_api.briefs import service as brief_service
 from field_api.briefs.core import CoreBriefCheck, get_core_check
 from field_api.briefs.service import BRIEF_DEADLINE_S
 from hypothesis import given, settings
@@ -38,6 +40,16 @@ TEMPLATE = ("Rare-earth magnet export curbs hit the drone motor line. Option 1: 
             "stock in 3 days. Option 2: qualify an alternate supplier, 6 weeks.")
 REWRITE = ("Export curbs on rare-earth magnets now hit the drone motor line. Option 1 is to expedite air freight for "
            "42,000 USD, with stock in 3 days. Option 2 is to qualify an alternate supplier, which takes 6 weeks.")
+MASKED = ("Rare-earth magnet export curbs hit the drone motor line. Option [F1]: expedite air freight, [F2] USD, "
+          "stock in [F3] days. Option [F4]: qualify an alternate supplier, [F5] weeks.")
+MARKED_REWRITE = ("Export curbs on rare-earth magnets now hit the drone motor line. Option [F1] is to expedite air freight "
+                  "for [F2] USD, with stock in [F3] days. Option [F4] is to qualify an alternate supplier, which takes "
+                  "[F5] weeks.")  # what Muse answers to MASKED; unmasked, it is REWRITE
+# The core's spoken template for a magnet-export-curbs decision (core short.decision_spoken, the shared fixtures).
+CORE_SPOKEN = ("A decision: Response to: Export licence checks on rare-earth magnets hold brushle\u2026. The recommended "
+               "option is the alternate source. Its net cost against the plan is -$1,908.90. Approving commits "
+               "$12,480.00. The fill rate would be 96.4 %. It is waiting for approval, with a deadline of 2026-11-14. "
+               "It needs two approvers. Approving asks for your second factor.")
 
 
 @dataclass
@@ -92,13 +104,15 @@ def brief(s: dict[str, Any], status: int = 200, *, token: str | None = CORE_TOKE
 
 def test_rewrite_accepted_by_the_core_is_spoken(site: dict[str, Any], recorded_api: Any, core: Core,
                                                 h: SimpleNamespace) -> None:
-    recorded_api.script = [h.answer(REWRITE, prompt=400, cached=0, completion=300)]
+    recorded_api.script = [h.answer(MARKED_REWRITE, prompt=400, cached=0, completion=300)]
     r = brief(site)
     assert r == {"text": REWRITE, "source": "model", "reasons": []}
     sent = recorded_api.requests[0]
-    assert sent["model"] == "muse-spark-1.2" and "tools" not in sent
-    assert sent["messages"][1] == {"role": "user", "content": TEMPLATE}
-    assert "Keep every number" in sent["messages"][0]["content"]
+    assert sent["model"] == "muse-spark-1.2" and "tools" not in sent and sent["reasoning_effort"] == "minimal"
+    assert sent["messages"][1] == {"role": "user", "content": MASKED}  # the model never sees a figure
+    assert markers.mask(TEMPLATE).text == MASKED
+    assert "Keep every marker exactly once" in sent["messages"][0]["content"]
+    assert len(recorded_api.requests) == 1
     assert len(core.requests) == 1
     req = core.requests[0]
     assert (req.method, req.url.path) == ("POST", "/v1/briefs/decision/DEC-RE-001/check")
@@ -124,21 +138,83 @@ def test_core_refusal_speaks_the_cores_template(site: dict[str, Any], recorded_a
     assert brief(site) == {"text": TEMPLATE, "source": "template", "reasons": ["core:refused"]}
 
 
+def test_a_model_that_writes_the_templates_figures_itself_is_still_spoken(site: dict[str, Any], recorded_api: Any,
+                                                                          core: Core, h: SimpleNamespace) -> None:
+    recorded_api.script = [h.answer(REWRITE)]
+    assert brief(site) == {"text": REWRITE, "source": "model", "reasons": []}
+    assert json.loads(core.requests[0].content) == {"text": REWRITE}
+
+
 @pytest.mark.parametrize(("rewrite", "reasons"), [
     (REWRITE.replace("42,000", "45,000"), ["local:number_not_in_template:45000", "local:number_dropped:42000"]),
     (REWRITE.replace("6 weeks", "about six weeks or 7"), ["local:number_not_in_template:7"]),
     (REWRITE.replace(" with stock in 3 days.", "."), ["local:number_dropped:3"]),
-    (REWRITE.replace("Option 2", "Option two"), []),  # the same number in words passes the local check
+    # the same number in words passed the old local check, and the core refuses it ("two" is not in the template)
+    (REWRITE.replace("Option 2", "Option two"), ["local:Numbers written in words cannot be checked: two."]),
+    (MARKED_REWRITE.replace("[F3]", "[F9]"), ["local:unknown_marker:F9"]),
 ])
 def test_local_number_check_runs_before_the_core(site: dict[str, Any], recorded_api: Any, core: Core,
-                                                 h: SimpleNamespace, rewrite: str, reasons: list[str]) -> None:
-    recorded_api.script = [h.answer(rewrite)]
+                                                        h: SimpleNamespace, rewrite: str, reasons: list[str]) -> None:
+    recorded_api.script = [h.answer(rewrite), h.answer(rewrite)]
     r = brief(site)
-    if reasons:
-        assert r == {"text": TEMPLATE, "source": "template", "reasons": reasons}
-        assert core.requests == []  # a local refusal never costs a core call
-    else:
-        assert r["source"] == "model" and len(core.requests) == 1
+    text = markers.unmask(rewrite, markers.mask(TEMPLATE))[0]
+    first = ([x for x in reasons if x.startswith("local:unknown_marker:")] + numbers.check(text, TEMPLATE)
+             + [f"local:{p}" for p in core_rule.refusals(text, TEMPLATE)])
+    assert all(x in first for x in reasons), first
+    assert r == {"text": TEMPLATE, "source": "template", "reasons": [*first, *(f"retry:{x}" for x in first)]}
+    assert core.requests == []  # a local refusal never costs a core call
+    assert len(recorded_api.requests) == 2
+    again = recorded_api.requests[1]["messages"]
+    assert again[:2] == recorded_api.requests[0]["messages"]
+    assert again[2] == {"role": "assistant", "content": rewrite}
+    assert again[3]["role"] == "user" and "[F1], [F2], [F3], [F4], [F5] exactly once each, in this order" in \
+        again[3]["content"]
+
+
+def test_the_hosted_refusal_is_refused_locally_and_the_retry_is_spoken(site: dict[str, Any], recorded_api: Any,
+                                                                       core: Core, h: SimpleNamespace) -> None:
+    """Hosted release scm-1a36ab0-569772d (2 Nov): the core refused Muse's brief for the magnet-export-curbs decision
+    ("The figures are not the template's figures in the template's order with their signs"). A rewrite that drops
+    the cents of the committed amount passes the old value check but not the core's rule; field-api now refuses it
+    itself, asks once more with markers, and speaks the second answer, with the template's figures, after the core
+    accepts it."""
+    first = CORE_SPOKEN.replace("$12,480.00", "$12,480")
+    assert numbers.check(first, CORE_SPOKEN) == []  # what let it through before
+    masked = markers.mask(CORE_SPOKEN)
+    second = ("A decision on export licence checks that hold rare-earth magnet and brushless motor shipments. The "
+              "recommended option is the alternate source, with a net cost against the plan of [F1]. Approving "
+              "commits [F2], and the fill rate would be [F3]. It is waiting for approval, with a deadline of [F4], "
+              "needs two approvers, and approving asks for your second factor.")
+    recorded_api.script = [h.answer(first), h.answer(second)]
+    core.script = [{"accepted": True, "reasons": [], "template_text": CORE_SPOKEN}]
+    r = brief(site, template=CORE_SPOKEN)
+    spoken = markers.unmask(second, masked)[0]
+    assert r == {"text": spoken, "source": "model", "reasons": []}
+    assert "-$1,908.90. Approving commits $12,480.00, and the fill rate would be 96.4 %." in spoken
+    assert core_rule.refusals(spoken, CORE_SPOKEN) == []
+    assert json.loads(core.requests[0].content) == {"text": spoken} and len(core.requests) == 1
+    assert [q["reasoning_effort"] for q in recorded_api.requests] == ["minimal", "minimal"]
+    assert recorded_api.requests[0]["messages"][1]["content"] == masked.text
+    assert "$" not in json.dumps(recorded_api.requests[0])  # the model never sees the template's figures
+
+
+def test_no_retry_when_too_little_of_the_deadline_is_left(site: dict[str, Any], recorded_api: Any, core: Core,
+                                                          h: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(brief_service, "RETRY_MIN_S", 60.0)
+    recorded_api.script = [h.answer(CORE_SPOKEN.replace("-$1,908.90", "$1,908.90"))]
+    r = brief(site, template=CORE_SPOKEN)
+    assert r == {"text": CORE_SPOKEN, "source": "template",
+                 "reasons": [f"local:{core_rule.ORDER_PROBLEM}", "retry:no_time"]}
+    assert len(recorded_api.requests) == 1 and core.requests == []
+
+
+def test_a_failed_retry_speaks_the_template_with_both_reasons(site: dict[str, Any], recorded_api: Any, core: Core,
+                                                              h: SimpleNamespace) -> None:
+    recorded_api.script = [h.answer(MARKED_REWRITE.replace("[F2] USD", "45,000 USD")), 500]
+    r = brief(site)
+    assert r["source"] == "template" and r["text"] == TEMPLATE
+    assert r["reasons"][:2] == ["local:number_not_in_template:45000", "local:number_dropped:42000"]
+    assert r["reasons"][-1] == "retry:model:meta:AI_HTTP_500" and core.requests == []
 
 
 @pytest.mark.parametrize(("item", "reason"), [
