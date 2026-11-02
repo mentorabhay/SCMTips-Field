@@ -142,6 +142,20 @@ def execute(step: Step) -> tuple[bool, str]:
     if step.kind == "sleep":
         time.sleep(float(step.arg or "1"))
         return True, ""
+    if step.kind == "return":
+        did: list[str] = []
+        for _ in range(4):
+            _, nodes = screen()
+            if find(nodes, step.arg) is not None:
+                return True, "; ".join(did)
+            start = find(nodes, r"^Get started$")
+            if start is not None:
+                tap(start)
+                did.append("Get started")
+            else:
+                did.append(execute(Step("back"))[1])
+            time.sleep(1.5)
+        return (wait_for(step.arg, 5) is not None), "; ".join(did)
     if step.kind == "back":
         _, nodes = screen()
         own = find(nodes, r"^(Back|Close|Cancel|Done|Back to the check)$")

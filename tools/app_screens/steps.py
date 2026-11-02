@@ -8,7 +8,8 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Step:
     kind: str
-    """shot | tap | maybe | wait | back | sleep | advance | type (tap the field `arg`, type `name`) | hidekb"""
+    """shot | tap | maybe | wait | back | sleep | advance | type (tap the field `arg`, type `name`) | hidekb |
+    return (Back until `arg` is on screen; from the welcome screen, Get started)"""
     arg: str = ""
     name: str = ""
     required: bool = False
@@ -17,6 +18,9 @@ class Step:
 
 # Buttons that move the first run forward without choosing anything (glasses and permissions are optional).
 ADVANCE = r"^(Allow and continue|Continue without a test photo|Skip|Not now|Continue|Next)$"
+
+# The sign-in screen: every sign-in way returns here before the next one.
+SIGN_IN = r"^Try the SAMPLE demo$"
 
 # A SAMPLE address, typed only to show the password step (no password is ever typed).
 SAMPLE_EMAIL = "judge01@sample-drone-oem.example"
@@ -41,25 +45,20 @@ WALK: tuple[Step, ...] = (
     Step("maybe", r"^Use my password$"),
     Step("hidekb"),
     Step("shot", name="sign-in-password"),
-    Step("back"),
-    Step("back"),
-    Step("wait", r"^Try the SAMPLE demo$"),
+    Step("return", SIGN_IN),
     Step("maybe", r"^Scan a code from your computer$"),
     Step("sleep", "2"),
     Step("shot", name="sign-in-scan-code"),
-    Step("back"),
-    Step("wait", r"^Try the SAMPLE demo$"),
+    Step("return", SIGN_IN),
     Step("maybe", r"^I have an invite$"),
     Step("sleep", "1"),
     Step("hidekb"),
     Step("shot", name="sign-in-invite"),
-    Step("back"),
-    Step("wait", r"^Try the SAMPLE demo$"),
+    Step("return", SIGN_IN),
     Step("maybe", r"^Create an account$"),
     Step("sleep", "1"),
     Step("shot", name="create-account"),
-    Step("maybe", r"^(Close|Back)$"),
-    Step("wait", r"^Try the SAMPLE demo$"),
+    Step("return", SIGN_IN),
     Step("tap", r"^Try the SAMPLE demo$", required=True),
     Step("sleep", "6"),
     Step("shot", name="after-demo-sign-in"),
