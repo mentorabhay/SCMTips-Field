@@ -1,0 +1,28 @@
+$ pnpm exec vitest run --reporter=default --reporter=junit --outputFile.junit=reports/junit-vitest.xml
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean
+2026-11-02T13:00:04Z
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90m/home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean[39m
+
+ [32m✓[39m apps/field-console/tests/console-core-signin.test.ts [2m([22m[2m32 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/views-try.test.ts [2m([22m[2m19 tests[22m[2m)[22m[90m 18[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/views-sites-ops.test.ts [2m([22m[2m16 tests[22m[2m)[22m[90m 27[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/console-phone-pairing.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 18[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/api-client.test.ts [2m([22m[2m16 tests[22m[2m)[22m[90m 17[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/qr.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 98[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/views-sessions.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/views-decisions.test.ts [2m([22m[2m16 tests[22m[2m)[22m[90m 75[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/views-work.test.ts [2m([22m[2m18 tests[22m[2m)[22m[90m 53[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/session-signin.test.ts [2m([22m[2m11 tests[22m[2m)[22m[90m 36[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/views-accuracy.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/viewer-properties.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 110[2mms[22m[39m
+ [32m✓[39m apps/field-console/tests/theme-contrast.test.ts [2m([22m[2m32 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m13 passed[39m[22m[90m (13)[39m
+[2m      Tests [22m [1m[32m205 passed[39m[22m[90m (205)[39m
+[2m   Start at [22m 13:00:05
+[2m   Duration [22m 3.51s[2m (transform 419ms, setup 0ms, collect 1.08s, tests 511ms, environment 2ms, prepare 700ms)[22m
+
+JUNIT report written to /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/reports/junit-vitest.xml
+exit status: 0

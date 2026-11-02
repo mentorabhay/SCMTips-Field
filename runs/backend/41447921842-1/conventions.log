@@ -1,0 +1,6 @@
+$ uv run python tools/checks/conventions.py
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean
+2026-11-02T12:53:06Z
+[FAIL] Found 1 convention violation(s):
+  - Commit 4e886a85 convention violation: Commit message must reference task ID (T*.***, WS*.*, R*.*, PR*.*, FR*.*, M3-S01): 'chore(repo): public repository hygiene'
+exit status: 1

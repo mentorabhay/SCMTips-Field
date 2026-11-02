@@ -1,0 +1,15 @@
+$ bash -c set -e; uv run python tools/checks/no_fake_gates.py; uv run python tools/checks/orphans.py; uv run python tools/checks/firewall.py; uv run python tools/checks/no_inmemory_stores.py; uv run python tools/checks/test_exercises_prod.py; uv run python tools/checks/names.py; uv run python tools/checks/route_auth.py; uv run python tools/checks/db_roles.py; uv run python tools/checks/test_collection.py
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean
+2026-11-02T12:52:52Z
+[PASS] No fake gates detected. All scripts and wrappers are honest.
+[PASS] No orphan files detected. All Kotlin and Python code is properly housed and connected.
+[PASS] Architectural firewall check passed. Zero boundary breaches detected.
+[PASS] no module-level mutable stores in field-api
+[PASS] all test files exercise first-party production code
+[PASS] Names check passed. Zero forbidden entities found.
+[PASS] every route enforces auth (7 documented public/self-authenticating routes)
+[PASS] production code connects as the application / worker roles only
+Collecting all pytest tests in repository...
+Total collected tests: 926
+[PASS] All 926 tests are accounted for in verify-all gates (unit=787, property=102, contract=55, compat=4).
+exit status: 0

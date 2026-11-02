@@ -1,0 +1,100 @@
+$ uv run pytest -p no:cacheprovider --junitxml=reports/junit.xml
+cwd: /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean
+2026-11-02T12:54:04Z
+........................................................................ [  7%]
+........................................................................ [ 14%]
+........................................................................ [ 22%]
+........................................................................ [ 29%]
+........................................................................ [ 37%]
+........................................................................ [ 44%]
+........................................................................ [ 52%]
+........................................................................ [ 59%]
+........................................................................ [ 67%]
+........................................................................ [ 74%]
+..................................................F..................... [ 82%]
+........F............................................................... [ 89%]
+........................................................................ [ 97%]
+...........................                                              [100%]
+=================================== FAILURES ===================================
+____________________ test_meta_field_structure_and_decision ____________________
+
+    @pytest.mark.property
+    def test_meta_field_structure_and_decision():
+        content = DOC_PATH.read_text(encoding="utf-8")
+        rows = _capability_rows(content)
+        assert len(rows) >= 15, f"need >= 15 capability rows, found {len(rows)}"
+        for cells in rows:
+            statuses = STATUS_RE.findall(" ".join(cells))
+            assert statuses, f"row {cells[0]} has no VERIFIED/UNVERIFIED/BLOCKED status"
+            if statuses[0] == "VERIFIED":
+                paths = re.findall(r"`([\w./-]+\.\w+)`", cells[-1])
+>               assert paths and all((ROOT / p).exists() for p in paths), (
+                    f"row {cells[0]} is VERIFIED without an existing committed evidence path"
+                )
+E               AssertionError: row 21 is VERIFIED without an existing committed evidence path
+E               assert (['services/field-api/src/field_api/briefs/core.py', 'docs/integration/runs/2026-10-31-k1-real-core-smokes.txt'] and False)
+E                +  where False = all(<generator object test_meta_field_structure_and_decision.<locals>.<genexpr> at 0x7fabc8e979f0>)
+
+tests/property/test_pr1_meta_field.py:38: AssertionError
+___________________ test_m4_f02_every_relative_link_resolves ___________________
+
+    def test_m4_f02_every_relative_link_resolves() -> None:
+        for doc in DOCS:
+            text = doc.read_text(encoding="utf-8")
+            for link in re.findall(r"\]\(([^)#\s]+)(?:#[^)]*)?\)", text):
+                if not link.startswith(("http://", "https://")):
+                    assert (doc.parent / link).resolve().exists(), f"{doc.name}: {link}"
+            for m in re.finditer(r"`((?:docs|tools|scripts)/[A-Za-z0-9_./-]+\.(?:md|py|txt|ps1|cmd|sh|yaml))`", text):
+                if "core" in text[max(0, m.start() - 8):m.start()]:  # "the core's `docs/...`": a page of the core repo
+                    continue
+>               assert (ROOT / m.group(1)).exists(), f"{doc.name} names {m.group(1)}, which does not exist"
+E               AssertionError: WRITEUP.md names docs/integration/runs/2026-10-31-k1-real-core-smokes.txt, which does not exist
+E               assert False
+E                +  where False = exists()
+E                +    where exists = (PosixPath('/home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean') / 'docs/integration/runs/2026-10-31-k1-real-core-smokes.txt').exists
+E                +      where 'docs/integration/runs/2026-10-31-k1-real-core-smokes.txt' = <built-in method group of re.Match object at 0x7fabc1b5feb0>(1)
+E                +        where <built-in method group of re.Match object at 0x7fabc1b5feb0> = <re.Match object; span=(10241, 10299), match='`docs/integration/runs/2026-10-31-k1-real-core-sm>.group
+
+tests/test_m4_f02_submission_docs.py:31: AssertionError
+=============================== warnings summary ===============================
+conftest.py:69
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/conftest.py:69: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient
+
+services/field-api/tests/test_audit_ws4_3.py::test_tc4_120_and_tc4_121_findings_endpoints
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/.venv/lib/python3.13/site-packages/fastapi/telemetry/_api.py:244: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    return function(**arguments)
+
+services/field-api/tests/test_graph_ws4_6.py::test_api4_11_missing_node_and_unreachable
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/services/field-api/src/field_api/graph/route3d.py:228: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    return dijkstra_3d(nodes, edges, from_id, to_id)
+
+services/field-api/tests/test_models_ws4_7.py::test_tc4_145_gltf_upload_validation
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/services/field-api/src/field_api/models/upload.py:266: StarletteDeprecationWarning: 'HTTP_413_REQUEST_ENTITY_TOO_LARGE' is deprecated. Use 'HTTP_413_CONTENT_TOO_LARGE' instead.
+    sha256_hex, triangles, gltf_json = validate_glb_binary(glb_bytes)
+
+services/field-api/tests/test_models_ws4_7.py::test_tc4_145_gltf_upload_validation
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/services/field-api/src/field_api/models/upload.py:266: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    sha256_hex, triangles, gltf_json = validate_glb_binary(glb_bytes)
+
+services/field-api/tests/unit/test_api_core.py::test_tc1_012_readiness_probes_are_real
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/.venv/lib/python3.13/site-packages/alembic/config.py:604: DeprecationWarning: No path_separator found in configuration; falling back to legacy splitting on spaces, commas, and colons for prepend_sys_path.  Consider adding path_separator=os to Alembic config.
+    util.warn_deprecated(
+
+tools/dev_stack/tests/test_core_link.py::test_m4_c14_the_site_pack_creates_field_sites_on_the_cores_plants_through_the_api
+  /home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean/conftest.py:84: StarletteDeprecationWarning: You should not use the 'timeout' argument with the TestClient. See https://github.com/Kludex/starlette/issues/1108 for more information.
+    return original(self, method, url, *args, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/property/test_pr1_meta_field.py::test_meta_field_structure_and_decision - AssertionError: row 21 is VERIFIED without an existing committed evidence path
+assert (['services/field-api/src/field_api/briefs/core.py', 'docs/integration/runs/2026-10-31-k1-real-core-smokes.txt'] and False)
+ +  where False = all(<generator object test_meta_field_structure_and_decision.<locals>.<genexpr> at 0x7fabc8e979f0>)
+FAILED tests/test_m4_f02_submission_docs.py::test_m4_f02_every_relative_link_resolves - AssertionError: WRITEUP.md names docs/integration/runs/2026-10-31-k1-real-core-smokes.txt, which does not exist
+assert False
+ +  where False = exists()
+ +    where exists = (PosixPath('/home/runner/work/SCMTips-Field-clean/SCMTips-Field-clean') / 'docs/integration/runs/2026-10-31-k1-real-core-smokes.txt').exists
+ +      where 'docs/integration/runs/2026-10-31-k1-real-core-smokes.txt' = <built-in method group of re.Match object at 0x7fabc1b5feb0>(1)
+ +        where <built-in method group of re.Match object at 0x7fabc1b5feb0> = <re.Match object; span=(10241, 10299), match='`docs/integration/runs/2026-10-31-k1-real-core-sm>.group
+2 failed, 961 passed, 7 warnings in 319.39s (0:05:19)
+exit status: 1
