@@ -66,3 +66,14 @@ Thumbs.db
 build/
 reports/junit*.xml
 reports/trace.json
+
+# Internal working notes stay out of this public repository (kept privately)
+/Plan/
+/reports/
+/docs/reports/
+/docs/integration/*
+!/docs/integration/exchange-contract-v1/
+/docs/STATUS/*.md
+/docs/REMEDIATION_PLAN.md
+/CLAUDE.md
+/AGENTS.md

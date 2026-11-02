@@ -240,7 +240,7 @@ the demo organisation), not the owner's PC kit. Ledger rows are in
 
 Logs: [`docs/evidence/runs/2026-10-31-k1-real-core-smokes.txt`](evidence/runs/2026-10-31-k1-real-core-smokes.txt),
 [`docs/evidence/runs/2026-10-31-k2-erp-export-and-snapshot.txt`](evidence/runs/2026-10-31-k2-erp-export-and-snapshot.txt);
-the story is in [`docs/integration/handover/FROM_FIELD.md`](integration/handover/FROM_FIELD.md) sections 8 to 10. The Meta
+the hand-over notes between the two builds are kept privately. The Meta
 dependencies (glasses toolkit, Meta Model API) and their status are in [`docs/META_FIELD.md`](META_FIELD.md).
 
 Known open points from those runs: a received PO row replaces the core's whole line, so

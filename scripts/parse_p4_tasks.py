@@ -2,7 +2,7 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path("<repo>")
+ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT / "Plan" / "scmtips-field-spec.html"
 OUT = ROOT / "docs" / "reports" / "phase4_tasks.json"
 

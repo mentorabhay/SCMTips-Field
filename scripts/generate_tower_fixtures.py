@@ -9,7 +9,7 @@ Seeds 3 SAMPLE sites (IN01-TWR-0042, IN01-TWR-0057, IN01-TWR-0103) with:
 import json
 from pathlib import Path
 
-ROOT = Path("<repo>")
+ROOT = Path(__file__).resolve().parents[1]
 OUT1 = ROOT / "services/erp-sim/src/erp_sim/fixtures/towers.json"
 OUT2 = ROOT / "services/erp-sim/fixtures/towers.json"
 

@@ -108,7 +108,7 @@ def create_glb_binary(
 
 
 def build_sample_files() -> None:
-    sample_dir = Path(r"<repo>\tools\sample-models")
+    sample_dir = Path(__file__).resolve().parent
     sample_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Build RRU sample model (nodes: psu, fan, rru_housing, connector_a, connector_b)
