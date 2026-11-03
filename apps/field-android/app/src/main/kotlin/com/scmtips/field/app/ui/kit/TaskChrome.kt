@@ -282,11 +282,18 @@ fun GradientButton(text: String, onClick: () -> Unit, modifier: Modifier = Modif
     ) { Text(text, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 2) }
 }
 
-/** A secondary action as quiet text (48 dp tall). */
+/**
+ * A secondary action (48 dp tall). Outlined and filled, so it reads as a button (owner's feedback, 4 Nov 2026: quiet
+ * text "did not feel like a button"); the one main action stays the gradient GradientButton.
+ */
 @Composable
 fun QuietButton(text: String, onClick: () -> Unit, c: TaskColors, enabled: Boolean = true, ink: Color? = null, modifier: Modifier = Modifier) {
+    val night = c.bg != Ground
     Box(
-        modifier.fillMaxWidth().heightIn(min = MinTouch).clip(ButtonShape).clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        modifier.fillMaxWidth().heightIn(min = MinTouch).clip(ButtonShape)
+            .background(if (night) Color.White.copy(alpha = 0.08f) else Surface)
+            .border(1.dp, if (night) Color.White.copy(alpha = 0.32f) else BorderStrong, ButtonShape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(text, color = (ink ?: if (c.bg == Ground) Ink else NightInk).copy(alpha = if (enabled) 1f else 0.45f),

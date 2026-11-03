@@ -1397,6 +1397,9 @@ class FieldController(private val context: Context, private val toolkitError: ()
         return Shot.Taken(photo, note)
     }
 
+    /** A line for the app log from the activity (Diagnostics › App log). */
+    fun appLog(line: String) = log(line)
+
     /** MainActivity: the camera app's photo file (null when cancelled or unreadable). */
     fun phonePhotoTaken(file: File?) {
         val waiting = phoneShot ?: return

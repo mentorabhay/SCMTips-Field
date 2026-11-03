@@ -71,9 +71,23 @@ class MainActivity : ComponentActivity() {
      */
     private var lookFile: java.io.File? = null
     private val takeLookPhoto = registerForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
-        val f = lookFile
+        // Owner's test, 4 Nov 2026 (glasses mode: "No photo was taken" after taking one): Android may rebuild this
+        // screen while the camera app is in front, which lost the file's path. It is kept in the saved state now, and
+        // a lost one is found again as the newest photo the camera wrote in the last few minutes.
+        val f = lookFile ?: newestLookFile()
         lookFile = null
-        controller.phonePhotoTaken(if (saved && f != null && f.length() > 0) f else f?.let { it.delete(); null })
+        val ok = saved || (f != null && f.length() > 0) // some camera apps report "not saved" for a written photo
+        controller.appLog("phone photo: ${if (ok && f != null && f.length() > 0) "${f.length() / 1024} KB back from the camera" else "none back (saved=$saved, file=${f?.name ?: "lost"})"}")
+        controller.phonePhotoTaken(if (ok && f != null && f.length() > 0) f else f?.let { it.delete(); null })
+    }
+
+    private fun newestLookFile(): java.io.File? = java.io.File(cacheDir, "looks").listFiles()
+        ?.filter { it.name.startsWith("look-") && it.length() > 0 && System.currentTimeMillis() - it.lastModified() < 5 * 60_000 }
+        ?.maxByOrNull { it.lastModified() }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        lookFile?.let { outState.putString(KEY_LOOK_FILE, it.path) }
     }
 
     private val datPermission = registerForActivityResult(Wearables.RequestPermissionContract()) { result ->
@@ -84,6 +98,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        savedInstanceState?.getString(KEY_LOOK_FILE)?.let { lookFile = java.io.File(it) } // a photo the camera app is taking
         // A crash on the previous run: show it (copyable) instead of starting, so it can be reported
         // without a USB cable or adb.
         app.crashLog.read()?.let { report ->
@@ -380,3 +395,6 @@ class MainActivity : ComponentActivity() {
         controller.toast("Thanks. The report is also saved on the phone.")
     }
 }
+
+/** The look photo the camera app is writing, kept across a rebuild of the activity (owner test 4 Nov 2026). */
+private const val KEY_LOOK_FILE = "look_file"

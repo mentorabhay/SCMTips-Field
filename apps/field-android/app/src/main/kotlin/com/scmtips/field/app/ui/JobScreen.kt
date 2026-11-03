@@ -210,7 +210,11 @@ fun JobScreen(
                     enabled = v.primaryEnabled && !v.busy) }
             } else {
                 v.primary?.let { GradientButton(it, { a.job(JobAction.Primary) }, enabled = v.primaryEnabled && !v.busy) }
-                if (v.canLook) QuietButton(if (lv?.busy == true) lv.state.text else if (lv?.look != null) "Look again" else "Look · count with the camera",
+                // Owner's feedback, 4 Nov 2026: the next step's button stands out. With no other main action and no
+                // look yet (e.g. audio-only mode), "Look now" is the main (gradient) button.
+                if (v.canLook && v.primary == null && lv?.look == null) GradientButton(
+                    if (lv?.busy == true) lv.state.text else "Look now", a.look, enabled = lv?.busy != true)
+                else if (v.canLook) QuietButton(if (lv?.busy == true) lv.state.text else if (lv?.look != null) "Look again" else "Look · count with the camera",
                     a.look, c, enabled = lv?.busy != true)
             }
             v.secondary?.let { QuietButton(it, { a.job(JobAction.Secondary) }, c, enabled = !v.busy) }
