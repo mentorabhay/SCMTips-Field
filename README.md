@@ -11,7 +11,8 @@ signed seal.
 
 Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World"), from 27 October 2026.
 
-**Try it:** [Judge guide](https://storage.googleapis.com/scmtips-field-judges/judge-guide.html) ·
+**Try it:** [Start guide, click by click](https://storage.googleapis.com/scmtips-field-judges/start-guide.html) ·
+[Judge guide](https://storage.googleapis.com/scmtips-field-judges/judge-guide.html) ·
 [Screenshot book and clips](https://storage.googleapis.com/scmtips-field-judges/book/index.html) ·
 [Web console](https://hud.scmtips.com) ·
 [Android app (APK)](https://github.com/mentorabhay/SCMTips-Field/releases/latest/download/field-hosted-apk.zip) ·
@@ -45,6 +46,8 @@ All of it runs on SAMPLE data. The ERP is a simulator and the maker that signs t
 
 ## For judges
 
+- **Start here:** the [start guide](https://storage.googleapis.com/scmtips-field-judges/start-guide.html) shows what to
+  open on the laptop and the phone and every tap from install to the first spoken "look"; after that the voice takes over.
 - **No install:** sign in on [hud.scmtips.com](https://hud.scmtips.com) and open **Try a look** to run the same look
   on a SAMPLE photo or your own. The judge accounts and their passwords are in the submission notes.
 - **On an Android phone:** download the [APK](https://github.com/mentorabhay/SCMTips-Field/releases/latest/download/field-hosted-apk.zip),
