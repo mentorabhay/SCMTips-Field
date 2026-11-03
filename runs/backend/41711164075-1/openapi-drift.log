@@ -1,0 +1,5 @@
+$ bash -c uv run python tools/export_openapi.py && git diff --exit-code -- packages/field-contract/
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field
+2026-11-03T20:18:51Z
+[OK] Exported OpenAPI: packages/field-contract/openapi.json, packages/field-contract/erp-sim.openapi.json
+exit status: 0
