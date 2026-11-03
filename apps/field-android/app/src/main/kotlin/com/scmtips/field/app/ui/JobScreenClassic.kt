@@ -115,7 +115,7 @@ internal fun ClassicJobScreen(v: StepView, audioOnly: Boolean, a: Actions, look:
             v.banner?.let { Text(it, color = WarnInk, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().background(WarnBg, Corner).padding(horizontal = 14.dp, vertical = 10.dp)) }
             // M5: the look (photo with outlines, counts, proposal, claim) above the step it pre-fills.
             if (look != null && !audioOnly) LookPanel(look, a)
-            if (audioOnly) AudioOnly(v, c, a) else StepBody(v, c, a)
+            if (audioOnly) AudioOnly(v, c, a, look) else StepBody(v, c, a)
             v.message?.let { Box(Modifier.semantics { liveRegion = LiveRegionMode.Polite }) { Notice(it, v.messageTone) } }
         }
         Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -239,13 +239,14 @@ private fun CheckRow(label: String, on: Boolean, onToggle: () -> Unit) {
 
 /** Audio-only mode: prompts are spoken, never shown; the buttons stay as a fallback. */
 @Composable
-private fun AudioOnly(v: StepView, c: JobColors, a: Actions) {
+private fun AudioOnly(v: StepView, c: JobColors, a: Actions, look: com.scmtips.field.app.look.LookView? = null) {
     CardBox(bg = c.card, line = c.line) {
         Text("Audio-only mode", fontWeight = FontWeight.Bold, color = c.ink, fontSize = 20.sp)
         Text("Listen to your glasses. Say “repeat” to hear the step again.", color = c.muted)
     }
     if (v.kind == StepKind.SCAN) ScanArea(v.scanHowTo ?: "Scan the barcode", 160.dp, a.scan)
     SecondaryButton("Repeat", { a.job(JobAction.Heard("repeat", 1f)) }, ink = c.ink, line = c.line)
+    if (look?.state == com.scmtips.field.app.look.LookState.CONSENT) SecondaryButton("Agree for this site", a.agreePhotos, ink = c.ink, line = c.line)
 }
 
 /** Phone microphone, hold while speaking (fallback when the glasses do not listen). */

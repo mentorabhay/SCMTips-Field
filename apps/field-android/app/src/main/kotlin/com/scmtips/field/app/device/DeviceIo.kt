@@ -170,7 +170,7 @@ class PhoneSpeech(context: Context, private val onResult: (String, Float) -> Uni
                 val texts = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
                 val scores = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
                 val text = texts.firstOrNull() ?: return onError("no speech recognised")
-                val conf = scores?.firstOrNull()?.takeIf { it >= 0f } ?: 0.80f
+                val conf = com.scmtips.field.app.session.SpokenText.confidence(scores) // 0 or none = the floor (4 Nov test)
                 onResult(text, conf)
             }
             override fun onError(error: Int) = onError("speech error $error")
@@ -290,7 +290,7 @@ class ContinuousSpeech(
             listening = false
             val texts = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
             val scores = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
-            texts.firstOrNull()?.takeIf { it.isNotBlank() }?.let { onResult(it, scores?.firstOrNull()?.takeIf { s -> s >= 0f } ?: 0.80f) }
+            texts.firstOrNull()?.takeIf { it.isNotBlank() }?.let { onResult(it, com.scmtips.field.app.session.SpokenText.confidence(scores)) }
             listenAfter(backoff.afterResult())
         }
 

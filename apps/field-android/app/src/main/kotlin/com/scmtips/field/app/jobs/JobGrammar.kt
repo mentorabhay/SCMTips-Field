@@ -62,6 +62,8 @@ object JobGrammar {
 
     private val LOOK = setOf(
         "look", "take a look", "have a look", "look now", "look again", "take another look", "count again", "count them",
+        // Owner's live test, 4 Nov 2026: what people say to get the photo taken.
+        "look here", "take a photo", "take the photo", "take photo", "capture the photo", "capture photo", "photo",
     )
     private val CLAIM = setOf("make a claim", "claim", "make claim", "raise a claim", "file a claim")
     private val RECEIVE = Regex("^(?:receive|received|receiving) (.+?)(?: good)?(?: (?:and )?flag(?:ged)? (.+?)(?: damaged| bad)?)?$")

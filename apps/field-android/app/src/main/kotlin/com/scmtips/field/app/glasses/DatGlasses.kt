@@ -137,8 +137,8 @@ class DatGlasses(
                     jobs += scope.launch {
                         sp.transcriptions.collect { r ->
                             if (listenWanted && r != null && r.isFinal && r.text.isNotBlank()) {
-                                // The toolkit reports -1 when it has no confidence for a result.
-                                onTranscript(r.text, if (r.confidence < 0f) UNKNOWN_CONFIDENCE else r.confidence)
+                                // The toolkit reports -1 (or 0) when it has no confidence for a result (owner test 4 Nov: 0.00).
+                                onTranscript(r.text, if (r.confidence <= 0f) UNKNOWN_CONFIDENCE else r.confidence)
                             }
                         }
                     }

@@ -61,6 +61,7 @@ import com.scmtips.field.app.session.MicSource
 import com.scmtips.field.app.session.Photo
 import com.scmtips.field.app.session.SessionChange
 import com.scmtips.field.app.session.SessionView
+import com.scmtips.field.app.session.SpokenText
 import com.scmtips.field.app.session.TurnSpeaker
 import com.scmtips.field.app.session.WorkSession
 import com.scmtips.field.app.session.WorkSessionService
@@ -291,6 +292,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
     private var assistant: AssistantClient? = null
     private var siteModes: SiteModes? = null
     private var lastGlassesSession = "none"
+    private var lastGlassesLine: String? = null
     private var autoStarted = false
 
     /** MainActivity sets this: the session starts by itself only while the app is on screen. */
@@ -1043,7 +1045,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
     private fun captureWithGlasses() {
         scope.launch {
             val photo = glasses.capturePhoto() ?: run {
-                log("No photo from the glasses (see Me → Smart glasses)")
+                log("No photo from the glasses: ${glasses.status.value.lastError ?: "camera link ${glasses.status.value.session}"} (see the glasses: lines above)")
                 speaker.earcon(com.scmtips.field.core.wearables.EarconCue.ERROR)
                 speaker.say("No photo from the glasses. Use the phone.")
                 return@launch
@@ -1070,13 +1072,16 @@ class FieldController(private val context: Context, private val toolkitError: ()
         if (!workSession.view.active) phoneSpeech.stop()
     }
 
-    private fun onSpeech(text: String, confidence: Float, source: String) {
+    private fun onSpeech(heard: String, confidence: Float, source: String) {
+        // Owner's live test, 4 Nov 2026: "Look look look again", "Field look" with the attention word off (SpokenText).
+        val tidy = SpokenText.tidy(heard)
+        val text = if (source == "phone") AttentionWord.strip(tidy) else tidy
         val w = workSession.view
         if (w.active) {
             if (!w.listening) return // paused, or our own prompt heard back: never acted on
             // Me → Attention word: the open microphone acts only on words that start with "Field" (hold-to-talk is exempt).
             val words = if (source == "phone") text else AttentionWord.filter(text, _ui.value.attentionWord) ?: run {
-                log("🎤 [$source] ignored, no attention word: $text")
+                log("🎤 [$source] ignored, no attention word (Settings › Attention word is on: start with “Field”): $text")
                 return
             }
             log("🎤 [$source ${"%.2f".format(java.util.Locale.ROOT, confidence)}] $words")
@@ -1158,6 +1163,11 @@ class FieldController(private val context: Context, private val toolkitError: ()
     private fun onGlassesStatus(g: com.scmtips.field.app.glasses.GlassesStatus) {
         val was = lastGlassesSession
         lastGlassesSession = g.session
+        // Owner's test, 4 Nov 2026: "No photo from the glasses" with nothing to say why. Every change of the toolkit's
+        // registration, camera link (session), camera and last error goes to the app log (Diagnostics › App log).
+        val line = "glasses: registration ${g.registration} · devices ${g.devices} · camera link ${g.session} · camera ${g.camera}" +
+            (g.lastError?.let { " · error: $it" } ?: "")
+        if (line != lastGlassesLine) { lastGlassesLine = line; log(line) }
         // Registered with the Meta AI app while signed in as an approver: answer "Hey Meta, start SCMTips Field".
         if (g.registration == "REGISTERED" && account?.approver == true && launchJob?.isActive != true) startLaunches()
         workSession.camera(g.cameraOn)
@@ -1294,6 +1304,7 @@ class FieldController(private val context: Context, private val toolkitError: ()
     /** The glasses camera when connected; else (or when they give none) the phone's camera app, only on screen. */
     private suspend fun grabPhoto(what: String, phonePrompt: String): Grab {
         val glassesOn = glasses.status.value.session == "STARTED"
+        if (!glassesOn) log("$what photo: the glasses camera link is ${glasses.status.value.session}, so the phone camera is used")
         if (glassesOn) {
             val t0 = System.currentTimeMillis()
             val bmp = glasses.capturePhoto()

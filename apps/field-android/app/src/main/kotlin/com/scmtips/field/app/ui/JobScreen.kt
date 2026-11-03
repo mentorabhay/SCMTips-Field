@@ -191,7 +191,7 @@ fun JobScreen(
             if (hintUp && hint != null && !lookStep && !climbStage) HintArea(hint, reduceMotion, { hintUp = false })
             v.banner?.let { Banner(it) }
             when {
-                audioOnly -> TaskAudioOnly(v, c, a)
+                audioOnly -> TaskAudioOnly(v, c, a, look)
                 lookStep -> LookStepBody(v, c, a, lv, hintUp, reduceMotion) { hintUp = false }
                 else -> TaskStepBody(v, c, a, lv, climbStage && hintUp, reduceMotion, onEvidence, nextUp)
             }
@@ -576,13 +576,15 @@ private fun Busy(text: String, c: TaskColors) {
 
 /** Audio-only mode: prompts are spoken, never shown; the buttons stay as a fallback (as before). */
 @Composable
-private fun TaskAudioOnly(v: StepView, c: TaskColors, a: Actions) {
+private fun TaskAudioOnly(v: StepView, c: TaskColors, a: Actions, look: LookView? = null) {
     Column(Modifier.fillMaxWidth().background(c.card, CardShape).border(1.dp, c.line, CardShape).padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Audio-only mode", fontWeight = FontWeight.Bold, color = c.ink, fontSize = 20.sp)
         Text("Listen to your glasses. Say “repeat” to hear the step again.", color = c.muted)
     }
     if (v.kind == StepKind.SCAN) ScanArea(v.scanHowTo ?: "Scan the barcode", 160.dp, a.scan)
     OutlineAction("Repeat", { a.job(JobAction.Heard("repeat", 1f)) }, Modifier.fillMaxWidth(), height = 52.dp)
+    // Owner's test, 4 Nov 2026: the photo consent was spoken but its button was hidden in audio-only mode.
+    if (look?.state == LookState.CONSENT) OutlineAction("Agree for this site", a.agreePhotos, Modifier.fillMaxWidth(), height = 52.dp)
 }
 
 /** Phone microphone, hold while speaking (fallback when the glasses do not listen); same calls as before. */
