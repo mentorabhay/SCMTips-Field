@@ -520,7 +520,8 @@ def find_instances(port: Any, cap: Capture, noun: str, deadline_s: float, ctx: C
         return deadline_s - (time.perf_counter() - t0)
 
     def sam(word: str) -> list[FoundInstance]:
-        return port.find(cap.jpeg, cap.width, cap.height, word, timeout_s=max(0.1, left()), ctx=ctx)
+        found: list[FoundInstance] = port.find(cap.jpeg, cap.width, cap.height, word, timeout_s=max(0.1, left()), ctx=ctx)
+        return found
 
     def collect(futures: list[tuple[str, Any]]) -> None:
         for w, f in futures:

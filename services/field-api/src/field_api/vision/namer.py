@@ -53,7 +53,7 @@ def response_format() -> dict[str, Any]:
 def small_jpeg(jpeg: bytes, side: int = NAME_MAX_SIDE) -> bytes:
     """The photo with its long side at most ``side`` (naming needs no detail; a smaller image answers faster)."""
     try:
-        img = Image.open(io.BytesIO(jpeg))
+        img: Image.Image = Image.open(io.BytesIO(jpeg))
         img.load()
     except (OSError, ValueError, Image.DecompressionBombError):
         return jpeg  # the model gets the photo as stored (the look opened it already, so this is unexpected)
@@ -109,7 +109,7 @@ class ChatObjectNamer:
 
     def name(self, image_jpeg: bytes, *, timeout_s: float, ctx: CallContext) -> Naming:
         log = CallLog()
-        messages = [{"role": "system", "content": SYSTEM},
+        messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM},
                     {"role": "user", "content": [
                         {"type": "text", "text": "What should be counted in this photo, and about how many?"},
                         {"type": "image_url", "image_url": {"url": data_url(small_jpeg(image_jpeg))}}]}]
