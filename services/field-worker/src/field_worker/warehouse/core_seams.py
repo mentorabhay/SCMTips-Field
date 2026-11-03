@@ -1,6 +1,6 @@
 """Core Linkage, Guided-Load Imports, and Late-Receipt Signals (WS3.9 / Tasks T3.068 - T3.072).
 
-Integrates field operations with SangamIQ APS / Nexus core supply chain seams:
+Integrates field operations with the core's supply chain seams (planning / APS):
 1. Guided-load delivery schedule importer (T3.068 / FR3.056).
 2. Late-receipt signal generator (T3.069 / FR3.057).
 3. Real-time dock-to-stock and inventory accuracy signal broadcast (T3.070 / FR3.058).

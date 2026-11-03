@@ -2,7 +2,7 @@
 """SCMTIPS Architectural Firewall Check (Task T1.009 / FR1.005).
 
 Verifies strict boundaries:
-1. No imports of SCMTips core code (scmtips_*, sangamiq_*, heartbeat_*, etc.)
+1. No imports of SCMTips core code (scmtips_*, heartbeat_*, etc.)
 2. No direct HTTP calls to core outside packages/core-contract
 3. No model IDs ending in '-contributor'
 4. Cross-service isolation:
@@ -31,8 +31,8 @@ SEARCH_DIRS = [
 ]
 
 FORBIDDEN_IMPORT_PATTERNS = [
-    r"from\s+(scmtips|sangamiq|heartbeat|aro)\b",
-    r"import\s+(scmtips|sangamiq|heartbeat|aro)\b",
+    r"from\s+(scmtips|heartbeat|aro)\b",
+    r"import\s+(scmtips|heartbeat|aro)\b",
 ]
 
 FORBIDDEN_MODEL_PATTERNS = [

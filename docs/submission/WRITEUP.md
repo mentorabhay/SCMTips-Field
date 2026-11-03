@@ -27,7 +27,7 @@ The event started on **26 Oct 2026, 12:00 PM ET (21:30 IST)**. The deadline is *
 07:30 IST)**.
 
 Framing, in T1's words: the core is **"our platform, built 22–26 Oct during the application period, disclosed; the
-hackathon project is Field, the Meta layer and the integration built 27 Oct – 4 Nov"**. NaradCue, SangamIQ and
+hackathon project is Field, the Meta layer and the integration built 27 Oct – 4 Nov"**. NaradCue, a planning system and
 Heartbeat are presented as **the customer's existing systems**.
 
 The exact dates in git (author dates, IST):
@@ -90,7 +90,7 @@ What the hackathon project consists of (all built in the window):
                                                      execution, audit chain, Connected systems, sign-in + JWKS
                                                        ▲             ▲              ▲
                                      market intelligence    planning / APS    work and PMO
-                                     (NaradCue)              (SangamIQ)        (Heartbeat)
+                                     (NaradCue)              (planning)        (Heartbeat)
                                      the customer's existing systems: live API or file (Excel) mode
 ```
 
@@ -106,7 +106,7 @@ What the hackathon project consists of (all built in the window):
   enforces hard caps per provider (`AI_BUDGET_META_USD`); the key stays in the server's git-ignored `.env.local`. With
   no key, over budget, a timeout or a refusal, the template text is spoken: the core's template brief, or the
   assistant's rules mode.
-- **The customer's existing systems.** NaradCue (market intelligence), SangamIQ (planning) and Heartbeat (PMO) are
+- **The customer's existing systems.** NaradCue (market intelligence), a planning system and Heartbeat (PMO) are
   existing products that play the customer's systems. They are not part of this submission's code. Each connects to
   the core by a live API or by its file template (the same contract, labelled SIMULATED in file mode).
 

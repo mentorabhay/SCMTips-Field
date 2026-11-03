@@ -62,7 +62,7 @@ Totals: run A 77.2 s, run B 76.6 s (exit code 0 both).
 already had, so CP-204 stays at about 129 days with "recovery lands before" (as K1 saw). Say "the plan is re-run on
 the receipt", not "the clock resets".
 
-**Not in this run:** plan beat 3 (planning system, SangamIQ): the core has its `planning_request` and
+**Not in this run:** plan beat 3 (planning system): the core has its `planning_request` and
 `planning_result` templates and file validation, but no import of a planning result yet (Q7). Plan beat 5 (PMO and
 shop floor, Heartbeat and the MES simulator): the core imports progress files; the recovery project and work orders
 are not driven here (Q8). If the video shows them, label them as each product's own screen in file mode.
