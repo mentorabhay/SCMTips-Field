@@ -1047,7 +1047,12 @@ class FieldController(private val context: Context, private val toolkitError: ()
             val photo = glasses.capturePhoto() ?: run {
                 log("No photo from the glasses: ${glasses.status.value.lastError ?: "camera link ${glasses.status.value.session}"} (see the glasses: lines above)")
                 speaker.earcon(com.scmtips.field.core.wearables.EarconCue.ERROR)
-                speaker.say("No photo from the glasses. Use the phone.")
+                // Owner's test, 4 Nov 2026: "Use the phone" offered no way to. With the app on screen the phone's code
+                // scanner opens at once; otherwise the operator is told to open the app.
+                if (inForeground) {
+                    speaker.say("No photo from the glasses. Scan it with the phone.")
+                    _cameraRequests.tryEmit(Unit)
+                } else speaker.say("No photo from the glasses. Open the app on the phone to scan it.")
                 return@launch
             }
             val codes = barcodes.read(photo)

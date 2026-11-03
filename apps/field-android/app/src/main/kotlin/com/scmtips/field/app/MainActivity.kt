@@ -262,7 +262,10 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             pendingDat.clear()
             for (p in listOf(Permission.CAMERA, Permission.MICROPHONE)) {
-                Wearables.checkPermissionStatus(p).onSuccess { s -> if (s != PermissionStatus.Granted) pendingDat += p }
+                Wearables.checkPermissionStatus(p).onSuccess { s ->
+                    controller.appLog("glasses permission $p: $s") // owner's test 4 Nov: why no photo
+                    if (s != PermissionStatus.Granted) pendingDat += p
+                }
             }
             if (pendingDat.isEmpty()) controller.connectGlasses() else requestNextDatPermission()
         }
