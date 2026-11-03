@@ -1,0 +1,4 @@
+$ bash -c grep -q distributionSha256Sum gradle/wrapper/gradle-wrapper.properties || { echo "::error::gradle-wrapper.properties lacks distributionSha256Sum"; false; }
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android
+2026-11-03T19:54:30Z
+exit status: 0
