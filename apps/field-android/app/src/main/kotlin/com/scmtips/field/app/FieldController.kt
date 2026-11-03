@@ -1308,8 +1308,12 @@ class FieldController(private val context: Context, private val toolkitError: ()
 
     /** The glasses camera when connected; else (or when they give none) the phone's camera app, only on screen. */
     private suspend fun grabPhoto(what: String, phonePrompt: String): Grab {
-        val glassesOn = glasses.status.value.session == "STARTED"
-        if (!glassesOn) log("$what photo: the glasses camera link is ${glasses.status.value.session}, so the phone camera is used")
+        // Settings › Scanning with › Phone camera also means the phone camera for photos (owner's test, 4 Nov 2026: the
+        // glasses camera was used whenever the glasses were connected, whatever this setting said).
+        val phoneChosen = _ui.value.scanner == ScannerKind.CAMERA
+        val glassesOn = !phoneChosen && glasses.status.value.session == "STARTED"
+        if (phoneChosen) log("$what photo: Scanning with is Phone camera, so the phone camera is used")
+        else if (!glassesOn) log("$what photo: the glasses camera link is ${glasses.status.value.session}, so the phone camera is used")
         if (glassesOn) {
             val t0 = System.currentTimeMillis()
             val bmp = glasses.capturePhoto()
@@ -1690,12 +1694,27 @@ class FieldController(private val context: Context, private val toolkitError: ()
         loops?.cancel()
         loops = scope.launch {
             launch {
+                var toldExpired = false
                 while (isActive) {
                     try {
                         s.pollEvents(lastEventId).forEach(::onLiveEvent)
                         if (_ui.value.link != Link.ONLINE) _ui.value = _ui.value.copy(link = Link.ONLINE)
+                        toldExpired = false
                     } catch (e: IOException) {
                         _ui.value = _ui.value.copy(link = Link.OFFLINE)
+                    } catch (e: HttpError) {
+                        // Owner's test, 3 Nov 2026: an expired sign-in was retried every 2 s for minutes (108 refusals on
+                        // the server) and only the app log said so. Say it once, on screen and aloud, then ask the
+                        // server again only every minute until the person signs in again (a new sign-in restarts this loop).
+                        log("events: ${describe(e)}")
+                        if (e.status == 401) {
+                            if (!toldExpired) {
+                                toldExpired = true
+                                toast(describe(e))
+                                speaker.say("Your sign-in has expired. Sign out in Profile and sign in again.")
+                            }
+                            delay(60_000)
+                        }
                     } catch (e: Exception) {
                         log("events: ${describe(e)}")
                     }
