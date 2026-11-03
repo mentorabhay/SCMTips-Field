@@ -1,0 +1,588 @@
+$ ./gradlew assembleDebug --stacktrace
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android
+2026-11-03T19:37:02Z
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :app:preBuild UP-TO-DATE
+> Task :core-common:preBuild UP-TO-DATE
+> Task :core-common:preDebugBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig FROM-CACHE
+> Task :core-outbox:preBuild UP-TO-DATE
+> Task :core-outbox:preDebugBuild UP-TO-DATE
+> Task :core-outbox:writeDebugAarMetadata
+> Task :core-safety:preBuild UP-TO-DATE
+> Task :core-safety:preDebugBuild UP-TO-DATE
+> Task :core-common:writeDebugAarMetadata
+> Task :core-voice:preBuild UP-TO-DATE
+> Task :core-voice:preDebugBuild UP-TO-DATE
+> Task :core-safety:writeDebugAarMetadata
+> Task :core-voice:writeDebugAarMetadata
+> Task :core-wearables:preBuild UP-TO-DATE
+> Task :feature-decisions:preBuild UP-TO-DATE
+> Task :core-wearables:preDebugBuild UP-TO-DATE
+> Task :feature-decisions:preDebugBuild UP-TO-DATE
+> Task :feature-decisions:writeDebugAarMetadata
+> Task :core-wearables:writeDebugAarMetadata
+> Task :app:generateDebugResValues FROM-CACHE
+> Task :core-common:generateDebugResValues FROM-CACHE
+> Task :core-common:generateDebugResources FROM-CACHE
+> Task :core-common:packageDebugResources FROM-CACHE
+> Task :core-outbox:generateDebugResValues FROM-CACHE
+> Task :core-outbox:generateDebugResources FROM-CACHE
+> Task :core-outbox:packageDebugResources FROM-CACHE
+> Task :core-safety:generateDebugResValues FROM-CACHE
+> Task :core-safety:generateDebugResources FROM-CACHE
+> Task :core-safety:packageDebugResources FROM-CACHE
+> Task :core-voice:generateDebugResValues FROM-CACHE
+> Task :core-voice:generateDebugResources FROM-CACHE
+> Task :core-voice:packageDebugResources FROM-CACHE
+> Task :core-wearables:generateDebugResValues FROM-CACHE
+> Task :core-wearables:generateDebugResources FROM-CACHE
+> Task :core-wearables:packageDebugResources FROM-CACHE
+> Task :feature-decisions:generateDebugResValues FROM-CACHE
+> Task :feature-decisions:generateDebugResources FROM-CACHE
+> Task :feature-decisions:packageDebugResources FROM-CACHE
+> Task :core-common:extractDeepLinksDebug FROM-CACHE
+> Task :core-common:processDebugManifest FROM-CACHE
+> Task :core-outbox:extractDeepLinksDebug FROM-CACHE
+> Task :core-outbox:processDebugManifest FROM-CACHE
+> Task :core-safety:extractDeepLinksDebug FROM-CACHE
+> Task :core-safety:processDebugManifest FROM-CACHE
+> Task :core-voice:extractDeepLinksDebug FROM-CACHE
+> Task :core-voice:processDebugManifest FROM-CACHE
+> Task :core-wearables:extractDeepLinksDebug FROM-CACHE
+> Task :core-wearables:processDebugManifest FROM-CACHE
+> Task :feature-decisions:extractDeepLinksDebug FROM-CACHE
+> Task :feature-decisions:processDebugManifest FROM-CACHE
+> Task :core-common:compileDebugLibraryResources FROM-CACHE
+> Task :core-common:parseDebugLocalResources FROM-CACHE
+> Task :core-common:generateDebugRFile FROM-CACHE
+> Task :core-outbox:compileDebugLibraryResources FROM-CACHE
+> Task :core-outbox:parseDebugLocalResources FROM-CACHE
+> Task :core-outbox:generateDebugRFile FROM-CACHE
+> Task :core-safety:compileDebugLibraryResources FROM-CACHE
+> Task :core-safety:parseDebugLocalResources FROM-CACHE
+> Task :core-safety:generateDebugRFile FROM-CACHE
+> Task :core-voice:compileDebugLibraryResources FROM-CACHE
+> Task :core-voice:parseDebugLocalResources FROM-CACHE
+> Task :app:checkDebugAarMetadata
+> Task :core-voice:generateDebugRFile FROM-CACHE
+> Task :core-wearables:compileDebugLibraryResources FROM-CACHE
+> Task :app:mapDebugSourceSetPaths
+> Task :core-wearables:parseDebugLocalResources FROM-CACHE
+> Task :app:generateDebugResources FROM-CACHE
+> Task :core-wearables:generateDebugRFile FROM-CACHE
+> Task :feature-decisions:parseDebugLocalResources FROM-CACHE
+> Task :feature-decisions:generateDebugRFile FROM-CACHE
+> Task :core-common:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:mergeDebugResources FROM-CACHE
+> Task :core-common:compileDebugKotlin FROM-CACHE
+> Task :app:packageDebugResources FROM-CACHE
+> Task :core-common:javaPreCompileDebug FROM-CACHE
+> Task :app:parseDebugLocalResources FROM-CACHE
+> Task :feature-decisions:compileDebugLibraryResources FROM-CACHE
+> Task :core-common:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug FROM-CACHE
+> Task :core-common:bundleLibCompileToJarDebug
+> Task :core-outbox:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:processDebugMainManifest FROM-CACHE
+> Task :app:processDebugManifest FROM-CACHE
+> Task :app:processDebugManifestForPackage FROM-CACHE
+> Task :core-outbox:kspDebugKotlin FROM-CACHE
+> Task :app:processDebugResources FROM-CACHE
+> Task :core-safety:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-outbox:compileDebugKotlin FROM-CACHE
+> Task :core-outbox:javaPreCompileDebug FROM-CACHE
+> Task :core-outbox:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-safety:compileDebugKotlin FROM-CACHE
+> Task :core-safety:javaPreCompileDebug FROM-CACHE
+> Task :core-safety:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-outbox:bundleLibCompileToJarDebug
+> Task :core-safety:bundleLibCompileToJarDebug
+> Task :core-voice:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-wearables:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-wearables:compileDebugKotlin FROM-CACHE
+> Task :core-voice:compileDebugKotlin FROM-CACHE
+> Task :core-voice:javaPreCompileDebug FROM-CACHE
+> Task :core-wearables:javaPreCompileDebug FROM-CACHE
+> Task :core-wearables:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-voice:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-wearables:bundleLibCompileToJarDebug
+> Task :feature-decisions:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-voice:bundleLibCompileToJarDebug
+> Task :app:javaPreCompileDebug FROM-CACHE
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :core-common:mergeDebugShaders
+> Task :core-common:compileDebugShaders NO-SOURCE
+> Task :core-common:generateDebugAssets UP-TO-DATE
+> Task :core-common:mergeDebugAssets
+> Task :feature-decisions:compileDebugKotlin FROM-CACHE
+> Task :core-outbox:mergeDebugShaders
+> Task :core-outbox:compileDebugShaders NO-SOURCE
+> Task :core-outbox:generateDebugAssets UP-TO-DATE
+> Task :feature-decisions:javaPreCompileDebug FROM-CACHE
+> Task :feature-decisions:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-outbox:mergeDebugAssets
+> Task :core-safety:mergeDebugShaders
+> Task :core-safety:compileDebugShaders NO-SOURCE
+> Task :core-safety:generateDebugAssets UP-TO-DATE
+> Task :core-safety:mergeDebugAssets
+> Task :core-voice:mergeDebugShaders
+> Task :core-voice:compileDebugShaders NO-SOURCE
+> Task :core-voice:generateDebugAssets UP-TO-DATE
+> Task :feature-decisions:bundleLibCompileToJarDebug
+> Task :core-voice:mergeDebugAssets
+> Task :core-wearables:mergeDebugShaders
+> Task :core-wearables:compileDebugShaders NO-SOURCE
+> Task :core-wearables:generateDebugAssets UP-TO-DATE
+> Task :core-wearables:mergeDebugAssets
+> Task :feature-decisions:mergeDebugShaders
+> Task :feature-decisions:compileDebugShaders NO-SOURCE
+> Task :feature-decisions:generateDebugAssets UP-TO-DATE
+> Task :feature-decisions:mergeDebugAssets
+> Task :feature-decisions:bundleLibRuntimeToJarDebug
+> Task :core-voice:bundleLibRuntimeToJarDebug
+> Task :core-outbox:bundleLibRuntimeToJarDebug
+> Task :core-common:bundleLibRuntimeToJarDebug
+> Task :core-wearables:bundleLibRuntimeToJarDebug
+> Task :core-safety:bundleLibRuntimeToJarDebug
+> Task :core-common:processDebugJavaRes
+> Task :core-outbox:processDebugJavaRes
+> Task :core-safety:processDebugJavaRes
+> Task :core-voice:processDebugJavaRes
+> Task :core-wearables:processDebugJavaRes
+> Task :feature-decisions:processDebugJavaRes
+> Task :feature-decisions:bundleLibRuntimeToDirDebug
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets FROM-CACHE
+> Task :app:desugarDebugFileDependencies FROM-CACHE
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeExtDexDebug FROM-CACHE
+> Task :core-voice:bundleLibRuntimeToDirDebug
+> Task :core-outbox:bundleLibRuntimeToDirDebug
+> Task :core-common:bundleLibRuntimeToDirDebug
+> Task :core-wearables:bundleLibRuntimeToDirDebug
+> Task :core-safety:bundleLibRuntimeToDirDebug
+> Task :app:mergeLibDexDebug FROM-CACHE
+> Task :app:mergeDebugJniLibFolders
+> Task :core-common:mergeDebugJniLibFolders
+> Task :core-common:mergeDebugNativeLibs NO-SOURCE
+> Task :core-common:copyDebugJniLibsProjectOnly
+> Task :core-outbox:mergeDebugJniLibFolders
+> Task :core-outbox:mergeDebugNativeLibs NO-SOURCE
+> Task :core-outbox:copyDebugJniLibsProjectOnly
+> Task :core-safety:mergeDebugJniLibFolders
+> Task :core-safety:mergeDebugNativeLibs NO-SOURCE
+> Task :core-safety:copyDebugJniLibsProjectOnly
+> Task :core-voice:mergeDebugJniLibFolders
+> Task :core-voice:mergeDebugNativeLibs NO-SOURCE
+> Task :core-voice:copyDebugJniLibsProjectOnly
+> Task :core-wearables:mergeDebugJniLibFolders
+> Task :core-wearables:mergeDebugNativeLibs NO-SOURCE
+> Task :core-wearables:copyDebugJniLibsProjectOnly
+> Task :feature-decisions:mergeDebugJniLibFolders
+> Task :feature-decisions:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-decisions:copyDebugJniLibsProjectOnly
+> Task :app:mergeDebugNativeLibs
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libairbridge_jni.so, libairshield_light_mbed_jni.so, libairship_multiscope_jni.so, libandroidx.graphics.path.so, libbarhopper_v3.so, libc++_shared.so, libdatax_jni_local.so, libfb.so, libfbjni.so, libfbjni_kt.so, libfbsofterror.so, libfmt.so, libglog.so, libmanifest_jni.so, libsqlcipher.so, libwearable_qpl3p.so, libxplat_mobilenetwork_third-party_mbedtls3_cryptoAndroid.so, libxplat_perflogger_base_baseAndroid.so, libxplat_perflogger_base_qpl_codegen_metadataAndroid.so, libxplat_perflogger_conversions_conversionsAndroid.so, libxplat_perflogger_health_counters_health_countersAndroid.so, libxplat_perflogger_perfloggerAndroid.so, libxplat_perflogger_safe_rollout_qpl_safe_rolloutAndroid.so, libxplat_perflogger_structured_data_structured_dataAndroid.so, libxplat_perflogger_synchronization_synchronizationAndroid.so, libxplat_perflogger_utils_utilsAndroid.so, libxplat_wearable_3p_qpl_3PQPL.so. Run with --info option to learn more.
+
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :core-capture:preBuild UP-TO-DATE
+> Task :core-capture:preDebugBuild UP-TO-DATE
+> Task :core-capture:mergeDebugJniLibFolders
+> Task :core-capture:mergeDebugNativeLibs NO-SOURCE
+> Task :core-capture:stripDebugDebugSymbols NO-SOURCE
+> Task :core-capture:copyDebugJniLibsProjectAndLocalJars
+> Task :core-capture:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-capture:generateDebugResValues FROM-CACHE
+> Task :core-capture:generateDebugResources FROM-CACHE
+> Task :core-capture:packageDebugResources FROM-CACHE
+> Task :core-capture:parseDebugLocalResources FROM-CACHE
+> Task :core-capture:generateDebugRFile FROM-CACHE
+> Task :core-capture:compileDebugKotlin FROM-CACHE
+> Task :core-capture:extractDebugAnnotations FROM-CACHE
+> Task :core-capture:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-capture:mergeDebugShaders
+> Task :core-capture:compileDebugShaders NO-SOURCE
+> Task :core-capture:generateDebugAssets UP-TO-DATE
+> Task :core-capture:mergeDebugAssets
+> Task :core-capture:javaPreCompileDebug FROM-CACHE
+> Task :core-capture:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-capture:mergeDebugGeneratedProguardFiles
+> Task :core-capture:mergeDebugConsumerProguardFiles
+> Task :core-capture:prepareDebugArtProfile
+> Task :core-capture:prepareLintJarForPublish
+> Task :core-capture:processDebugManifest FROM-CACHE
+> Task :core-capture:processDebugJavaRes
+> Task :core-capture:mergeDebugJavaResource
+> Task :core-capture:syncDebugLibJars FROM-CACHE
+> Task :core-capture:writeDebugAarMetadata
+> Task :core-capture:bundleDebugAar
+> Task :core-capture:assembleDebug
+> Task :core-common:stripDebugDebugSymbols NO-SOURCE
+> Task :core-common:copyDebugJniLibsProjectAndLocalJars
+> Task :core-common:extractDebugAnnotations FROM-CACHE
+> Task :core-common:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-common:mergeDebugGeneratedProguardFiles
+> Task :core-common:mergeDebugConsumerProguardFiles
+> Task :core-common:prepareDebugArtProfile
+> Task :core-common:prepareLintJarForPublish
+> Task :core-common:mergeDebugJavaResource
+> Task :core-common:syncDebugLibJars FROM-CACHE
+> Task :core-common:bundleDebugAar
+> Task :core-common:assembleDebug
+> Task :core-ocr:preBuild UP-TO-DATE
+> Task :core-ocr:preDebugBuild UP-TO-DATE
+> Task :core-ocr:mergeDebugJniLibFolders
+> Task :core-ocr:mergeDebugNativeLibs NO-SOURCE
+> Task :core-ocr:stripDebugDebugSymbols NO-SOURCE
+> Task :core-ocr:copyDebugJniLibsProjectAndLocalJars
+> Task :core-ocr:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-ocr:generateDebugResValues FROM-CACHE
+> Task :core-ocr:generateDebugResources FROM-CACHE
+> Task :core-ocr:packageDebugResources FROM-CACHE
+> Task :core-ocr:parseDebugLocalResources FROM-CACHE
+> Task :core-ocr:generateDebugRFile FROM-CACHE
+> Task :core-ocr:compileDebugKotlin FROM-CACHE
+> Task :core-ocr:extractDebugAnnotations FROM-CACHE
+> Task :core-ocr:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-ocr:mergeDebugShaders
+> Task :core-ocr:compileDebugShaders NO-SOURCE
+> Task :core-ocr:generateDebugAssets UP-TO-DATE
+> Task :core-ocr:mergeDebugAssets
+> Task :core-ocr:javaPreCompileDebug FROM-CACHE
+> Task :core-ocr:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-ocr:mergeDebugGeneratedProguardFiles
+> Task :core-ocr:mergeDebugConsumerProguardFiles
+> Task :core-ocr:prepareDebugArtProfile
+> Task :core-ocr:prepareLintJarForPublish
+> Task :core-ocr:processDebugManifest FROM-CACHE
+> Task :core-ocr:processDebugJavaRes
+> Task :core-ocr:mergeDebugJavaResource
+> Task :core-ocr:syncDebugLibJars FROM-CACHE
+> Task :core-ocr:writeDebugAarMetadata
+> Task :core-ocr:bundleDebugAar
+> Task :core-ocr:assembleDebug
+> Task :core-outbox:stripDebugDebugSymbols NO-SOURCE
+> Task :core-outbox:copyDebugJniLibsProjectAndLocalJars
+> Task :core-outbox:extractDebugAnnotations FROM-CACHE
+> Task :core-outbox:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-outbox:mergeDebugGeneratedProguardFiles
+> Task :core-outbox:mergeDebugConsumerProguardFiles
+> Task :core-outbox:prepareDebugArtProfile
+> Task :core-outbox:prepareLintJarForPublish
+> Task :core-outbox:mergeDebugJavaResource
+> Task :core-outbox:syncDebugLibJars FROM-CACHE
+> Task :core-outbox:bundleDebugAar
+> Task :core-outbox:assembleDebug
+> Task :core-positioning-stub:preBuild UP-TO-DATE
+> Task :core-positioning-stub:preDebugBuild UP-TO-DATE
+> Task :core-positioning-stub:mergeDebugJniLibFolders
+> Task :core-positioning-stub:mergeDebugNativeLibs NO-SOURCE
+> Task :core-positioning-stub:stripDebugDebugSymbols NO-SOURCE
+> Task :core-positioning-stub:copyDebugJniLibsProjectAndLocalJars
+> Task :core-positioning-stub:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-positioning-stub:generateDebugResValues FROM-CACHE
+> Task :core-positioning-stub:generateDebugResources FROM-CACHE
+> Task :core-positioning-stub:packageDebugResources FROM-CACHE
+> Task :core-positioning-stub:parseDebugLocalResources FROM-CACHE
+> Task :core-positioning-stub:generateDebugRFile FROM-CACHE
+> Task :core-positioning-stub:compileDebugKotlin FROM-CACHE
+> Task :core-positioning-stub:extractDebugAnnotations FROM-CACHE
+> Task :core-positioning-stub:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-positioning-stub:mergeDebugShaders
+> Task :core-positioning-stub:compileDebugShaders NO-SOURCE
+> Task :core-positioning-stub:generateDebugAssets UP-TO-DATE
+> Task :core-positioning-stub:mergeDebugAssets
+> Task :core-positioning-stub:javaPreCompileDebug FROM-CACHE
+> Task :core-positioning-stub:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-positioning-stub:mergeDebugGeneratedProguardFiles
+> Task :core-positioning-stub:mergeDebugConsumerProguardFiles
+> Task :core-positioning-stub:prepareDebugArtProfile
+> Task :core-positioning-stub:prepareLintJarForPublish
+> Task :core-positioning-stub:processDebugManifest FROM-CACHE
+> Task :core-positioning-stub:processDebugJavaRes
+> Task :core-positioning-stub:mergeDebugJavaResource
+> Task :core-positioning-stub:syncDebugLibJars FROM-CACHE
+> Task :core-positioning-stub:writeDebugAarMetadata
+> Task :core-positioning-stub:bundleDebugAar
+> Task :core-positioning-stub:assembleDebug
+> Task :core-safety:stripDebugDebugSymbols NO-SOURCE
+> Task :core-safety:copyDebugJniLibsProjectAndLocalJars
+> Task :core-safety:extractDebugAnnotations FROM-CACHE
+> Task :core-safety:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-safety:mergeDebugGeneratedProguardFiles
+> Task :core-safety:mergeDebugConsumerProguardFiles
+> Task :core-safety:prepareDebugArtProfile
+> Task :core-safety:prepareLintJarForPublish
+> Task :core-safety:mergeDebugJavaResource
+> Task :core-safety:syncDebugLibJars FROM-CACHE
+> Task :core-safety:bundleDebugAar
+> Task :core-safety:assembleDebug
+> Task :core-sitepack:preBuild UP-TO-DATE
+> Task :core-sitepack:preDebugBuild UP-TO-DATE
+> Task :core-sitepack:mergeDebugJniLibFolders
+> Task :core-sitepack:mergeDebugNativeLibs NO-SOURCE
+> Task :core-sitepack:stripDebugDebugSymbols NO-SOURCE
+> Task :core-sitepack:copyDebugJniLibsProjectAndLocalJars
+> Task :core-sitepack:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-sitepack:generateDebugResValues FROM-CACHE
+> Task :core-sitepack:generateDebugResources FROM-CACHE
+> Task :core-sitepack:packageDebugResources FROM-CACHE
+> Task :core-sitepack:parseDebugLocalResources FROM-CACHE
+> Task :core-sitepack:generateDebugRFile FROM-CACHE
+> Task :core-sitepack:compileDebugKotlin FROM-CACHE
+> Task :core-sitepack:extractDebugAnnotations FROM-CACHE
+> Task :core-sitepack:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-sitepack:mergeDebugShaders
+> Task :core-sitepack:compileDebugShaders NO-SOURCE
+> Task :core-sitepack:generateDebugAssets UP-TO-DATE
+> Task :core-sitepack:mergeDebugAssets
+> Task :core-sitepack:javaPreCompileDebug FROM-CACHE
+> Task :core-sitepack:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-sitepack:mergeDebugGeneratedProguardFiles
+> Task :core-sitepack:mergeDebugConsumerProguardFiles
+> Task :core-sitepack:prepareDebugArtProfile
+> Task :core-sitepack:prepareLintJarForPublish
+> Task :core-sitepack:processDebugManifest FROM-CACHE
+> Task :core-sitepack:processDebugJavaRes
+> Task :core-sitepack:mergeDebugJavaResource
+> Task :core-sitepack:syncDebugLibJars FROM-CACHE
+> Task :core-sitepack:writeDebugAarMetadata
+> Task :core-sitepack:bundleDebugAar
+> Task :core-sitepack:assembleDebug
+> Task :core-voice:stripDebugDebugSymbols NO-SOURCE
+> Task :core-voice:copyDebugJniLibsProjectAndLocalJars
+> Task :core-voice:extractDebugAnnotations FROM-CACHE
+> Task :core-voice:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-voice:mergeDebugGeneratedProguardFiles
+> Task :core-voice:mergeDebugConsumerProguardFiles
+> Task :core-voice:prepareDebugArtProfile
+> Task :core-voice:prepareLintJarForPublish
+> Task :core-voice:mergeDebugJavaResource
+> Task :core-voice:syncDebugLibJars FROM-CACHE
+> Task :core-voice:bundleDebugAar
+> Task :core-voice:assembleDebug
+> Task :core-wearables:stripDebugDebugSymbols NO-SOURCE
+> Task :core-wearables:copyDebugJniLibsProjectAndLocalJars
+> Task :core-wearables:extractDebugAnnotations FROM-CACHE
+> Task :core-wearables:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-wearables:mergeDebugGeneratedProguardFiles
+> Task :core-wearables:mergeDebugConsumerProguardFiles
+> Task :core-wearables:prepareDebugArtProfile
+> Task :core-wearables:prepareLintJarForPublish
+> Task :core-wearables:mergeDebugJavaResource
+> Task :core-wearables:syncDebugLibJars FROM-CACHE
+> Task :core-wearables:bundleDebugAar
+> Task :core-wearables:assembleDebug
+> Task :core-wearables-testing:preBuild UP-TO-DATE
+> Task :core-wearables-testing:preDebugBuild UP-TO-DATE
+> Task :core-wearables-testing:mergeDebugJniLibFolders
+> Task :core-wearables-testing:mergeDebugNativeLibs NO-SOURCE
+> Task :core-wearables-testing:stripDebugDebugSymbols NO-SOURCE
+> Task :core-wearables-testing:copyDebugJniLibsProjectAndLocalJars
+> Task :core-wearables-testing:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-wearables-testing:generateDebugResValues FROM-CACHE
+> Task :core-wearables-testing:generateDebugResources FROM-CACHE
+> Task :core-wearables-testing:packageDebugResources FROM-CACHE
+> Task :core-wearables-testing:parseDebugLocalResources FROM-CACHE
+> Task :core-wearables-testing:generateDebugRFile FROM-CACHE
+> Task :core-wearables-testing:compileDebugKotlin FROM-CACHE
+> Task :core-wearables-testing:extractDebugAnnotations FROM-CACHE
+> Task :core-wearables-testing:extractDeepLinksForAarDebug FROM-CACHE
+> Task :core-wearables-testing:mergeDebugShaders
+> Task :core-wearables-testing:compileDebugShaders NO-SOURCE
+> Task :core-wearables-testing:generateDebugAssets UP-TO-DATE
+> Task :core-wearables-testing:mergeDebugAssets
+> Task :core-wearables-testing:javaPreCompileDebug FROM-CACHE
+> Task :core-wearables-testing:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-wearables-testing:mergeDebugGeneratedProguardFiles
+> Task :core-wearables-testing:mergeDebugConsumerProguardFiles
+> Task :core-wearables-testing:prepareDebugArtProfile
+> Task :core-wearables-testing:prepareLintJarForPublish
+> Task :core-wearables-testing:processDebugManifest FROM-CACHE
+> Task :core-wearables-testing:processDebugJavaRes
+> Task :core-wearables-testing:mergeDebugJavaResource
+> Task :core-wearables-testing:syncDebugLibJars FROM-CACHE
+> Task :core-wearables-testing:writeDebugAarMetadata
+> Task :core-wearables-testing:bundleDebugAar
+> Task :core-wearables-testing:assembleDebug
+> Task :feature-decisions:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-decisions:copyDebugJniLibsProjectAndLocalJars
+> Task :feature-decisions:extractDebugAnnotations FROM-CACHE
+> Task :feature-decisions:extractDeepLinksForAarDebug FROM-CACHE
+> Task :feature-decisions:mergeDebugGeneratedProguardFiles
+> Task :feature-decisions:mergeDebugConsumerProguardFiles
+> Task :feature-decisions:prepareDebugArtProfile
+> Task :feature-decisions:prepareLintJarForPublish
+> Task :feature-decisions:mergeDebugJavaResource
+> Task :feature-decisions:syncDebugLibJars FROM-CACHE
+> Task :feature-decisions:bundleDebugAar
+> Task :feature-decisions:assembleDebug
+> Task :feature-exploded:preBuild UP-TO-DATE
+> Task :feature-exploded:preDebugBuild UP-TO-DATE
+> Task :feature-exploded:mergeDebugJniLibFolders
+> Task :feature-exploded:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-exploded:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-exploded:copyDebugJniLibsProjectAndLocalJars
+> Task :feature-exploded:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-exploded:generateDebugResValues FROM-CACHE
+> Task :feature-exploded:generateDebugResources FROM-CACHE
+> Task :feature-exploded:packageDebugResources FROM-CACHE
+> Task :feature-exploded:parseDebugLocalResources FROM-CACHE
+> Task :feature-exploded:generateDebugRFile FROM-CACHE
+> Task :feature-exploded:compileDebugKotlin FROM-CACHE
+> Task :feature-exploded:extractDebugAnnotations FROM-CACHE
+> Task :feature-exploded:extractDeepLinksForAarDebug FROM-CACHE
+> Task :feature-exploded:mergeDebugShaders
+> Task :feature-exploded:compileDebugShaders NO-SOURCE
+> Task :feature-exploded:generateDebugAssets UP-TO-DATE
+> Task :feature-exploded:mergeDebugAssets
+> Task :feature-exploded:javaPreCompileDebug FROM-CACHE
+> Task :feature-exploded:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-exploded:mergeDebugGeneratedProguardFiles
+> Task :feature-exploded:mergeDebugConsumerProguardFiles
+> Task :feature-exploded:prepareDebugArtProfile
+> Task :feature-exploded:prepareLintJarForPublish
+> Task :feature-exploded:processDebugManifest FROM-CACHE
+> Task :feature-exploded:processDebugJavaRes
+> Task :feature-exploded:mergeDebugJavaResource
+> Task :feature-exploded:syncDebugLibJars FROM-CACHE
+> Task :feature-exploded:writeDebugAarMetadata
+> Task :feature-exploded:bundleDebugAar
+> Task :feature-exploded:assembleDebug
+> Task :feature-swap:preBuild UP-TO-DATE
+> Task :feature-swap:preDebugBuild UP-TO-DATE
+> Task :feature-swap:mergeDebugJniLibFolders
+> Task :feature-swap:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-swap:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-swap:copyDebugJniLibsProjectAndLocalJars
+> Task :feature-swap:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-swap:generateDebugResValues FROM-CACHE
+> Task :feature-swap:generateDebugResources FROM-CACHE
+> Task :feature-swap:packageDebugResources FROM-CACHE
+> Task :feature-swap:parseDebugLocalResources FROM-CACHE
+> Task :feature-swap:generateDebugRFile FROM-CACHE
+> Task :feature-swap:compileDebugKotlin FROM-CACHE
+> Task :feature-swap:extractDebugAnnotations FROM-CACHE
+> Task :feature-swap:extractDeepLinksForAarDebug FROM-CACHE
+> Task :feature-swap:mergeDebugShaders
+> Task :feature-swap:compileDebugShaders NO-SOURCE
+> Task :feature-swap:generateDebugAssets UP-TO-DATE
+> Task :feature-swap:mergeDebugAssets
+> Task :feature-swap:javaPreCompileDebug FROM-CACHE
+> Task :feature-swap:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-swap:mergeDebugGeneratedProguardFiles
+> Task :feature-swap:mergeDebugConsumerProguardFiles
+> Task :feature-swap:prepareDebugArtProfile
+> Task :feature-swap:prepareLintJarForPublish
+> Task :feature-swap:processDebugManifest FROM-CACHE
+> Task :feature-swap:processDebugJavaRes
+> Task :feature-swap:mergeDebugJavaResource
+> Task :feature-swap:syncDebugLibJars FROM-CACHE
+> Task :feature-swap:writeDebugAarMetadata
+> Task :feature-swap:bundleDebugAar
+> Task :feature-swap:assembleDebug
+> Task :feature-tasks:preBuild UP-TO-DATE
+> Task :feature-tasks:preDebugBuild UP-TO-DATE
+> Task :feature-tasks:mergeDebugJniLibFolders
+> Task :feature-tasks:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-tasks:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-tasks:copyDebugJniLibsProjectAndLocalJars
+> Task :feature-tasks:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-tasks:generateDebugResValues FROM-CACHE
+> Task :feature-tasks:generateDebugResources FROM-CACHE
+> Task :feature-tasks:packageDebugResources FROM-CACHE
+> Task :feature-tasks:parseDebugLocalResources FROM-CACHE
+> Task :feature-tasks:generateDebugRFile FROM-CACHE
+> Task :feature-tasks:compileDebugKotlin FROM-CACHE
+> Task :feature-tasks:extractDebugAnnotations FROM-CACHE
+> Task :feature-tasks:extractDeepLinksForAarDebug FROM-CACHE
+> Task :feature-tasks:mergeDebugShaders
+> Task :feature-tasks:compileDebugShaders NO-SOURCE
+> Task :feature-tasks:generateDebugAssets UP-TO-DATE
+> Task :feature-tasks:mergeDebugAssets
+> Task :feature-tasks:javaPreCompileDebug FROM-CACHE
+> Task :feature-tasks:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-tasks:mergeDebugGeneratedProguardFiles
+> Task :feature-tasks:mergeDebugConsumerProguardFiles
+> Task :feature-tasks:prepareDebugArtProfile
+> Task :feature-tasks:prepareLintJarForPublish
+> Task :feature-tasks:processDebugManifest FROM-CACHE
+> Task :feature-tasks:processDebugJavaRes
+> Task :feature-tasks:mergeDebugJavaResource
+> Task :feature-tasks:syncDebugLibJars FROM-CACHE
+> Task :feature-tasks:writeDebugAarMetadata
+> Task :feature-tasks:bundleDebugAar
+> Task :feature-tasks:assembleDebug
+> Task :feature-tower-audit:preBuild UP-TO-DATE
+> Task :feature-tower-audit:preDebugBuild UP-TO-DATE
+> Task :feature-tower-audit:mergeDebugJniLibFolders
+> Task :feature-tower-audit:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-tower-audit:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-tower-audit:copyDebugJniLibsProjectAndLocalJars
+> Task :core-ocr:bundleLibCompileToJarDebug
+> Task :feature-tower-audit:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-tower-audit:generateDebugResValues FROM-CACHE
+> Task :feature-tower-audit:generateDebugResources FROM-CACHE
+> Task :feature-tower-audit:packageDebugResources FROM-CACHE
+> Task :feature-tower-audit:parseDebugLocalResources FROM-CACHE
+> Task :feature-tower-audit:generateDebugRFile FROM-CACHE
+> Task :feature-tower-audit:compileDebugKotlin FROM-CACHE
+> Task :feature-tower-audit:extractDebugAnnotations FROM-CACHE
+> Task :feature-tower-audit:extractDeepLinksForAarDebug FROM-CACHE
+> Task :feature-tower-audit:mergeDebugShaders
+> Task :feature-tower-audit:compileDebugShaders NO-SOURCE
+> Task :feature-tower-audit:generateDebugAssets UP-TO-DATE
+> Task :feature-tower-audit:mergeDebugAssets
+> Task :feature-tower-audit:javaPreCompileDebug FROM-CACHE
+> Task :feature-tower-audit:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-tower-audit:mergeDebugGeneratedProguardFiles
+> Task :feature-tower-audit:mergeDebugConsumerProguardFiles
+> Task :feature-tower-audit:prepareDebugArtProfile
+> Task :feature-tower-audit:prepareLintJarForPublish
+> Task :feature-tower-audit:processDebugManifest FROM-CACHE
+> Task :feature-tower-audit:processDebugJavaRes
+> Task :feature-tower-audit:mergeDebugJavaResource
+> Task :feature-tower-audit:syncDebugLibJars FROM-CACHE
+> Task :feature-tower-audit:writeDebugAarMetadata
+> Task :feature-tower-audit:bundleDebugAar
+> Task :feature-tower-audit:assembleDebug
+> Task :app:compileDebugKotlin
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:6:8 'class EncryptedSharedPreferences : Any, SharedPreferences' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:7:8 'class MasterKey : Any' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:252:19 'class MasterKey : Any' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:252:29 'constructor(p0: Context): MasterKey.Builder' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:252:59 'class MasterKey : Any' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:252:69 'enum class KeyScheme : Enum<MasterKey.KeyScheme!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:253:9 'class EncryptedSharedPreferences : Any, SharedPreferences' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:255:13 'class EncryptedSharedPreferences : Any, SharedPreferences' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:255:40 'enum class PrefKeyEncryptionScheme : Enum<EncryptedSharedPreferences.PrefKeyEncryptionScheme!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:256:13 'class EncryptedSharedPreferences : Any, SharedPreferences' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:256:40 'enum class PrefValueEncryptionScheme : Enum<EncryptedSharedPreferences.PrefValueEncryptionScheme!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/device/DeviceIo.kt:100:30 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/device/PhoneLocation.kt:26:22 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+
+> Task :app:compileDebugJavaWithJavac
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics FROM-CACHE
+> Task :app:processDebugJavaRes
+> Task :app:mergeDebugJavaResource
+> Task :app:mergeProjectDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1793734630331.json
+
+BUILD SUCCESSFUL in 2m 27s
+420 actionable tasks: 225 executed, 195 from cache
+exit status: 0
