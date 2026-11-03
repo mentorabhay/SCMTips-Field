@@ -20,8 +20,8 @@ android {
         applicationId = "com.scmtips.field"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 7
-        versionName = "0.6.0-m5"
+        versionCode = 8
+        versionName = "0.6.1-m5" // 4 Nov 2026: voice, glasses photo, two-layer look (M5-V11, M5-V12)
         // Meta Wearables DAT, as Meta's CameraAccess sample: in Developer Mode attestation is off and the
         // values may be empty; a released app needs its Wearables Developer Center ids in local.properties.
         // (Was the literal "0": Android stores a numeric meta-data value as an Integer, and DAT logged
