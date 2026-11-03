@@ -52,6 +52,18 @@ The same run also starts the app on an Android 14 emulator and fails if it crash
 1. On the phone, install or update **Meta AI** and pair your Ray-Ban Meta Gen 2.
 2. Firmware must be **v20 or newer**: Meta AI → Devices → your glasses → gear icon → General → About.
 3. **Developer Mode:** Meta AI → Settings → App info → tap **App version** 5 times → turn **Developer Mode** on. This lets our unpublished app connect.
+4. **Glasses camera permission** (after Step 3): in SCMTips Field, Profile › Settings › Advanced › **Connections** › **Glasses camera** › run the test. When the Meta AI app asks, **allow** the camera, come back and run it again. Without this every glasses photo fails: the automatic connection never asks for it (owner's test, 4 Nov 2026). The app log (Diagnostics › App log) shows `glasses permission CAMERA: Granted` and the `glasses:` camera-link lines.
+
+### Settings that change what happens (app 0.6.1-m5 or later)
+| Setting (Profile › Settings) | Effect |
+|---|---|
+| **Audio only** | On: the photo, outlines, count and buttons are not shown, only spoken (the consent button stays). Keep it off while testing. |
+| **Attention word** | On: during a work session only words starting with "Field" are acted on ("Field, look"). Off: everything is, and a leading "Field" is ignored. |
+| **Glasses microphone** | On: the glasses listen during a work session. Off: the phone's recogniser does. |
+| **Scanning with** | Glasses, Phone camera or Handheld: the barcode scanner and, since 0.6.1, the look camera (Phone camera = the phone takes the look photo even with the glasses connected). |
+| **Classic layout** (Diagnostics) | The old three tabs. Keep it off. |
+
+Other conditions: a look needs a **delivery job open** (New grocery delivery / New pharmacy delivery); hold-to-talk works without a work session; an **unknown barcode** is offered as a new item only on a sandbox site, with a receipt or count job open, **during a work session**; a SCMTIPS sign-in lasts **8 hours** (the app says "Your sign-in has expired"); set the app's Android battery use to **Unrestricted**.
 
 ## Step 2: Start everything on your PC (one double-click)
 Double-click **`<workspace>\field-test\START FIELD TEST.cmd`**. It:
@@ -169,7 +181,9 @@ M5 vision look (SAM 3.1 instances, Muse Spark 1.3 label reads): both prices in `
 - **Put away** stores stock on the field side only, with no SAP posting. Pick order is bin-code order (there is no site graph for the sample site).
 - **Short picks** are recorded but don't open an exception case. Batch and serial capture on picks is not built.
 - **Count approval:** after the console approves or asks for a recount, the phone sees it in the job list; there is no spoken alert.
-- **Glasses:** the camera, button and microphone come from Meta's toolkit (DAT 1.0.1) and are marked experimental. If one says "unavailable", use the phone camera and **Hold to talk**.
+- **Glasses:** the camera, button and microphone come from Meta's toolkit (DAT 1.0.1) and are marked experimental. If one says "unavailable", use the phone camera and **Hold to talk**. A failed glasses barcode photo opens the phone's scanner when the app is on screen.
+- **Folding the glasses during a work session** pauses it and may restart it by itself (clicks from the phone). Tap **Stop work** before you fold them.
+- **Speech** is Android's recogniser in US English, offline. Phones that give no confidence score (the owner's scored every result 0.00) are taken at the 0.80 floor since 0.6.1; before that every spoken command was dropped.
 - **Real SAP (S/4 adapter)** is still UNVERIFIED. Everything here runs against erp-sim.
 
 ## What to send the agent (no secrets)

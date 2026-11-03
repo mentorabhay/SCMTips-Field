@@ -24,7 +24,8 @@ Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your W
 
 A warehouse worker puts a delivery on a table and says "look". The glasses take one photo.
 
-1. **Look.** SAM 3.1 outlines and counts every pack. Within seconds the glasses say "8 of 8 packs. Reading the labels."
+1. **Look.** Muse Spark names what is on the table and estimates how many; SAM 3.1 outlines and counts every pack,
+   trying the words it answers to until its count agrees. Within seconds the glasses say "8 of 8 packs. Reading the labels."
 2. **Hear.** Muse Spark reads each pack's label and condition. Fixed rules compare them with the order and the
    glasses say what they found: "1 damaged. 1 pack holds 4, not 6: 2 pieces short. Receive 7, flag 1?"
 3. **Confirm.** The worker says their own numbers, then "post" and "confirm" within 10 seconds. What posts is always
@@ -63,11 +64,48 @@ shows every phone screen and the recorded looks before you install anything.
 | Meta | What Field does with it |
 |---|---|
 | **SAM 3.1** (Meta Model API) | Finds and outlines every item in the photo: the count, and one numbered crop per item. |
-| **Muse Spark 1.3** (Meta Model API) | Reads each numbered crop: pack size, batch, expiry, damage. Rewrites a decision's brief so it can be spoken; the platform's number check refuses any changed figure. |
+| **Muse Spark 1.3** (Meta Model API) | Names the goods in the photo and estimates their count, so SAM is asked with a word it answers to (layer 1 of the look). Reads each numbered crop: pack size, batch, expiry, damage. Rewrites a decision's brief so it can be spoken; the platform's number check refuses any changed figure. |
 | **Ray-Ban Meta (Gen 2)** through the Wearables Device Access Toolkit | The glasses' camera takes the look; the answers are spoken through the glasses; the worker answers by voice. |
 
 Every model call goes through a budget guard with a daily cap, and the console shows what each look cost. Without a
 model answer Field falls back to the person's own count: nothing ever posts on the model's word alone.
+
+**Why two layers.** On real biscuit packs SAM 3.1 found 0 of 5 for the words "pack" and "box" and 5 of 5 for
+"package"; on the SAMPLE photo "box" barely found 8 (confidence 0.60) and "package" found 8 at 0.88. So a look asks
+SAM for the case's word while Muse names the goods and estimates the count; an empty or disagreeing answer makes SAM
+try "package", "box" and Muse's words, and the answer nearest Muse's estimate is kept. The look's `reasons` say which
+word counted (`instances:prompt:package`). Server settings: `VISION_NAMING` (default on), `VISION_NAMING_DEADLINE_S`
+(10 s). The probes: [docs/evidence/runs/2026-11-04-look-two-layer-probe.md](docs/evidence/runs/2026-11-04-look-two-layer-probe.md).
+
+## Settings and prerequisites (phone and glasses)
+
+The app is **0.6.1-m5-hosted** or later (Profile › Settings › Advanced › Diagnostics › Version). Before a look works:
+
+| Where | Set | Why |
+|---|---|---|
+| Meta AI app | Glasses paired, **Developer Mode** on | The Wearables toolkit refuses an unreleased app without it |
+| Profile › Settings › Advanced › Connections › **Glasses camera** | Run the test once and **allow** the glasses camera when the Meta AI app asks | Without it every glasses photo fails; the automatic connection does not ask |
+| Android › Apps › SCMTips Field | Microphone, Nearby devices, Notifications allowed; Battery **Unrestricted** | The work session listens in the background |
+| Profile › Sign out / sign in | Within 8 hours of use | A sign-in lasts 8 hours; the app then says "Your sign-in has expired" |
+| Settings › **Audio only** | Off to see the photo, outlines, count and the consent button | On: everything is spoken only |
+| Settings › **Attention word** | Off (on: start every command with "Field") | On: other words are ignored |
+| Settings › **Scanning with** | Glasses or Phone camera | Also decides which camera takes the look photo |
+
+A look needs a **delivery job open** (Home › Test at home › **New grocery delivery** or **New pharmacy delivery**);
+lay the goods **label side up**, in one layer, on a plain surface. On the hosted server a new grocery delivery
+expects 8 packs of 6 pieces and a pharmacy delivery 5 boxes (`FIELD_CASE_GROCERY_UNITS`, `FIELD_CASE_GROCERY_PIECES`,
+`FIELD_CASE_PHARMACY_UNITS`; unset: 20, 12 and 10).
+
+Spoken commands: "look" (or "take a look", "take a photo"), "I agree", "receive 7, flag 1", "post", "yes", "make a
+claim", "repeat", "stop work". A recogniser that gives no confidence score (some phones score every result 0) is
+taken at the 0.80 floor; a word said twice in a row counts once. The app log (Diagnostics › App log) shows what was
+heard (🎤 lines) and the glasses' camera link (`glasses:` lines).
+
+An **unknown barcode becomes a new item** only on a sandbox site, with a receipt or count job open, during a work
+session: the assistant asks "What is it?", and the answer adds a line and a SAMPLE material in the ERP simulator.
+
+Known limits: folding the glasses during a work session pauses and restarts it (tap **Stop work** first); speech
+is US English, offline.
 
 ## Run it on your own computer
 
