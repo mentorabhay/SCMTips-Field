@@ -1,0 +1,42 @@
+$ bash -c set -e; echo "ANDROID_HOME=$ANDROID_HOME"; test -d "$ANDROID_HOME"; ls "$ANDROID_HOME"; ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"; ls "$ANDROID_HOME/licenses"; echo "sdk.dir=$ANDROID_HOME" > local.properties
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android
+2026-11-03T22:57:31Z
+ANDROID_HOME=/usr/local/lib/android/sdk
+build-tools
+cmake
+cmdline-tools
+extras
+licenses
+ndk
+packages-list.txt
+platform-tools
+platforms
+/usr/local/lib/android/sdk/build-tools:
+34.0.0
+35.0.0
+35.0.1
+36.0.0
+36.1.0
+37.0.0
+
+/usr/local/lib/android/sdk/platforms:
+android-34
+android-34-ext10
+android-34-ext11
+android-34-ext12
+android-34-ext8
+android-35
+android-35-ext14
+android-35-ext15
+android-36
+android-36-ext18
+android-36-ext19
+android-36.1
+android-37.0
+android-37.1
+android-37.2
+android-37.2-beta1
+android-37.2-beta2
+android-37.2-beta3
+android-sdk-license
+exit status: 0
