@@ -1,6 +1,8 @@
 """One vision look (docs/design/M5_CONTRACT.md §2): the orchestrator of stages a-f and the look record.
 
-a) instances: SAM 3.1 with the object noun as text prompt, within VISION_INSTANCES_DEADLINE_S;
+a) instances: SAM 3.1 with the object noun as text prompt, within VISION_INSTANCES_DEADLINE_S, in two layers (M5-V11,
+   ``find_instances``): Muse Spark names the goods and estimates the count while SAM answers for the noun; an empty or
+   disagreeing answer makes SAM try "package", "box" and the named nouns, and the answer nearest the estimate is kept;
 b) label + damage reads: each instance cropped from the capture, crops batched VISION_CROPS_PER_CALL per Muse
    Spark 1.3 call (batches in parallel), within VISION_LABELS_DEADLINE_S;
 c) a batch Muse did not answer goes to the Baseten Llama 3.2 Vision fallback, within VISION_FALLBACK_DEADLINE_S;
@@ -69,7 +71,16 @@ from field_api.errors import FieldError
 from field_api.vision import settings
 from field_api.vision.image import Capture, ImageUnreadable, crops, open_capture
 from field_api.vision.labels import ChatLabelReader
-from field_api.vision.ports import CallContext, FoundInstance, LabelRead, LabelReader, VisionPorts
+from field_api.vision.namer import ChatObjectNamer
+from field_api.vision.ports import (
+    CallContext,
+    FoundInstance,
+    LabelRead,
+    LabelReader,
+    Naming,
+    ObjectNamer,
+    VisionPorts,
+)
 from field_api.vision.reconcile import Check, Expectation, Seen, reconcile
 from field_api.vision.sam import Sam31Instances
 from field_api.vision.say import LABELS_FAILED_SAY, first_say, next_say, say_for
@@ -121,7 +132,14 @@ def vision_ports(guard: BudgetGuard) -> VisionPorts:
                                                      guard), use_response_format=False))
         except ValueError as e:
             logger.warning("vision_model_refused", error=str(e))
-    return VisionPorts(instances, tuple(readers))
+    namer: ChatObjectNamer | None = None
+    if settings.naming_enabled():  # M5-V11: layer 1 of the instances stage (Muse names the goods, estimates the count)
+        try:
+            namer = ChatObjectNamer(ChatModel(ProviderConfig("meta", settings.meta_base_url(),
+                                                             settings.labels_model(), META_KEY_ENV), guard))
+        except ValueError as e:
+            logger.warning("vision_model_refused", error=str(e))
+    return VisionPorts(instances, tuple(readers), namer)
 
 
 # --------------------------------------------------------------------------- context
@@ -445,45 +463,121 @@ def create_look(principal: Principal, body: LookIn, idempotency_key: str, ports:
                     ports, today, defer, t0)
 
 
-# SAM 3.1 prompt words tried after the case's own noun finds nothing (hosted 1 Nov: "pack" found 0 of 8 packs, and at
-# Gate 0 "pack" found 0 where "box" found 7 of 7 on the same table). One retry at most, inside the same deadline; the
-# spoken unit stays the case's noun.
-SAM_FALLBACK: Mapping[str, str] = MappingProxyType({"pack": "box", "box": "package", "carton": "box", "item": "box",
-                                                     "package": "box", "packet": "box", "bottle": "box"})
+# SAM 3.1 answers only for words it knows the goods by (M5-V11). Hosted 1 Nov: "pack" found 0 of 8 packs where "box"
+# found them; hosted 3-4 Nov on the owner's real biscuit packs: "pack" and "box" found 0 of 5 on three photos while
+# "package" found 5 of 5 on each and 8 of 8 on the try page's SAMPLE photo (docs/evidence/runs/
+# 2026-11-04-look-two-layer-probe.md). So the instances stage has two layers:
+#   1. at once: SAM on the case's noun, and (with a namer) Muse naming the goods and estimating their count;
+#   2. when the first answer is empty or its count disagrees with the estimate: SAM on the generic words
+#      (SAM_GENERIC; started as soon as the first answer is empty), then on the nouns Muse named, all in parallel.
+# The answer kept is the one closest to the estimate (without one: the most instances, then the higher mean score).
+# The spoken unit stays the case's noun; everything happens inside the instances deadline.
+SAM_GENERIC: tuple[str, ...] = ("package", "box")
+MAX_RETRY_WORDS = 3
 MIN_RETRY_S = 1.0
 
 
 def sam_prompts(noun: str) -> list[str]:
-    """The prompt words for SAM 3.1, in order: the case's noun, then at most one fallback."""
+    """The case's noun, then the generic words layer 2 tries (no repeats)."""
     first = noun.strip().lower()
-    alt = SAM_FALLBACK.get(first)
-    return [first] if alt is None or alt == first else [first, alt]
+    return [first] + [w for w in SAM_GENERIC if w != first]
+
+
+def estimate_agrees(seen: int, estimate: int | None) -> bool:
+    """True without an estimate; else within max(1, 10 %) of it (Muse's estimate is a check, not a count)."""
+    return estimate is None or abs(seen - estimate) <= max(1, round(estimate * 0.1))
+
+
+def _mean_score(found: list[FoundInstance]) -> float:
+    return sum(f.score if f.score is not None else 0.5 for f in found) / len(found) if found else 0.0
+
+
+def choose_answer(answers: list[tuple[str, list[FoundInstance]]], estimate: int | None
+                  ) -> tuple[str, list[FoundInstance]] | None:
+    """The word and instances to keep, in the order tried on ties; None when every answer is empty."""
+    ranked = [(i, w, a) for i, (w, a) in enumerate(answers) if a]
+    if not ranked:
+        return None
+    if estimate is None:
+        _, w, a = min(ranked, key=lambda t: (-len(t[2]), -_mean_score(t[2]), t[0]))
+    else:
+        _, w, a = min(ranked, key=lambda t: (abs(len(t[2]) - estimate), -_mean_score(t[2]), t[0]))
+    return w, a
 
 
 def find_instances(port: Any, cap: Capture, noun: str, deadline_s: float, ctx: CallContext,
-                   reasons: list[str]) -> list[FoundInstance]:
-    """SAM 3.1 instances for ``noun``; when none come back, one more try with ``sam_prompts`` 's fallback word if at
-    least MIN_RETRY_S of the deadline is left (reason ``instances:retry:<word>``; a found retry adds
-    ``instances:prompt:<word>``). A model error on the first word propagates as before."""
+                   reasons: list[str], namer: ObjectNamer | None = None) -> list[FoundInstance]:
+    """SAM 3.1 instances in two layers (see SAM_GENERIC). A model error on the case's noun propagates as before (the
+    look answers by rules). Reasons: ``instances:named:<noun>~<estimate>`` or ``instances:naming:<code>``,
+    ``instances:retry:<w1>,<w2>`` (layer 2), ``instances:retry:<word>:<code>``, ``instances:retry:no_time``,
+    ``instances:prompt:<word>`` (the kept answer's word, when not the noun) and ``instances:estimate:<seen>/<est>``
+    (the kept answer still disagrees with the estimate)."""
     t0 = time.perf_counter()
     words = sam_prompts(noun)
-    found: list[FoundInstance] = port.find(cap.jpeg, cap.width, cap.height, words[0], timeout_s=deadline_s, ctx=ctx)
-    if found or len(words) < 2:
-        return found
-    left = deadline_s - (time.perf_counter() - t0)
-    if left < MIN_RETRY_S:
-        reasons.append("instances:retry:no_time")
-        return found
-    reasons.append(f"instances:retry:{words[1]}")
-    try:
-        again: list[FoundInstance] = port.find(cap.jpeg, cap.width, cap.height, words[1], timeout_s=left, ctx=ctx)
-    except ModelError as e:
-        reasons.append(f"instances:retry:{e.code}")
-        return found
-    if again:
-        reasons.append(f"instances:prompt:{words[1]}")
-    return again
+    tried: list[tuple[str, list[FoundInstance]]] = []
 
+    def left() -> float:
+        return deadline_s - (time.perf_counter() - t0)
+
+    def sam(word: str) -> list[FoundInstance]:
+        return port.find(cap.jpeg, cap.width, cap.height, word, timeout_s=max(0.1, left()), ctx=ctx)
+
+    def collect(futures: list[tuple[str, Any]]) -> None:
+        for w, f in futures:
+            try:
+                tried.append((w, f.result()))
+            except ModelError as e:
+                reasons.append(f"instances:retry:{w}:{e.code}")
+
+    with ThreadPoolExecutor(max_workers=2 + 2 * MAX_RETRY_WORDS) as pool:
+        naming_f = pool.submit(namer.name, cap.jpeg, timeout_s=min(deadline_s, settings.naming_deadline_s()),
+                               ctx=ctx) if namer is not None else None
+        first_f = pool.submit(sam, words[0])
+        try:
+            first = first_f.result()
+        except ModelError:
+            if naming_f is not None:  # its call is recorded either way; the look answers by rules
+                naming_f.exception()
+            raise
+        tried.append((words[0], first))
+        generic = words[1:1 + MAX_RETRY_WORDS]
+        layer2: list[tuple[str, Any]] = []
+        if not first and generic and left() >= MIN_RETRY_S:  # empty: layer 2 starts without waiting for the namer
+            reasons.append("instances:retry:" + ",".join(generic))
+            layer2 = [(w, pool.submit(sam, w)) for w in generic]
+        naming: Naming | None = None
+        if naming_f is not None:
+            try:
+                naming = naming_f.result()
+                reasons.append(f"instances:named:{naming.nouns[0]}~"
+                               f"{naming.estimate if naming.estimate is not None else '?'}")
+            except ModelError as e:
+                reasons.append(f"instances:naming:{e.code}")
+        estimate = naming.estimate if naming is not None else None
+        if first and not estimate_agrees(len(first), estimate) and not layer2 and generic and left() >= MIN_RETRY_S:
+            reasons.append("instances:retry:" + ",".join(generic))  # found, but not what Muse sees
+            layer2 = [(w, pool.submit(sam, w)) for w in generic]
+        collect(layer2)
+        best = choose_answer(tried, estimate)
+        named = [w for w in (naming.nouns if naming is not None else ()) if w not in {t[0] for t in tried}]
+        if named and (best is None or not estimate_agrees(len(best[1]), estimate)):
+            if left() >= MIN_RETRY_S:
+                named = named[:MAX_RETRY_WORDS]
+                reasons.append("instances:retry:" + ",".join(named))
+                collect([(w, pool.submit(sam, w)) for w in named])
+                best = choose_answer(tried, estimate)
+            else:
+                reasons.append("instances:retry:no_time")
+        elif not first and not layer2 and len(words) > 1:
+            reasons.append("instances:retry:no_time")
+    if best is None:
+        return []
+    word, found = best
+    if word != words[0]:
+        reasons.append(f"instances:prompt:{word}")
+    if not estimate_agrees(len(found), estimate):
+        reasons.append(f"instances:estimate:{len(found)}/{estimate}")
+    return found
 
 def run_look(principal: Principal, target: LookTarget, lc: LookContext, cap: Capture | None, reasons: list[str],
              idempotency_key: str, ports: VisionPorts, today: Callable[[], date], defer: Defer | None, t0: float,
@@ -498,7 +592,7 @@ def run_look(principal: Principal, target: LookTarget, lc: LookContext, cap: Cap
         else:
             try:
                 found = order_instances(find_instances(ports.instances, cap, lc.expectation.object_noun,
-                                                       settings.instances_deadline_s(), ctx, reasons))
+                                                       settings.instances_deadline_s(), ctx, reasons, ports.namer))
             except ModelError as e:
                 reasons.append(f"instances:{ports.instances.model}:{e.code}")
     day = today()

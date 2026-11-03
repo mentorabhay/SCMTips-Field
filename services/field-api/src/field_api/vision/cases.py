@@ -8,6 +8,9 @@ what the look checks beyond the quantity (field.vision_case_line):
 - C2 ``pharmacy``: ``units`` boxes (default 10), expiry window ``window_days`` (default VISION_EXPIRY_WINDOW_DAYS,
   90), counted as "box".
 
+The app sends no ``units``, so a host sets the defaults to what testers lay out (D-4): FIELD_CASE_GROCERY_UNITS,
+FIELD_CASE_GROCERY_PIECES and FIELD_CASE_PHARMACY_UNITS (unset: 20, 12 and 10, as above).
+
 The material is named by a generic description ("biscuit pack", "tablet box"), never a brand (contract §6). The
 delivery is in storage location FIELD_CASE_SLOC (default 101A) when the site lists it; flagged units post to
 FIELD_QUALITY_SLOC (default 101Q). A production site refuses (403 FIELD-SBX-403-PRODUCTION).
@@ -62,15 +65,32 @@ def case_sloc() -> str:
     return os.getenv("FIELD_CASE_SLOC", "").strip() or "101A"
 
 
+def _env_int(name: str, default: int | None, lo: int, hi: int) -> int | None:
+    raw = os.getenv(name, "").strip()
+    return int(raw) if raw.isdigit() and lo <= int(raw) <= hi else default
+
+
+def default_units(case: str, spec: CaseSpec) -> int:
+    """The case's expected units when the app sends none (D-4, 4 Nov 2026: the app never sends a count, so a host sets
+    what a tester lays out): FIELD_CASE_GROCERY_UNITS / FIELD_CASE_PHARMACY_UNITS, 1..999, else the spec's."""
+    v = _env_int(f"FIELD_CASE_{case.upper()}_UNITS", spec.units, 1, 999)
+    return spec.units if v is None else v
+
+
+def default_pieces(spec: CaseSpec) -> int | None:
+    """Grocery's pieces per pack when the app sends none: FIELD_CASE_GROCERY_PIECES (1..10000), else the spec's."""
+    return _env_int("FIELD_CASE_GROCERY_PIECES", spec.pieces_per_unit, 1, 10_000)
+
+
 def create_case(principal: Principal, site_id: str, case: str, units: int | None = None,
                 pieces_per_unit: int | None = None, window_days: int | None = None) -> CaseResult:
     spec = CASES.get(case)
     if spec is None:
         raise FieldError(status=422, code="FIELD-HTTP-422-VALIDATION", title="The case is grocery or pharmacy")
-    n = spec.units if units is None else units
+    n = default_units(case, spec) if units is None else units
     if not 1 <= n <= 999:
         raise FieldError(status=422, code="FIELD-HTTP-422-VALIDATION", title="Units must be between 1 and 999")
-    ppu = (spec.pieces_per_unit if pieces_per_unit is None else pieces_per_unit) if case == "grocery" else None
+    ppu = (default_pieces(spec) if pieces_per_unit is None else pieces_per_unit) if case == "grocery" else None
     if ppu is not None and not 1 <= ppu <= 10_000:
         raise FieldError(status=422, code="FIELD-HTTP-422-VALIDATION", title="Pieces per unit must be 1 to 10000")
     window = (settings.expiry_window_days() if window_days is None else window_days) if case == "pharmacy" else None

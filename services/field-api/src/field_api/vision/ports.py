@@ -76,8 +76,27 @@ class LabelReader(Protocol):
 
 
 @dataclass(frozen=True)
+class Naming:
+    """What layer 1 (vision.namer) saw: up to three prompt words, best first, and the estimated count (or None)."""
+
+    nouns: tuple[str, ...]
+    estimate: int | None
+
+
+class ObjectNamer(Protocol):
+    """Names the goods in a JPEG and estimates their count; raises assistant.model.ModelError when no answer."""
+
+    @property
+    def model(self) -> str: ...
+
+    def name(self, image_jpeg: bytes, *, timeout_s: float, ctx: CallContext) -> Naming: ...
+
+
+@dataclass(frozen=True)
 class VisionPorts:
-    """The adapters one look uses: instances, then label readers in order (primary, fallback)."""
+    """The adapters one look uses: instances, then label readers in order (primary, fallback), and the namer of the
+    instances stage's layer 1 (M5-V11; None: SAM's own words only)."""
 
     instances: InstanceFinder | None
     readers: tuple[LabelReader, ...] = ()
+    namer: ObjectNamer | None = None

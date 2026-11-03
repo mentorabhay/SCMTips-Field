@@ -11,6 +11,10 @@ Muse label reads (reasoning tokens count against max_tokens, dev.meta.ai/docs/re
   VISION_LABELS_REASONING_EFFORT  default low    Meta's reasoning_effort for label reads (minimal|low|medium|high|xhigh|max)
   VISION_LABELS_MAX_TOKENS        default 4096   base output allowance per call (+512 per crop), 1024..16384
   VISION_LABELS_MAX_TOKENS_CAP    default 12288  the most one label call may use, 2048..16384
+Two-layer instances (M5-V11, after the hosted looks of 3-4 Nov 2026; see vision.service SAM_GENERIC):
+  VISION_NAMING                default true  Muse Spark names the goods and estimates the count, in parallel with SAM
+                                             (false: SAM's own words only, "package" and "box" after the case's noun)
+  VISION_NAMING_DEADLINE_S     default 10    the naming call (inside VISION_INSTANCES_DEADLINE_S; ~5.5 s from India)
 Other settings:
   VISION_EXPIRY_WINDOW_DAYS    default 90    a site's "expiring soon" window when the line names none (C2)
   VISION_CROPS_PER_CALL        default 8     instance crops sent in one Muse call (1..20; the API takes up to 50)
@@ -104,6 +108,15 @@ def label_min_instance_px() -> int:
 
 
 REASONING_EFFORTS = ("minimal", "low", "medium", "high", "xhigh", "max")  # "none" is refused by Muse Spark (HTTP 400)
+
+
+def naming_enabled() -> bool:
+    """M5-V11: layer 1 of the instances stage (Muse names the goods and estimates the count); off only by false/0/no."""
+    return os.getenv("VISION_NAMING", "").strip().lower() not in ("false", "0", "no", "off")
+
+
+def naming_deadline_s() -> float:
+    return _float("VISION_NAMING_DEADLINE_S", 10.0, 0.5, VISION_CALL_CAP_S)
 
 
 def labels_reasoning_effort() -> str:
