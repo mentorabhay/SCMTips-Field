@@ -1,0 +1,21 @@
+$ uv run python scripts/jobs/typecheck.py
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field
+2026-11-03T19:31:52Z
+services/field-api/src/field_api/vision/namer.py:62: error: Incompatible types in assignment (expression has type "Image", variable has type "ImageFile")  [assignment]
+services/field-api/src/field_api/vision/namer.py:118: error: Argument 1 to "chat" of "ChatModel" has incompatible type "list[object]"; expected "Sequence[dict[str, Any]]"  [arg-type]
+services/field-api/src/field_api/vision/service.py:523: error: Returning Any from function declared to return "list[FoundInstance]"  [no-any-return]
+Found 3 errors in 2 files (checked 368 source files)
+============================================================
+Running mypy --strict across first-party Python codebase...
+============================================================
+Command: uv run mypy --strict services/field-api/src services/field-worker/src services/erp-sim/src services/oem-sim/src connectors/sap/src connectors/oem/src tools/
+============================================================
+Running tsc --noEmit across TypeScript apps and packages...
+============================================================
+Checking /home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-console...
+Checking /home/runner/work/SCMTips-Field/SCMTips-Field/packages/field-contract...
+Checking /home/runner/work/SCMTips-Field/SCMTips-Field/packages/core-contract...
+Checking /home/runner/work/SCMTips-Field/SCMTips-Field/packages/ui-tokens...
+
+[FAIL] Typecheck failed (mypy=1, tsc=0)
+exit status: 1

@@ -1,0 +1,5 @@
+$ uv run pytest -p no:cacheprovider --junitxml=reports/junit.xml
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field
+2026-11-03T19:34:07Z
+........................................................................ [  7%]
+..........................................................

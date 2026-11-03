@@ -1,0 +1,42 @@
+$ uvx semgrep==1.181.0 --config p/python --config p/javascript --config p/typescript --config p/java --config p/secrets --error
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field
+2026-11-03T19:32:43Z
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 935 files tracked by git with 330 Code rules:
+                                                                                                                        
+  Language      Rules   Files          Origin      Rules                                                                
+ ─────────────────────────────        ───────────────────                                                               
+  <multilang>      36     935          Community     330                                                                
+  python          151     422                                                                                           
+  kotlin            4     195                                                                                           
+  ts               74      83                                                                                           
+  yaml              1      29                                                                                           
+  js               68       4                                                                                           
+  java             60       1                                                                                           
+                                                                                                                        
+                
+                
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 0 (0 blocking)
+ • Rules run: 323
+ • Targets scanned: 935
+ • Parsed lines: ~99.9%
+ • Scan skipped: 
+   ◦ Files matching .semgrepignore patterns: 260
+ • Scan was limited to files tracked by git
+ • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
+Ran 323 rules on 935 files: 0 findings.
+(need more rules? `semgrep login` for additional free Semgrep Registry rules)
+
+
+A new version of Semgrep is available. See https://semgrep.dev/docs/upgrading
+If Semgrep missed a finding, please send us feedback to let us know!
+See https://semgrep.dev/docs/reporting-false-negatives/
+exit status: 0
