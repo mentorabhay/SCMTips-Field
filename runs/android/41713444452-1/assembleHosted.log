@@ -1,0 +1,226 @@
+$ ./gradlew :app:assembleHosted --stacktrace
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android
+2026-11-03T20:35:44Z
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preHostedBuild UP-TO-DATE
+> Task :core-common:preBuild UP-TO-DATE
+> Task :core-common:preDebugBuild UP-TO-DATE
+> Task :app:mergeHostedNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-common:writeDebugAarMetadata UP-TO-DATE
+> Task :core-outbox:preBuild UP-TO-DATE
+> Task :core-outbox:preDebugBuild UP-TO-DATE
+> Task :core-outbox:writeDebugAarMetadata UP-TO-DATE
+> Task :core-safety:preBuild UP-TO-DATE
+> Task :core-safety:preDebugBuild UP-TO-DATE
+> Task :core-safety:writeDebugAarMetadata UP-TO-DATE
+> Task :core-voice:preBuild UP-TO-DATE
+> Task :core-voice:preDebugBuild UP-TO-DATE
+> Task :core-voice:writeDebugAarMetadata UP-TO-DATE
+> Task :core-wearables:preBuild UP-TO-DATE
+> Task :core-wearables:preDebugBuild UP-TO-DATE
+> Task :core-wearables:writeDebugAarMetadata UP-TO-DATE
+> Task :feature-decisions:preBuild UP-TO-DATE
+> Task :feature-decisions:preDebugBuild UP-TO-DATE
+> Task :app:generateHostedBuildConfig
+> Task :feature-decisions:writeDebugAarMetadata UP-TO-DATE
+> Task :core-common:generateDebugResValues UP-TO-DATE
+> Task :core-common:generateDebugResources UP-TO-DATE
+> Task :app:generateHostedResValues FROM-CACHE
+> Task :core-common:packageDebugResources UP-TO-DATE
+> Task :core-outbox:generateDebugResValues UP-TO-DATE
+> Task :core-outbox:generateDebugResources UP-TO-DATE
+> Task :core-outbox:packageDebugResources UP-TO-DATE
+> Task :core-safety:generateDebugResValues UP-TO-DATE
+> Task :core-safety:generateDebugResources UP-TO-DATE
+> Task :core-safety:packageDebugResources UP-TO-DATE
+> Task :core-voice:generateDebugResValues UP-TO-DATE
+> Task :core-voice:generateDebugResources UP-TO-DATE
+> Task :core-voice:packageDebugResources UP-TO-DATE
+> Task :core-wearables:generateDebugResValues UP-TO-DATE
+> Task :core-wearables:generateDebugResources UP-TO-DATE
+> Task :core-wearables:packageDebugResources UP-TO-DATE
+> Task :feature-decisions:generateDebugResValues UP-TO-DATE
+> Task :feature-decisions:generateDebugResources UP-TO-DATE
+> Task :feature-decisions:packageDebugResources UP-TO-DATE
+> Task :core-common:extractDeepLinksDebug UP-TO-DATE
+> Task :core-common:processDebugManifest UP-TO-DATE
+> Task :core-outbox:extractDeepLinksDebug UP-TO-DATE
+> Task :core-outbox:processDebugManifest UP-TO-DATE
+> Task :core-safety:extractDeepLinksDebug UP-TO-DATE
+> Task :core-safety:processDebugManifest UP-TO-DATE
+> Task :core-voice:extractDeepLinksDebug UP-TO-DATE
+> Task :core-voice:processDebugManifest UP-TO-DATE
+> Task :core-wearables:extractDeepLinksDebug UP-TO-DATE
+> Task :core-wearables:processDebugManifest UP-TO-DATE
+> Task :feature-decisions:extractDeepLinksDebug UP-TO-DATE
+> Task :feature-decisions:processDebugManifest UP-TO-DATE
+> Task :core-common:compileDebugLibraryResources UP-TO-DATE
+> Task :core-common:parseDebugLocalResources UP-TO-DATE
+> Task :core-common:generateDebugRFile UP-TO-DATE
+> Task :core-outbox:compileDebugLibraryResources UP-TO-DATE
+> Task :core-outbox:parseDebugLocalResources UP-TO-DATE
+> Task :core-outbox:generateDebugRFile UP-TO-DATE
+> Task :core-safety:compileDebugLibraryResources UP-TO-DATE
+> Task :core-safety:parseDebugLocalResources UP-TO-DATE
+> Task :core-safety:generateDebugRFile UP-TO-DATE
+> Task :core-voice:compileDebugLibraryResources UP-TO-DATE
+> Task :core-voice:parseDebugLocalResources UP-TO-DATE
+> Task :core-voice:generateDebugRFile UP-TO-DATE
+> Task :core-wearables:compileDebugLibraryResources UP-TO-DATE
+> Task :core-wearables:parseDebugLocalResources UP-TO-DATE
+> Task :core-wearables:generateDebugRFile UP-TO-DATE
+> Task :feature-decisions:compileDebugLibraryResources UP-TO-DATE
+> Task :feature-decisions:parseDebugLocalResources UP-TO-DATE
+> Task :feature-decisions:generateDebugRFile UP-TO-DATE
+> Task :core-common:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-common:compileDebugKotlin UP-TO-DATE
+> Task :core-common:javaPreCompileDebug UP-TO-DATE
+> Task :core-common:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-common:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-outbox:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-outbox:kspDebugKotlin UP-TO-DATE
+> Task :app:checkHostedAarMetadata
+> Task :core-outbox:compileDebugKotlin UP-TO-DATE
+> Task :core-outbox:javaPreCompileDebug UP-TO-DATE
+> Task :core-outbox:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-outbox:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-safety:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:mapHostedSourceSetPaths
+> Task :app:generateHostedResources FROM-CACHE
+> Task :core-safety:compileDebugKotlin UP-TO-DATE
+> Task :core-safety:javaPreCompileDebug UP-TO-DATE
+> Task :core-safety:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-safety:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-voice:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-voice:compileDebugKotlin UP-TO-DATE
+> Task :core-voice:javaPreCompileDebug UP-TO-DATE
+> Task :core-voice:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-voice:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-wearables:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core-wearables:compileDebugKotlin UP-TO-DATE
+> Task :core-wearables:javaPreCompileDebug UP-TO-DATE
+> Task :core-wearables:compileDebugJavaWithJavac NO-SOURCE
+> Task :core-wearables:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature-decisions:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature-decisions:compileDebugKotlin UP-TO-DATE
+> Task :feature-decisions:javaPreCompileDebug UP-TO-DATE
+> Task :feature-decisions:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature-decisions:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core-common:mergeDebugShaders UP-TO-DATE
+> Task :core-common:compileDebugShaders NO-SOURCE
+> Task :core-common:generateDebugAssets UP-TO-DATE
+> Task :core-common:mergeDebugAssets UP-TO-DATE
+> Task :core-outbox:mergeDebugShaders UP-TO-DATE
+> Task :core-outbox:compileDebugShaders NO-SOURCE
+> Task :core-outbox:generateDebugAssets UP-TO-DATE
+> Task :core-outbox:mergeDebugAssets UP-TO-DATE
+> Task :core-safety:mergeDebugShaders UP-TO-DATE
+> Task :core-safety:compileDebugShaders NO-SOURCE
+> Task :core-safety:generateDebugAssets UP-TO-DATE
+> Task :core-safety:mergeDebugAssets UP-TO-DATE
+> Task :core-voice:mergeDebugShaders UP-TO-DATE
+> Task :core-voice:compileDebugShaders NO-SOURCE
+> Task :core-voice:generateDebugAssets UP-TO-DATE
+> Task :core-voice:mergeDebugAssets UP-TO-DATE
+> Task :core-wearables:mergeDebugShaders UP-TO-DATE
+> Task :core-wearables:compileDebugShaders NO-SOURCE
+> Task :core-wearables:generateDebugAssets UP-TO-DATE
+> Task :core-wearables:mergeDebugAssets UP-TO-DATE
+> Task :feature-decisions:mergeDebugShaders UP-TO-DATE
+> Task :feature-decisions:compileDebugShaders NO-SOURCE
+> Task :feature-decisions:generateDebugAssets UP-TO-DATE
+> Task :feature-decisions:mergeDebugAssets UP-TO-DATE
+> Task :feature-decisions:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-voice:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-outbox:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-common:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-wearables:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-safety:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core-common:processDebugJavaRes UP-TO-DATE
+> Task :core-outbox:processDebugJavaRes UP-TO-DATE
+> Task :core-safety:processDebugJavaRes UP-TO-DATE
+> Task :core-voice:processDebugJavaRes UP-TO-DATE
+> Task :core-wearables:processDebugJavaRes UP-TO-DATE
+> Task :feature-decisions:processDebugJavaRes UP-TO-DATE
+> Task :feature-decisions:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core-voice:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core-outbox:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core-common:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core-wearables:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core-safety:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core-common:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core-common:mergeDebugNativeLibs NO-SOURCE
+> Task :core-common:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :core-outbox:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core-outbox:mergeDebugNativeLibs NO-SOURCE
+> Task :core-outbox:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :core-safety:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core-safety:mergeDebugNativeLibs NO-SOURCE
+> Task :core-safety:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :core-voice:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core-voice:mergeDebugNativeLibs NO-SOURCE
+> Task :core-voice:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :core-wearables:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core-wearables:mergeDebugNativeLibs NO-SOURCE
+> Task :core-wearables:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :feature-decisions:mergeDebugJniLibFolders UP-TO-DATE
+> Task :feature-decisions:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-decisions:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:mergeHostedResources FROM-CACHE
+> Task :app:packageHostedResources FROM-CACHE
+> Task :app:parseHostedLocalResources FROM-CACHE
+> Task :app:createHostedCompatibleScreenManifests
+> Task :app:extractDeepLinksHosted FROM-CACHE
+> Task :app:processHostedMainManifest
+> Task :app:processHostedManifest
+> Task :app:javaPreCompileHosted FROM-CACHE
+> Task :app:mergeHostedShaders
+> Task :app:processHostedManifestForPackage
+> Task :app:compileHostedShaders NO-SOURCE
+> Task :app:generateHostedAssets UP-TO-DATE
+> Task :app:mergeHostedAssets
+> Task :app:compressHostedAssets FROM-CACHE
+> Task :app:checkHostedDuplicateClasses
+> Task :app:desugarHostedFileDependencies FROM-CACHE
+> Task :app:mergeExtDexHosted FROM-CACHE
+> Task :app:mergeLibDexHosted FROM-CACHE
+> Task :app:mergeHostedJniLibFolders
+> Task :app:mergeHostedNativeLibs
+> Task :app:processHostedResources
+
+> Task :app:stripHostedDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libairbridge_jni.so, libairshield_light_mbed_jni.so, libairship_multiscope_jni.so, libandroidx.graphics.path.so, libbarhopper_v3.so, libc++_shared.so, libdatax_jni_local.so, libfb.so, libfbjni.so, libfbjni_kt.so, libfbsofterror.so, libfmt.so, libglog.so, libmanifest_jni.so, libsqlcipher.so, libwearable_qpl3p.so, libxplat_mobilenetwork_third-party_mbedtls3_cryptoAndroid.so, libxplat_perflogger_base_baseAndroid.so, libxplat_perflogger_base_qpl_codegen_metadataAndroid.so, libxplat_perflogger_conversions_conversionsAndroid.so, libxplat_perflogger_health_counters_health_countersAndroid.so, libxplat_perflogger_perfloggerAndroid.so, libxplat_perflogger_safe_rollout_qpl_safe_rolloutAndroid.so, libxplat_perflogger_structured_data_structured_dataAndroid.so, libxplat_perflogger_synchronization_synchronizationAndroid.so, libxplat_perflogger_utils_utilsAndroid.so, libxplat_wearable_3p_qpl_3PQPL.so. Run with --info option to learn more.
+
+> Task :app:validateSigningHosted
+> Task :app:writeHostedAppMetadata
+> Task :app:writeHostedSigningConfigVersions
+> Task :app:compileHostedKotlin
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:6:8 'class EncryptedSharedPreferences : Any, SharedPreferences' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:7:8 'class MasterKey : Any' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:252:19 'class MasterKey : Any' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:252:29 'constructor(p0: Context): MasterKey.Builder' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:252:59 'class MasterKey : Any' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:252:69 'enum class KeyScheme : Enum<MasterKey.KeyScheme!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:253:9 'class EncryptedSharedPreferences : Any, SharedPreferences' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:255:13 'class EncryptedSharedPreferences : Any, SharedPreferences' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:255:40 'enum class PrefKeyEncryptionScheme : Enum<EncryptedSharedPreferences.PrefKeyEncryptionScheme!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:256:13 'class EncryptedSharedPreferences : Any, SharedPreferences' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/FieldController.kt:256:40 'enum class PrefValueEncryptionScheme : Enum<EncryptedSharedPreferences.PrefValueEncryptionScheme!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/device/DeviceIo.kt:100:30 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/SCMTips-Field/SCMTips-Field/apps/field-android/app/src/main/kotlin/com/scmtips/field/app/device/PhoneLocation.kt:26:22 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+
+> Task :app:compileHostedJavaWithJavac
+> Task :app:dexBuilderHosted
+> Task :app:mergeHostedGlobalSynthetics FROM-CACHE
+> Task :app:processHostedJavaRes
+> Task :app:mergeHostedJavaResource
+> Task :app:mergeProjectDexHosted
+> Task :app:packageHosted
+> Task :app:createHostedApkListingFileRedirect
+> Task :app:assembleHosted
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_6-1793738145236.json
+
+BUILD SUCCESSFUL in 59s
+152 actionable tasks: 25 executed, 12 from cache, 115 up-to-date
+exit status: 0
