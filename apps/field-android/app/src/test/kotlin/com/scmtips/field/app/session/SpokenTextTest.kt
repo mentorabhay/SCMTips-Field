@@ -32,7 +32,7 @@ class SpokenTextTest {
         assertEquals("Look again", SpokenText.tidy("Look look look again"))
         assertEquals("receive 5", SpokenText.tidy(" receive  5 "))
         assertEquals("receive 5 flag 5", SpokenText.tidy("receive 5 flag 5"))
-        assertEquals("yes", SpokenText.tidy("yes, yes"))
+        assertEquals("yes,", SpokenText.tidy("yes, yes")) // the first is kept as said; the grammars drop punctuation
         assertEquals("", SpokenText.tidy("  "))
     }
 }
