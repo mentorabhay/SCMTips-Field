@@ -59,6 +59,10 @@ The [judge guide](https://storage.googleapis.com/scmtips-field-judges/judge-guid
 (J1 to J7) and what you should see. The [screenshot book](https://storage.googleapis.com/scmtips-field-judges/book/index.html)
 shows every phone screen and the recorded looks before you install anything.
 
+## What comes next
+
+The **whole-order check** (one look at a whole grocery or pharmacy order: which item, how many, damage, batch and expiry, a claim draft) is a concept, not built yet: [docs/showcase/order-check-concept.html](docs/showcase/order-check-concept.html) (open the file, or add `#autoplay` for a 37 s walkthrough). Every check in it already runs today, one product line per look.
+
 ## How it uses Meta's models and glasses
 
 | Meta | What Field does with it |

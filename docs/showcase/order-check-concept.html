@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCMTips Field · Order check at the door · CONCEPT (not built)</title>
+<style>
+  :root{--p:#1567D3;--info:#E7F3FF;--bg:#F0F2F5;--line:#DADDE1;--ink:#1C1E21;--ink2:#4B4F56;--mut:#65676B;
+        --ok:#22A55A;--okbg:#E6F4EA;--warn:#F59E0B;--bad:#E5484D;--dark:#101418;--card:#18191A}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#000;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  #fit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{width:1280px;height:720px;position:relative;background:var(--dark);color:#fff;transform-origin:center;overflow:hidden}
+  .banner{position:absolute;top:0;left:0;right:0;height:38px;background:#2a1f05;border-bottom:1px solid #6b4a0a;display:flex;align-items:center;gap:14px;padding:0 18px;font-size:14px;color:#FCD34D;z-index:9}
+  .banner b{background:#F59E0B;color:#1c1300;padding:3px 10px;border-radius:999px;font-size:12px;letter-spacing:.06em}
+  .banner span.r{margin-left:auto;color:#C9D1D9}
+  /* phone */
+  .phone{position:absolute;left:46px;top:70px;width:300px;height:610px;border-radius:38px;background:#0b0d10;border:2px solid #3A444F;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .screen{width:100%;height:100%;border-radius:26px;background:var(--bg);color:var(--ink);overflow:hidden;position:relative}
+  .scr{position:absolute;inset:0;padding:16px 14px;opacity:0;transition:opacity .45s}
+  .scr.on{opacity:1}
+  .appbar{font-weight:700;font-size:15px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .appbar small{font-weight:500;color:var(--mut);font-size:11px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:12.5px}
+  .row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #EEF0F2}
+  .row:last-child{border-bottom:0}
+  .row .q{color:var(--mut)}
+  .btn{display:block;text-align:center;background:var(--p);color:#fff;border-radius:10px;padding:9px;font-weight:600;font-size:13px;margin-top:8px}
+  .btn.ghost{background:#fff;color:var(--p);border:1px solid #b9d6f7}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:12px;box-shadow:0 -8px 30px rgba(0,0,0,.2);transform:translateY(100%);transition:transform .5s}
+  .sheet.up{transform:none}
+  .apps{display:flex;gap:10px;margin-top:8px}
+  .apps div{flex:1;text-align:center;font-size:10.5px;color:var(--ink2)}
+  .apps i{display:block;width:40px;height:40px;border-radius:12px;margin:0 auto 4px;background:#DADDE1}
+  .apps .me i{background:var(--p);outline:3px solid #FCD34D}
+  .amber{background:#FDF0E1;border-color:#f3d3ad}
+  .pillg{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;background:#E6F4EA;color:#157A3C}
+  .pilla{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;background:#FDF0E1;color:#9A4A05}
+  /* glasses view */
+  .view{position:absolute;left:386px;top:70px;width:850px;height:478px;border-radius:18px;overflow:hidden;background:#3b2e22;border:1px solid #3A444F}
+  .view svg{width:100%;height:100%;display:block}
+  .hud{position:absolute;left:386px;top:70px;width:850px;height:478px;pointer-events:none}
+  .chip{position:absolute;top:12px;left:14px;background:rgba(16,20,24,.8);border:1px solid #3A444F;padding:5px 11px;border-radius:999px;font-size:12.5px;color:#C9D1D9}
+  .chip.r{left:auto;right:14px}
+  .caption{position:absolute;left:386px;top:566px;width:850px;min-height:84px;background:var(--card);border:1px solid #3A444F;border-radius:14px;padding:14px 18px;font-size:19px;line-height:1.4;color:#fff;transition:opacity .3s}
+  .caption .who{font-size:12px;color:#B7C0C9;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
+  .caption.user{border-color:#1567D3}
+  .ol{opacity:0;transition:opacity .35s}
+  .ol.on{opacity:1}
+  .ring{position:absolute;right:30px;bottom:30px;width:74px;height:74px}
+  .ctrl{position:absolute;left:46px;bottom:6px;font-size:11.5px;color:#65676B}
+  .ctrl button{background:#18191A;color:#C9D1D9;border:1px solid #3A444F;border-radius:6px;padding:3px 9px;margin-right:4px;cursor:pointer;font-size:11.5px}
+  .end{position:absolute;inset:38px 0 0 0;background:rgba(16,20,24,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .6s;pointer-events:none;text-align:center;padding:0 120px}
+  .end.on{opacity:1}
+  .end h2{font-size:34px;margin:0 0 14px}
+  .end p{font-size:18px;color:#C9D1D9;margin:6px 0;max-width:980px}
+  .end .tags{margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .end .tags span{border:1px solid #3A444F;border-radius:999px;padding:6px 14px;font-size:14px;color:#E6EDF3}
+  .end .tags span b{color:#22A55A}
+</style>
+</head>
+<body>
+<div id="fit"><div id="stage">
+  <div class="banner"><b>CONCEPT · NOT BUILT</b> Order check at the door: where SCMTips Field goes next. Simulation, every item SAMPLE.
+    <span class="r">Today, Field checks one product line per look</span></div>
+
+  <!-- PHONE -->
+  <div class="phone"><div class="screen">
+    <div class="scr on" id="p1">
+      <div class="appbar">SAMPLE quick-delivery <small>order placed</small></div>
+      <div class="card"><b>Arriving in 12 min</b><br><span style="color:#65676B">Order SMP-0042 · 14 items · SAMPLE</span></div>
+      <div class="card" id="orderlist"></div>
+      <div class="sheet" id="sheet"><b style="font-size:13px">Share order screenshot</b>
+        <div class="apps"><div><i></i>Messages</div><div><i></i>Mail</div><div class="me"><i></i>SCMTips Field</div><div><i></i>Files</div></div></div>
+    </div>
+    <div class="scr" id="p2">
+      <div class="appbar">Order check <small>review · step 1 of 3</small></div>
+      <div class="card" style="background:#E7F3FF;border-color:#b9d6f7">Read by Muse Spark: <b>14 items on 8 lines</b>. Check them, then save.</div>
+      <div class="card" id="reviewlist"></div>
+      <div class="btn">Save order</div>
+    </div>
+    <div class="scr" id="p3">
+      <div class="appbar">Home <small>Working as Warehouse · glasses</small></div>
+      <div class="card"><span style="font-size:10.5px;color:#65676B;font-weight:700">NEXT UP</span><br><b>Order SMP-0042 · 8 lines</b><br><span style="color:#65676B">Arriving now · say "check my order"</span></div>
+      <div class="card" style="background:#18191A;color:#fff;border:0"><b>Work session</b> · Listening · glasses<br><span style="color:#B7C0C9">Pause · Stop work</span></div>
+      <div class="card" id="miniresult" style="display:none"></div>
+      <div class="btn" id="claimbtn" style="display:none">Claim 3 items · ₹159</div>
+    </div>
+  </div></div>
+
+  <!-- GLASSES VIEW: top-down counter, drawn -->
+  <div class="view"><svg viewBox="0 0 850 478" id="counter">
+    <defs>
+      <pattern id="wood" width="80" height="478" patternUnits="userSpaceOnUse"><rect width="80" height="478" fill="#4a3a2b"/><path d="M0 0v478M40 0v478" stroke="#3f3124" stroke-width="2"/></pattern>
+    </defs>
+    <rect width="850" height="478" fill="url(#wood)"/>
+    <g id="items" style="transition:opacity .6s"></g><g id="outlines"></g>
+  </svg></div>
+  <div class="hud"><div class="chip" id="chipL">Ray-Ban Meta · camera</div><div class="chip r" id="chipR">SAM 3.1 · Muse Spark</div></div>
+  <div class="caption" id="cap"><div class="who" id="who">Step 1</div><div id="said">An order is placed on a SAMPLE delivery app.</div></div>
+  <svg class="ring" id="ring" viewBox="0 0 74 74" style="display:none"><circle cx="37" cy="37" r="32" stroke="#3A444F" stroke-width="6" fill="none"/>
+    <circle id="ringfg" cx="37" cy="37" r="32" stroke="#1567D3" stroke-width="6" fill="none" stroke-dasharray="201" stroke-dashoffset="0" transform="rotate(-90 37 37)"/>
+    <text x="37" y="43" text-anchor="middle" fill="#fff" font-size="18" id="ringtx">10</text></svg>
+
+  <div class="end" id="end">
+    <h2>One glance at the counter. Every line checked against the order.</h2>
+    <p>Today SCMTips Field already runs these checks, <b>one product line per look</b>: count and damage, pack size, batch and expiry, a claim draft and an evidence page. Meta SAM 3.1 finds the items, Muse Spark reads the labels, and fixed rules decide.</p>
+    <p>Next: the whole order, read from the screenshot you already have.</p>
+    <div class="tags"><span><b>●</b> count + damage · built</span><span><b>●</b> pack size · built</span><span><b>●</b> batch + expiry · built</span><span><b>●</b> voice confirm + claim · built</span><span style="border-color:#F59E0B;color:#FCD34D">● whole order from a screenshot · concept</span></div>
+  </div>
+
+  <div class="ctrl"><button id="bPlay">▶ Play</button><button id="bPrev">◀</button><button id="bNext">▶|</button><button id="bReset">Reset</button> space = play/pause · → next</div>
+</div></div>
+
+<script>
+const ORDER=[ // SAMPLE lines: description, size, qty, price ₹
+  ["Toned milk","1 L",2,34],["Paneer","200 g",2,95],["Brown bread","400 g",1,45],["Curd","400 g",1,40],
+  ["Biscuits","75 g",4,30],["Tomatoes","500 g",1,28],["Rice","1 kg",1,82],["Dish soap","500 ml",2,99]];
+document.getElementById('orderlist').innerHTML=ORDER.map(o=>`<div class="row"><span>${o[0]} · ${o[1]}</span><span class="q">×${o[2]} · ₹${o[3]*o[2]}</span></div>`).join('');
+document.getElementById('reviewlist').innerHTML=ORDER.map((o,i)=>`<div class="row"><span>${o[0]} <span class="q">${o[1]}</span></span><span>×${o[2]} ${i===0||i===1||i===3?'<span class="pilla">≥2 days</span>':(i===5?'<span class="pillg">no date</span>':'')}</span></div>`).join('');
+
+// items on the counter (one paneer missing). [x,y,w,h,label,color,state]  state: ok|bad|near
+const IT=[
+ [40,60,110,150,"TONED MILK 1 L","#e8eef6","ok"],[170,60,110,150,"TONED MILK 1 L","#e8eef6","near"],
+ [305,70,120,80,"PANEER 200 g","#f6f1e4","ok"],
+ [450,50,190,110,"BROWN BREAD","#c79a62","ok"],[665,60,140,120,"CURD 400 g","#f3f3f3","ok"],
+ [40,250,95,70,"BISCUITS","#d9a441","ok"],[150,250,95,70,"BISCUITS","#d9a441","ok"],[260,250,95,70,"BISCUITS","#d9a441","bad"],[370,250,95,70,"BISCUITS","#d9a441","ok"],
+ [500,220,130,110,"TOMATOES","#c8443b","ok"],[655,215,150,110,"RICE 1 kg","#ece3cf","ok"],
+ [60,360,150,95,"DISH SOAP","#7fc6a4","ok"],[240,360,150,95,"DISH SOAP","#7fc6a4","ok"]];
+const gI=document.getElementById('items'),gO=document.getElementById('outlines');
+IT.forEach((t,i)=>{const [x,y,w,h,l,c,s]=t;
+  gI.insertAdjacentHTML('beforeend',`<g transform="rotate(${(i*7%9)-4} ${x+w/2} ${y+h/2})"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${c}" stroke="rgba(0,0,0,.25)"/>
+   ${s==='bad'?`<path d="M${x+w*.55} ${y} l-14 ${h*.45} l20 4 l-12 ${h*.55}" stroke="#5a3a10" stroke-width="3" fill="none"/>`:''}
+   <text x="${x+w/2}" y="${y+h/2+4}" text-anchor="middle" font-size="12" font-weight="700" fill="#2b2b2b">${l}</text>
+   ${i<2?`<text x="${x+w/2}" y="${y+h-14}" text-anchor="middle" font-size="9.5" fill="#555">EXP ${i===1?'04 NOV':'09 NOV'}</text>`:''}</g>`);
+  gO.insertAdjacentHTML('beforeend',`<g class="ol" data-s="${s}"><rect x="${x-6}" y="${y-6}" width="${w+12}" height="${h+12}" rx="14" fill="none" stroke="#1567D3" stroke-width="3"/>
+   <circle cx="${x-2}" cy="${y-2}" r="12" fill="#1567D3"/><text x="${x-2}" y="${y+2}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">${i+1}</text></g>`);
+});
+// ghost spot for the missing paneer
+gO.insertAdjacentHTML('beforeend',`<g class="ol" id="ghost" data-s="ghost"><rect x="305" y="160" width="120" height="70" rx="12" fill="none" stroke="#E5484D" stroke-width="3" stroke-dasharray="8 6"/><text x="365" y="200" text-anchor="middle" font-size="12" fill="#ffb3b5" font-weight="700">PANEER · not seen</text></g>`);
+
+const $=id=>document.getElementById(id);
+function show(p){['p1','p2','p3'].forEach(x=>$(x).classList.toggle('on',x===p));}
+function cap(who,txt,user){$('who').textContent=who;$('said').innerHTML=txt;$('cap').classList.toggle('user',!!user);}
+function outlines(mode){[...gO.children].forEach((g,i)=>{
+  if(mode==='off'){g.classList.remove('on');return;}
+  if(g.dataset.s==='ghost'){g.classList.toggle('on',mode==='color');return;}
+  const r=g.querySelector('rect'),c=g.querySelector('circle');
+  const col=mode==='color'?({ok:'#22A55A',bad:'#E5484D',near:'#F59E0B'}[g.dataset.s]):'#1567D3';
+  r.setAttribute('stroke',col);c.setAttribute('fill',col);
+  if(mode==='blue'){setTimeout(()=>g.classList.add('on'),i*110);}else g.classList.add('on');});}
+let ringT=null;
+function ring(on){clearInterval(ringT);$('ring').style.display=on?'block':'none';if(!on)return;let t=10;$('ringtx').textContent=t;$('ringfg').setAttribute('stroke-dashoffset',0);
+  ringT=setInterval(()=>{t-=1;if(t<7){clearInterval(ringT);return;}$('ringtx').textContent=t;$('ringfg').setAttribute('stroke-dashoffset',201*(10-t)/10);},700);}
+
+const STEPS=[
+ [2600,()=>{show('p1');$('sheet').classList.remove('up');outlines('off');$('end').classList.remove('on');ring(false);$('miniresult').style.display='none';$('claimbtn').style.display='none';
+   $('chipL').textContent='Ray-Ban Meta · idle';gI.style.opacity=0;cap('Step 1 · order','An order of 14 items is placed on a SAMPLE delivery app.');}],
+ [2600,()=>{$('sheet').classList.add('up');cap('Step 1 · share','Share the order screenshot to SCMTips Field.');}],
+ [3400,()=>{show('p2');cap('Step 2 · read the order','Muse Spark reads the screenshot into 8 lines. Chilled dairy must have at least 2 days left. You check the lines and save.');}],
+ [2800,()=>{show('p3');cap('You · at the door','"Check my order."',true);}],
+ [2200,()=>{$('chipL').textContent='Ray-Ban Meta · camera';gI.style.opacity=1;cap('You','Unpack in one layer, labels up. "Look."',true);}],
+ [3200,()=>{outlines('blue');cap('Glasses · first answer','13 of 14 items. Reading the labels.');}],
+ [5600,()=>{outlines('color');$('miniresult').style.display='block';
+   $('miniresult').innerHTML='<b>13 of 14</b><div class="row"><span>Paneer 200 g</span><span style="color:#B3261E">1 missing</span></div><div class="row"><span>Toned milk 1 L</span><span style="color:#9A4A05">1 expires tomorrow</span></div><div class="row"><span>Biscuits 75 g</span><span style="color:#B3261E">1 damaged</span></div><div class="row"><span>5 other lines</span><span style="color:#157A3C">match</span></div>';
+   cap('Glasses · full answer','Missing: 1 paneer 200 g. Toned milk 1 litre: 1 expires tomorrow. 1 biscuit pack damaged. Everything else matches. Claim 3 items, 159 rupees?');}],
+ [2000,()=>{$('claimbtn').style.display='block';cap('You','"Claim."',true);}],
+ [3000,()=>{ring(true);cap('Glasses · read back','Claim 1 paneer, 1 milk, 1 biscuit pack: 159 rupees. Say confirm.');}],
+ [2400,()=>{ring(false);cap('You','"Confirm."',true);}],
+ [3200,()=>{cap('Glasses','Claim drafted with the photo and the check. Evidence page ready.');}],
+ [7000,()=>{$('end').classList.add('on');}]];
+let k=0,timer=null,playing=false;
+function go(i){k=Math.max(0,Math.min(STEPS.length-1,i));STEPS[k][1]();}
+function tick(){go(k);timer=setTimeout(()=>{if(k<STEPS.length-1){k++;tick();}else{playing=false;$('bPlay').textContent='▶ Play';}},STEPS[k][0]);}
+function play(){if(playing){clearTimeout(timer);playing=false;$('bPlay').textContent='▶ Play';return;}playing=true;$('bPlay').textContent='❚❚ Pause';if(k>=STEPS.length-1)k=0;tick();}
+$('bPlay').onclick=play;$('bNext').onclick=()=>{clearTimeout(timer);playing=false;$('bPlay').textContent='▶ Play';go(k+1);};
+$('bPrev').onclick=()=>{clearTimeout(timer);playing=false;$('bPlay').textContent='▶ Play';
+  for(let j=0;j<=Math.max(0,k-1);j++)STEPS[j][1]();k=Math.max(0,k-1);};
+$('bReset').onclick=()=>{clearTimeout(timer);playing=false;$('bPlay').textContent='▶ Play';go(0);};
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();play();}if(e.code==='ArrowRight')$('bNext').onclick();if(e.code==='ArrowLeft')$('bPrev').onclick();});
+function fit(){const s=Math.min(innerWidth/1280,innerHeight/720);$('stage').style.transform=`scale(${s})`;}
+addEventListener('resize',fit);fit();go(0);
+if(location.hash==='#autoplay'){document.querySelector('.ctrl').style.display='none';setTimeout(play,800);}
+</script>
+</body>
+</html>
