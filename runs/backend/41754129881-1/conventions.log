@@ -1,0 +1,6 @@
+$ uv run python tools/checks/conventions.py
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field
+2026-11-04T01:28:55Z
+[FAIL] Found 1 convention violation(s):
+  - Commit b087fd29 convention violation: Commit message must reference task ID (T*.***, WS*.*, R*.*, PR*.*, FR*.*, M3-S01): 'docs: the whole-order check concept page, linked from the README as what comes next (M5-C4)'
+exit status: 1
