@@ -10,7 +10,7 @@ field_api.vision.sam / field_api.vision.labels (META_FIELD rows 20, 23).
     POST /_standin/scene   {"boxes": [[x0, y0, x1, y1], ...], "width", "height", "labels": {"<n>": {...}},
                             "label_delay_s": 0..10 (optional, default 0)}
          the scene the next looks see: boxes in reading order (n = index + 1), label fields as the label schema;
-         label_delay_s holds every label answer that long, so the smoke can see the look answer before its labels
+         label_delay_s holds every label answer that long (not the naming call), so the smoke can see the look answer before its labels
          are read (M5-S01 two-step look); "seal": {"seal_visible", "signs"} is the answer to the C3 visual seal
          check (a chat with the SealInspection JSON schema), held as long
 
@@ -91,6 +91,7 @@ async def responses(request: Request) -> Response:
 
 CLAIM_DRAFT_PROMPT_START = "You write the body of a short, polite claim message"
 SEAL_SCHEMA = "SealInspection"  # = field_api.authenticity.seal.SEAL_SCHEMA_NAME
+NAMING_SCHEMA = "LookNaming"  # = field_api.vision.namer.response_format() (M5-V11, layer 1 of the look)
 
 
 @app.post("/v1/chat/completions")
@@ -102,7 +103,11 @@ async def chat(request: Request) -> JSONResponse:
     content = messages[-1].get("content")
     system = str(messages[0].get("content") or "") if messages[0].get("role") == "system" else ""
     schema = ((body.get("response_format") or {}).get("json_schema") or {}).get("name")
-    if isinstance(content, list) and any(p.get("type") == "image_url" for p in content):
+    if isinstance(content, list) and any(p.get("type") == "image_url" for p in content) and schema == NAMING_SCHEMA:
+        # the look's naming call (M5-V11) answers before SAM counts, so it is not held like a label read: one generic
+        # noun the SAM stand-in answers to, and the scene's own count as the estimate
+        answer = json.dumps({"noun": "package", "alternatives": ["box"], "count_estimate": len(SCENE["boxes"])})
+    elif isinstance(content, list) and any(p.get("type") == "image_url" for p in content):
         if SCENE["label_delay_s"]:
             await asyncio.sleep(SCENE["label_delay_s"])
         if schema == SEAL_SCHEMA:  # the C3 visual seal check (field_api.authenticity.seal): the scene's tamper signs
