@@ -1,0 +1,19 @@
+$ bash scripts/ci/launch_check.sh apk/app-debug.apk
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field
+2026-11-04T21:24:23Z
+Performing Streamed Install
+Success
+Starting: Intent { cmp=com.scmtips.field.debug/com.scmtips.field.app.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: com.scmtips.field.debug/com.scmtips.field.app.MainActivity
+TotalTime: 6135
+WaitTime: 6137
+Complete
+process alive: pid 3264
+11-04 21:24:32.352  3264  3264 E MetaWearablesConfig: Failed to read metadata from manifest: com.meta.wearable.mwdat.APPLICATION_ID, the app might be misconfigured
+11-04 21:24:32.355  3264  3264 E MetaWearablesConfig: Failed to read metadata from manifest: com.meta.wearable.mwdat.CLIENT_TOKEN, the app might be misconfigured
+11-04 21:24:33.008  3264  3264 E MetaWearablesConfig: Failed to read metadata from manifest: com.meta.wearable.mwdat.APPLICATION_ID, the app might be misconfigured
+11-04 21:24:33.010  3264  3264 E MetaWearablesConfig: Failed to read metadata from manifest: com.meta.wearable.mwdat.CLIENT_TOKEN, the app might be misconfigured
+launch check: the app stayed up with no crash
+exit status: 0
