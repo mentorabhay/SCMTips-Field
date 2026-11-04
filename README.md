@@ -11,6 +11,8 @@ signed seal.
 
 Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World"), from 27 October 2026.
 
+**Demo video (3 min):** [watch](https://storage.googleapis.com/scmtips-field-judges/video/SCMTips-Field-3min.mp4) · [download from the release](https://github.com/mentorabhay/SCMTips-Field/releases/download/hackathon-submission/SCMTips-Field-3min.mp4)
+
 **Try it:** [Start guide, click by click](https://storage.googleapis.com/scmtips-field-judges/start-guide.html) ·
 [Judge guide](https://storage.googleapis.com/scmtips-field-judges/judge-guide.html) ·
 [Screenshot book and clips](https://storage.googleapis.com/scmtips-field-judges/book/index.html) ·
