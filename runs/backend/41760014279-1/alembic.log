@@ -1,0 +1,197 @@
+$ uv run python scripts/jobs/alembic.py
+cwd: /home/runner/work/SCMTips-Field/SCMTips-Field
+2026-11-04T02:20:39Z
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> field_0001, Baseline Extensions and Field Schema (Task T1.024).
+INFO  [alembic.runtime.migration] Running upgrade field_0001 -> field_0002, Data Model v1 with Forced RLS and Hierarchy Triggers (Tasks T1.025 - T1.028).
+INFO  [alembic.runtime.migration] Running upgrade field_0002 -> field_0003, Interim Role Grants Table with Forced RLS (Task T1.030 / CS-02).
+INFO  [alembic.runtime.migration] Running upgrade field_0003 -> field_0020, Device Extensions and Glasses Pairing Migration (Task T2.046 / FR2.003, FR2.054).
+INFO  [alembic.runtime.migration] Running upgrade field_0020 -> field_0021, Consent Record Migration with Forced RLS (Task T2.046 / FR2.064).
+INFO  [alembic.runtime.migration] Running upgrade field_0021 -> field_0022, Capture Extensions and Evidence Storage Migration (Task T2.046 / FR2.046, FR2.051).
+INFO  [alembic.runtime.migration] Running upgrade field_0022 -> field_0023, Presigned Capture Upload Migration with Forced RLS (Task T2.046 / FR2.046).
+INFO  [alembic.runtime.migration] Running upgrade field_0023 -> field_0024, Voice Event Table Migration with Forced RLS (Task T2.046 / FR2.038).
+INFO  [alembic.runtime.migration] Running upgrade field_0024 -> field_0025, Count Record Table Migration with Forced RLS (Task T2.046 / FR2.050).
+INFO  [alembic.runtime.migration] Running upgrade field_0025 -> field_0026, Idempotency Record Extension Migration (Task T2.046 / FR2.047).
+INFO  [alembic.runtime.migration] Running upgrade field_0026 -> field_0027, Device Notification Table Migration with Forced RLS (Task T2.046 / FR2.052).
+INFO  [alembic.runtime.migration] Running upgrade field_0027 -> field_0028, Verification Attempt Table Migration with Forced RLS (Task T2.046 / FR2.053, FR2.058).
+INFO  [alembic.runtime.migration] Running upgrade field_0028 -> field_0030, Task Line Warehouse Columns Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0030 -> field_0031, Handling Unit Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0031 -> field_0032, Count Record PI Extensions Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0032 -> field_0033, Physical Inventory Document Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0033 -> field_0034, Posting Job Ordering and Locking Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0034 -> field_0035, Site Graph Nodes and Edges Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0035 -> field_0036, Anchor Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0036 -> field_0037, Trail Point Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0037 -> field_0038, Approval Request Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0038 -> field_0039, Phase 3 Warehouse Optimization Indexes Migration (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0039 -> field_0041, Phase 4 Tower Locations & FL Import Job Migration (Task T4.001 / FR4.001, FR4.002, FR4.003, FR4.004).
+INFO  [alembic.runtime.migration] Running upgrade field_0041 -> field_0042, Phase 4 Site Visit & Geofence Migration (Task T4.001 / FR4.009, FR4.010, FR4.011, FR4.012).
+INFO  [alembic.runtime.migration] Running upgrade field_0042 -> field_0043, Serial Event and Equipment Table Migration with Forced RLS (Task T4.020, T4.022 / FR4.033, FR4.034).
+INFO  [alembic.runtime.migration] Running upgrade field_0043 -> field_0044, 3D Columns on Site Graph Nodes and Edges Migration (Task T4.050 / FR4.046).
+INFO  [alembic.runtime.migration] Running upgrade field_0044 -> field_0045, Audit Task Extensions, Capture Location, and Evidence Consent Migration (Task T4.013, T4.034 / FR4.014, FR4.020).
+INFO  [alembic.runtime.migration] Running upgrade field_0045 -> field_0046, Audit Finding and Exception Case Migration with Forced RLS (Task T4.015, T4.016 / FR4.019, FR4.022, FR4.023).
+INFO  [alembic.runtime.migration] Running upgrade field_0046 -> field_0047, Phase 4 Climb Safety Events and Lone Worker Migration with Forced RLS (Task T4.044, T4.045 / FR4.038 - FR4.045 / API4.15).
+INFO  [alembic.runtime.migration] Running upgrade field_0047 -> field_0048, Phase 4 3D Site Graph Constraints and Kinds Migration (Task T4.050 / FR4.046 / TC4.142).
+INFO  [alembic.runtime.migration] Running upgrade field_0048 -> field_0049, Phase 4 Asset Model Store, BOM & Balloon Registry Migration (WS4.7 / Tasks T4.055, T4.056, T4.059 / FR4.051-FR4.054).
+INFO  [alembic.runtime.migration] Running upgrade field_0049 -> field_0050, Phase 4 Site Pack, Audit Reports & Queue Hold Migration (WS4.8 / Tasks T4.060, T4.061, T4.064).
+INFO  [alembic.runtime.migration] Running upgrade field_0050 -> field_0051, Enhance Installed Base View for API4.18 (Task T4.027 / FR4.065 / API4.18).
+INFO  [alembic.runtime.migration] Running upgrade field_0051 -> field_0052, Normalise RLS policies on one tenant setting: app.tenant_id (C4 foundation).
+INFO  [alembic.runtime.migration] Running upgrade field_0052 -> field_0053, PI book values, count provenance, damage flags and approval valuation (C3/C4).
+INFO  [alembic.runtime.migration] Running upgrade field_0053 -> field_0054, Give every forced-RLS table a permissive base policy (C4 foundation; root cause of §3.10).
+INFO  [alembic.runtime.migration] Running upgrade field_0054 -> field_0055, erp_document.doc_number / fiscal_year are assigned by the ERP on posting (C4).
+INFO  [alembic.runtime.migration] Running upgrade field_0055 -> field_0056, One ERP document per voice confirm turn (API2.14 / FR2.055) (C4).
+INFO  [alembic.runtime.migration] Running upgrade field_0056 -> field_0057, Worker tenant discovery without bypassing RLS (C4: a real worker process).
+INFO  [alembic.runtime.migration] Running upgrade field_0057 -> field_0058, ops schema: AI spend ledger (budget guard, A-02) and service heartbeats (API1.13 real status).
+INFO  [alembic.runtime.migration] Running upgrade field_0058 -> field_0059, M2 jobs contract (docs/design/M2_JOBS_CONTRACT.md): putaway / pick / count / audit / swap on one runner.
+INFO  [alembic.runtime.migration] Running upgrade field_0059 -> field_0060, M3 sandbox and barcodes (docs/design/M3_CONTRACT.md sections 2 and 3).
+INFO  [alembic.runtime.migration] Running upgrade field_0060 -> field_0061, M3 Field Assistant records (docs/design/M3_CONTRACT.md §4) and the Meta Model API in the budget guard.
+INFO  [alembic.runtime.migration] Running upgrade field_0061 -> field_0062, M4 F4: goods receipts to the core's feeds (docs/design/M4_CONTRACT.md section 4; handover 01a).
+INFO  [alembic.runtime.migration] Running upgrade field_0062 -> field_0064_m5_vision, M5 vision look, flagged receipt quantities and the two test cases (docs/design/M5_CONTRACT.md §1, §2; A-06).
+INFO  [alembic.runtime.migration] Running upgrade field_0064_m5_vision -> field_0065, M5 stream X: supplier claims (docs/design/M5_CONTRACT.md section 3).
+INFO  [alembic.runtime.migration] Running upgrade field_0065 -> field_0066_m5_look_stage, M5-S01 two-step look: the first answer as soon as SAM's instances are counted, the label read after it.
+INFO  [alembic.runtime.migration] Running upgrade field_0066_m5_look_stage -> field_0067_m5_try, M5-W01 "Try a look" for judges: a vision look on an uploaded photo with no task, no capture, no posting, no claim.
+INFO  [alembic.runtime.migration] Running upgrade field_0067_m5_try -> field_0068_m5_c3, M5 case C3: authenticity checks and claims from them (docs/design/M5_C3_CONTRACT.md sections 3, 4).
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade field_0068_m5_c3 -> field_0067_m5_try, M5 case C3: authenticity checks and claims from them (docs/design/M5_C3_CONTRACT.md sections 3, 4).
+INFO  [alembic.runtime.migration] Running downgrade field_0067_m5_try -> field_0066_m5_look_stage, M5-W01 "Try a look" for judges: a vision look on an uploaded photo with no task, no capture, no posting, no claim.
+INFO  [alembic.runtime.migration] Running downgrade field_0066_m5_look_stage -> field_0065, M5-S01 two-step look: the first answer as soon as SAM's instances are counted, the label read after it.
+INFO  [alembic.runtime.migration] Running downgrade field_0065 -> field_0064_m5_vision, M5 stream X: supplier claims (docs/design/M5_CONTRACT.md section 3).
+INFO  [alembic.runtime.migration] Running downgrade field_0064_m5_vision -> field_0062, M5 vision look, flagged receipt quantities and the two test cases (docs/design/M5_CONTRACT.md §1, §2; A-06).
+INFO  [alembic.runtime.migration] Running downgrade field_0062 -> field_0061, M4 F4: goods receipts to the core's feeds (docs/design/M4_CONTRACT.md section 4; handover 01a).
+INFO  [alembic.runtime.migration] Running downgrade field_0061 -> field_0060, M3 Field Assistant records (docs/design/M3_CONTRACT.md §4) and the Meta Model API in the budget guard.
+INFO  [alembic.runtime.migration] Running downgrade field_0060 -> field_0059, M3 sandbox and barcodes (docs/design/M3_CONTRACT.md sections 2 and 3).
+INFO  [alembic.runtime.migration] Running downgrade field_0059 -> field_0058, M2 jobs contract (docs/design/M2_JOBS_CONTRACT.md): putaway / pick / count / audit / swap on one runner.
+INFO  [alembic.runtime.migration] Running downgrade field_0058 -> field_0057, ops schema: AI spend ledger (budget guard, A-02) and service heartbeats (API1.13 real status).
+INFO  [alembic.runtime.migration] Running downgrade field_0057 -> field_0056, Worker tenant discovery without bypassing RLS (C4: a real worker process).
+INFO  [alembic.runtime.migration] Running downgrade field_0056 -> field_0055, One ERP document per voice confirm turn (API2.14 / FR2.055) (C4).
+INFO  [alembic.runtime.migration] Running downgrade field_0055 -> field_0054, erp_document.doc_number / fiscal_year are assigned by the ERP on posting (C4).
+INFO  [alembic.runtime.migration] Running downgrade field_0054 -> field_0053, Give every forced-RLS table a permissive base policy (C4 foundation; root cause of §3.10).
+INFO  [alembic.runtime.migration] Running downgrade field_0053 -> field_0052, PI book values, count provenance, damage flags and approval valuation (C3/C4).
+INFO  [alembic.runtime.migration] Running downgrade field_0052 -> field_0051, Normalise RLS policies on one tenant setting: app.tenant_id (C4 foundation).
+INFO  [alembic.runtime.migration] Running downgrade field_0051 -> field_0050, Enhance Installed Base View for API4.18 (Task T4.027 / FR4.065 / API4.18).
+INFO  [alembic.runtime.migration] Running downgrade field_0050 -> field_0049, Phase 4 Site Pack, Audit Reports & Queue Hold Migration (WS4.8 / Tasks T4.060, T4.061, T4.064).
+INFO  [alembic.runtime.migration] Running downgrade field_0049 -> field_0048, Phase 4 Asset Model Store, BOM & Balloon Registry Migration (WS4.7 / Tasks T4.055, T4.056, T4.059 / FR4.051-FR4.054).
+INFO  [alembic.runtime.migration] Running downgrade field_0048 -> field_0047, Phase 4 3D Site Graph Constraints and Kinds Migration (Task T4.050 / FR4.046 / TC4.142).
+INFO  [alembic.runtime.migration] Running downgrade field_0047 -> field_0046, Phase 4 Climb Safety Events and Lone Worker Migration with Forced RLS (Task T4.044, T4.045 / FR4.038 - FR4.045 / API4.15).
+INFO  [alembic.runtime.migration] Running downgrade field_0046 -> field_0045, Audit Finding and Exception Case Migration with Forced RLS (Task T4.015, T4.016 / FR4.019, FR4.022, FR4.023).
+INFO  [alembic.runtime.migration] Running downgrade field_0045 -> field_0044, Audit Task Extensions, Capture Location, and Evidence Consent Migration (Task T4.013, T4.034 / FR4.014, FR4.020).
+INFO  [alembic.runtime.migration] Running downgrade field_0044 -> field_0043, 3D Columns on Site Graph Nodes and Edges Migration (Task T4.050 / FR4.046).
+INFO  [alembic.runtime.migration] Running downgrade field_0043 -> field_0042, Serial Event and Equipment Table Migration with Forced RLS (Task T4.020, T4.022 / FR4.033, FR4.034).
+INFO  [alembic.runtime.migration] Running downgrade field_0042 -> field_0041, Phase 4 Site Visit & Geofence Migration (Task T4.001 / FR4.009, FR4.010, FR4.011, FR4.012).
+INFO  [alembic.runtime.migration] Running downgrade field_0041 -> field_0039, Phase 4 Tower Locations & FL Import Job Migration (Task T4.001 / FR4.001, FR4.002, FR4.003, FR4.004).
+INFO  [alembic.runtime.migration] Running downgrade field_0039 -> field_0038, Phase 3 Warehouse Optimization Indexes Migration (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0038 -> field_0037, Approval Request Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0037 -> field_0036, Trail Point Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0036 -> field_0035, Anchor Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0035 -> field_0034, Site Graph Nodes and Edges Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0034 -> field_0033, Posting Job Ordering and Locking Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0033 -> field_0032, Physical Inventory Document Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0032 -> field_0031, Count Record PI Extensions Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0031 -> field_0030, Handling Unit Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0030 -> field_0028, Task Line Warehouse Columns Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running downgrade field_0028 -> field_0027, Verification Attempt Table Migration with Forced RLS (Task T2.046 / FR2.053, FR2.058).
+INFO  [alembic.runtime.migration] Running downgrade field_0027 -> field_0026, Device Notification Table Migration with Forced RLS (Task T2.046 / FR2.052).
+INFO  [alembic.runtime.migration] Running downgrade field_0026 -> field_0025, Idempotency Record Extension Migration (Task T2.046 / FR2.047).
+INFO  [alembic.runtime.migration] Running downgrade field_0025 -> field_0024, Count Record Table Migration with Forced RLS (Task T2.046 / FR2.050).
+INFO  [alembic.runtime.migration] Running downgrade field_0024 -> field_0023, Voice Event Table Migration with Forced RLS (Task T2.046 / FR2.038).
+INFO  [alembic.runtime.migration] Running downgrade field_0023 -> field_0022, Presigned Capture Upload Migration with Forced RLS (Task T2.046 / FR2.046).
+INFO  [alembic.runtime.migration] Running downgrade field_0022 -> field_0021, Capture Extensions and Evidence Storage Migration (Task T2.046 / FR2.046, FR2.051).
+INFO  [alembic.runtime.migration] Running downgrade field_0021 -> field_0020, Consent Record Migration with Forced RLS (Task T2.046 / FR2.064).
+INFO  [alembic.runtime.migration] Running downgrade field_0020 -> field_0003, Device Extensions and Glasses Pairing Migration (Task T2.046 / FR2.003, FR2.054).
+INFO  [alembic.runtime.migration] Running downgrade field_0003 -> field_0002, Interim Role Grants Table with Forced RLS (Task T1.030 / CS-02).
+INFO  [alembic.runtime.migration] Running downgrade field_0002 -> field_0001, Data Model v1 with Forced RLS and Hierarchy Triggers (Tasks T1.025 - T1.028).
+INFO  [alembic.runtime.migration] Running downgrade field_0001 -> , Baseline Extensions and Field Schema (Task T1.024).
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> field_0001, Baseline Extensions and Field Schema (Task T1.024).
+INFO  [alembic.runtime.migration] Running upgrade field_0001 -> field_0002, Data Model v1 with Forced RLS and Hierarchy Triggers (Tasks T1.025 - T1.028).
+INFO  [alembic.runtime.migration] Running upgrade field_0002 -> field_0003, Interim Role Grants Table with Forced RLS (Task T1.030 / CS-02).
+INFO  [alembic.runtime.migration] Running upgrade field_0003 -> field_0020, Device Extensions and Glasses Pairing Migration (Task T2.046 / FR2.003, FR2.054).
+INFO  [alembic.runtime.migration] Running upgrade field_0020 -> field_0021, Consent Record Migration with Forced RLS (Task T2.046 / FR2.064).
+INFO  [alembic.runtime.migration] Running upgrade field_0021 -> field_0022, Capture Extensions and Evidence Storage Migration (Task T2.046 / FR2.046, FR2.051).
+INFO  [alembic.runtime.migration] Running upgrade field_0022 -> field_0023, Presigned Capture Upload Migration with Forced RLS (Task T2.046 / FR2.046).
+INFO  [alembic.runtime.migration] Running upgrade field_0023 -> field_0024, Voice Event Table Migration with Forced RLS (Task T2.046 / FR2.038).
+INFO  [alembic.runtime.migration] Running upgrade field_0024 -> field_0025, Count Record Table Migration with Forced RLS (Task T2.046 / FR2.050).
+INFO  [alembic.runtime.migration] Running upgrade field_0025 -> field_0026, Idempotency Record Extension Migration (Task T2.046 / FR2.047).
+INFO  [alembic.runtime.migration] Running upgrade field_0026 -> field_0027, Device Notification Table Migration with Forced RLS (Task T2.046 / FR2.052).
+INFO  [alembic.runtime.migration] Running upgrade field_0027 -> field_0028, Verification Attempt Table Migration with Forced RLS (Task T2.046 / FR2.053, FR2.058).
+INFO  [alembic.runtime.migration] Running upgrade field_0028 -> field_0030, Task Line Warehouse Columns Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0030 -> field_0031, Handling Unit Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0031 -> field_0032, Count Record PI Extensions Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0032 -> field_0033, Physical Inventory Document Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0033 -> field_0034, Posting Job Ordering and Locking Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0034 -> field_0035, Site Graph Nodes and Edges Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0035 -> field_0036, Anchor Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0036 -> field_0037, Trail Point Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0037 -> field_0038, Approval Request Table Migration with Forced RLS (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0038 -> field_0039, Phase 3 Warehouse Optimization Indexes Migration (Task T3.002 / FR3.065).
+INFO  [alembic.runtime.migration] Running upgrade field_0039 -> field_0041, Phase 4 Tower Locations & FL Import Job Migration (Task T4.001 / FR4.001, FR4.002, FR4.003, FR4.004).
+INFO  [alembic.runtime.migration] Running upgrade field_0041 -> field_0042, Phase 4 Site Visit & Geofence Migration (Task T4.001 / FR4.009, FR4.010, FR4.011, FR4.012).
+INFO  [alembic.runtime.migration] Running upgrade field_0042 -> field_0043, Serial Event and Equipment Table Migration with Forced RLS (Task T4.020, T4.022 / FR4.033, FR4.034).
+INFO  [alembic.runtime.migration] Running upgrade field_0043 -> field_0044, 3D Columns on Site Graph Nodes and Edges Migration (Task T4.050 / FR4.046).
+INFO  [alembic.runtime.migration] Running upgrade field_0044 -> field_0045, Audit Task Extensions, Capture Location, and Evidence Consent Migration (Task T4.013, T4.034 / FR4.014, FR4.020).
+INFO  [alembic.runtime.migration] Running upgrade field_0045 -> field_0046, Audit Finding and Exception Case Migration with Forced RLS (Task T4.015, T4.016 / FR4.019, FR4.022, FR4.023).
+INFO  [alembic.runtime.migration] Running upgrade field_0046 -> field_0047, Phase 4 Climb Safety Events and Lone Worker Migration with Forced RLS (Task T4.044, T4.045 / FR4.038 - FR4.045 / API4.15).
+INFO  [alembic.runtime.migration] Running upgrade field_0047 -> field_0048, Phase 4 3D Site Graph Constraints and Kinds Migration (Task T4.050 / FR4.046 / TC4.142).
+INFO  [alembic.runtime.migration] Running upgrade field_0048 -> field_0049, Phase 4 Asset Model Store, BOM & Balloon Registry Migration (WS4.7 / Tasks T4.055, T4.056, T4.059 / FR4.051-FR4.054).
+INFO  [alembic.runtime.migration] Running upgrade field_0049 -> field_0050, Phase 4 Site Pack, Audit Reports & Queue Hold Migration (WS4.8 / Tasks T4.060, T4.061, T4.064).
+INFO  [alembic.runtime.migration] Running upgrade field_0050 -> field_0051, Enhance Installed Base View for API4.18 (Task T4.027 / FR4.065 / API4.18).
+INFO  [alembic.runtime.migration] Running upgrade field_0051 -> field_0052, Normalise RLS policies on one tenant setting: app.tenant_id (C4 foundation).
+INFO  [alembic.runtime.migration] Running upgrade field_0052 -> field_0053, PI book values, count provenance, damage flags and approval valuation (C3/C4).
+INFO  [alembic.runtime.migration] Running upgrade field_0053 -> field_0054, Give every forced-RLS table a permissive base policy (C4 foundation; root cause of §3.10).
+INFO  [alembic.runtime.migration] Running upgrade field_0054 -> field_0055, erp_document.doc_number / fiscal_year are assigned by the ERP on posting (C4).
+INFO  [alembic.runtime.migration] Running upgrade field_0055 -> field_0056, One ERP document per voice confirm turn (API2.14 / FR2.055) (C4).
+INFO  [alembic.runtime.migration] Running upgrade field_0056 -> field_0057, Worker tenant discovery without bypassing RLS (C4: a real worker process).
+INFO  [alembic.runtime.migration] Running upgrade field_0057 -> field_0058, ops schema: AI spend ledger (budget guard, A-02) and service heartbeats (API1.13 real status).
+INFO  [alembic.runtime.migration] Running upgrade field_0058 -> field_0059, M2 jobs contract (docs/design/M2_JOBS_CONTRACT.md): putaway / pick / count / audit / swap on one runner.
+INFO  [alembic.runtime.migration] Running upgrade field_0059 -> field_0060, M3 sandbox and barcodes (docs/design/M3_CONTRACT.md sections 2 and 3).
+INFO  [alembic.runtime.migration] Running upgrade field_0060 -> field_0061, M3 Field Assistant records (docs/design/M3_CONTRACT.md §4) and the Meta Model API in the budget guard.
+INFO  [alembic.runtime.migration] Running upgrade field_0061 -> field_0062, M4 F4: goods receipts to the core's feeds (docs/design/M4_CONTRACT.md section 4; handover 01a).
+INFO  [alembic.runtime.migration] Running upgrade field_0062 -> field_0064_m5_vision, M5 vision look, flagged receipt quantities and the two test cases (docs/design/M5_CONTRACT.md §1, §2; A-06).
+INFO  [alembic.runtime.migration] Running upgrade field_0064_m5_vision -> field_0065, M5 stream X: supplier claims (docs/design/M5_CONTRACT.md section 3).
+INFO  [alembic.runtime.migration] Running upgrade field_0065 -> field_0066_m5_look_stage, M5-S01 two-step look: the first answer as soon as SAM's instances are counted, the label read after it.
+INFO  [alembic.runtime.migration] Running upgrade field_0066_m5_look_stage -> field_0067_m5_try, M5-W01 "Try a look" for judges: a vision look on an uploaded photo with no task, no capture, no posting, no claim.
+INFO  [alembic.runtime.migration] Running upgrade field_0067_m5_try -> field_0068_m5_c3, M5 case C3: authenticity checks and claims from them (docs/design/M5_C3_CONTRACT.md sections 3, 4).
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> erpsim_0001, Baseline Migration for Simulated ERP (Tasks T1.041 - T1.044 / T1.051 - T1.053).
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0001 -> erpsim_0002, Functional location hierarchy in the simulator database (M2 tower data).
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0002 -> erpsim_0003, M3 sandbox: barcodes of materials (SAP MEAN) and what the sandbox needs in the simulator.
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0003 -> erpsim_0004, M4 F4: purchase-order references on inbound delivery items, carried into the goods receipt.
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0004 -> erpsim_0005, M4 Q10: purchase orders in the simulator, so the field can send the core a snapshot of the open POs.
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0005 -> erpsim_0006, M5: flagged units of an inbound delivery item post 101 to a quality storage location (docs/design/M5_CONTRACT.md §2).
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade erpsim_0006 -> erpsim_0005, M5: flagged units of an inbound delivery item post 101 to a quality storage location (docs/design/M5_CONTRACT.md §2).
+INFO  [alembic.runtime.migration] Running downgrade erpsim_0005 -> erpsim_0004, M4 Q10: purchase orders in the simulator, so the field can send the core a snapshot of the open POs.
+INFO  [alembic.runtime.migration] Running downgrade erpsim_0004 -> erpsim_0003, M4 F4: purchase-order references on inbound delivery items, carried into the goods receipt.
+INFO  [alembic.runtime.migration] Running downgrade erpsim_0003 -> erpsim_0002, M3 sandbox: barcodes of materials (SAP MEAN) and what the sandbox needs in the simulator.
+INFO  [alembic.runtime.migration] Running downgrade erpsim_0002 -> erpsim_0001, Functional location hierarchy in the simulator database (M2 tower data).
+INFO  [alembic.runtime.migration] Running downgrade erpsim_0001 -> , Baseline Migration for Simulated ERP (Tasks T1.041 - T1.044 / T1.051 - T1.053).
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> erpsim_0001, Baseline Migration for Simulated ERP (Tasks T1.041 - T1.044 / T1.051 - T1.053).
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0001 -> erpsim_0002, Functional location hierarchy in the simulator database (M2 tower data).
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0002 -> erpsim_0003, M3 sandbox: barcodes of materials (SAP MEAN) and what the sandbox needs in the simulator.
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0003 -> erpsim_0004, M4 F4: purchase-order references on inbound delivery items, carried into the goods receipt.
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0004 -> erpsim_0005, M4 Q10: purchase orders in the simulator, so the field can send the core a snapshot of the open POs.
+INFO  [alembic.runtime.migration] Running upgrade erpsim_0005 -> erpsim_0006, M5: flagged units of an inbound delivery item post 101 to a quality storage location (docs/design/M5_CONTRACT.md §2).
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> oemsim_0001, OEM simulator baseline (docs/design/M5_C3_CONTRACT.md section 5): units, their history and first-check claims.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade oemsim_0001 -> , OEM simulator baseline (docs/design/M5_C3_CONTRACT.md section 5): units, their history and first-check claims.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> oemsim_0001, OEM simulator baseline (docs/design/M5_C3_CONTRACT.md section 5): units, their history and first-check claims.
+Testing Alembic round-trip for field-api...
+Alembic round-trip for field-api SUCCESSFUL.
+Testing Alembic round-trip for erp-sim...
+Alembic round-trip for erp-sim SUCCESSFUL.
+Testing Alembic round-trip for oem-sim...
+Alembic round-trip for oem-sim SUCCESSFUL.
+ALL ALEMBIC ROUND-TRIPS PASSED.
+exit status: 0
